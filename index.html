@@ -59,7 +59,19 @@
             overflow-x: hidden;
         }
 
-        /* WATERMERK — komt later */
+        /* ===== WATERMERK ===== */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: url('K_KTS.jpg') center/contain no-repeat;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0;
+        }
 
         /* ===== MAIN CONTAINER ===== */
         .app-content {
@@ -557,11 +569,9 @@
         "></div>
 
         <div style="width:100%;max-width:380px;padding:24px;position:relative;z-index:1">
-            <!-- Logo + naam -->
+            <!-- Logo -->
             <div style="text-align:center;margin-bottom:36px">
-                <img src="K_KTS.jpg" alt="KTS" style="width:80px;height:80px;object-fit:contain;margin-bottom:16px;border-radius:12px;background:white;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2)">
-                <div style="font-weight:800;font-size:1.5rem;color:white;letter-spacing:-0.5px">Kuijpers</div>
-                <div style="font-weight:500;color:rgba(255,255,255,0.65);font-size:0.9rem;letter-spacing:0.5px">TECHNICAL SERVICES</div>
+                <img src="KTS%20BV%20logo2.jpg" alt="Kuijpers Technical Services" style="width:200px;object-fit:contain;border-radius:16px;background:white;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.2)">
             </div>
 
             <!-- Login kaart -->
@@ -620,6 +630,9 @@
             </div>
         </div>
     </div>
+
+    <!-- WATERMERK (zichtbaar op alle pagina's behalve login) -->
+    <div class="watermark" id="watermark"></div>
 
     <!-- HEADER (full-width blauw) -->
     <div class="header">
@@ -851,8 +864,10 @@
         const RATE = 85;
         const KM_RATE = 0.50;
         const HOTEL_RATE = 110.00; // vast afgesproken tarief per nacht
-        const KM_THUIS_RETOUR = 192;  // standaard retour thuis ↔ project
-        const KM_HOTEL_PROJECT = 12;  // hotel ↔ project (korte afstand)
+        const KM_THUIS_PROJECT = 96;  // enkele reis thuis → project
+        const KM_THUIS_RETOUR = 192;  // standaard retour thuis ↔ project (= 2 × 96)
+        const KM_PROJECT_HOTEL = 12;  // enkele reis project → hotel
+        const KM_HOTEL_PROJECT = 12;  // enkele reis hotel → project
         const DAYS_FULL = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
         const MONTHS_SHORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
@@ -916,13 +931,16 @@
         // ===== STATE =====
         function defaultWeekData() {
             return [
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_RETOUR, hotel: false, thuiswerk: false, hours: 8 },
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT * 2, hotel: true, thuiswerk: false, hours: 8 },
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT * 2, hotel: true, thuiswerk: false, hours: 8 },
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT * 2, hotel: true, thuiswerk: false, hours: 8 },
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_RETOUR, hotel: false, thuiswerk: false, hours: 8 },
-                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                // Ma: thuis→project, project→hotel (eerste hoteldag)
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_THUIS_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
+                // Di-Do: hotel→project, project→hotel
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_HOTEL_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_HOTEL_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_HOTEL_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
+                // Vr: hotel→project, project→thuis (na hotel, geen hotel deze nacht)
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_RETOUR, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 },
+                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 },
+                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 },
             ];
         }
 
@@ -946,6 +964,50 @@
             const days = ['zo','ma','di','wo','do','vr','za'];
             const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
             return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+        }
+
+        // ===== KM SECTION HELPER =====
+        function renderKmSection(entry, i) {
+            if (entry.hotel) {
+                const prevHotel = i > 0 && weekData[i-1].hotel;
+                const heenLabel = prevHotel ? 'Hotel → Project' : 'Thuis → Project';
+                const terugLabel = 'Project → Hotel';
+                const heenVal = entry.kmHeen || 0;
+                const terugVal = entry.kmTerug || 0;
+                const totKm = heenVal + terugVal;
+                return `<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                        <div style="font-size:1.1rem">🚗</div>
+                        <div style="font-size:0.75rem;font-weight:600;color:var(--muted)">Kilometers (heen + terug)</div>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-bottom:8px">
+                        <div style="flex:1">
+                            <div style="font-size:0.65rem;font-weight:600;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">↗ ${heenLabel}</div>
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <input type="number" value="${heenVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:white" onchange="updateEntry(${i},'kmHeen',this.value)">
+                                <span style="font-size:0.75rem;color:var(--muted)">km</span>
+                            </div>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-size:0.65rem;font-weight:600;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">↗ ${terugLabel}</div>
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <input type="number" value="${terugVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:white" onchange="updateEntry(${i},'kmTerug',this.value)">
+                                <span style="font-size:0.75rem;color:var(--muted)">km</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--muted);padding-top:6px;border-top:1px solid var(--border)">Totaal: <strong>${totKm} km</strong> · ${fmtEuro(totKm * KM_RATE)}</div>
+                </div>`;
+            }
+            // Geen hotel: enkel km-veld
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
+                <div style="font-size:1.1rem">🚗</div>
+                <div style="flex:1">
+                    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel)' : ' (retour thuis ↔ project)'}</div>
+                    <input type="number" value="${entry.km||0}" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600" onchange="updateEntry(${i},'km',this.value)">
+                    <span style="font-size:0.8rem;color:var(--muted);margin-left:6px">km · ${fmtEuro((entry.km||0) * KM_RATE)}</span>
+                </div>
+            </div>`;
         }
 
         // ===== UREN RENDER =====
@@ -1044,15 +1106,8 @@
                                     '<div style="font-weight:700;font-size:0.9rem;color:' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + '">' + fmtEuro(HOTEL_RATE) + '</div>' +
                                 '</div>' : ''}
 
-                                <!-- Km veld (altijd bewerkbaar, verborgen bij thuiswerk tenzij handmatig) -->
-                                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
-                                    <div style="font-size:1.1rem">🚗</div>
-                                    <div style="flex:1">
-                                        <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel — bijv. spullen halen)' : entry.hotel ? ' (hotel ↔ project)' : ' (retour thuis ↔ project)'}</div>
-                                        <input type="number" value="${entry.km||0}" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600" onchange="updateEntry(${i},'km',this.value)">
-                                        <span style="font-size:0.8rem;color:var(--muted);margin-left:6px">km · ${fmtEuro((entry.km||0) * KM_RATE)}</span>
-                                    </div>
-                                </div>
+                                <!-- Km veld(en) -->
+                                ${renderKmSection(entry, i)}
                             </div>
 
                             <div class="form-actions" style="flex-wrap:wrap;margin-top:12px">
@@ -1112,9 +1167,13 @@
             e.thuiswerk = !e.thuiswerk;
             if (e.thuiswerk) {
                 e.hotel = false;
-                e.km = 0;  // thuiswerk = geen km standaard
+                e.km = 0;
+                e.kmHeen = 0;
+                e.kmTerug = 0;
             } else {
-                e.km = KM_THUIS_RETOUR; // terug naar standaard
+                e.kmHeen = 0;
+                e.kmTerug = 0;
+                e.km = KM_THUIS_RETOUR;
             }
             renderDays();
         }
@@ -1124,9 +1183,23 @@
             const e = weekData[i];
             e.hotel = !e.hotel;
             if (e.hotel) {
-                e.km = KM_HOTEL_PROJECT * 2; // hotel ↔ project retour
+                // Slim bepalen: was gisteren ook hotel?
+                const prevHotel = i > 0 && weekData[i-1].hotel;
+                if (prevHotel) {
+                    // Vervolg hoteldag: hotel→project + project→hotel
+                    e.kmHeen = KM_HOTEL_PROJECT;
+                    e.kmTerug = KM_PROJECT_HOTEL;
+                } else {
+                    // Eerste hoteldag: thuis→project + project→hotel
+                    e.kmHeen = KM_THUIS_PROJECT;
+                    e.kmTerug = KM_PROJECT_HOTEL;
+                }
+                e.km = e.kmHeen + e.kmTerug;
             } else {
-                e.km = KM_THUIS_RETOUR; // terug naar thuis ↔ project
+                // Geen hotel: retour thuis↔project
+                e.kmHeen = 0;
+                e.kmTerug = 0;
+                e.km = KM_THUIS_RETOUR;
             }
             renderDays();
         }
@@ -1140,6 +1213,14 @@
             if (field === 'desc') e.desc = value;
             if (field === 'location') e.location = value;
             if (field === 'km') e.km = parseInt(value) || 0;
+            if (field === 'kmHeen') {
+                e.kmHeen = parseInt(value) || 0;
+                e.km = e.kmHeen + (e.kmTerug || 0);
+            }
+            if (field === 'kmTerug') {
+                e.kmTerug = parseInt(value) || 0;
+                e.km = (e.kmHeen || 0) + e.kmTerug;
+            }
             if (field === 'hotel') e.hotel = value;
             if (e.start && e.end) {
                 const [sh,sm] = e.start.split(':').map(Number);
@@ -1150,7 +1231,7 @@
         }
 
         function clearDay(i) {
-            weekData[i] = { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 };
+            weekData[i] = { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 };
             renderDays();
         }
 
@@ -1177,7 +1258,7 @@
         function fillStandard() {
             for (let i = 0; i < 5; i++) {
                 if (weekData[i].hours === 0) {
-                    weekData[i] = { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: 'Broek op Langedijk', km: KM_THUIS_RETOUR, hotel: false, thuiswerk: false, hours: 8 };
+                    weekData[i] = { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: 'Broek op Langedijk', km: KM_THUIS_RETOUR, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 };
                 }
             }
             renderDays();
@@ -1751,6 +1832,8 @@
                     description: d.desc || '',
                     location: d.location || '',
                     km: d.km || 0,
+                    km_heen: d.kmHeen || 0,
+                    km_terug: d.kmTerug || 0,
                     hotel: d.hotel || false,
                     thuiswerk: d.thuiswerk || false,
                     status: 'draft'
@@ -1802,15 +1885,10 @@
                 if (entries && entries.length > 0) {
                     // We hebben data uit de database — gebruik die i.p.v. defaults
                     // Eerst alles leegmaken
-                    weekData = [
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
-                    ];
+                    weekData = Array.from({length: 7}, () => ({
+                        start: '', end: '', breakMin: 0, desc: '', location: '',
+                        km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0
+                    }));
 
                     entries.forEach(e => {
                         const dayIndex = getDayIndexForDate(e.entry_date);
@@ -1822,6 +1900,8 @@
                                 desc: e.description || '',
                                 location: e.location || '',
                                 km: e.km || 0,
+                                kmHeen: e.km_heen || 0,
+                                kmTerug: e.km_terug || 0,
                                 hotel: e.hotel || false,
                                 thuiswerk: e.thuiswerk || false,
                                 hours: parseFloat(e.total_hours) || 0
