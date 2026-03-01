@@ -88,13 +88,15 @@
             margin-bottom: 12px;
         }
         .logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.3px; }
-        .logo span { color: #93c5fd; font-weight: 600; }
+        .logo span { color: rgba(255,255,255,0.6); font-weight: 400; }
         .user-badge {
             font-size: 0.75rem;
             background: rgba(255,255,255,0.15);
-            padding: 4px 10px;
+            padding: 6px 12px;
             border-radius: 20px;
             cursor: pointer;
+            transition: background 0.15s;
+            font-weight: 500;
         }
         .user-badge:hover { background: rgba(255,255,255,0.25); }
         .project-selector {
@@ -121,21 +123,30 @@
             align-items: center;
             justify-content: space-between;
             background: white;
-            border-radius: 12px;
-            padding: 12px 16px;
+            border-radius: 14px;
+            padding: 14px 12px;
             margin-bottom: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid rgba(7,86,127,0.08);
         }
         .week-nav button {
-            background: none;
+            background: var(--kts-blue);
             border: none;
-            font-size: 1.2rem;
+            font-size: 0.9rem;
             cursor: pointer;
-            padding: 4px 8px;
-            color: var(--kts-light);
+            padding: 8px 12px;
+            color: white;
+            border-radius: 10px;
+            transition: background 0.15s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .week-label { font-weight: 600; font-size: 0.9rem; }
-        .week-total { font-size: 0.75rem; color: var(--muted); }
+        .week-nav button:active { background: #064a6d; }
+        .week-label { font-weight: 700; font-size: 0.95rem; color: var(--kts-blue); }
+        .week-total { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
 
         /* ===== QUICK ACTIONS ===== */
         .quick-actions {
@@ -164,40 +175,69 @@
         /* ===== DAY CARDS ===== */
         .day-card {
             background: white;
-            border-radius: 12px;
+            border-radius: 14px;
             margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             overflow: hidden;
-            transition: all 0.2s;
+            transition: all 0.25s ease;
+            border: 1px solid transparent;
         }
-        .day-card.expanded { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .day-card.expanded {
+            box-shadow: 0 6px 20px rgba(7,86,127,0.12);
+            border-color: rgba(7,86,127,0.15);
+        }
+        .day-card.weekend-card { background: #fefce8; }
+        .day-card.weekend-card.expanded { border-color: rgba(245,158,11,0.2); box-shadow: 0 6px 20px rgba(245,158,11,0.1); }
         .day-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 14px 16px;
             cursor: pointer;
+            transition: background 0.15s;
         }
-        .day-header:hover { background: #f8fafc; }
+        .day-header:active { background: #f1f5f9; }
         .day-info { display: flex; align-items: center; gap: 12px; }
-        .day-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+        .day-indicator {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: white;
             background: #cbd5e1;
+            flex-shrink: 0;
         }
-        .day-dot.filled { background: var(--green); }
-        .day-dot.weekend { background: var(--orange); }
+        .day-indicator.filled { background: var(--kts-blue); }
+        .day-indicator.weekend { background: var(--orange); }
+        .day-indicator.weekend.filled { background: #d97706; }
         .day-name { font-weight: 600; font-size: 0.9rem; }
-        .day-date { font-size: 0.75rem; color: var(--muted); }
-        .day-hours { font-weight: 700; font-size: 1rem; color: var(--kts-light); }
-        .day-hours.empty { color: #cbd5e1; }
+        .day-date { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+        .day-location { font-size: 0.68rem; color: var(--kts-blue); margin-top: 1px; font-weight: 500; }
+        .day-right { text-align: right; min-width: 70px; }
+        .day-hours { font-weight: 700; font-size: 1.05rem; color: var(--kts-blue); }
+        .day-hours.empty { color: #cbd5e1; font-weight: 500; }
+        .day-badges { display: flex; gap: 4px; margin-top: 4px; justify-content: flex-end; flex-wrap: wrap; }
+        .day-badge {
+            font-size: 0.6rem;
+            padding: 1px 6px;
+            border-radius: 6px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .day-badge.km { background: #f1f5f9; color: var(--muted); }
+        .day-badge.hotel { background: #eff6ff; color: var(--kts-blue); }
+        .day-badge.thuis { background: #f0fdf4; color: #059669; }
 
         /* ===== FORMS ===== */
         .day-form {
             display: none;
             padding: 0 16px 16px;
             border-top: 1px solid var(--border);
+            background: #fafbfc;
         }
         .day-card.expanded .day-form { display: block; }
         .form-row {
@@ -227,8 +267,9 @@
         }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
-            border-color: var(--kts-light);
+            border-color: var(--kts-blue);
             background: white;
+            box-shadow: 0 0 0 3px rgba(7,86,127,0.08);
         }
         .form-group textarea { resize: none; height: 60px; }
 
@@ -242,8 +283,8 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .btn-primary { background: var(--kts-light); color: white; }
-        .btn-primary:hover { background: #2563eb; }
+        .btn-primary { background: var(--kts-blue); color: white; }
+        .btn-primary:hover { background: #064a6d; }
         .btn-secondary { background: #f1f5f9; color: var(--text); }
         .btn-success { background: var(--green); color: white; }
         .btn-block { width: 100%; }
@@ -461,9 +502,10 @@
             background: white;
             border-top: 1px solid var(--border);
             display: flex;
-            padding: 8px 0;
-            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+            padding: 6px 0;
+            padding-bottom: calc(6px + env(safe-area-inset-bottom));
             z-index: 100;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.04);
         }
         .bottom-nav-inner {
             display: flex;
@@ -474,13 +516,26 @@
         .nav-item {
             flex: 1;
             text-align: center;
-            padding: 6px;
+            padding: 6px 4px;
             cursor: pointer;
             color: var(--muted);
-            font-size: 0.7rem;
-            transition: color 0.2s;
+            font-size: 0.68rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
         }
-        .nav-item.active { color: var(--kts-light); }
+        .nav-item.active { color: var(--kts-blue); font-weight: 700; }
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 3px;
+            background: var(--kts-blue);
+            border-radius: 0 0 3px 3px;
+        }
         .nav-icon { font-size: 1.3rem; margin-bottom: 2px; }
     </style>
 </head>
@@ -608,7 +663,7 @@
             <div id="days-container"></div>
 
             <div style="margin-top:16px">
-                <button class="btn btn-primary btn-block" onclick="saveWeek('uren')">
+                <button class="btn btn-primary btn-block" onclick="saveWeek('uren')" style="padding:14px 20px;border-radius:12px;font-size:0.9rem;letter-spacing:0.3px">
                     💾 Week opslaan
                 </button>
             </div>
@@ -898,29 +953,38 @@
             const container = document.getElementById('days-container');
             let totalHours = 0;
 
+            const DAY_ABBR = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
             container.innerHTML = weekData.map((entry, i) => {
                 totalHours += entry.hours;
                 const isWeekend = i >= 5;
                 const isFilled = entry.hours > 0;
                 const isExpanded = expandedDay === i;
 
+                // Build badges
+                let badges = '';
+                if (isFilled) {
+                    if (entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
+                    if (entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
+                    if (entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
+                }
+
+                // Location for collapsed view
+                const locText = (isFilled && entry.location && !isExpanded) ? '<div class="day-location">📍 ' + entry.location + '</div>' : '';
+
                 return `
-                    <div class="day-card ${isExpanded ? 'expanded' : ''}">
+                    <div class="day-card ${isExpanded ? 'expanded' : ''} ${isWeekend ? 'weekend-card' : ''}">
                         <div class="day-header" onclick="toggleDay(${i})">
                             <div class="day-info">
-                                <div class="day-dot ${isFilled ? 'filled' : ''} ${isWeekend ? 'weekend' : ''}"></div>
+                                <div class="day-indicator ${isFilled ? 'filled' : ''} ${isWeekend ? 'weekend' : ''}">${DAY_ABBR[i]}</div>
                                 <div>
                                     <div class="day-name">${DAYS_FULL[i]}</div>
                                     <div class="day-date">${getDATES()[i]}${isWeekend ? ' · Weekend' : ''}</div>
+                                    ${locText}
                                 </div>
                             </div>
-                            <div style="text-align:right">
+                            <div class="day-right">
                                 <div class="day-hours ${!isFilled ? 'empty' : ''}">${isFilled ? fmt(entry.hours) + ' u' : '—'}</div>
-                                ${isFilled ? '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;margin-top:2px">' +
-                                    (entry.thuiswerk ? '<div style="font-size:0.65rem;color:#059669">🏠 Thuiswerk</div>' : '') +
-                                    (entry.km > 0 ? '<div style="font-size:0.65rem;color:var(--muted)">🚗 ' + entry.km + ' km</div>' : '') +
-                                    (entry.hotel ? '<div style="font-size:0.65rem;color:var(--kts-blue)">🏨 Hotel</div>' : '') +
-                                '</div>' : ''}
+                                ${badges ? '<div class="day-badges">' + badges + '</div>' : ''}
                             </div>
                         </div>
                         <div class="day-form">
