@@ -667,6 +667,7 @@
                 <div class="user-badge" onclick="toggleUserMenu()" style="position:relative">👤 M. Kuijpers
                     <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;overflow:hidden;z-index:200">
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
+                        <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Instellingen</div>
                         <div onclick="doLogout()" style="padding:12px 16px;font-size:0.85rem;color:#ef4444;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">🚪 Uitloggen</div>
                     </div>
                 </div>
@@ -794,6 +795,58 @@
             <div style="margin-top:10px;display:flex;gap:10px">
                 <button class="btn btn-primary" style="flex:1" onclick="showToast('PDF export — komt in volgende versie')">📄 PDF Export</button>
                 <button class="btn btn-secondary" style="flex:1" onclick="showToast('Excel export — komt in volgende versie')">📊 Excel Export</button>
+            </div>
+        </div>
+
+        <!-- ===== ADMIN SCREEN (alleen voor admin) ===== -->
+        <div class="screen" id="screen-admin">
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">⚙️ Instellingen</h2>
+
+            <!-- Tabs: Projecten / Personen / Tarieven -->
+            <div id="admin-tabs" style="display:flex;gap:6px;margin-bottom:16px">
+                <button class="btn btn-sm" style="flex:1" onclick="switchAdminTab('projecten')" id="admin-tab-projecten">Projecten</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Personen</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
+            </div>
+
+            <!-- ===== PROJECTEN TAB ===== -->
+            <div id="admin-projecten">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Projecten</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('project')">+ Nieuw project</button>
+                </div>
+                <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+
+            <!-- ===== PERSONEN TAB ===== -->
+            <div id="admin-personen" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & bedrijven</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw persoon</button>
+                </div>
+                <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+
+            <!-- ===== TARIEVEN TAB ===== -->
+            <div id="admin-tarieven" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
+                </div>
+                <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+        </div>
+    </div>
+
+        <!-- ADMIN MODAL -->
+    <div class="modal-overlay" id="admin-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-title" id="admin-modal-title">Nieuw item</div>
+            <div id="admin-modal-fields"></div>
+            <div class="form-actions" style="margin-top:16px">
+                <button class="btn btn-secondary" onclick="closeModal('admin-modal')">Annuleren</button>
+                <button class="btn btn-primary" id="admin-modal-save">Opslaan</button>
             </div>
         </div>
     </div>
@@ -1762,6 +1815,9 @@
             menu.style.display = isOpen ? 'none' : 'block';
             if (!isOpen) {
                 document.getElementById('user-menu-name').textContent = currentUser ? currentUser.name : '';
+                // Toon admin-knop alleen voor admins
+                const adminItem = document.getElementById('admin-menu-item');
+                if (adminItem) adminItem.style.display = (currentUser && currentUser.role === 'admin') ? 'flex' : 'none';
                 // Sluit menu bij klik ergens anders
                 setTimeout(() => {
                     document.addEventListener('click', function closeMenu(e) {
@@ -2014,6 +2070,217 @@
             }
             tryNext();
         })();
+
+        // ===== ADMIN FUNCTIES =====
+        function goToAdmin() {
+            document.getElementById('user-menu').style.display = 'none';
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-admin').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            loadAdminData();
+        }
+
+        function switchAdminTab(tab) {
+            ['projecten','personen','tarieven'].forEach(t => {
+                document.getElementById('admin-' + t).style.display = t === tab ? 'block' : 'none';
+                const btn = document.getElementById('admin-tab-' + t);
+                if (t === tab) { btn.className = 'btn btn-sm btn-primary'; btn.style.flex = '1'; }
+                else { btn.className = 'btn btn-sm btn-secondary'; btn.style.flex = '1'; }
+            });
+        }
+
+        async function loadAdminData() {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden met database'); return; }
+
+            // Projecten laden
+            const { data: projects } = await sb.from('projects').select('*, client_company_id(name)').order('created_at', { ascending: false });
+            const projList = document.getElementById('admin-project-list');
+            if (projects && projects.length > 0) {
+                projList.innerHTML = projects.map(p => `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:6px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <div style="font-weight:700;font-size:0.9rem">${p.name}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${p.project_code} · ${p.location || ''} · ${p.client_name || ''}</div>
+                            </div>
+                            <span class="status-badge ${p.status === 'active' ? 'status-approved' : 'status-draft'}">${p.status}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                projList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen projecten gevonden</div>';
+            }
+
+            // Personen laden (companies van type zzp)
+            const { data: companies } = await sb.from('companies').select('*').order('name');
+            const persList = document.getElementById('admin-persoon-list');
+            if (companies && companies.length > 0) {
+                persList.innerHTML = companies.map(c => `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <div style="font-weight:700;font-size:0.9rem">${c.name}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${c.type} · ${c.city || ''} ${c.kvk_number ? '· KVK ' + c.kvk_number : ''}</div>
+                            </div>
+                            <span class="status-badge status-draft" style="text-transform:capitalize">${c.type}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                persList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen personen gevonden</div>';
+            }
+
+            // Tarieven laden
+            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code)').order('valid_from', { ascending: false });
+            const tariefList = document.getElementById('admin-tarief-list');
+            if (rates && rates.length > 0) {
+                tariefList.innerHTML = rates.map(r => {
+                    const proj = r.project_id || {};
+                    return `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <div style="font-weight:700;font-size:0.9rem">${proj.name || 'Onbekend project'}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${proj.project_code || ''} · vanaf ${r.valid_from}${r.valid_to ? ' t/m ' + r.valid_to : ''}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-weight:700;color:var(--kts-blue)">€${r.hourly_rate}/u</div>
+                                <div style="font-size:0.7rem;color:var(--muted)">€${r.km_rate}/km</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                tariefList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen tarieven gevonden</div>';
+            }
+        }
+
+        // ===== ADMIN MODALS: Nieuw project/persoon/tarief toevoegen =====
+        function openAdminModal(type) {
+            let title, fields;
+            if (type === 'project') {
+                title = 'Nieuw project';
+                fields = `
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026-02"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V."></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start"></div>
+                `;
+            } else if (type === 'persoon') {
+                title = 'Nieuw persoon / bedrijf';
+                fields = `
+                    <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Type</label>
+                        <select id="adm-pers-type"><option value="zzp">ZZP'er</option><option value="client">Klant</option><option value="kts">KTS medewerker</option></select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px"><label>KVK-nummer</label><input type="text" id="adm-pers-kvk" placeholder="Bijv. 89133315"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>BTW-nummer</label><input type="text" id="adm-pers-btw" placeholder="Bijv. NL004694925B15"></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Adres</label><input type="text" id="adm-pers-addr" placeholder="Straat + nr"></div>
+                    </div>
+                    <div class="form-row" style="margin-top:12px">
+                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB"></div>
+                        <div class="form-group"><label>Plaats</label><input type="text" id="adm-pers-city" placeholder="Zeewolde"></div>
+                    </div>
+                    <div class="form-group" style="margin-top:12px"><label>E-mail</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl"></div>
+                `;
+            } else if (type === 'tarief') {
+                title = 'Nieuw tarief';
+                fields = `
+                    <div class="form-group" style="margin-bottom:12px"><label>Project</label><select id="adm-tar-project"><option value="">Laden...</option></select></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Uurtarief (€)</label><input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00"></div>
+                        <div class="form-group"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60"></div>
+                    </div>
+                    <div class="form-row" style="margin-top:12px">
+                        <div class="form-group"><label>Za-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sat" value="1.50"></div>
+                        <div class="form-group"><label>Zo-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sun" value="2.00"></div>
+                    </div>
+                    <div class="form-row" style="margin-top:12px">
+                        <div class="form-group"><label>Geldig vanaf</label><input type="date" id="adm-tar-from"></div>
+                        <div class="form-group"><label>Geldig t/m (optioneel)</label><input type="date" id="adm-tar-to"></div>
+                    </div>
+                `;
+            }
+
+            // Maak modal-content
+            const modal = document.getElementById('admin-modal');
+            document.getElementById('admin-modal-title').textContent = title;
+            document.getElementById('admin-modal-fields').innerHTML = fields;
+            document.getElementById('admin-modal-save').onclick = () => saveAdminItem(type);
+            modal.classList.add('active');
+
+            // Vul project-dropdown als tarief
+            if (type === 'tarief') loadProjectDropdown();
+        }
+
+        async function loadProjectDropdown() {
+            const sb = getSupabase();
+            if (!sb) return;
+            const { data: projects } = await sb.from('projects').select('id, name, project_code').order('name');
+            const sel = document.getElementById('adm-tar-project');
+            if (projects) {
+                sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.project_code} — ${p.name}</option>`).join('');
+            }
+        }
+
+        async function saveAdminItem(type) {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            let result;
+            if (type === 'project') {
+                const code = document.getElementById('adm-proj-code').value.trim();
+                const name = document.getElementById('adm-proj-name').value.trim();
+                if (!code || !name) { showToast('⚠️ Vul minimaal code en naam in'); return; }
+                result = await sb.from('projects').insert({
+                    project_code: code,
+                    name: name,
+                    client_name: document.getElementById('adm-proj-client').value.trim() || null,
+                    location: document.getElementById('adm-proj-location').value.trim() || null,
+                    start_date: document.getElementById('adm-proj-start').value || null,
+                    status: 'active'
+                });
+            } else if (type === 'persoon') {
+                const name = document.getElementById('adm-pers-name').value.trim();
+                const ptype = document.getElementById('adm-pers-type').value;
+                if (!name) { showToast('⚠️ Vul minimaal een naam in'); return; }
+                result = await sb.from('companies').insert({
+                    name: name,
+                    type: ptype,
+                    kvk_number: document.getElementById('adm-pers-kvk').value.trim() || null,
+                    btw_number: document.getElementById('adm-pers-btw').value.trim() || null,
+                    address: document.getElementById('adm-pers-addr').value.trim() || null,
+                    postcode: document.getElementById('adm-pers-postcode').value.trim() || null,
+                    city: document.getElementById('adm-pers-city').value.trim() || null,
+                    email: document.getElementById('adm-pers-email').value.trim() || null,
+                });
+            } else if (type === 'tarief') {
+                const projId = document.getElementById('adm-tar-project').value;
+                const hourly = parseFloat(document.getElementById('adm-tar-hourly').value);
+                const from = document.getElementById('adm-tar-from').value;
+                if (!projId || !hourly || !from) { showToast('⚠️ Vul project, uurtarief en startdatum in'); return; }
+                result = await sb.from('rates').insert({
+                    project_id: projId,
+                    hourly_rate: hourly,
+                    km_rate: parseFloat(document.getElementById('adm-tar-km').value) || 0.50,
+                    saturday_multiplier: parseFloat(document.getElementById('adm-tar-sat').value) || 1.50,
+                    sunday_holiday_multiplier: parseFloat(document.getElementById('adm-tar-sun').value) || 2.00,
+                    valid_from: from,
+                    valid_to: document.getElementById('adm-tar-to').value || null,
+                });
+            }
+
+            if (result && result.error) {
+                showToast('⚠️ Fout: ' + result.error.message);
+            } else {
+                closeModal('admin-modal');
+                showToast('✓ Opgeslagen');
+                loadAdminData();
+            }
+        }
 
         // Demo modus — overslaan als CDN niet werkt
         function skipLogin() {
