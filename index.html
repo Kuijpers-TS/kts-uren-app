@@ -939,9 +939,12 @@
         }
 
         // ===== CONFIG =====
-        const RATE = 85;
-        const KM_RATE = 0.50;
-        const HOTEL_RATE = 110.00; // vast afgesproken tarief per nacht
+        let RATE = 85;
+        let KM_RATE = 0.50;
+        let HOTEL_RATE = 110.00; // vast afgesproken tarief per nacht
+        let SAT_MULTIPLIER = 1.50;
+        let SUN_MULTIPLIER = 2.00;
+        let currentRates = null; // geladen uit Supabase rates tabel
         const KM_THUIS_PROJECT = 96;  // enkele reis thuis → project
         const KM_THUIS_RETOUR = 192;  // standaard retour thuis ↔ project (= 2 × 96)
         const KM_PROJECT_HOTEL = 12;  // enkele reis project → hotel
@@ -956,6 +959,13 @@
             d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
             const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
             return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function getISOYear(date) {
+            // ISO 8601: het jaar waar de donderdag van de week in valt
+            const d = new Date(date);
+            d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+            return d.getFullYear();
         }
 
         function getWeekMonday(date) {
@@ -974,7 +984,8 @@
 
         let currentWeekMonday = getWeekMonday(new Date());
         let currentWeekNumber = getISOWeek(new Date());
-        let currentYear = new Date().getFullYear();
+        let currentYear = getISOYear(new Date());
+        let weekSummary = null; // als er een week_summaries record is (historische data)
 
         function getDateForDayIndex(i) {
             const d = new Date(currentWeekMonday);
@@ -1088,9 +1099,85 @@
             </div>`;
         }
 
+        // ===== WEEK SUMMARY RENDER (historische data) =====
+        function renderWeekSummary(container) {
+            const s = weekSummary;
+            const hoursAmt = parseFloat(s.hours_amount) || 0;
+            const kmAmt = parseFloat(s.km_amount) || 0;
+            const hotelAmt = parseFloat(s.hotel_amount) || 0;
+            const totalAmt = hoursAmt + kmAmt + hotelAmt;
+
+            container.innerHTML = `
+                <div style="background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);border:2px solid var(--kts-blue);border-radius:16px;padding:20px;margin-bottom:12px">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                        <div style="width:40px;height:40px;border-radius:10px;background:var(--kts-blue);color:white;display:flex;align-items:center;justify-content:center;font-size:1.1rem">📋</div>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;color:var(--kts-blue)">Weektotaal (uit factuur)</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${s.invoice_ref || ''} ${s.invoice_no ? '· Factuur ' + s.invoice_no : ''}</div>
+                        </div>
+                        <div style="margin-left:auto;background:var(--green);color:white;padding:3px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;text-transform:uppercase">${s.status}</div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${fmt(parseFloat(s.total_hours))}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Uren</div>
+                        </div>
+                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${(s.total_km || 0).toLocaleString('nl-NL')}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Kilometers</div>
+                        </div>
+                        ${s.hotel_nights > 0 ? `
+                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${s.hotel_nights}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Hotelnachten</div>
+                        </div>` : ''}
+                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${fmtEuro(parseFloat(s.hourly_rate))}/u</div>
+                            <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Tarief</div>
+                        </div>
+                    </div>
+
+                    <div style="background:white;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px">
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                            <span style="color:var(--muted)">Uren (${fmt(parseFloat(s.total_hours))} × ${fmtEuro(parseFloat(s.hourly_rate))})</span>
+                            <span style="font-weight:600">${fmtEuro(hoursAmt)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                            <span style="color:var(--muted)">Km (${(s.total_km||0).toLocaleString('nl-NL')} × ${fmtEuro(parseFloat(s.km_rate))})</span>
+                            <span style="font-weight:600">${fmtEuro(kmAmt)}</span>
+                        </div>
+                        ${hotelAmt > 0 ? `<div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                            <span style="color:var(--muted)">Hotel (${s.hotel_nights}× ${fmtEuro(parseFloat(s.hotel_rate))})</span>
+                            <span style="font-weight:600">${fmtEuro(hotelAmt)}</span>
+                        </div>` : ''}
+                        <div style="display:flex;justify-content:space-between;font-size:0.95rem;font-weight:700;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+                            <span>Totaal</span>
+                            <span style="color:var(--kts-blue)">${fmtEuro(totalAmt)}</span>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center;margin-top:14px;font-size:0.7rem;color:var(--muted);font-style:italic">
+                        Deze week is geïmporteerd uit factuurdata · alleen-lezen
+                    </div>
+                </div>`;
+
+            // Update week totaal
+            document.getElementById('week-total').textContent = `Totaal: ${fmt(parseFloat(s.total_hours))} uur · ${(s.total_km||0).toLocaleString('nl-NL')} km${s.hotel_nights > 0 ? ' · ' + s.hotel_nights + '× 🏨' : ''}`;
+            renderSummary();
+            renderOverview();
+        }
+
         // ===== UREN RENDER =====
         function renderDays() {
             const container = document.getElementById('days-container');
+
+            // Als er een weekSummary is: toon historische samenvatting i.p.v. dagkaarten
+            if (weekSummary) {
+                renderWeekSummary(container);
+                return;
+            }
+
             let totalHours = 0;
 
             const DAY_ABBR = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
@@ -1363,10 +1450,11 @@
             // Navigeer naar vorige/volgende week
             currentWeekMonday.setDate(currentWeekMonday.getDate() + (dir * 7));
             currentWeekNumber = getISOWeek(currentWeekMonday);
-            currentYear = currentWeekMonday.getFullYear();
+            currentYear = getISOYear(currentWeekMonday);
 
             // Reset week data naar standaard
             weekData = defaultWeekData();
+            weekSummary = null;
             expandedDay = -1;
             weekDataDirty = false;
 
@@ -1445,7 +1533,7 @@
             const normalHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
             const satHours = weekData[5].hours;
             const sunHours = weekData[6].hours;
-            const currentWeekRevenue = (normalHours * RATE) + (satHours * RATE * 1.5) + (sunHours * RATE * 2);
+            const currentWeekRevenue = (normalHours * RATE) + (satHours * RATE * SAT_MULTIPLIER) + (sunHours * RATE * SUN_MULTIPLIER);
             const approvedRevenue = approvedWeeklyHours.reduce((s,h) => s + h * RATE, 0);
             const totalMonthRevenue = approvedRevenue + currentWeekRevenue;
 
@@ -1862,6 +1950,7 @@
 
         // ===== DATA OPSLAAN NAAR SUPABASE =====
         async function saveWeekToSupabase() {
+            if (weekSummary) return false; // historische data: niet overschrijven
             if (!getSupabase() || !currentUser || !currentUser.id) return false;
             const sb = getSupabase();
 
@@ -1929,6 +2018,32 @@
             return true;
         }
 
+        // ===== TARIEVEN LADEN VOOR HUIDIG PROJECT =====
+        async function loadProjectRates() {
+            if (!getSupabase() || !currentProject) return;
+            const sb = getSupabase();
+            // Haal het geldige tarief op voor het huidige project (op basis van vandaag)
+            const today = new Date().toISOString().slice(0, 10);
+            const { data: rates } = await sb
+                .from('rates')
+                .select('*')
+                .eq('project_id', currentProject.id)
+                .lte('valid_from', today)
+                .order('valid_from', { ascending: false })
+                .limit(1);
+
+            if (rates && rates.length > 0) {
+                currentRates = rates[0];
+                RATE = parseFloat(currentRates.hourly_rate) || 85;
+                KM_RATE = parseFloat(currentRates.km_rate) || 0.50;
+                SAT_MULTIPLIER = parseFloat(currentRates.saturday_multiplier) || 1.50;
+                SUN_MULTIPLIER = parseFloat(currentRates.sunday_holiday_multiplier) || 2.00;
+                console.log(`Tarieven geladen: €${RATE}/u, €${KM_RATE}/km, Za×${SAT_MULTIPLIER}, Zo×${SUN_MULTIPLIER}`);
+            } else {
+                console.log('Geen tarieven gevonden voor project, defaults gebruikt');
+            }
+        }
+
         // ===== LADEN UIT SUPABASE =====
         async function loadDataFromSupabase() {
             if (!getSupabase() || !currentUser || !currentUser.id) return;
@@ -1942,6 +2057,9 @@
                     (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
             }
 
+            // Laad tarieven voor het project
+            await loadProjectRates();
+
             // Laad uren voor huidige week
             await loadWeekFromSupabase();
         }
@@ -1951,8 +2069,10 @@
 
             const weekStart = getDateForDayIndex(0);
             const weekEnd = getDateForDayIndex(6);
+            weekSummary = null; // reset
 
             try {
+                // 1. Probeer eerst dag-entries te laden
                 const { data: entries, error } = await getSupabase()
                     .from('time_entries')
                     .select('*')
@@ -1964,8 +2084,6 @@
                 if (error) { console.warn('Laden mislukt:', error.message); return; }
 
                 if (entries && entries.length > 0) {
-                    // We hebben data uit de database — gebruik die i.p.v. defaults
-                    // Eerst alles leegmaken
                     weekData = Array.from({length: 7}, () => ({
                         start: '', end: '', breakMin: 0, desc: '', location: '',
                         km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0
@@ -1989,8 +2107,23 @@
                             };
                         }
                     });
+                } else {
+                    // 2. Geen dag-entries: check week_summaries (historische data)
+                    if (currentProject) {
+                        const { data: summary } = await getSupabase()
+                            .from('week_summaries')
+                            .select('*')
+                            .eq('project_id', currentProject.id)
+                            .eq('year', currentYear)
+                            .eq('week_number', currentWeekNumber)
+                            .maybeSingle();
+
+                        if (summary) {
+                            weekSummary = summary;
+                            console.log('Week summary geladen:', summary.invoice_no);
+                        }
+                    }
                 }
-                // Als geen entries: weekData blijft op defaultWeekData()
 
                 weekDataDirty = false;
                 renderDays();
