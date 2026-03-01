@@ -793,8 +793,17 @@
             </div>
 
             <div style="margin-top:10px;display:flex;gap:10px">
-                <button class="btn btn-primary" style="flex:1" onclick="showToast('PDF export — komt in volgende versie')">📄 PDF Export</button>
-                <button class="btn btn-secondary" style="flex:1" onclick="showToast('Excel export — komt in volgende versie')">📊 Excel Export</button>
+                <button class="btn btn-primary" style="flex:1" onclick="downloadUrenstaat()">📄 Urenstaat PDF</button>
+                <button class="btn btn-secondary" style="flex:1" onclick="downloadInkooporder()">📋 Inkooporder PDF</button>
+            </div>
+
+            <!-- Maandfactuur (admin only) -->
+            <div id="admin-invoice-section" style="display:none;margin-top:20px;padding:16px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:2px solid var(--kts-blue);border-radius:14px">
+                <div style="font-weight:700;font-size:0.95rem;color:var(--kts-blue);margin-bottom:8px">📨 Maandfactuur naar eindklant</div>
+                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Genereer een verkoopfactuur van KTS naar de eindklant op basis van alle goedgekeurde weken van deze maand.</div>
+                <button class="btn btn-primary btn-block" onclick="generateMonthlyInvoice()" style="padding:12px;font-size:0.9rem">
+                    📄 Maandfactuur genereren
+                </button>
             </div>
         </div>
 
@@ -802,11 +811,12 @@
         <div class="screen" id="screen-admin">
             <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">⚙️ Instellingen</h2>
 
-            <!-- Tabs: Projecten / Personen / Tarieven -->
+            <!-- Tabs: Projecten / Personen / Tarieven / Documenten -->
             <div id="admin-tabs" style="display:flex;gap:6px;margin-bottom:16px">
                 <button class="btn btn-sm" style="flex:1" onclick="switchAdminTab('projecten')" id="admin-tab-projecten">Projecten</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Personen</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('documenten')" id="admin-tab-documenten">Nummers</button>
             </div>
 
             <!-- ===== PROJECTEN TAB ===== -->
@@ -834,6 +844,21 @@
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+
+            <!-- ===== DOCUMENTEN TAB ===== -->
+            <div id="admin-documenten" style="display:none">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Facturen & Inkooporders</div>
+
+                <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px;margin-top:12px">📄 Verstuurde facturen (KTS → klant)</div>
+                <div id="admin-factuur-list"><div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Laden...</div></div>
+
+                <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px;margin-top:16px">📋 Inkooporders (KTS → ZZP)</div>
+                <div id="admin-po-list"><div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Laden...</div></div>
+
+                <div style="margin-top:16px">
+                    <button class="btn btn-secondary btn-block" onclick="exportDocumentNumbers()" style="padding:10px">📊 Export naar Excel</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1030,29 +1055,16 @@
 
         // ===== STATE =====
         function defaultWeekData() {
-            return [
-                // Ma: thuis→project, project→hotel (eerste hoteldag)
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_THUIS_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
-                // Di-Do: hotel→project, project→hotel
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_HOTEL_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_HOTEL_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT + KM_PROJECT_HOTEL, kmHeen: KM_HOTEL_PROJECT, kmTerug: KM_PROJECT_HOTEL, hotel: true, thuiswerk: false, hours: 8 },
-                // Vr: hotel→project, project→thuis (na hotel, geen hotel deze nacht)
-                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_RETOUR, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 },
-                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 },
-                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 },
-            ];
+            const empty = () => ({ start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 });
+            return [empty(), empty(), empty(), empty(), empty(), empty(), empty()];
         }
 
         let weekData = defaultWeekData();
         let expandedDay = -1;
         let weekDataDirty = false; // track unsaved changes
 
-        let expEntries = [
-            { id: 1, cat: 'transport', icon: '🚌', desc: 'Parkeerkosten projectlocatie', amount: 15.00, date: 'ma 24 feb', catLabel: 'Transport' },
-            { id: 2, cat: 'other', icon: '📦', desc: 'Gereedschap adapter set', amount: 34.95, date: 'wo 26 feb', catLabel: 'Materiaal' },
-        ];
-        let expNextId = 3;
+        let expEntries = [];
+        let expNextId = 1;
 
         const catIcons = { hotel: '🏨', meals: '🍽️', transport: '🚌', other: '📦' };
         const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', other: 'Materiaal / Overig' };
@@ -1441,15 +1453,708 @@
             showToast('✓ Werkdagen gevuld (07:00–16:00, 1 uur pauze)');
         }
 
-        function submitWeek() {
+        // ===== DOCUMENT NUMMERING =====
+        async function getNextDocumentNumber(docType) {
+            const sb = getSupabase();
+            if (!sb) return docType === 'factuur' ? '2026-??' : 'PO-2026-???';
+            const year = new Date().getFullYear();
+            const { data } = await sb.rpc('next_document_number', { doc_type: docType, doc_year: year });
+            return data || (docType === 'factuur' ? `${year}-??` : `PO-${year}-???`);
+        }
+
+        async function saveDocumentNumber(docType, number, details) {
+            const sb = getSupabase();
+            if (!sb) return null;
+            const year = parseInt(number.match(/\d{4}/)[0]);
+            const seqMatch = number.match(/(\d+)$/);
+            const sequence = seqMatch ? parseInt(seqMatch[1]) : 0;
+
+            const { data, error } = await sb.from('document_numbers').insert({
+                type: docType,
+                number: number,
+                year: year,
+                sequence: sequence,
+                project_id: details.project_id || null,
+                user_id: details.user_id || null,
+                description: details.description || '',
+                client_name: details.client_name || '',
+                weeks: details.weeks || '',
+                amount_excl_btw: details.amount_excl_btw || 0,
+                btw_percentage: 0.21,
+                btw_amount: (details.amount_excl_btw || 0) * 0.21,
+                amount_incl_btw: (details.amount_excl_btw || 0) * 1.21,
+                document_date: new Date().toISOString().slice(0, 10),
+                due_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0, 10),
+                status: details.status || 'verstuurd',
+            }).select().single();
+
+            if (error) console.error('Document nummer opslaan mislukt:', error);
+            return data;
+        }
+
+        // ===== PDF GENERATIE =====
+        const KTS_INFO = {
+            naam: 'Kuijpers Technical Services BV',
+            adres: 'Nieuwboerweg 2A',
+            postcode: '1738BB Waarland',
+            land: 'Nederland',
+            kvk: '93410557',
+            btw: 'NL866385368B01',
+            iban: 'NL61 BUNQ 2113 3747 30',
+            bic: 'BUNQNL2A',
+            tel1: '+31 6 5106 3555',
+            tel2: '+31 6 5123 9050',
+            email: 'info@kuijpers-ts.nl'
+        };
+
+        function getWeekDates() {
+            return Array.from({length: 7}, (_, i) => {
+                const d = new Date(currentWeekMonday);
+                d.setDate(d.getDate() + i);
+                return d;
+            });
+        }
+
+        function fmtDate(d) {
+            return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+        }
+
+        function fmtEuroPdf(n) {
+            return '€ ' + n.toFixed(2).replace('.', ',');
+        }
+
+        // ===== URENSTAAT PDF =====
+        function generateUrenstaat() {
+            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const pw = 297, ph = 210, ml = 15, mr = 15, uw = pw - ml - mr;
+
+            // --- KTS Logo (rechtsboven) ---
+            // We gebruiken tekst als fallback i.p.v. afbeelding
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(7, 86, 127);
+            doc.text('URENSTAAT', ml, 18);
+
+            // KTS bedrijfsnaam rechtsboven
+            doc.setFontSize(14);
+            doc.text('Kuijpers', pw - mr - 45, 14);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text('TECHNICAL SERVICES', pw - mr - 45, 19);
+            doc.text(`${KTS_INFO.adres}, ${KTS_INFO.postcode}`, pw - mr - 55, 25);
+            doc.text(`${KTS_INFO.tel1}  |  ${KTS_INFO.tel2}`, pw - mr - 55, 29);
+            doc.setTextColor(7, 86, 127);
+            doc.text(KTS_INFO.email, pw - mr - 55, 33);
+            doc.setTextColor(0, 0, 0);
+
+            // --- Naam + Periode ---
+            let y = 38;
+            const userName = currentUser ? currentUser.name : 'Onbekend';
+
+            // Haal ZZP-bedrijfsnaam op (als beschikbaar)
+            const zzpLabel = userName;
+
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setFillColor(232, 236, 240);
+            doc.rect(ml, y, uw/2, 6, 'F');
+            doc.rect(ml + uw/2, y, uw/2, 6, 'F');
+            doc.rect(ml, y, uw/2, 6, 'S');
+            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
+            doc.text('Naam:', ml + 2, y + 4);
+            doc.text('Periode:', ml + uw/2 + 2, y + 4);
+
+            y += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.rect(ml, y, uw/2, 6, 'S');
+            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
+            doc.text(zzpLabel, ml + 2, y + 4);
+            doc.text(`Week ${currentWeekNumber} ${currentYear}`, ml + uw/2 + 2, y + 4);
+
+            // --- Project + Klant ---
+            y += 9;
+            const projName = currentProject ? currentProject.name : '';
+            const projLoc = currentProject ? (currentProject.location || '') : '';
+            const clientName = currentProject ? (currentProject.client_name || '') : '';
+
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setFillColor(232, 236, 240);
+            doc.rect(ml, y, uw/2, 6, 'F');
+            doc.rect(ml + uw/2, y, uw/2, 6, 'F');
+            doc.rect(ml, y, uw/2, 6, 'S');
+            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
+            doc.text('Project:', ml + 2, y + 4);
+            doc.text('Klant:', ml + uw/2 + 2, y + 4);
+
+            y += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.rect(ml, y, uw/2, 6, 'S');
+            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
+            doc.text(`${projName}${projLoc ? ' - ' + projLoc : ''}`, ml + 2, y + 4);
+            doc.text(clientName, ml + uw/2 + 2, y + 4);
+
+            // --- Dagtabel ---
+            y += 10;
+            const dates = getWeekDates();
+            const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+
+            const tableData = weekData.map((e, i) => [
+                dagNamen[i],
+                fmtDate(dates[i]),
+                e.start || '',
+                e.end || '',
+                e.breakMin > 0 ? (e.breakMin / 60).toFixed(1).replace('.0','') : '',
+                e.hours > 0 ? e.hours.toString() : '',
+                e.desc || '',
+                e.location || '',
+                (e.km || 0) > 0 ? e.km.toString() : ''
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                head: [['Dag', 'Datum', 'Begintijd', 'Eindtijd', 'Pauze (uur)', 'Gewerkte uren', 'Omschrijving werkzaamheden', 'Locatie', 'Kilometers']],
+                body: tableData,
+                styles: { fontSize: 7.5, cellPadding: 1.5, lineColor: [176, 190, 197], lineWidth: 0.3, font: 'helvetica' },
+                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7 },
+                columnStyles: {
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 22 },
+                    2: { cellWidth: 18, halign: 'center' },
+                    3: { cellWidth: 18, halign: 'center' },
+                    4: { cellWidth: 18, halign: 'center' },
+                    5: { cellWidth: 20, halign: 'center' },
+                    6: { cellWidth: 'auto' },
+                    7: { cellWidth: 32 },
+                    8: { cellWidth: 20, halign: 'right' },
+                },
+                alternateRowStyles: { fillColor: [240, 244, 248] },
+            });
+
+            // --- Samenvatting ---
+            y = doc.lastAutoTable.finalY + 5;
+            const regHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
+            const satHours = weekData[5].hours;
+            const sunHours = weekData[6].hours;
+            const totalHours = weekData.reduce((s,e) => s + e.hours, 0);
+            const totalKm = weekData.reduce((s,e) => s + (e.km || 0), 0);
+
+            // Type inzet tabel (links)
+            const sumData = [
+                ['Reguliere uren (ma-vr)', regHours.toString()],
+                ['Zaterdaguren', satHours.toString()],
+                ['Zondag-/feestdaguren', sunHours.toString()],
+                ['Reis kilometers', totalKm.toString()],
+            ];
+
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml },
+                tableWidth: 65,
+                head: [['Type inzet', 'Aantal uren']],
+                body: sumData,
+                foot: [['Totaal te factureren uren', totalHours.toString()]],
+                styles: { fontSize: 7, cellPadding: 1.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
+                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+                footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold' },
+                columnStyles: { 1: { halign: 'center', cellWidth: 22 } },
+            });
+
+            // Direct kosten (rechts naast type inzet)
+            const hotelNights = weekData.filter(e => e.hotel).length;
+            const directKosten = [];
+            if (hotelNights > 0) directKosten.push([`Hotel: ${hotelNights} nachten × ${fmtEuroPdf(HOTEL_RATE)} = ${fmtEuroPdf(hotelNights * HOTEL_RATE)}`]);
+            while (directKosten.length < 5) directKosten.push(['']);
+
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml + 70 },
+                tableWidth: uw - 70,
+                head: [['Direct kosten']],
+                body: directKosten,
+                styles: { fontSize: 7, cellPadding: 1.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
+                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+            });
+
+            // --- Handtekeningen ---
+            y = doc.lastAutoTable.finalY + 5;
+            const sigW = uw / 3;
+            const sigH = 18;
+
+            // Opmerkingen
+            doc.setFillColor(232, 236, 240);
+            doc.rect(ml, y, sigW, 5, 'FD');
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Opmerkingen', ml + 2, y + 3.5);
+            doc.rect(ml, y + 5, sigW, sigH, 'S');
+
+            // Handtekening opdrachtnemer
+            doc.setFillColor(232, 236, 240);
+            doc.rect(ml + sigW, y, sigW, 5, 'FD');
+            doc.text(`Handtekening Opdrachtnemer / ${userName}`, ml + sigW + 2, y + 3.5);
+            doc.rect(ml + sigW, y + 5, sigW, sigH, 'S');
+
+            // Handtekening opdrachtgever
+            doc.setFillColor(232, 236, 240);
+            doc.rect(ml + sigW*2, y, uw - sigW*2, 5, 'FD');
+            doc.text('Handtekening Opdrachtgever / Mark Kuijpers', ml + sigW*2 + 2, y + 3.5);
+            doc.rect(ml + sigW*2, y + 5, uw - sigW*2, sigH, 'S');
+
+            return doc;
+        }
+
+        // ===== INKOOPORDER PDF =====
+        function generateInkooporder(poNumber) {
+            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const pw = 210, ph = 297, ml = 15, mr = 15, uw = pw - ml - mr;
+
+            // --- Header ---
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(KTS_INFO.naam, ml, 18);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(KTS_INFO.adres, ml, 23);
+            doc.text(KTS_INFO.postcode, ml, 27);
+            doc.text(KTS_INFO.land, ml, 35);
+            doc.text(`KVK: ${KTS_INFO.kvk}`, ml, 39);
+            doc.text(`BTW: ${KTS_INFO.btw}`, ml, 43);
+
+            // Inkooporder titel
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(7, 86, 127);
+            doc.text('Inkooporder', pw/2, 18);
+            doc.setTextColor(0, 0, 0);
+
+            // Project + PO-nummer + datum
+            const projCode = currentProject ? (currentProject.project_code || '') : '';
+            const today = new Date();
+            const poDate = fmtDate(today);
+            const poNum = poNumber || 'PO-????';
+
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            const rx = pw/2;
+            doc.text('PROJECT', rx, 26);
+            doc.text('DATUM', rx, 33);
+            doc.text('PO-NUMMER', rx, 40);
+
+            doc.setFont('helvetica', 'normal');
+            doc.text(projCode, rx + 35, 26);
+            doc.text(poDate, rx + 35, 33);
+            doc.text(poNum, rx + 35, 40);
+
+            // --- Leverancier + Leveradres ---
+            let y = 52;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text('LEVERANCIER (ZZP)', ml, y);
+            doc.text('LEVERADRES', pw/2, y);
+
+            doc.setFont('helvetica', 'normal');
+            y += 5;
+            const userName = currentUser ? currentUser.name : '';
+            doc.text(userName, ml, y);
+            doc.text('Mark Kuijpers', pw/2, y);
+            y += 4;
+            // TODO: ZZP bedrijfsadres uit companies tabel
+            doc.text(KTS_INFO.naam, pw/2, y);
+            y += 4;
+            doc.text(KTS_INFO.adres, pw/2, y);
+            y += 4;
+            doc.text(KTS_INFO.postcode, pw/2, y);
+            y += 4;
+            doc.text(`Telefoon: ${KTS_INFO.tel2}`, pw/2, y);
+            y += 4;
+            doc.text(KTS_INFO.email, pw/2, y);
+
+            // --- Regels tabel ---
+            y += 8;
+            const totalHours = weekData.reduce((s,e) => s + e.hours, 0);
+            const regHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
+            const satHours = weekData[5].hours;
+            const sunHours = weekData[6].hours;
+            const totalKm = weekData.reduce((s,e) => s + (e.km || 0), 0);
+            const hotelNights = weekData.filter(e => e.hotel).length;
+
+            const projName = currentProject ? currentProject.name : '';
+            const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
+
+            const lines = [];
+            let lineNum = 1;
+
+            if (regHours > 0) {
+                lines.push([lineNum++, `${projName} - ${weekLabel}\nReguliere uren (ma-vr)`, regHours.toString(), fmtEuroPdf(RATE), fmtEuroPdf(regHours * RATE)]);
+            }
+            if (satHours > 0) {
+                lines.push([lineNum++, `${projName} - ${weekLabel}\nZaterdaguren (×${SAT_MULTIPLIER})`, satHours.toString(), fmtEuroPdf(RATE * SAT_MULTIPLIER), fmtEuroPdf(satHours * RATE * SAT_MULTIPLIER)]);
+            }
+            if (sunHours > 0) {
+                lines.push([lineNum++, `${projName} - ${weekLabel}\nZondaguren (×${SUN_MULTIPLIER})`, sunHours.toString(), fmtEuroPdf(RATE * SUN_MULTIPLIER), fmtEuroPdf(sunHours * RATE * SUN_MULTIPLIER)]);
+            }
+            if (totalKm > 0) {
+                lines.push([lineNum++, `Reiskosten ${weekLabel}\n${totalKm} km`, totalKm.toString(), fmtEuroPdf(KM_RATE), fmtEuroPdf(totalKm * KM_RATE)]);
+            }
+            if (hotelNights > 0) {
+                lines.push([lineNum++, `Hotelkosten ${weekLabel}\n${hotelNights} nachten`, hotelNights.toString(), fmtEuroPdf(HOTEL_RATE), fmtEuroPdf(hotelNights * HOTEL_RATE)]);
+            }
+
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                head: [['#', 'OMSCHRIJVING', 'AANTAL', 'PRIJS/STUK', 'TOTAAL']],
+                body: lines,
+                styles: { fontSize: 8, cellPadding: 2, lineColor: [176, 190, 197], lineWidth: 0.3 },
+                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7.5 },
+                columnStyles: {
+                    0: { cellWidth: 12, halign: 'center' },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 20, halign: 'center' },
+                    3: { cellWidth: 25, halign: 'right' },
+                    4: { cellWidth: 28, halign: 'right' },
+                },
+            });
+
+            // --- Totalen ---
+            y = doc.lastAutoTable.finalY + 2;
+            const urenTotal = regHours * RATE + satHours * RATE * SAT_MULTIPLIER + sunHours * RATE * SUN_MULTIPLIER;
+            const kmTotal = totalKm * KM_RATE;
+            const hotelTotal = hotelNights * HOTEL_RATE;
+            const subtotaal = urenTotal + kmTotal + hotelTotal;
+            const btw = subtotaal * 0.21;
+            const totaal = subtotaal + btw;
+
+            doc.setFontSize(8);
+            const totX = pw - mr - 28;
+            const lblX = pw - mr - 60;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('SUBTOTAAL', lblX, y + 5);
+            doc.text(fmtEuroPdf(subtotaal), totX, y + 5, { align: 'right' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.text('BTW 21%', lblX, y + 10);
+            doc.text(fmtEuroPdf(btw), totX, y + 10, { align: 'right' });
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text('TOTAAL', lblX, y + 17);
+            doc.text(fmtEuroPdf(totaal), totX, y + 17, { align: 'right' });
+
+            // --- Betalingstermijn ---
+            y += 25;
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.text('BETALINGSTERMIJN 30 dagen na factuurdatum', ml, y);
+
+            // --- Opmerkingen ---
+            y += 8;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text('Opmerkingen of speciale instructies', ml, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            doc.text(`Weekstaat ${weekLabel} bijgevoegd als bijlage.`, ml, y + 5);
+
+            return doc;
+        }
+
+        // ===== DOWNLOAD FUNCTIES =====
+        function downloadUrenstaat() {
+            const doc = generateUrenstaat();
+            if (doc) {
+                const fileName = `Urenstaat_${currentProject ? currentProject.project_code : 'KTS'}_Week${currentWeekNumber}_${currentYear}.pdf`;
+                doc.save(fileName);
+                showToast('✓ Urenstaat gedownload');
+            }
+        }
+
+        async function downloadInkooporder() {
+            const poNum = await getNextDocumentNumber('inkooporder');
+            const doc = generateInkooporder(poNum);
+            if (doc) {
+                const fileName = `Inkooporder_${poNum}_Week${currentWeekNumber}_${currentYear}.pdf`;
+                doc.save(fileName);
+                showToast('✓ Inkooporder gedownload (concept — nog niet opgeslagen)');
+            }
+        }
+
+        // ===== WEEK VERSTUREN =====
+        async function submitWeek() {
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
-            if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen ter goedkeuring? Na versturen kun je geen wijzigingen meer maken.`)) return;
+            if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen? Er worden 2 PDF's (urenstaat + inkooporder) gemaild naar uren@kuijpers-ts.nl.`)) return;
+
             const btn = document.getElementById('submit-week-btn');
-            btn.innerHTML = '✓ Verstuurd — wacht op goedkeuring';
-            btn.style.background = '#64748b';
+            btn.innerHTML = '⏳ Versturen...';
             btn.disabled = true;
-            showToast(`✓ Week ${currentWeekNumber} verstuurd ter goedkeuring`);
+
+            try {
+                // 1. Eerst opslaan naar Supabase
+                if (getSupabase() && currentUser && currentUser.id) {
+                    await saveWeekToSupabase();
+                }
+
+                // 2. PO-nummer ophalen en reserveren
+                const poNumber = await getNextDocumentNumber('inkooporder');
+                const projCode = currentProject ? currentProject.project_code : 'KTS';
+                const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
+                const userName = currentUser ? currentUser.name : 'Onbekend';
+
+                const totalHoursAll = weekData.reduce((s,e) => s + e.hours, 0);
+                const totalKmAll = weekData.reduce((s,e) => s + (e.km||0), 0);
+                const regH = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
+                const satH = weekData[5].hours;
+                const sunH = weekData[6].hours;
+                const hotelN = weekData.filter(e => e.hotel).length;
+                const amountExcl = regH * RATE + satH * RATE * SAT_MULTIPLIER + sunH * RATE * SUN_MULTIPLIER + totalKmAll * KM_RATE + hotelN * HOTEL_RATE;
+
+                // PO opslaan in document_numbers
+                await saveDocumentNumber('inkooporder', poNumber, {
+                    project_id: currentProject ? currentProject.id : null,
+                    user_id: currentUser ? currentUser.id : null,
+                    description: `${currentProject ? currentProject.name : ''} - ${weekLabel}`,
+                    client_name: userName,
+                    weeks: weekLabel,
+                    amount_excl_btw: amountExcl,
+                    status: 'verstuurd',
+                });
+
+                // 3. PDF's genereren
+                const urenstaat = generateUrenstaat();
+                const inkooporder = generateInkooporder(poNumber);
+
+                if (!urenstaat || !inkooporder) {
+                    throw new Error('PDF generatie mislukt');
+                }
+
+                // 4. PDF's als base64
+                const ureBase64 = urenstaat.output('datauristring').split(',')[1];
+                const poBase64 = inkooporder.output('datauristring').split(',')[1];
+
+                // 4. Verstuur via Supabase Edge Function
+                const sb = getSupabase();
+                if (sb) {
+                    const { data, error } = await sb.functions.invoke('send-weekstaat', {
+                        body: {
+                            to: 'uren@kuijpers-ts.nl',
+                            subject: `Weekstaat ${projCode} ${weekLabel} — ${userName}`,
+                            userName: userName,
+                            projectCode: projCode,
+                            projectName: currentProject ? currentProject.name : '',
+                            weekLabel: weekLabel,
+                            totalHours: total,
+                            totalKm: weekData.reduce((s,e) => s + (e.km||0), 0),
+                            urenstaat: ureBase64,
+                            ureFilename: `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}.pdf`,
+                            inkooporder: poBase64,
+                            poFilename: `Inkooporder_${projCode}_Week${currentWeekNumber}_${currentYear}.pdf`,
+                        }
+                    });
+
+                    if (error) throw error;
+                }
+
+                btn.innerHTML = '✓ Verstuurd — wacht op goedkeuring';
+                btn.style.background = '#64748b';
+                showToast(`✓ Week ${currentWeekNumber} verstuurd naar uren@kuijpers-ts.nl`);
+
+            } catch (err) {
+                console.error('Versturen mislukt:', err);
+                btn.innerHTML = '✓ Week afsluiten & versturen ter goedkeuring';
+                btn.disabled = false;
+
+                // Fallback: download de PDF's lokaal
+                showToast('⚠️ Mailen mislukt — PDF\'s worden gedownload');
+                downloadUrenstaat();
+                setTimeout(() => downloadInkooporder(), 500);
+            }
+        }
+
+        // ===== MAANDFACTUUR GENEREREN (KTS → eindklant) =====
+        async function generateMonthlyInvoice() {
+            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return; }
+            if (!currentProject) { showToast('⚠️ Kies eerst een project'); return; }
+
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            // Welke maand? Gebruik de maand van de huidige weekmaandag
+            const month = currentWeekMonday.getMonth(); // 0-indexed
+            const year = currentWeekMonday.getFullYear();
+            const monthNames = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            const monthName = monthNames[month];
+
+            // Haal alle inkooporders op voor dit project + maand
+            const monthStart = `${year}-${String(month+1).padStart(2,'0')}-01`;
+            const monthEnd = `${year}-${String(month+1).padStart(2,'0')}-${new Date(year, month+1, 0).getDate()}`;
+
+            const { data: poRecords } = await sb
+                .from('document_numbers')
+                .select('*')
+                .eq('type', 'inkooporder')
+                .eq('project_id', currentProject.id)
+                .gte('document_date', monthStart)
+                .lte('document_date', monthEnd)
+                .order('document_date');
+
+            if (!poRecords || poRecords.length === 0) {
+                showToast('⚠️ Geen inkooporders gevonden voor deze maand');
+                return;
+            }
+
+            // Factuurnummer ophalen
+            const factuurNum = await getNextDocumentNumber('factuur');
+
+            // Totalen berekenen
+            let totalExcl = 0;
+            poRecords.forEach(po => { totalExcl += parseFloat(po.amount_excl_btw) || 0; });
+            const btwAmount = totalExcl * 0.21;
+            const totalIncl = totalExcl + btwAmount;
+
+            // PDF genereren
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const pw = 210, ml = 15, mr = 15, uw = pw - ml - mr;
+
+            // KTS gegevens rechtsboven
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            const rx = pw - mr - 70;
+            doc.text(KTS_INFO.naam, rx, 18);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(KTS_INFO.adres, rx, 23);
+            doc.text(KTS_INFO.postcode, rx, 27);
+            doc.text(`M: ${KTS_INFO.tel2}`, rx, 33);
+            doc.text(`E: ${KTS_INFO.email}`, rx, 37);
+            doc.text(`KVK: ${KTS_INFO.kvk}`, rx, 43);
+            doc.text(`BTW: ${KTS_INFO.btw}`, rx, 47);
+            doc.text(`IBAN: ${KTS_INFO.iban}`, rx, 53);
+            doc.text(`BIC: ${KTS_INFO.bic}`, rx, 57);
+
+            // Klantadres linksboven
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            const clientName = currentProject.client_name || '';
+            doc.text(clientName, ml, 55);
+            doc.text(currentProject.location || '', ml, 60);
+
+            // FACTUUR titel
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(7, 86, 127);
+            doc.text('Factuur', ml, 75);
+            doc.setTextColor(0, 0, 0);
+
+            // Factuurnummer + datum
+            let y = 83;
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            const todayStr = fmtDate(new Date());
+            const dueDate = new Date(Date.now() + 30*24*60*60*1000);
+
+            const infoLines = [
+                ['Factuurnummer:', factuurNum],
+                ['Factuurdatum:', todayStr],
+                ['Vervaldatum:', fmtDate(dueDate)],
+                ['Project:', currentProject.name],
+                ['Projectnummer:', currentProject.project_code],
+            ];
+            infoLines.forEach(([label, val]) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(label, ml, y);
+                doc.setFont('helvetica', 'normal');
+                doc.text(val, ml + 35, y);
+                y += 5;
+            });
+
+            // Regeltabel
+            y += 8;
+            const tableBody = poRecords.map(po => [
+                po.document_date,
+                po.description || '',
+                po.weeks || '',
+                fmtEuroPdf(parseFloat(po.amount_excl_btw) || 0),
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                margin: { left: ml, right: mr },
+                head: [['Datum', 'Omschrijving', 'Periode', 'Bedrag']],
+                body: tableBody,
+                styles: { fontSize: 8, cellPadding: 2.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
+                headStyles: { fillColor: [7, 86, 127], textColor: [255, 255, 255], fontStyle: 'bold' },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 25 },
+                    3: { cellWidth: 30, halign: 'right' },
+                },
+                alternateRowStyles: { fillColor: [240, 244, 248] },
+            });
+
+            // Totalen
+            y = doc.lastAutoTable.finalY + 5;
+            const totX = pw - mr;
+            const lblX = pw - mr - 65;
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Subtotaal excl. BTW', lblX, y);
+            doc.text(fmtEuroPdf(totalExcl), totX, y, { align: 'right' });
+
+            y += 6;
+            doc.text('BTW 21%', lblX, y);
+            doc.text(fmtEuroPdf(btwAmount), totX, y, { align: 'right' });
+
+            y += 2;
+            doc.setLineWidth(0.5);
+            doc.line(lblX, y, totX, y);
+
+            y += 6;
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Totaal te betalen', lblX, y);
+            doc.text(fmtEuroPdf(totalIncl), totX, y, { align: 'right' });
+
+            // Betalingsinstructie
+            y += 15;
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`U wordt vriendelijk verzocht het bedrag van ${fmtEuroPdf(totalIncl)} voor ${fmtDate(dueDate)} over te maken op:`, ml, y);
+            y += 6;
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${KTS_INFO.iban} t.n.v. ${KTS_INFO.naam}`, ml, y);
+            doc.setFont('helvetica', 'normal');
+            y += 5;
+            doc.text(`o.v.v. factuurnummer ${factuurNum}`, ml, y);
+
+            // Opslaan
+            const fileName = `Factuur_${factuurNum}_${clientName.replace(/[^a-zA-Z0-9]/g,'_')}_${monthName}_${year}.pdf`;
+            doc.save(fileName);
+
+            // Factuurnummer opslaan in database
+            await saveDocumentNumber('factuur', factuurNum, {
+                project_id: currentProject.id,
+                description: `${currentProject.name} — ${monthName} ${year}`,
+                client_name: clientName,
+                weeks: `${monthName} ${year}`,
+                amount_excl_btw: totalExcl,
+                status: 'verstuurd',
+            });
+
+            showToast(`✓ Factuur ${factuurNum} gedownload`);
         }
 
         async function changeWeek(dir) {
@@ -1988,7 +2693,10 @@
                 document.getElementById('user-menu-name').textContent = currentUser ? currentUser.name : '';
                 // Toon admin-knop alleen voor admins
                 const adminItem = document.getElementById('admin-menu-item');
-                if (adminItem) adminItem.style.display = (currentUser && currentUser.role === 'admin') ? 'flex' : 'none';
+                const isAdmin = currentUser && currentUser.role === 'admin';
+                if (adminItem) adminItem.style.display = isAdmin ? 'flex' : 'none';
+                const adminInv = document.getElementById('admin-invoice-section');
+                if (adminInv) adminInv.style.display = isAdmin ? 'block' : 'none';
                 // Sluit menu bij klik ergens anders
                 setTimeout(() => {
                     document.addEventListener('click', function closeMenu(e) {
@@ -2293,6 +3001,19 @@
             tryNext();
         })();
 
+        // ===== jsPDF + AutoTable laden =====
+        (function() {
+            const s1 = document.createElement('script');
+            s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+            s1.onload = function() {
+                const s2 = document.createElement('script');
+                s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+                s2.onload = function() { console.log('jsPDF + AutoTable geladen'); };
+                document.head.appendChild(s2);
+            };
+            document.head.appendChild(s1);
+        })();
+
         // ===== ADMIN FUNCTIES =====
         function goToAdmin() {
             document.getElementById('user-menu').style.display = 'none';
@@ -2303,12 +3024,13 @@
         }
 
         function switchAdminTab(tab) {
-            ['projecten','personen','tarieven'].forEach(t => {
+            ['projecten','personen','tarieven','documenten'].forEach(t => {
                 document.getElementById('admin-' + t).style.display = t === tab ? 'block' : 'none';
                 const btn = document.getElementById('admin-tab-' + t);
                 if (t === tab) { btn.className = 'btn btn-sm btn-primary'; btn.style.flex = '1'; }
                 else { btn.className = 'btn btn-sm btn-secondary'; btn.style.flex = '1'; }
             });
+            if (tab === 'documenten') loadDocumentNumbers();
         }
 
         async function loadAdminData() {
