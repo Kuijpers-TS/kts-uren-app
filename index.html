@@ -672,7 +672,7 @@
                     </div>
                 </div>
             </div>
-            <div class="project-selector">
+            <div class="project-selector" onclick="openProjectSwitcher()">
                 <div>
                     <div class="project-name">Commissioning Platform X</div>
                     <div class="project-meta">Shell · Rotterdam · PO-2026-0042</div>
@@ -847,6 +847,17 @@
             <div class="form-actions" style="margin-top:16px">
                 <button class="btn btn-secondary" onclick="closeModal('admin-modal')">Annuleren</button>
                 <button class="btn btn-primary" id="admin-modal-save">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROJECT SWITCHER MODAL -->
+    <div class="modal-overlay" id="project-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-title">📂 Project kiezen</div>
+            <div id="project-switch-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+                <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
             </div>
         </div>
     </div>
@@ -1508,6 +1519,78 @@
         function openExpenseModal() { document.getElementById('expense-modal').classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
+        // ===== PROJECT SWITCHER =====
+        async function openProjectSwitcher() {
+            const modal = document.getElementById('project-modal');
+            const list = document.getElementById('project-switch-list');
+            modal.classList.add('active');
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            const sb = getSupabase();
+            if (!sb) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Niet verbonden</div>'; return; }
+
+            const { data: projects } = await sb.from('projects').select('*').eq('status', 'active').order('name');
+            if (!projects || projects.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen projecten gevonden</div>';
+                return;
+            }
+
+            list.innerHTML = projects.map(p => {
+                const isActive = currentProject && currentProject.id === p.id;
+                return `
+                <div onclick="selectProject('${p.id}')" style="
+                    display:flex;align-items:center;gap:12px;padding:14px 16px;
+                    background:${isActive ? '#f0f9ff' : 'white'};
+                    border:2px solid ${isActive ? 'var(--kts-blue)' : 'var(--border)'};
+                    border-radius:12px;cursor:pointer;transition:all 0.15s
+                " onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='${isActive ? '#f0f9ff' : 'white'}'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:${isActive ? 'var(--kts-blue)' : '#e2e8f0'};color:${isActive ? 'white' : 'var(--muted)'};display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">${(p.project_code || '?').slice(0,5)}</div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:700;font-size:0.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+                        <div style="font-size:0.75rem;color:var(--muted)">${p.client_name || ''} · ${p.location || ''}</div>
+                    </div>
+                    ${isActive ? '<div style="color:var(--kts-blue);font-weight:700;font-size:1.1rem">✓</div>' : ''}
+                </div>`;
+            }).join('');
+        }
+
+        async function selectProject(projectId) {
+            const sb = getSupabase();
+            if (!sb) return;
+
+            // Auto-save huidige week als er wijzigingen zijn
+            if (weekDataDirty && currentUser && currentUser.id) {
+                await saveWeekToSupabase();
+            }
+
+            // Haal geselecteerd project op
+            const { data: project } = await sb.from('projects').select('*').eq('id', projectId).single();
+            if (!project) { showToast('⚠️ Project niet gevonden'); return; }
+
+            currentProject = project;
+            document.querySelector('.project-name').textContent = currentProject.name;
+            document.querySelector('.project-meta').textContent =
+                (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
+
+            // Onthoud keuze
+            if (currentUser && currentUser.id) {
+                localStorage.setItem('kts_last_project_' + currentUser.id, currentProject.id);
+            }
+
+            // Laad tarieven voor nieuw project
+            await loadProjectRates();
+
+            // Reset en herlaad weekdata voor dit project
+            weekData = defaultWeekData();
+            weekSummary = null;
+            weekDataDirty = false;
+            expandedDay = -1;
+            await loadWeekFromSupabase();
+
+            closeModal('project-modal');
+            showToast('✓ ' + currentProject.name);
+        }
+
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) { overlay.classList.remove('active'); showRouteSelection(); }
@@ -2048,10 +2131,16 @@
         async function loadDataFromSupabase() {
             if (!getSupabase() || !currentUser || !currentUser.id) return;
 
-            // Haal project op
-            const { data: projects } = await getSupabase().from('projects').select('*').limit(1);
+            // Haal actieve projecten op
+            const { data: projects } = await getSupabase()
+                .from('projects').select('*').eq('status', 'active').order('name');
+
             if (projects && projects.length > 0) {
-                currentProject = projects[0];
+                // Kies laatst geselecteerd project (uit localStorage) of het eerste
+                const lastProjectId = localStorage.getItem('kts_last_project_' + currentUser.id);
+                const saved = lastProjectId && projects.find(p => p.id === lastProjectId);
+                currentProject = saved || projects[0];
+
                 document.querySelector('.project-name').textContent = currentProject.name;
                 document.querySelector('.project-meta').textContent =
                     (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
