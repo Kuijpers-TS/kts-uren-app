@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KTS Uren App — v2 Preview</title>
+    <style>
+        /* ===== DAXLINE PRO FONTS ===== */
+        @font-face {
+            font-family: 'Daxline Pro';
+            src: url('daxlinepro-cufonfonts/DaxlinePro-Light.otf') format('opentype');
+            font-weight: 300;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Daxline Pro';
+            src: url('daxlinepro-cufonfonts/DaxlinePro-Regular.otf') format('opentype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Daxline Pro';
+            src: url('daxlinepro-cufonfonts/DaxlinePro-Medium.otf') format('opentype');
+            font-weight: 500;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Daxline Pro';
+            src: url('daxlinepro-cufonfonts/DaxlinePro-Bold.otf') format('opentype');
+            font-weight: 700;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Daxline Pro';
+            src: url('daxlinepro-cufonfonts/DaxlinePro-ExtraBold.otf') format('opentype');
+            font-weight: 800;
+            font-style: normal;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --kts-blue: #07567F;
+            --kts-light: #3b82f6;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: 'Daxline Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* WATERMERK — komt later */
+
+        /* ===== MAIN CONTAINER ===== */
+        .app-content {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: var(--kts-blue);
+            color: white;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+        }
+        .header-inner {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.3px; }
+        .logo span { color: #93c5fd; font-weight: 600; }
+        .user-badge {
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .user-badge:hover { background: rgba(255,255,255,0.25); }
+        .project-selector {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .project-name { font-weight: 600; font-size: 0.9rem; }
+        .project-meta { font-size: 0.75rem; opacity: 0.6; margin-top: 2px; }
+
+        /* ===== CONTENT ===== */
+        .content { padding: 16px; padding-bottom: 100px; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        /* ===== WEEK NAV ===== */
+        .week-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .week-nav button {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: var(--kts-light);
+        }
+        .week-label { font-weight: 600; font-size: 0.9rem; }
+        .week-total { font-size: 0.75rem; color: var(--muted); }
+
+        /* ===== QUICK ACTIONS ===== */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .quick-btn {
+            padding: 12px;
+            background: white;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+        .quick-btn:hover {
+            border-color: var(--kts-light);
+            color: var(--kts-light);
+        }
+        .quick-btn-icon { font-size: 1.4rem; margin-bottom: 4px; }
+
+        /* ===== DAY CARDS ===== */
+        .day-card {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        .day-card.expanded { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+        }
+        .day-header:hover { background: #f8fafc; }
+        .day-info { display: flex; align-items: center; gap: 12px; }
+        .day-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e1;
+        }
+        .day-dot.filled { background: var(--green); }
+        .day-dot.weekend { background: var(--orange); }
+        .day-name { font-weight: 600; font-size: 0.9rem; }
+        .day-date { font-size: 0.75rem; color: var(--muted); }
+        .day-hours { font-weight: 700; font-size: 1rem; color: var(--kts-light); }
+        .day-hours.empty { color: #cbd5e1; }
+
+        /* ===== FORMS ===== */
+        .day-form {
+            display: none;
+            padding: 0 16px 16px;
+            border-top: 1px solid var(--border);
+        }
+        .day-card.expanded .day-form { display: block; }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .form-group { flex: 1; }
+        .form-group label {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background: #f8fafc;
+            transition: border-color 0.2s;
+            min-height: 44px;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--kts-light);
+            background: white;
+        }
+        .form-group textarea { resize: none; height: 60px; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--kts-light); color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #f1f5f9; color: var(--text); }
+        .btn-success { background: var(--green); color: white; }
+        .btn-block { width: 100%; }
+        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+        .form-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .form-actions .btn { flex: 1; }
+
+        /* ===== ENTRY CARDS ===== */
+        .entry-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .entry-details { flex: 1; }
+        .entry-route { font-weight: 600; font-size: 0.9rem; }
+        .entry-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+        .entry-amount { font-weight: 700; font-size: 1rem; color: var(--kts-light); }
+        .entry-delete {
+            color: #cbd5e1;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 4px;
+            margin-left: 8px;
+        }
+        .entry-delete:hover { color: var(--red); }
+
+        /* ===== QUICK ROUTES ===== */
+        .quick-routes-section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .section-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        .retour-btn {
+            width: 100%;
+            padding: 14px 16px;
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        .retour-btn:hover { background: #dbeafe; border-color: #93c5fd; }
+        .retour-btn .route-label { font-weight: 600; font-size: 0.9rem; color: #1d4ed8; }
+        .retour-btn .route-detail { font-size: 0.75rem; color: #60a5fa; margin-top: 2px; }
+        .retour-btn .route-amount { font-weight: 700; color: #2563eb; font-size: 0.9rem; }
+
+        .route-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .route-btn {
+            padding: 10px 12px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .route-btn:hover { background: #f1f5f9; border-color: #93c5fd; }
+        .route-btn .route-icon { font-size: 0.75rem; font-weight: 600; color: var(--text); }
+        .route-btn .route-name { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+        .route-btn .route-km { font-size: 0.65rem; color: #94a3b8; }
+
+        /* ===== WEEK SUMMARY ===== */
+        .week-summary {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .summary-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 12px; }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row.total { font-weight: 700; color: var(--kts-blue); }
+        .summary-value { font-weight: 600; }
+
+        /* ===== STATS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--kts-blue); }
+        .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+        .stat-card.highlight { background: var(--kts-blue); }
+        .stat-card.highlight .stat-value { color: white; }
+        .stat-card.highlight .stat-label { color: rgba(255,255,255,0.7); }
+
+        /* ===== STATUS BADGES ===== */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-draft { background: #f1f5f9; color: var(--muted); }
+        .status-submitted { background: #dbeafe; color: #2563eb; }
+        .status-approved { background: #d1fae5; color: #059669; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 480px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px 20px 32px;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .modal-handle {
+            width: 40px;
+            height: 4px;
+            background: #cbd5e1;
+            border-radius: 4px;
+            margin: 0 auto 16px;
+        }
+        .modal-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 16px 0;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid var(--border);
+        }
+        .divider span {
+            padding: 0 12px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--kts-blue);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 300;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .toast.show { opacity: 1; }
+
+        /* ===== BOTTOM NAV ===== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background: white;
+            border-top: 1px solid var(--border);
+            display: flex;
+            padding: 8px 0;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+            z-index: 100;
+        }
+        .bottom-nav-inner {
+            display: flex;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 6px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 0.7rem;
+            transition: color 0.2s;
+        }
+        .nav-item.active { color: var(--kts-light); }
+        .nav-icon { font-size: 1.3rem; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN OVERLAY -->
+    <div id="login-overlay" style="
+        position:fixed;inset:0;background:var(--bg);z-index:9999;
+        display:flex;align-items:center;justify-content:center;
+    ">
+        <div style="width:100%;max-width:400px;padding:24px">
+            <div style="text-align:center;margin-bottom:32px">
+                <div style="font-weight:800;font-size:1.4rem;color:var(--kts-blue)">Kuijpers</div>
+                <div style="font-weight:600;color:#07567F;opacity:0.7;font-size:0.9rem">Technical Services</div>
+                <div style="color:var(--muted);font-size:0.85rem;margin-top:8px">Uren · Km · Declaraties</div>
+            </div>
+            <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+                <div style="font-weight:700;font-size:1rem;margin-bottom:16px">Inloggen</div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>E-mailadres</label>
+                    <input type="email" id="login-email" placeholder="info@kuijpers-ts.nl" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:16px">
+                </div>
+                <div class="form-group" style="margin-bottom:16px">
+                    <label>Wachtwoord</label>
+                    <input type="password" id="login-password" placeholder="••••••••" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:16px"
+                        onkeydown="if(event.key==='Enter')doLogin()">
+                </div>
+                <div id="login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none"></div>
+                <button class="btn btn-primary btn-block" onclick="doLogin()" id="login-btn" style="padding:14px;font-size:1rem;width:100%">
+                    Inloggen
+                </button>
+                <div style="text-align:center;margin-top:16px">
+                    <button style="background:none;border:none;color:var(--muted);font-size:0.85rem;cursor:pointer;text-decoration:underline" onclick="demoLogin()">
+                        Demo modus (zonder account)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER (full-width blauw) -->
+    <div class="header">
+        <div class="header-inner">
+            <div class="header-top">
+                <div class="logo">Kuijpers <span>Technical Services</span></div>
+                <div class="user-badge">👤 M. Kuijpers</div>
+            </div>
+            <div class="project-selector">
+                <div>
+                    <div class="project-name">Commissioning Platform X</div>
+                    <div class="project-meta">Shell · Rotterdam · PO-2026-0042</div>
+                </div>
+                <span style="opacity:0.5">▾</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="app-content">
+    <div class="content">
+
+        <!-- ===== UREN SCREEN ===== -->
+        <div class="screen active" id="screen-uren">
+            <div class="week-nav">
+                <button onclick="changeWeek(-1)">◀</button>
+                <div style="text-align:center">
+                    <div class="week-label" id="week-label">Laden...</div>
+                    <div class="week-total" id="week-total">Totaal: 0,0 uur</div>
+                </div>
+                <button onclick="changeWeek(1)">▶</button>
+            </div>
+
+
+
+            <div id="days-container"></div>
+
+            <div style="margin-top:16px">
+                <button class="btn btn-primary btn-block" onclick="saveWeek('uren')">
+                    💾 Week opslaan
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== EXTRA KOSTEN SCREEN ===== -->
+        <div class="screen" id="screen-kosten">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 style="font-size:1.1rem;font-weight:700">Extra kosten</h2>
+                <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Toevoegen</button>
+            </div>
+
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:0.8rem;color:#1d4ed8">
+                Hier voeg je extra kosten toe zoals materialen, gereedschap, parkeren, etc. Hotel staat bij de dagkaarten (tab Uren).
+            </div>
+
+            <div id="expense-list"></div>
+
+            <div class="week-summary" style="margin-top:16px" id="expense-summary"></div>
+
+            <div style="margin-top:16px">
+                <button class="btn btn-primary btn-block" onclick="saveWeek('kosten')">
+                    💾 Week opslaan
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== INKOOPORDER SCREEN ===== -->
+        <div class="screen" id="screen-inkooporder">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 style="font-size:1.1rem;font-weight:700">Inkooporders</h2>
+                <button class="btn btn-primary btn-sm" onclick="generatePO()">+ Nieuwe inkooporder</button>
+            </div>
+
+            <!-- Uitleg -->
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:#1d4ed8">
+                Inkooporders worden automatisch opgesteld op basis van goedgekeurde uren, km's en declaraties. KTS stuurt deze naar de ZZP'er als opdrachtbevestiging.
+            </div>
+
+            <!-- PO lijst -->
+            <div id="po-list"></div>
+
+            <!-- PO Detail (verborgen) -->
+            <div id="po-detail" style="display:none"></div>
+        </div>
+
+        <!-- ===== OVERZICHT SCREEN ===== -->
+        <div class="screen" id="screen-overzicht">
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Maandoverzicht · Februari 2026</h2>
+
+            <div class="stats-grid" id="overview-stats">
+                <!-- Wordt dynamisch gevuld -->
+            </div>
+
+            <!-- Omzet breakdown -->
+            <div class="week-summary" style="margin-bottom:16px" id="overview-revenue">
+                <!-- Wordt dynamisch gevuld -->
+            </div>
+
+            <div class="week-summary">
+                <div class="summary-title">Status per week</div>
+                <div class="summary-row">
+                    <span>Week 5 (27 jan – 2 feb)</span>
+                    <span class="status-badge status-approved">Goedgekeurd</span>
+                </div>
+                <div class="summary-row">
+                    <span>Week 6 (3 – 9 feb)</span>
+                    <span class="status-badge status-approved">Goedgekeurd</span>
+                </div>
+                <div class="summary-row">
+                    <span>Week 7 (10 – 16 feb)</span>
+                    <span class="status-badge status-approved">Goedgekeurd</span>
+                </div>
+                <div class="summary-row">
+                    <span>Week 8 (17 – 23 feb)</span>
+                    <span class="status-badge status-submitted">Verstuurd</span>
+                </div>
+                <div class="summary-row">
+                    <span>Week 9 (24 feb – 2 mrt)</span>
+                    <span class="status-badge status-draft">Concept</span>
+                </div>
+            </div>
+
+            <div style="margin-top:16px">
+                <button class="btn btn-success btn-block" id="submit-week-btn" onclick="submitWeek()" style="padding:14px;font-size:0.95rem">
+                    ✓ Week afsluiten & versturen ter goedkeuring
+                </button>
+            </div>
+
+            <div style="margin-top:10px;display:flex;gap:10px">
+                <button class="btn btn-primary" style="flex:1" onclick="showToast('PDF export — komt in volgende versie')">📄 PDF Export</button>
+                <button class="btn btn-secondary" style="flex:1" onclick="showToast('Excel export — komt in volgende versie')">📊 Excel Export</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- EXPENSE MODAL -->
+    <div class="modal-overlay" id="expense-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-title">🧾 Declaratie toevoegen</div>
+            <div class="form-group" style="margin-bottom:12px">
+                <label>Datum</label>
+                <input type="date" id="exp-date" value="2026-02-26">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Categorie</label>
+                    <select id="exp-cat">
+                        <option value="transport">Transport / Parkeren</option>
+                        <option value="meals">Maaltijd</option>
+                        <option value="other">Materiaal / Overig</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bedrag (€)</label>
+                    <input type="number" step="0.01" id="exp-amount" placeholder="119.00">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:12px">
+                <label>Omschrijving</label>
+                <input type="text" id="exp-desc" placeholder="Bijv. Hotel Van der Valk">
+            </div>
+            <div class="form-group" style="margin-top:12px">
+                <label>Bon uploaden</label>
+                <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:0.85rem;cursor:pointer">
+                    📷 Tik om foto te maken of bestand te kiezen
+                </div>
+            </div>
+            <div class="form-actions" style="margin-top:16px">
+                <button class="btn btn-secondary" onclick="closeModal('expense-modal')">Annuleren</button>
+                <button class="btn btn-primary" onclick="addExpense()">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    </div><!-- /app-content -->
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav">
+        <div class="bottom-nav-inner">
+            <div class="nav-item active" onclick="switchScreen('uren')">
+                <div class="nav-icon">⏱️</div>
+                Uren
+            </div>
+            <div class="nav-item" onclick="switchScreen('kosten')">
+                <div class="nav-icon">🧾</div>
+                Extra
+            </div>
+            <div class="nav-item" onclick="switchScreen('inkooporder')">
+                <div class="nav-icon">📋</div>
+                Orders
+            </div>
+            <div class="nav-item" onclick="switchScreen('overzicht')">
+                <div class="nav-icon">📊</div>
+                Overzicht
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== SUPABASE =====
+        const SUPABASE_URL = 'https://fvrbirghjydkxslbewny.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cmJpcmdoanlka3hzbGJld255Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNzg1MTAsImV4cCI6MjA4Nzk1NDUxMH0.-v0LgCf5QJkjEWAYR9quhkBrlAeTuV5Dv6YKA2tECu4';
+        let sbClient = null;
+        let currentUser = null;
+        let currentProject = null;
+
+        // Lazy init — pas aanmaken als CDN geladen is
+        function getSupabase() {
+            if (sbClient) return sbClient;
+            // Supabase CDN v2 registreert als window.supabase
+            const lib = window.supabase;
+            if (lib && typeof lib.createClient === 'function') {
+                sbClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('Supabase client aangemaakt');
+            }
+            return sbClient;
+        }
+
+        // ===== CONFIG =====
+        const RATE = 85;
+        const KM_RATE = 0.50;
+        const HOTEL_RATE = 110.00; // vast afgesproken tarief per nacht
+        const KM_THUIS_RETOUR = 192;  // standaard retour thuis ↔ project
+        const KM_HOTEL_PROJECT = 12;  // hotel ↔ project (korte afstand)
+        const DAYS_FULL = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+        const MONTHS_SHORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+
+        // ===== WEEK NAVIGATIE =====
+        // Bereken huidige ISO week (ma=start)
+        function getISOWeek(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function getWeekMonday(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.getFullYear(), d.getMonth(), diff);
+        }
+
+        function getMondayOfISOWeek(week, year) {
+            const jan4 = new Date(year, 0, 4);
+            const monday = getWeekMonday(jan4);
+            monday.setDate(monday.getDate() + (week - 1) * 7);
+            return monday;
+        }
+
+        let currentWeekMonday = getWeekMonday(new Date());
+        let currentWeekNumber = getISOWeek(new Date());
+        let currentYear = new Date().getFullYear();
+
+        function getDateForDayIndex(i) {
+            const d = new Date(currentWeekMonday);
+            d.setDate(d.getDate() + i);
+            return d.toISOString().split('T')[0];
+        }
+
+        function getDayIndexForDate(dateStr) {
+            const d = new Date(dateStr);
+            const diff = Math.round((d - currentWeekMonday) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+
+        function getDATES() {
+            const dates = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(currentWeekMonday);
+                d.setDate(d.getDate() + i);
+                dates.push(`${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`);
+            }
+            return dates;
+        }
+
+        function getWeekLabel() {
+            const endDate = new Date(currentWeekMonday);
+            endDate.setDate(endDate.getDate() + 6);
+            const startStr = `${currentWeekMonday.getDate()} ${MONTHS_SHORT[currentWeekMonday.getMonth()]}`;
+            const endStr = `${endDate.getDate()} ${MONTHS_SHORT[endDate.getMonth()]}`;
+            return `Week ${currentWeekNumber} · ${startStr} – ${endStr}`;
+        }
+
+        // ===== STATE =====
+        function defaultWeekData() {
+            return [
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_RETOUR, hotel: false, thuiswerk: false, hours: 8 },
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT * 2, hotel: true, thuiswerk: false, hours: 8 },
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT * 2, hotel: true, thuiswerk: false, hours: 8 },
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_HOTEL_PROJECT * 2, hotel: true, thuiswerk: false, hours: 8 },
+                { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: KM_THUIS_RETOUR, hotel: false, thuiswerk: false, hours: 8 },
+                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+            ];
+        }
+
+        let weekData = defaultWeekData();
+        let expandedDay = -1;
+        let weekDataDirty = false; // track unsaved changes
+
+        let expEntries = [
+            { id: 1, cat: 'transport', icon: '🚌', desc: 'Parkeerkosten projectlocatie', amount: 15.00, date: 'ma 24 feb', catLabel: 'Transport' },
+            { id: 2, cat: 'other', icon: '📦', desc: 'Gereedschap adapter set', amount: 34.95, date: 'wo 26 feb', catLabel: 'Materiaal' },
+        ];
+        let expNextId = 3;
+
+        const catIcons = { hotel: '🏨', meals: '🍽️', transport: '🚌', other: '📦' };
+        const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', other: 'Materiaal / Overig' };
+
+        function fmt(n) { return n.toFixed(1).replace('.', ','); }
+        function fmtEuro(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
+        function todayLabel() {
+            const d = new Date();
+            const days = ['zo','ma','di','wo','do','vr','za'];
+            const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+        }
+
+        // ===== UREN RENDER =====
+        function renderDays() {
+            const container = document.getElementById('days-container');
+            let totalHours = 0;
+
+            container.innerHTML = weekData.map((entry, i) => {
+                totalHours += entry.hours;
+                const isWeekend = i >= 5;
+                const isFilled = entry.hours > 0;
+                const isExpanded = expandedDay === i;
+
+                return `
+                    <div class="day-card ${isExpanded ? 'expanded' : ''}">
+                        <div class="day-header" onclick="toggleDay(${i})">
+                            <div class="day-info">
+                                <div class="day-dot ${isFilled ? 'filled' : ''} ${isWeekend ? 'weekend' : ''}"></div>
+                                <div>
+                                    <div class="day-name">${DAYS_FULL[i]}</div>
+                                    <div class="day-date">${getDATES()[i]}${isWeekend ? ' · Weekend' : ''}</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right">
+                                <div class="day-hours ${!isFilled ? 'empty' : ''}">${isFilled ? fmt(entry.hours) + ' u' : '—'}</div>
+                                ${isFilled ? '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;margin-top:2px">' +
+                                    (entry.thuiswerk ? '<div style="font-size:0.65rem;color:#059669">🏠 Thuiswerk</div>' : '') +
+                                    (entry.km > 0 ? '<div style="font-size:0.65rem;color:var(--muted)">🚗 ' + entry.km + ' km</div>' : '') +
+                                    (entry.hotel ? '<div style="font-size:0.65rem;color:var(--kts-blue)">🏨 Hotel</div>' : '') +
+                                '</div>' : ''}
+                            </div>
+                        </div>
+                        <div class="day-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Start</label>
+                                    <input type="time" value="${entry.start}" onchange="updateEntry(${i},'start',this.value)">
+                                </div>
+                                <div class="form-group">
+                                    <label>Eind</label>
+                                    <input type="time" value="${entry.end}" onchange="updateEntry(${i},'end',this.value)">
+                                </div>
+                                <div class="form-group" style="flex:0.7">
+                                    <label>Pauze (uur)</label>
+                                    <select onchange="updateEntry(${i},'breakMin',this.value)" style="font-size:16px">
+                                        <option value="0" ${entry.breakMin==0?'selected':''}>0</option>
+                                        <option value="30" ${entry.breakMin==30?'selected':''}>0,5</option>
+                                        <option value="60" ${entry.breakMin==60?'selected':''}>1</option>
+                                        <option value="90" ${entry.breakMin==90?'selected':''}>1,5</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top:12px">
+                                <label>Omschrijving werkzaamheden</label>
+                                <textarea onchange="updateEntry(${i},'desc',this.value)" placeholder="Bijv. commissioning, I/O checks, vendor overleg...">${entry.desc}</textarea>
+                            </div>
+                            <div class="form-row" ${entry.thuiswerk ? 'style="display:none"' : ''}>
+                                <div class="form-group">
+                                    <label>Locatie</label>
+                                    <input type="text" value="${entry.location||''}" placeholder="Bijv. Broek op Langedijk" onchange="updateEntry(${i},'location',this.value)">
+                                </div>
+                            </div>
+
+                            <!-- TOGGLES: Thuiswerk + Hotel + Km -->
+                            <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+
+                                <!-- Thuiswerk toggle -->
+                                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${entry.thuiswerk?'#f0fdf4':'#f8fafc'};border:1px solid ${entry.thuiswerk?'#86efac':'var(--border)'};border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(${i})">
+                                    <div style="width:20px;height:20px;border-radius:4px;border:2px solid ${entry.thuiswerk?'#059669':'#cbd5e1'};background:${entry.thuiswerk?'#059669':'white'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                        ${entry.thuiswerk ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : ''}
+                                    </div>
+                                    <div style="flex:1">
+                                        <div style="font-weight:600;font-size:0.85rem;color:${entry.thuiswerk?'#059669':'var(--muted)'}">🏠 Thuiswerk</div>
+                                        <div style="font-size:0.75rem;color:var(--muted)">Geen reiskilometers</div>
+                                    </div>
+                                </div>
+
+                                <!-- Hotel toggle (verborgen bij thuiswerk) -->
+                                ${!entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'#eff6ff':'#f8fafc') + ';border:1px solid ' + (entry.hotel?'#93c5fd':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
+                                    '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + ';background:' + (entry.hotel?'var(--kts-blue)':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+                                        (entry.hotel ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
+                                    '</div>' +
+                                    '<div style="flex:1">' +
+                                        '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.hotel?'var(--kts-blue)':'var(--muted)') + '">🏨 Hotelovernachting</div>' +
+                                        '<div style="font-size:0.75rem;color:var(--muted)">Vast tarief ' + fmtEuro(HOTEL_RATE) + ' · km worden hotel↔project</div>' +
+                                    '</div>' +
+                                    '<div style="font-weight:700;font-size:0.9rem;color:' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + '">' + fmtEuro(HOTEL_RATE) + '</div>' +
+                                '</div>' : ''}
+
+                                <!-- Km veld (altijd bewerkbaar, verborgen bij thuiswerk tenzij handmatig) -->
+                                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
+                                    <div style="font-size:1.1rem">🚗</div>
+                                    <div style="flex:1">
+                                        <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel — bijv. spullen halen)' : entry.hotel ? ' (hotel ↔ project)' : ' (retour thuis ↔ project)'}</div>
+                                        <input type="number" value="${entry.km||0}" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600" onchange="updateEntry(${i},'km',this.value)">
+                                        <span style="font-size:0.8rem;color:var(--muted);margin-left:6px">km · ${fmtEuro((entry.km||0) * KM_RATE)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions" style="flex-wrap:wrap;margin-top:12px">
+                                <button class="btn btn-secondary btn-sm" onclick="clearDay(${i})">Wissen</button>
+                                <button class="btn btn-primary btn-sm" onclick="toggleDay(-1);showToast('✓ Opgeslagen')">Opslaan</button>
+                                ${i < 6 ? '<button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            const totalKmWeek = weekData.reduce((s,e) => s + (e.km||0), 0);
+            const totalHotelWeek = weekData.filter(e => e.hotel).length;
+            let weekTotalText = `Totaal: ${fmt(totalHours)} uur`;
+            if (totalKmWeek > 0) weekTotalText += ` · ${totalKmWeek} km`;
+            if (totalHotelWeek > 0) weekTotalText += ` · ${totalHotelWeek}× 🏨`;
+            document.getElementById('week-total').textContent = weekTotalText;
+            renderSummary();
+            renderOverview();
+        }
+
+        function renderSummary() { /* verwijderd — info staat nu per dag */ }
+
+        // ===== EXPENSE RENDER =====
+        function renderExpenses() {
+            document.getElementById('expense-list').innerHTML = expEntries.map(e => `
+                <div class="entry-card">
+                    <div class="entry-details">
+                        <div class="entry-route">${e.icon} ${e.desc}</div>
+                        <div class="entry-meta">${e.date} · ${e.catLabel}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div class="entry-amount">${fmtEuro(e.amount)}</div>
+                        <span class="entry-delete" onclick="deleteExpense(${e.id})">×</span>
+                    </div>
+                </div>
+            `).join('');
+
+            const totals = {};
+            let total = 0;
+            expEntries.forEach(e => { totals[e.cat] = (totals[e.cat] || 0) + e.amount; total += e.amount; });
+
+            let html = '<div class="summary-title">Totaal deze week</div>';
+            for (const [cat, amt] of Object.entries(totals)) {
+                html += `<div class="summary-row"><span>${catLabels[cat]}</span><span class="summary-value">${fmtEuro(amt)}</span></div>`;
+            }
+            html += `<div class="summary-row total"><span>Totaal</span><span class="summary-value">${fmtEuro(total)}</span></div>`;
+            document.getElementById('expense-summary').innerHTML = html;
+        }
+
+        // ===== UREN ACTIONS =====
+        function toggleDay(i) { expandedDay = expandedDay === i ? -1 : i; renderDays(); }
+
+        function toggleThuiswerk(i) {
+            weekDataDirty = true;
+            const e = weekData[i];
+            e.thuiswerk = !e.thuiswerk;
+            if (e.thuiswerk) {
+                e.hotel = false;
+                e.km = 0;  // thuiswerk = geen km standaard
+            } else {
+                e.km = KM_THUIS_RETOUR; // terug naar standaard
+            }
+            renderDays();
+        }
+
+        function toggleHotel(i) {
+            weekDataDirty = true;
+            const e = weekData[i];
+            e.hotel = !e.hotel;
+            if (e.hotel) {
+                e.km = KM_HOTEL_PROJECT * 2; // hotel ↔ project retour
+            } else {
+                e.km = KM_THUIS_RETOUR; // terug naar thuis ↔ project
+            }
+            renderDays();
+        }
+
+        function updateEntry(i, field, value) {
+            weekDataDirty = true;
+            const e = weekData[i];
+            if (field === 'start') e.start = value;
+            if (field === 'end') e.end = value;
+            if (field === 'breakMin') e.breakMin = parseInt(value) || 0;
+            if (field === 'desc') e.desc = value;
+            if (field === 'location') e.location = value;
+            if (field === 'km') e.km = parseInt(value) || 0;
+            if (field === 'hotel') e.hotel = value;
+            if (e.start && e.end) {
+                const [sh,sm] = e.start.split(':').map(Number);
+                const [eh,em] = e.end.split(':').map(Number);
+                e.hours = Math.max(0, ((eh*60+em) - (sh*60+sm) - e.breakMin) / 60);
+            }
+            renderDays();
+        }
+
+        function clearDay(i) {
+            weekData[i] = { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 };
+            renderDays();
+        }
+
+        function copyDayToNext(i) {
+            if (i >= 6) return;
+            weekData[i+1] = { ...weekData[i] };
+            expandedDay = i+1;
+            renderDays();
+            showToast('✓ ' + DAYS_FULL[i] + ' gekopieerd naar ' + DAYS_FULL[i+1]);
+        }
+
+        function copyPreviousDay() {
+            for (let i = 1; i < 5; i++) {
+                if (weekData[i].hours === 0 && weekData[i-1].hours > 0) {
+                    weekData[i] = { ...weekData[i-1] };
+                    renderDays();
+                    showToast(`✓ ${DAYS_FULL[i-1]} gekopieerd naar ${DAYS_FULL[i]}`);
+                    return;
+                }
+            }
+            showToast('Geen lege werkdag gevonden');
+        }
+
+        function fillStandard() {
+            for (let i = 0; i < 5; i++) {
+                if (weekData[i].hours === 0) {
+                    weekData[i] = { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: 'Broek op Langedijk', km: KM_THUIS_RETOUR, hotel: false, thuiswerk: false, hours: 8 };
+                }
+            }
+            renderDays();
+            showToast('✓ Werkdagen gevuld (07:00–16:00, 1 uur pauze)');
+        }
+
+        function submitWeek() {
+            const total = weekData.reduce((s,e) => s + e.hours, 0);
+            if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
+            if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen ter goedkeuring? Na versturen kun je geen wijzigingen meer maken.`)) return;
+            const btn = document.getElementById('submit-week-btn');
+            btn.innerHTML = '✓ Verstuurd — wacht op goedkeuring';
+            btn.style.background = '#64748b';
+            btn.disabled = true;
+            showToast(`✓ Week ${currentWeekNumber} verstuurd ter goedkeuring`);
+        }
+
+        async function changeWeek(dir) {
+            // Auto-save huidige week als er wijzigingen zijn
+            if (weekDataDirty && getSupabase() && currentUser && currentUser.id) {
+                await saveWeekToSupabase();
+            }
+
+            // Navigeer naar vorige/volgende week
+            currentWeekMonday.setDate(currentWeekMonday.getDate() + (dir * 7));
+            currentWeekNumber = getISOWeek(currentWeekMonday);
+            currentYear = currentWeekMonday.getFullYear();
+
+            // Reset week data naar standaard
+            weekData = defaultWeekData();
+            expandedDay = -1;
+            weekDataDirty = false;
+
+            // Update label
+            updateWeekLabel();
+
+            // Laad data uit Supabase als ingelogd
+            if (getSupabase() && currentUser && currentUser.id) {
+                await loadWeekFromSupabase();
+            }
+
+            renderDays();
+        }
+
+        function updateWeekLabel() {
+            document.getElementById('week-label').textContent = getWeekLabel();
+        }
+
+        // ===== EXPENSE ACTIONS =====
+        function addExpense() {
+            const cat = document.getElementById('exp-cat').value;
+            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const desc = document.getElementById('exp-desc').value;
+            if (!amount || !desc) { showToast('⚠️ Vul alle velden in'); return; }
+            expEntries.push({
+                id: expNextId++, cat, icon: catIcons[cat], desc, amount,
+                date: todayLabel(), catLabel: catLabels[cat]
+            });
+            renderExpenses();
+            renderOverview();
+            closeModal('expense-modal');
+            showToast('✓ Declaratie toegevoegd');
+        }
+
+        function deleteExpense(id) {
+            expEntries = expEntries.filter(e => e.id !== id);
+            renderExpenses();
+            renderOverview();
+            showToast('✓ Declaratie verwijderd');
+        }
+
+        // ===== NAV =====
+        function switchScreen(name) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(`screen-${name}`).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+
+        // ===== MODALS =====
+        function openExpenseModal() { document.getElementById('expense-modal').classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) { overlay.classList.remove('active'); showRouteSelection(); }
+            });
+        });
+
+        // ===== TOAST =====
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // ===== OVERZICHT RENDER =====
+        function renderOverview() {
+            // Bereken maandcijfers (demo: 4 weken goedgekeurd + huidige week)
+            const approvedWeeklyHours = [40, 38.5, 42, 37.5]; // weken 5-8
+            const currentWeekHours = weekData.reduce((s,e) => s + e.hours, 0);
+            const totalMonthHours = approvedWeeklyHours.reduce((s,h) => s + h, 0) + currentWeekHours;
+
+            // Omzet uren (normaal + toeslagen)
+            const normalHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
+            const satHours = weekData[5].hours;
+            const sunHours = weekData[6].hours;
+            const currentWeekRevenue = (normalHours * RATE) + (satHours * RATE * 1.5) + (sunHours * RATE * 2);
+            const approvedRevenue = approvedWeeklyHours.reduce((s,h) => s + h * RATE, 0);
+            const totalMonthRevenue = approvedRevenue + currentWeekRevenue;
+
+            // Km totalen (vanuit dagkaarten)
+            const urenKm = weekData.reduce((s,e) => s + (e.km || 0), 0);
+            const currentKmTotal = urenKm;
+            const approvedKm = 1700; // demo: eerdere weken
+            const totalMonthKm = approvedKm + currentKmTotal;
+            const totalKmRevenue = totalMonthKm * KM_RATE;
+
+            // Hotel totalen vanuit dagkaarten
+            const currentHotelNights = weekData.filter(e => e.hotel).length;
+            const currentHotelTotal = currentHotelNights * HOTEL_RATE;
+
+            // Extra kosten totalen
+            const currentExpTotal = expEntries.reduce((s,e) => s + e.amount, 0);
+            const approvedExp = 428.50; // demo: eerdere weken
+            const totalMonthExp = approvedExp + currentExpTotal + currentHotelTotal;
+
+            // Grand total
+            const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
+
+            // Stats grid
+            document.getElementById('overview-stats').innerHTML = `
+                <div class="stat-card highlight">
+                    <div class="stat-value">${fmt(totalMonthHours)}</div>
+                    <div class="stat-label">Uren deze maand</div>
+                </div>
+                <div class="stat-card" style="background:#059669;color:white">
+                    <div class="stat-value" style="color:white">${fmtEuro(totalMonthRevenue)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Omzet uren</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalMonthKm.toLocaleString('nl-NL')}</div>
+                    <div class="stat-label">Kilometers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${weekData.filter(e=>e.thuiswerk).length}</div>
+                    <div class="stat-label">Thuiswerkdagen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${fmtEuro(totalKmRevenue)}</div>
+                    <div class="stat-label">Km-vergoeding</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${fmtEuro(totalMonthExp)}</div>
+                    <div class="stat-label">Declaraties</div>
+                </div>
+                <div class="stat-card" style="background:var(--kts-blue)">
+                    <div class="stat-value" style="color:white">${fmtEuro(grandTotal)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal omzet</div>
+                </div>
+            `;
+
+            // Revenue breakdown
+            document.getElementById('overview-revenue').innerHTML = `
+                <div class="summary-title">Omzet breakdown · februari 2026</div>
+                <div class="summary-row">
+                    <span>Uren (${fmt(totalMonthHours)} u × €${RATE})</span>
+                    <span class="summary-value">${fmtEuro(totalMonthRevenue)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Km-vergoeding (${totalMonthKm.toLocaleString('nl-NL')} km × €${KM_RATE.toFixed(2).replace('.',',')})</span>
+                    <span class="summary-value">${fmtEuro(totalKmRevenue)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Declaraties</span>
+                    <span class="summary-value">${fmtEuro(totalMonthExp)}</span>
+                </div>
+                <div class="summary-row total" style="font-size:1rem">
+                    <span>Totale omzet</span>
+                    <span class="summary-value">${fmtEuro(grandTotal)}</span>
+                </div>
+            `;
+        }
+
+        // ===== INKOOPORDER (PO) =====
+        // KTS bedrijfsgegevens
+        const KTS = {
+            naam: 'Kuijpers Technical Services BV',
+            adres: 'Nieuwboerweg 2A',
+            postcode: '1738BB, Waarland',
+            land: 'Nederland',
+            kvk: '93410557',
+            btw: 'NL866385368B01',
+            tel: '+31 6 5123 9050',
+            email: 'info@kuijpers-ts.nl',
+            betalingstermijn: 30
+        };
+
+        let poEntries = [
+            {
+                id: 'KTS2026_02-24022026',
+                projectCode: 'KTS2026_02',
+                date: '2026-02-24',
+                leverancier: {
+                    naam: 'Aart Reijerse',
+                    bedrijf: 'Artecq',
+                    adres: 'Voorbeeldstraat 10',
+                    postcode: '1234AB, Amsterdam',
+                    tel: '+31 6 1234 5678',
+                    email: 'aart@artecq.nl'
+                },
+                project: 'Volt-11800 – PepsiCo Broek op Langedijk',
+                client: 'Kraftblock',
+                period: 'Februari 2026',
+                status: 'concept',
+                opmerkingen: 'Betreft inzet ZZP commissioning engineer',
+                lines: [
+                    { nr: 1, desc: 'Reguliere uren (ma-vr)', unit: 'uur', qty: 32, rate: 85.00 },
+                    { nr: 2, desc: 'Zaterdaguren (150%)', unit: 'uur', qty: 0, rate: 127.50 },
+                    { nr: 3, desc: 'Zondag-/feestdaguren (200%)', unit: 'uur', qty: 0, rate: 170.00 },
+                    { nr: 4, desc: 'Km-vergoeding', unit: 'km', qty: 768, rate: 0.50 },
+                    { nr: 5, desc: 'Verblijfskosten', unit: 'bedrag', qty: 1, rate: 143.50 },
+                ]
+            },
+            {
+                id: 'KTS2026_01-03012026',
+                projectCode: 'KTS2026_01',
+                date: '2026-01-03',
+                leverancier: {
+                    naam: 'Aart Reijerse',
+                    bedrijf: 'Artecq',
+                    adres: 'Voorbeeldstraat 10',
+                    postcode: '1234AB, Amsterdam',
+                    tel: '+31 6 1234 5678',
+                    email: 'aart@artecq.nl'
+                },
+                project: 'Volt-11800 – PepsiCo Broek op Langedijk',
+                client: 'Kraftblock',
+                period: 'Januari 2026',
+                status: 'goedgekeurd',
+                opmerkingen: 'Betreft inzet ZZP commissioning engineer',
+                lines: [
+                    { nr: 1, desc: 'Reguliere uren (ma-vr)', unit: 'uur', qty: 168, rate: 85.00 },
+                    { nr: 2, desc: 'Zaterdaguren (150%)', unit: 'uur', qty: 0, rate: 127.50 },
+                    { nr: 3, desc: 'Zondag-/feestdaguren (200%)', unit: 'uur', qty: 0, rate: 170.00 },
+                    { nr: 4, desc: 'Km-vergoeding', unit: 'km', qty: 2040, rate: 0.50 },
+                    { nr: 5, desc: 'Verblijfskosten', unit: 'bedrag', qty: 1, rate: 645.00 },
+                ]
+            }
+        ];
+
+        function renderPOList() {
+            const statusColors = {
+                concept: { bg: '#f1f5f9', color: '#64748b', label: 'Concept' },
+                verstuurd: { bg: '#dbeafe', color: '#2563eb', label: 'Verstuurd' },
+                goedgekeurd: { bg: '#d1fae5', color: '#059669', label: 'Goedgekeurd' }
+            };
+
+            document.getElementById('po-list').innerHTML = poEntries.map(po => {
+                const total = po.lines.filter(l => l.qty > 0).reduce((s, l) => s + (l.qty * l.rate), 0);
+                const st = statusColors[po.status];
+                return `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;cursor:pointer" onclick="showPODetail('${po.id}')">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <div style="font-weight:700;font-size:0.95rem">${po.id}</div>
+                                <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">${po.period} · ${po.leverancier.naam}, ${po.leverancier.bedrijf}</div>
+                                <div style="font-size:0.7rem;color:var(--muted)">${po.project}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <span class="status-badge" style="background:${st.bg};color:${st.color}">${st.label}</span>
+                                <div style="font-weight:700;font-size:1rem;color:var(--kts-blue);margin-top:4px">${fmtEuro(total)}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function showPODetail(poId) {
+            const po = poEntries.find(p => p.id === poId);
+            if (!po) return;
+
+            const activeLines = po.lines.filter(l => l.qty > 0);
+            const total = activeLines.reduce((s, l) => s + (l.qty * l.rate), 0);
+            const btw = total * 0.21;
+
+            document.getElementById('po-list').style.display = 'none';
+            document.getElementById('po-detail').style.display = 'block';
+            document.getElementById('po-detail').innerHTML = `
+                <button class="btn btn-secondary btn-sm" onclick="closePODetail()" style="margin-bottom:16px">← Terug naar overzicht</button>
+
+                <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:16px">
+                    <!-- HEADER: KTS + Inkooporder -->
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">
+                        <div>
+                            <div style="font-weight:800;font-size:1rem;color:var(--kts-blue)">${KTS.naam}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${KTS.adres}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${KTS.postcode}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${KTS.land}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">KVK: ${KTS.kvk} · BTW: ${KTS.btw}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-weight:800;font-size:1.1rem;color:var(--kts-blue)">Inkooporder</div>
+                        </div>
+                    </div>
+
+                    <!-- META: Project, Datum, PO-nummer -->
+                    <div style="display:flex;justify-content:flex-end;gap:24px;font-size:0.8rem;margin:12px 0;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+                        <div><span style="font-weight:700">PROJECT</span> ${po.projectCode}</div>
+                        <div><span style="font-weight:700">DATUM</span> ${po.date}</div>
+                        <div><span style="font-weight:700">PO-NR</span> ${po.id}</div>
+                    </div>
+
+                    <!-- LEVERANCIER + LEVERADRES -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                        <div>
+                            <div style="font-weight:700;font-size:0.75rem;color:white;background:var(--kts-blue);padding:4px 8px;border-radius:4px;margin-bottom:8px">LEVERANCIER (ZZP)</div>
+                            <div style="font-size:0.8rem">
+                                <div style="font-weight:600">${po.leverancier.naam}</div>
+                                <div>${po.leverancier.bedrijf}</div>
+                                <div style="color:var(--muted)">${po.leverancier.adres}</div>
+                                <div style="color:var(--muted)">${po.leverancier.postcode}</div>
+                                <div style="color:var(--muted);margin-top:2px">Tel: ${po.leverancier.tel}</div>
+                                <div style="color:var(--muted)">${po.leverancier.email}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.75rem;color:white;background:var(--kts-blue);padding:4px 8px;border-radius:4px;margin-bottom:8px">LEVERADRES</div>
+                            <div style="font-size:0.8rem">
+                                <div style="font-weight:600">Mark Kuijpers</div>
+                                <div>${KTS.naam}</div>
+                                <div style="color:var(--muted)">${KTS.adres}</div>
+                                <div style="color:var(--muted)">${KTS.postcode}</div>
+                                <div style="color:var(--muted);margin-top:2px">Tel: ${KTS.tel}</div>
+                                <div style="color:var(--muted)">${KTS.email}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PROJECT INFO -->
+                    <div style="font-size:0.8rem;margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:8px">
+                        <span style="font-weight:700">Project:</span> ${po.project}<br>
+                        <span style="font-weight:700">Klant:</span> ${po.client} · <span style="font-weight:700">Periode:</span> ${po.period}
+                    </div>
+
+                    <!-- ITEMS TABEL -->
+                    <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+                        <thead>
+                            <tr style="background:var(--kts-blue);color:white">
+                                <th style="text-align:left;padding:6px 8px;font-weight:700;width:30px">ITEM #</th>
+                                <th style="text-align:left;padding:6px 8px;font-weight:700">OMSCHRIJVING</th>
+                                <th style="text-align:right;padding:6px 8px;font-weight:700">AANTAL</th>
+                                <th style="text-align:right;padding:6px 8px;font-weight:700">PRIJS/STUK</th>
+                                <th style="text-align:right;padding:6px 8px;font-weight:700">TOTAAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${po.lines.map(l => `
+                                <tr style="border-bottom:1px solid var(--border)${l.qty === 0 ? ';color:#cbd5e1' : ''}">
+                                    <td style="padding:6px 8px">${l.nr}</td>
+                                    <td style="padding:6px 8px">${l.desc}</td>
+                                    <td style="text-align:right;padding:6px 8px">${l.qty} ${l.unit}</td>
+                                    <td style="text-align:right;padding:6px 8px">${fmtEuro(l.rate)}</td>
+                                    <td style="text-align:right;padding:6px 8px;font-weight:600">${fmtEuro(l.qty * l.rate)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <!-- TOTALEN -->
+                    <div style="margin-top:8px;border-top:2px solid var(--kts-blue)">
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:6px 0">
+                            <span style="font-weight:600">TOTAAL</span>
+                            <span style="font-weight:600">${fmtEuro(total)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:4px 0;color:var(--muted)">
+                            <span>BTW 21%</span>
+                            <span>${fmtEuro(btw)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:4px 0;color:var(--muted)">
+                            <span>TRANSPORT</span>
+                            <span>${fmtEuro(0)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:1rem;padding:8px;font-weight:800;color:white;background:var(--kts-blue);border-radius:6px;margin-top:4px">
+                            <span>TOTAAL</span>
+                            <span>${fmtEuro(total + btw)}</span>
+                        </div>
+                    </div>
+
+                    <!-- OPMERKINGEN + BETALINGSTERMIJN -->
+                    <div style="margin-top:12px;font-size:0.8rem">
+                        <div style="color:var(--muted);margin-bottom:4px"><strong>Opmerkingen:</strong> ${po.opmerkingen || '-'}</div>
+                        <div style="color:var(--muted)"><strong>Betalingstermijn:</strong> ${KTS.betalingstermijn} dagen na levering</div>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px">
+                    <button class="btn btn-primary" style="flex:1" onclick="showToast('PDF export — komt in volgende versie')">📄 Download PDF</button>
+                    <button class="btn btn-success" style="flex:1" onclick="showToast('E-mail verstuurd naar ZZP\'er')">📧 Verstuur naar ZZP'er</button>
+                </div>
+            `;
+        }
+
+        function closePODetail() {
+            document.getElementById('po-list').style.display = 'block';
+            document.getElementById('po-detail').style.display = 'none';
+        }
+
+        function generatePO() {
+            showToast('Inkooporder genereren op basis van goedgekeurde uren — komt in volgende versie');
+        }
+
+        // ===== AUTH =====
+        async function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            const btn = document.getElementById('login-btn');
+
+            if (!email || !password) { errorEl.textContent = 'Vul e-mail en wachtwoord in'; errorEl.style.display = 'block'; return; }
+
+            btn.textContent = 'Bezig met inloggen...';
+            btn.disabled = true;
+
+            if (!getSupabase()) {
+                // Wacht en probeer opnieuw (CDN kan nog laden)
+                errorEl.textContent = 'Verbinding maken met server...';
+                errorEl.style.display = 'block';
+                errorEl.style.color = 'var(--muted)';
+                for (let wait = 0; wait < 5; wait++) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    if (getSupabase()) break;
+                }
+                if (!getSupabase()) {
+                    errorEl.textContent = 'Kan niet verbinden. Check je internet en herlaad de pagina.';
+                    errorEl.style.color = '#ef4444';
+                    btn.textContent = 'Inloggen';
+                    btn.disabled = false;
+                    return;
+                }
+                errorEl.style.display = 'none';
+            }
+
+            const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
+            if (error) {
+                errorEl.textContent = 'Inloggen mislukt: ' + error.message;
+                errorEl.style.display = 'block';
+                btn.textContent = 'Inloggen';
+                btn.disabled = false;
+                return;
+            }
+
+            // Haal user profiel op
+            const { data: profile } = await getSupabase().from('users').select('*').eq('id', data.user.id).single();
+            currentUser = profile || { name: data.user.email, role: 'engineer' };
+
+            document.getElementById('login-overlay').style.display = 'none';
+            document.querySelector('.user-badge').textContent = '👤 ' + currentUser.name;
+            showToast('✓ Welkom, ' + currentUser.name);
+
+            // Laad data vanuit Supabase
+            await loadDataFromSupabase();
+        }
+
+        function demoLogin() {
+            currentUser = { name: 'Demo Gebruiker', role: 'admin' };
+            document.getElementById('login-overlay').style.display = 'none';
+            document.querySelector('.user-badge').textContent = '👤 Demo';
+            showToast('✓ Demo modus — data wordt niet opgeslagen');
+        }
+
+        // Check bestaande sessie
+        async function checkSession() {
+            if (!getSupabase()) return;
+            const { data: { session } } = await getSupabase().auth.getSession();
+            if (session) {
+                const { data: profile } = await getSupabase().from('users').select('*').eq('id', session.user.id).single();
+                currentUser = profile || { name: session.user.email, role: 'engineer' };
+                document.getElementById('login-overlay').style.display = 'none';
+                document.querySelector('.user-badge').textContent = '👤 ' + currentUser.name;
+                await loadDataFromSupabase();
+            }
+        }
+
+        // ===== DATA OPSLAAN NAAR SUPABASE =====
+        async function saveWeekToSupabase() {
+            if (!getSupabase() || !currentUser || !currentUser.id) return false;
+            const sb = getSupabase();
+
+            // Haal huidig project op (of maak aan)
+            if (!currentProject) {
+                const { data: projects } = await sb.from('projects').select('*').limit(1);
+                if (projects && projects.length > 0) {
+                    currentProject = projects[0];
+                } else {
+                    const { data: newProject } = await sb.from('projects').insert({
+                        project_code: 'KTS2026_01',
+                        name: 'Demo Project',
+                        client_name: '',
+                        location: ''
+                    }).select().single();
+                    currentProject = newProject;
+                }
+            }
+
+            // Uren opslaan per dag
+            for (let i = 0; i < weekData.length; i++) {
+                const d = weekData[i];
+                const entryDate = getDateForDayIndex(i);
+
+                // Check of er al een entry bestaat voor deze datum
+                const { data: existing } = await sb
+                    .from('time_entries')
+                    .select('id')
+                    .eq('user_id', currentUser.id)
+                    .eq('entry_date', entryDate)
+                    .maybeSingle();
+
+                if (d.hours <= 0 && !d.thuiswerk) {
+                    // Geen data voor deze dag — verwijder bestaande entry als die er is
+                    if (existing) {
+                        await sb.from('time_entries').delete().eq('id', existing.id);
+                    }
+                    continue;
+                }
+
+                const entry = {
+                    user_id: currentUser.id,
+                    project_id: currentProject.id,
+                    entry_date: entryDate,
+                    start_time: d.start || null,
+                    end_time: d.end || null,
+                    break_minutes: d.breakMin || 0,
+                    total_hours: d.hours,
+                    description: d.desc || '',
+                    location: d.location || '',
+                    km: d.km || 0,
+                    hotel: d.hotel || false,
+                    thuiswerk: d.thuiswerk || false,
+                    status: 'draft'
+                };
+
+                if (existing) {
+                    await sb.from('time_entries').update(entry).eq('id', existing.id);
+                } else {
+                    await sb.from('time_entries').insert(entry);
+                }
+            }
+            return true;
+        }
+
+        // ===== LADEN UIT SUPABASE =====
+        async function loadDataFromSupabase() {
+            if (!getSupabase() || !currentUser || !currentUser.id) return;
+
+            // Haal project op
+            const { data: projects } = await getSupabase().from('projects').select('*').limit(1);
+            if (projects && projects.length > 0) {
+                currentProject = projects[0];
+                document.querySelector('.project-name').textContent = currentProject.name;
+                document.querySelector('.project-meta').textContent =
+                    (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
+            }
+
+            // Laad uren voor huidige week
+            await loadWeekFromSupabase();
+        }
+
+        async function loadWeekFromSupabase() {
+            if (!getSupabase() || !currentUser || !currentUser.id) return;
+
+            const weekStart = getDateForDayIndex(0);
+            const weekEnd = getDateForDayIndex(6);
+
+            try {
+                const { data: entries, error } = await getSupabase()
+                    .from('time_entries')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .gte('entry_date', weekStart)
+                    .lte('entry_date', weekEnd)
+                    .order('entry_date');
+
+                if (error) { console.warn('Laden mislukt:', error.message); return; }
+
+                if (entries && entries.length > 0) {
+                    // We hebben data uit de database — gebruik die i.p.v. defaults
+                    // Eerst alles leegmaken
+                    weekData = [
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                        { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, hotel: false, thuiswerk: false, hours: 0 },
+                    ];
+
+                    entries.forEach(e => {
+                        const dayIndex = getDayIndexForDate(e.entry_date);
+                        if (dayIndex >= 0 && dayIndex <= 6) {
+                            weekData[dayIndex] = {
+                                start: e.start_time ? e.start_time.slice(0,5) : '',
+                                end: e.end_time ? e.end_time.slice(0,5) : '',
+                                breakMin: e.break_minutes || 0,
+                                desc: e.description || '',
+                                location: e.location || '',
+                                km: e.km || 0,
+                                hotel: e.hotel || false,
+                                thuiswerk: e.thuiswerk || false,
+                                hours: parseFloat(e.total_hours) || 0
+                            };
+                        }
+                    });
+                }
+                // Als geen entries: weekData blijft op defaultWeekData()
+
+                weekDataDirty = false;
+                renderDays();
+                renderOverview();
+            } catch (err) {
+                console.warn('Laden fout:', err);
+            }
+        }
+
+        // ===== OPSLAAN NAAR SUPABASE =====
+        async function saveWeek(tab) {
+            const labels = { uren: 'Uren', kosten: 'Declaraties' };
+
+            if (getSupabase() && currentUser && currentUser.id) {
+                try {
+                    await saveWeekToSupabase();
+                    weekDataDirty = false;
+                    showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
+                } catch (err) {
+                    showToast('⚠️ Opslaan mislukt — probeer opnieuw');
+                    console.error('Save error:', err);
+                }
+            } else {
+                showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen (lokaal)');
+            }
+        }
+
+        // ===== INIT =====
+        updateWeekLabel();
+        renderDays();
+        renderExpenses();
+        renderOverview();
+        renderPOList();
+
+        // Laad Supabase CDN
+        (function() {
+            // Probeer meerdere CDN bronnen
+            const urls = [
+                'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
+                'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js'
+            ];
+            let i = 0;
+
+            function tryNext() {
+                if (i >= urls.length) {
+                    // Alle CDNs mislukt — bied demo modus aan
+                    console.error('Alle CDN pogingen mislukt');
+                    const err = document.getElementById('login-error');
+                    err.innerHTML = 'CDN niet bereikbaar. <a href="#" onclick="skipLogin();return false" style="color:white;text-decoration:underline">Ga verder in demo modus</a>';
+                    err.style.display = 'block';
+                    return;
+                }
+                const s = document.createElement('script');
+                s.crossOrigin = 'anonymous';
+                s.src = urls[i];
+                console.log('CDN poging ' + (i+1) + '/' + urls.length + ': ' + urls[i]);
+                s.onload = function() {
+                    // Check diverse bekende window-namen
+                    const lib = window.supabase || window.Supabase;
+                    console.log('Script geladen. window.supabase type:', typeof window.supabase, 'keys:', window.supabase ? Object.keys(window.supabase).slice(0,5) : 'n/a');
+                    if (lib && typeof lib.createClient === 'function') {
+                        window.supabase = lib; // normaliseer
+                        console.log('Supabase CDN OK!');
+                        checkSession();
+                    } else {
+                        console.warn('Script geladen maar createClient niet gevonden');
+                        i++;
+                        tryNext();
+                    }
+                };
+                s.onerror = function(e) {
+                    console.warn('CDN mislukt:', urls[i], e);
+                    i++;
+                    tryNext();
+                };
+                document.head.appendChild(s);
+            }
+            tryNext();
+        })();
+
+        // Demo modus — overslaan als CDN niet werkt
+        function skipLogin() {
+            currentUser = { id: null, name: 'Demo gebruiker', role: 'engineer' };
+            document.getElementById('login-overlay').style.display = 'none';
+            document.querySelector('.user-badge').textContent = '👤 Demo modus';
+            showToast('Demo modus — data wordt niet opgeslagen');
+        }
+    </script>
+</body>
+</html>
