@@ -65,8 +65,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 300px;
-            height: 300px;
+            width: 450px;
+            height: 450px;
             background: url('K_KTS.jpg') center/contain no-repeat;
             opacity: 0.04;
             pointer-events: none;
@@ -556,7 +556,7 @@
     <!-- LOGIN OVERLAY -->
     <div id="login-overlay" style="
         position:fixed;inset:0;z-index:9999;
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        display:flex;align-items:center;justify-content:center;
         background:linear-gradient(160deg, #07567F 0%, #064a6d 40%, #053d5a 100%);
         overflow:hidden;
     ">
@@ -568,67 +568,96 @@
             background-size:60px 60px,80px 80px,90px 90px;
         "></div>
 
-        <div style="width:100%;max-width:380px;padding:24px;position:relative;z-index:1">
-            <!-- Logo -->
-            <div style="text-align:center;margin-bottom:36px">
-                <img src="KTS%20BV%20logo2.jpg" alt="Kuijpers Technical Services" style="width:200px;object-fit:contain;border-radius:16px;background:white;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.2)">
-            </div>
-
-            <!-- Login kaart -->
-            <div style="background:white;border-radius:20px;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
-                <div style="font-weight:700;font-size:1.05rem;color:var(--text);margin-bottom:4px">Welkom terug</div>
-                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:20px">Log in met je KTS account</div>
-
-                <div style="margin-bottom:14px">
-                    <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">E-mailadres</label>
-                    <div style="position:relative">
-                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:0.4">✉</span>
-                        <input type="email" id="login-email" placeholder="naam@bedrijf.nl" style="
-                            width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
-                            font-size:16px;transition:border-color 0.2s;background:#f8fafc;
-                        " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'">
+        <div style="position:relative;z-index:1;width:100%;max-width:680px;padding:24px">
+            <!-- Login kaart: logo links + formulier rechts -->
+            <div id="login-card" style="
+                background:white;border-radius:24px;overflow:hidden;
+                box-shadow:0 12px 48px rgba(0,0,0,0.2);
+                display:flex;flex-direction:row;min-height:420px;
+            ">
+                <!-- Linker paneel: logo -->
+                <div id="login-logo-panel" style="
+                    flex:0 0 240px;
+                    background:linear-gradient(170deg, #f8fbfd 0%, #eef5f9 100%);
+                    display:flex;flex-direction:column;align-items:center;justify-content:center;
+                    padding:40px 28px;
+                    border-right:1px solid #e8eff4;
+                ">
+                    <img src="KTS%20BV%20logo2.jpg" alt="Kuijpers Technical Services" style="width:180px;object-fit:contain;margin-bottom:24px">
+                    <div style="font-size:0.75rem;color:var(--kts-blue);text-align:center;line-height:1.5;font-weight:500">
+                        Urenregistratie<br>voor ZZP'ers
                     </div>
                 </div>
 
-                <div style="margin-bottom:20px">
-                    <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Wachtwoord</label>
-                    <div style="position:relative">
-                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:0.4">🔒</span>
-                        <input type="password" id="login-password" placeholder="••••••••" style="
-                            width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
-                            font-size:16px;transition:border-color 0.2s;background:#f8fafc;
-                        " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'"
-                        onkeydown="if(event.key==='Enter')doLogin()">
+                <!-- Rechter paneel: formulier -->
+                <div style="flex:1;padding:36px 32px;display:flex;flex-direction:column;justify-content:center">
+                    <div style="font-weight:700;font-size:1.15rem;color:var(--text);margin-bottom:4px">Welkom terug</div>
+                    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:24px">Log in met je KTS account</div>
+
+                    <div style="margin-bottom:14px">
+                        <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">E-mailadres</label>
+                        <div style="position:relative">
+                            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:0.4">✉</span>
+                            <input type="email" id="login-email" placeholder="naam@bedrijf.nl" style="
+                                width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
+                                font-size:16px;transition:border-color 0.2s;background:#f8fafc;
+                            " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:22px">
+                        <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Wachtwoord</label>
+                        <div style="position:relative">
+                            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:0.4">🔒</span>
+                            <input type="password" id="login-password" placeholder="••••••••" style="
+                                width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
+                                font-size:16px;transition:border-color 0.2s;background:#f8fafc;
+                            " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'"
+                            onkeydown="if(event.key==='Enter')doLogin()">
+                        </div>
+                    </div>
+
+                    <div id="login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;background:#fef2f2;padding:10px 14px;border-radius:8px;border:1px solid #fecaca"></div>
+
+                    <button onclick="doLogin()" id="login-btn" style="
+                        width:100%;padding:14px;font-size:1rem;font-weight:700;
+                        background:linear-gradient(135deg, #07567F, #0a6d9e);color:white;
+                        border:none;border-radius:12px;cursor:pointer;
+                        box-shadow:0 4px 12px rgba(7,86,127,0.3);
+                        transition:all 0.2s;letter-spacing:0.3px;
+                    " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(7,86,127,0.4)'"
+                       onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(7,86,127,0.3)'">
+                        Inloggen
+                    </button>
+
+                    <div style="text-align:center;margin-top:16px">
+                        <button style="background:none;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer" onclick="demoLogin()"
+                            onmouseover="this.style.color='var(--kts-blue)'" onmouseout="this.style.color='var(--muted)'">
+                            Bekijk demo zonder account →
+                        </button>
                     </div>
                 </div>
-
-                <div id="login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;background:#fef2f2;padding:10px 14px;border-radius:8px;border:1px solid #fecaca"></div>
-
-                <button onclick="doLogin()" id="login-btn" style="
-                    width:100%;padding:14px;font-size:1rem;font-weight:700;
-                    background:linear-gradient(135deg, #07567F, #0a6d9e);color:white;
-                    border:none;border-radius:12px;cursor:pointer;
-                    box-shadow:0 4px 12px rgba(7,86,127,0.3);
-                    transition:all 0.2s;letter-spacing:0.3px;
-                " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(7,86,127,0.4)'"
-                   onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(7,86,127,0.3)'">
-                    Inloggen
-                </button>
-            </div>
-
-            <!-- Demo link -->
-            <div style="text-align:center;margin-top:20px">
-                <button style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:0.8rem;cursor:pointer" onclick="demoLogin()"
-                    onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
-                    Bekijk demo zonder account →
-                </button>
             </div>
 
             <!-- Footer -->
-            <div style="text-align:center;margin-top:32px;color:rgba(255,255,255,0.25);font-size:0.7rem">
+            <div style="text-align:center;margin-top:24px;color:rgba(255,255,255,0.25);font-size:0.7rem">
                 © 2026 Kuijpers Technical Services BV · Waarland
             </div>
         </div>
+
+        <!-- Responsive: op mobiel (<520px) wordt het logo boven het formulier gestapeld -->
+        <style>
+            @media (max-width: 520px) {
+                #login-card { flex-direction: column !important; min-height: auto !important; }
+                #login-logo-panel {
+                    flex: 0 0 auto !important;
+                    padding: 28px 24px 20px !important;
+                    border-right: none !important;
+                    border-bottom: 1px solid #e8eff4 !important;
+                }
+                #login-logo-panel img { width: 140px !important; margin-bottom: 8px !important; }
+            }
+        </style>
     </div>
 
     <!-- WATERMERK (zichtbaar op alle pagina's behalve login) -->
