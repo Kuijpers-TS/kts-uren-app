@@ -488,35 +488,80 @@
 
     <!-- LOGIN OVERLAY -->
     <div id="login-overlay" style="
-        position:fixed;inset:0;background:var(--bg);z-index:9999;
-        display:flex;align-items:center;justify-content:center;
+        position:fixed;inset:0;z-index:9999;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        background:linear-gradient(160deg, #07567F 0%, #064a6d 40%, #053d5a 100%);
+        overflow:hidden;
     ">
-        <div style="width:100%;max-width:400px;padding:24px">
-            <div style="text-align:center;margin-bottom:32px">
-                <div style="font-weight:800;font-size:1.4rem;color:var(--kts-blue)">Kuijpers</div>
-                <div style="font-weight:600;color:#07567F;opacity:0.7;font-size:0.9rem">Technical Services</div>
-                <div style="color:var(--muted);font-size:0.85rem;margin-top:8px">Uren · Km · Declaraties</div>
+        <!-- Subtle pattern overlay -->
+        <div style="position:absolute;inset:0;opacity:0.04;background-image:
+            radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
+            radial-gradient(circle at 80% 20%, white 1px, transparent 1px),
+            radial-gradient(circle at 60% 80%, white 1px, transparent 1px);
+            background-size:60px 60px,80px 80px,90px 90px;
+        "></div>
+
+        <div style="width:100%;max-width:380px;padding:24px;position:relative;z-index:1">
+            <!-- Logo + naam -->
+            <div style="text-align:center;margin-bottom:36px">
+                <img src="K_KTS.jpg" alt="KTS" style="width:80px;height:80px;object-fit:contain;margin-bottom:16px;border-radius:12px;background:white;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2)">
+                <div style="font-weight:800;font-size:1.5rem;color:white;letter-spacing:-0.5px">Kuijpers</div>
+                <div style="font-weight:500;color:rgba(255,255,255,0.65);font-size:0.9rem;letter-spacing:0.5px">TECHNICAL SERVICES</div>
             </div>
-            <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
-                <div style="font-weight:700;font-size:1rem;margin-bottom:16px">Inloggen</div>
-                <div class="form-group" style="margin-bottom:12px">
-                    <label>E-mailadres</label>
-                    <input type="email" id="login-email" placeholder="info@kuijpers-ts.nl" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:16px">
+
+            <!-- Login kaart -->
+            <div style="background:white;border-radius:20px;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
+                <div style="font-weight:700;font-size:1.05rem;color:var(--text);margin-bottom:4px">Welkom terug</div>
+                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:20px">Log in met je KTS account</div>
+
+                <div style="margin-bottom:14px">
+                    <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">E-mailadres</label>
+                    <div style="position:relative">
+                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:0.4">✉</span>
+                        <input type="email" id="login-email" placeholder="naam@bedrijf.nl" style="
+                            width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
+                            font-size:16px;transition:border-color 0.2s;background:#f8fafc;
+                        " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'">
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom:16px">
-                    <label>Wachtwoord</label>
-                    <input type="password" id="login-password" placeholder="••••••••" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:16px"
+
+                <div style="margin-bottom:20px">
+                    <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Wachtwoord</label>
+                    <div style="position:relative">
+                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;opacity:0.4">🔒</span>
+                        <input type="password" id="login-password" placeholder="••••••••" style="
+                            width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
+                            font-size:16px;transition:border-color 0.2s;background:#f8fafc;
+                        " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'"
                         onkeydown="if(event.key==='Enter')doLogin()">
+                    </div>
                 </div>
-                <div id="login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none"></div>
-                <button class="btn btn-primary btn-block" onclick="doLogin()" id="login-btn" style="padding:14px;font-size:1rem;width:100%">
+
+                <div id="login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;background:#fef2f2;padding:10px 14px;border-radius:8px;border:1px solid #fecaca"></div>
+
+                <button onclick="doLogin()" id="login-btn" style="
+                    width:100%;padding:14px;font-size:1rem;font-weight:700;
+                    background:linear-gradient(135deg, #07567F, #0a6d9e);color:white;
+                    border:none;border-radius:12px;cursor:pointer;
+                    box-shadow:0 4px 12px rgba(7,86,127,0.3);
+                    transition:all 0.2s;letter-spacing:0.3px;
+                " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(7,86,127,0.4)'"
+                   onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(7,86,127,0.3)'">
                     Inloggen
                 </button>
-                <div style="text-align:center;margin-top:16px">
-                    <button style="background:none;border:none;color:var(--muted);font-size:0.85rem;cursor:pointer;text-decoration:underline" onclick="demoLogin()">
-                        Demo modus (zonder account)
-                    </button>
-                </div>
+            </div>
+
+            <!-- Demo link -->
+            <div style="text-align:center;margin-top:20px">
+                <button style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:0.8rem;cursor:pointer" onclick="demoLogin()"
+                    onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
+                    Bekijk demo zonder account →
+                </button>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align:center;margin-top:32px;color:rgba(255,255,255,0.25);font-size:0.7rem">
+                © 2026 Kuijpers Technical Services BV · Waarland
             </div>
         </div>
     </div>
@@ -526,7 +571,12 @@
         <div class="header-inner">
             <div class="header-top">
                 <div class="logo">Kuijpers <span>Technical Services</span></div>
-                <div class="user-badge">👤 M. Kuijpers</div>
+                <div class="user-badge" onclick="toggleUserMenu()" style="position:relative">👤 M. Kuijpers
+                    <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;overflow:hidden;z-index:200">
+                        <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
+                        <div onclick="doLogout()" style="padding:12px 16px;font-size:0.85rem;color:#ef4444;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">🚪 Uitloggen</div>
+                    </div>
+                </div>
             </div>
             <div class="project-selector">
                 <div>
@@ -945,6 +995,7 @@
                                 <button class="btn btn-secondary btn-sm" onclick="clearDay(${i})">Wissen</button>
                                 <button class="btn btn-primary btn-sm" onclick="toggleDay(-1);showToast('✓ Opgeslagen')">Opslaan</button>
                                 ${i < 6 ? '<button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
+                            </div>
                         </div>
                     </div>`;
             }).join('');
@@ -1521,7 +1572,7 @@
             currentUser = profile || { name: data.user.email, role: 'engineer' };
 
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelector('.user-badge').textContent = '👤 ' + currentUser.name;
+            document.querySelector('.user-badge').childNodes[0].textContent = '👤 ' + currentUser.name + ' ';
             showToast('✓ Welkom, ' + currentUser.name);
 
             // Laad data vanuit Supabase
@@ -1531,8 +1582,43 @@
         function demoLogin() {
             currentUser = { name: 'Demo Gebruiker', role: 'admin' };
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelector('.user-badge').textContent = '👤 Demo';
+            document.querySelector('.user-badge').childNodes[0].textContent = '👤 Demo ';
             showToast('✓ Demo modus — data wordt niet opgeslagen');
+        }
+
+        function toggleUserMenu() {
+            const menu = document.getElementById('user-menu');
+            const isOpen = menu.style.display !== 'none';
+            menu.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) {
+                document.getElementById('user-menu-name').textContent = currentUser ? currentUser.name : '';
+                // Sluit menu bij klik ergens anders
+                setTimeout(() => {
+                    document.addEventListener('click', function closeMenu(e) {
+                        if (!e.target.closest('.user-badge')) {
+                            menu.style.display = 'none';
+                            document.removeEventListener('click', closeMenu);
+                        }
+                    });
+                }, 10);
+            }
+        }
+
+        async function doLogout() {
+            if (getSupabase()) {
+                await getSupabase().auth.signOut();
+            }
+            currentUser = null;
+            currentProject = null;
+            weekData = defaultWeekData();
+            weekDataDirty = false;
+            document.getElementById('login-overlay').style.display = 'flex';
+            document.getElementById('user-menu').style.display = 'none';
+            document.getElementById('login-email').value = '';
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-error').style.display = 'none';
+            renderDays();
+            showToast('✓ Uitgelogd');
         }
 
         // Check bestaande sessie
@@ -1543,7 +1629,7 @@
                 const { data: profile } = await getSupabase().from('users').select('*').eq('id', session.user.id).single();
                 currentUser = profile || { name: session.user.email, role: 'engineer' };
                 document.getElementById('login-overlay').style.display = 'none';
-                document.querySelector('.user-badge').textContent = '👤 ' + currentUser.name;
+                document.querySelector('.user-badge').childNodes[0].textContent = '👤 ' + currentUser.name + ' ';
                 await loadDataFromSupabase();
             }
         }
@@ -1764,7 +1850,7 @@
         function skipLogin() {
             currentUser = { id: null, name: 'Demo gebruiker', role: 'engineer' };
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelector('.user-badge').textContent = '👤 Demo modus';
+            document.querySelector('.user-badge').childNodes[0].textContent = '👤 Demo modus ';
             showToast('Demo modus — data wordt niet opgeslagen');
         }
     </script>
