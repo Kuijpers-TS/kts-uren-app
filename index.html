@@ -432,6 +432,7 @@
         .status-draft { background: #f1f5f9; color: var(--muted); }
         .status-submitted { background: #dbeafe; color: #2563eb; }
         .status-approved { background: #d1fae5; color: #059669; }
+        .status-pending { background: #fef3c7; color: #d97706; }
 
         /* ===== MODAL ===== */
         .modal-overlay {
@@ -1055,8 +1056,9 @@
 
         // ===== STATE =====
         function defaultWeekData() {
-            const empty = () => ({ start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 });
-            return [empty(), empty(), empty(), empty(), empty(), empty(), empty()];
+            const weekday = () => ({ start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 });
+            const weekend = () => ({ start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 });
+            return [weekday(), weekday(), weekday(), weekday(), weekday(), weekend(), weekend()];
         }
 
         let weekData = defaultWeekData();
@@ -1135,8 +1137,8 @@
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
                         <div style="width:40px;height:40px;border-radius:10px;background:var(--kts-blue);color:white;display:flex;align-items:center;justify-content:center;font-size:1.1rem">📋</div>
                         <div>
-                            <div style="font-weight:700;font-size:1rem;color:var(--kts-blue)">Weektotaal (uit factuur)</div>
-                            <div style="font-size:0.75rem;color:var(--muted)">${s.invoice_ref || ''} ${s.invoice_no ? '· Factuur ' + s.invoice_no : ''}</div>
+                            <div style="font-weight:700;font-size:1rem;color:var(--kts-blue)">${s.invoice_no ? 'Factuur ' + s.invoice_no : 'Weektotaal'}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">Week ${s.week_number} · ${s.invoice_ref || currentProject?.name || ''}</div>
                         </div>
                         <div style="margin-left:auto;background:var(--green);color:white;padding:3px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;text-transform:uppercase">${s.status}</div>
                     </div>
@@ -1490,6 +1492,115 @@
 
             if (error) console.error('Document nummer opslaan mislukt:', error);
             return data;
+        }
+
+        // ===== DOCUMENTEN ADMIN TAB =====
+        async function loadDocumentNumbers() {
+            const sb = getSupabase();
+            if (!sb) return;
+
+            // Facturen laden
+            const { data: facturen } = await sb.from('document_numbers')
+                .select('*')
+                .eq('type', 'factuur')
+                .order('sequence', { ascending: false });
+
+            const fList = document.getElementById('admin-factuur-list');
+            if (facturen && facturen.length > 0) {
+                fList.innerHTML = facturen.map(f => {
+                    const statusClass = f.status === 'betaald' ? 'status-approved' : f.status === 'verstuurd' ? 'status-pending' : 'status-draft';
+                    const statusLabel = f.status === 'betaald' ? '✅ Betaald' : f.status === 'verstuurd' ? '📤 Verstuurd' : f.status === 'goedgekeurd' ? '👍 Goedgekeurd' : '📝 Concept';
+                    return `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div style="font-weight:700;font-size:0.85rem;color:var(--kts-blue)">${f.number}</div>
+                            <span class="status-badge ${statusClass}" style="font-size:0.65rem">${statusLabel}</span>
+                        </div>
+                        <div style="font-size:0.78rem;color:var(--text)">${f.description || '—'}</div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
+                            <span>${f.client_name || ''}</span>
+                            <span>€${(f.amount_excl_btw || 0).toLocaleString('nl-NL', {minimumFractionDigits:2})}</span>
+                        </div>
+                        <div style="font-size:0.68rem;color:var(--muted)">${f.document_date ? new Date(f.document_date).toLocaleDateString('nl-NL') : ''}</div>
+                    </div>`;
+                }).join('');
+            } else {
+                fList.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Geen facturen gevonden</div>';
+            }
+
+            // Inkooporders laden
+            const { data: pos } = await sb.from('document_numbers')
+                .select('*')
+                .eq('type', 'inkooporder')
+                .order('sequence', { ascending: false });
+
+            const pList = document.getElementById('admin-po-list');
+            if (pos && pos.length > 0) {
+                pList.innerHTML = pos.map(p => `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div style="font-weight:700;font-size:0.85rem;color:#e67e22">${p.number}</div>
+                            <span style="font-size:0.65rem;color:var(--muted)">${p.weeks || ''}</span>
+                        </div>
+                        <div style="font-size:0.78rem;color:var(--text)">${p.description || '—'}</div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
+                            <span>${p.client_name || ''}</span>
+                            <span>€${(p.amount_excl_btw || 0).toLocaleString('nl-NL', {minimumFractionDigits:2})}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                pList.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Geen inkooporders gevonden</div>';
+            }
+        }
+
+        async function exportDocumentNumbers() {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            showToast('📊 Excel exporteren...');
+
+            // Alle document nummers ophalen
+            const { data: docs } = await sb.from('document_numbers')
+                .select('*')
+                .order('type').order('sequence', { ascending: true });
+
+            if (!docs || docs.length === 0) {
+                showToast('❌ Geen documenten gevonden');
+                return;
+            }
+
+            // CSV genereren (Excel-compatible met BOM + semicolons voor NL)
+            const facturen = docs.filter(d => d.type === 'factuur');
+            const pos = docs.filter(d => d.type === 'inkooporder');
+
+            let csv = '\uFEFF'; // BOM voor Excel UTF-8
+
+            // Sheet 1: Facturen
+            csv += 'VERSTUURDE FACTUREN (KTS → KLANT)\n';
+            csv += 'Factuurnummer;Omschrijving;Klant;Bedrag excl BTW;BTW;Bedrag incl BTW;Datum;Status\n';
+            facturen.forEach(f => {
+                csv += `${f.number};${f.description || ''};${f.client_name || ''};${(f.amount_excl_btw||0).toFixed(2).replace('.',',')};${(f.btw_amount||0).toFixed(2).replace('.',',')};${(f.amount_incl_btw||0).toFixed(2).replace('.',',')};${f.document_date || ''};${f.status || ''}\n`;
+            });
+
+            csv += '\n\nINKOOPORDERS (KTS → ZZP)\n';
+            csv += 'PO Nummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
+            pos.forEach(p => {
+                csv += `${p.number};${p.description || ''};${p.client_name || ''};${p.weeks || ''};${(p.amount_excl_btw||0).toFixed(2).replace('.',',')};${p.document_date || ''};${p.status || ''}\n`;
+            });
+
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Overzicht_facturen_${new Date().getFullYear()}_export.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast('✅ Export gedownload');
         }
 
         // ===== PDF GENERATIE =====
