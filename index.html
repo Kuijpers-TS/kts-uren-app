@@ -731,25 +731,6 @@
             </div>
         </div>
 
-        <!-- ===== INKOOPORDER SCREEN ===== -->
-        <div class="screen" id="screen-inkooporder">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h2 style="font-size:1.1rem;font-weight:700">Inkooporders</h2>
-                <button class="btn btn-primary btn-sm" onclick="generatePO()">+ Nieuwe inkooporder</button>
-            </div>
-
-            <!-- Uitleg -->
-            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:#1d4ed8">
-                Inkooporders worden automatisch opgesteld op basis van goedgekeurde uren, km's en declaraties. KTS stuurt deze naar de ZZP'er als opdrachtbevestiging.
-            </div>
-
-            <!-- PO lijst -->
-            <div id="po-list"></div>
-
-            <!-- PO Detail (verborgen) -->
-            <div id="po-detail" style="display:none"></div>
-        </div>
-
         <!-- ===== OVERZICHT SCREEN ===== -->
         <div class="screen" id="screen-overzicht">
             <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Maandoverzicht · Februari 2026</h2>
@@ -793,10 +774,6 @@
                 </button>
             </div>
 
-            <div style="margin-top:10px;display:flex;gap:10px">
-                <button class="btn btn-primary" style="flex:1" onclick="downloadUrenstaat()">📄 Urenstaat PDF</button>
-                <button class="btn btn-secondary" style="flex:1" onclick="downloadInkooporder()">📋 Inkooporder PDF</button>
-            </div>
 
             <!-- Maandfactuur (admin only) -->
             <div id="admin-invoice-section" style="display:none;margin-top:20px;padding:16px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:2px solid var(--kts-blue);border-radius:14px">
@@ -944,10 +921,6 @@
                 <div class="nav-icon">🧾</div>
                 Extra
             </div>
-            <div class="nav-item" onclick="switchScreen('inkooporder')">
-                <div class="nav-icon">📋</div>
-                Orders
-            </div>
             <div class="nav-item" onclick="switchScreen('overzicht')">
                 <div class="nav-icon">📊</div>
                 Overzicht
@@ -962,6 +935,7 @@
         let sbClient = null;
         let currentUser = null;
         let currentProject = null;
+        let savedFolderHandle = null; // File System Access API — map voor PDF opslag
 
         // Lazy init — pas aanmaken als CDN geladen is
         function getSupabase() {
@@ -1056,7 +1030,9 @@
 
         // ===== STATE =====
         function defaultWeekData() {
-            const weekday = () => ({ start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 });
+            const kmEnkel = currentProject ? parseFloat(currentProject.km_single_trip) || 0 : 0;
+            const kmRetour = kmEnkel * 2;
+            const weekday = () => ({ start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: kmRetour, kmHeen: kmEnkel, kmTerug: kmEnkel, hotel: false, thuiswerk: false, hours: 8 });
             const weekend = () => ({ start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 });
             return [weekday(), weekday(), weekday(), weekday(), weekday(), weekend(), weekend()];
         }
@@ -1981,6 +1957,50 @@
         }
 
         // ===== DOWNLOAD FUNCTIES =====
+        // ===== OPSLAGMAP (File System Access API) =====
+        async function chooseSaveFolder() {
+            if (!window.showDirectoryPicker) {
+                showToast('⚠️ Je browser ondersteunt geen mapkiezer — gebruik Chrome of Edge');
+                return;
+            }
+            try {
+                savedFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                updateFolderUI(savedFolderHandle.name);
+                showToast(`✅ Opslagmap: ${savedFolderHandle.name}`);
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error('Map kiezen mislukt:', e);
+            }
+        }
+
+        function updateFolderUI(folderName) {
+            document.getElementById('folder-icon').textContent = '✅';
+            document.getElementById('folder-label').textContent = folderName;
+            document.getElementById('folder-path').textContent = 'PDF\'s worden hier opgeslagen';
+            document.getElementById('folder-picker').style.borderColor = 'var(--kts-blue)';
+            document.getElementById('folder-picker').style.background = '#f0f9ff';
+        }
+
+        async function savePdfToFolder(pdfDoc, fileName) {
+            if (!savedFolderHandle) return false;
+            try {
+                // Vraag opnieuw toestemming als die verlopen is
+                const perm = await savedFolderHandle.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    const req = await savedFolderHandle.requestPermission({ mode: 'readwrite' });
+                    if (req !== 'granted') return false;
+                }
+                const fileHandle = await savedFolderHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                const pdfBlob = pdfDoc.output('blob');
+                await writable.write(pdfBlob);
+                await writable.close();
+                return true;
+            } catch (e) {
+                console.error('PDF opslaan mislukt:', e);
+                return false;
+            }
+        }
+
         function downloadUrenstaat() {
             const doc = generateUrenstaat();
             if (doc) {
@@ -2002,9 +2022,10 @@
 
         // ===== WEEK VERSTUREN =====
         async function submitWeek() {
+            if (!currentUser || !currentUser.id) { showToast('⚠️ Log in om te versturen (niet beschikbaar in demo)'); return; }
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
-            if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen? Er worden 2 PDF's (urenstaat + inkooporder) gemaild naar uren@kuijpers-ts.nl.`)) return;
+            if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen?`)) return;
 
             const btn = document.getElementById('submit-week-btn');
             btn.innerHTML = '⏳ Versturen...';
@@ -2016,44 +2037,26 @@
                     await saveWeekToSupabase();
                 }
 
-                // 2. PO-nummer ophalen en reserveren
-                const poNumber = await getNextDocumentNumber('inkooporder');
+                // 2. Gegevens verzamelen
                 const projCode = currentProject ? currentProject.project_code : 'KTS';
                 const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
                 const userName = currentUser ? currentUser.name : 'Onbekend';
 
-                const totalHoursAll = weekData.reduce((s,e) => s + e.hours, 0);
-                const totalKmAll = weekData.reduce((s,e) => s + (e.km||0), 0);
-                const regH = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
-                const satH = weekData[5].hours;
-                const sunH = weekData[6].hours;
-                const hotelN = weekData.filter(e => e.hotel).length;
-                const amountExcl = regH * RATE + satH * RATE * SAT_MULTIPLIER + sunH * RATE * SUN_MULTIPLIER + totalKmAll * KM_RATE + hotelN * HOTEL_RATE;
-
-                // PO opslaan in document_numbers
-                await saveDocumentNumber('inkooporder', poNumber, {
-                    project_id: currentProject ? currentProject.id : null,
-                    user_id: currentUser ? currentUser.id : null,
-                    description: `${currentProject ? currentProject.name : ''} - ${weekLabel}`,
-                    client_name: userName,
-                    weeks: weekLabel,
-                    amount_excl_btw: amountExcl,
-                    status: 'verstuurd',
-                });
-
-                // 3. PDF's genereren
+                // 3. Urenstaat PDF genereren
                 const urenstaat = generateUrenstaat();
-                const inkooporder = generateInkooporder(poNumber);
+                if (!urenstaat) throw new Error('PDF generatie mislukt');
 
-                if (!urenstaat || !inkooporder) {
-                    throw new Error('PDF generatie mislukt');
-                }
+                const fileName = `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
+                const projectName = currentProject ? currentProject.name : '';
+                const totalKm = weekData.reduce((s,e) => s + (e.km||0), 0);
+                const hotelNachten = weekData.filter(e => e.hotel).length;
 
-                // 4. PDF's als base64
-                const ureBase64 = urenstaat.output('datauristring').split(',')[1];
-                const poBase64 = inkooporder.output('datauristring').split(',')[1];
+                // 4. PDF base64 voor email bijlage
+                const pdfBase64 = urenstaat.output('datauristring').split(',')[1];
 
-                // 4. Verstuur via Supabase Edge Function
+                // 5. Verstuur via Supabase Edge Function → Resend
+                btn.innerHTML = '📧 E-mail versturen...';
+
                 const sb = getSupabase();
                 if (sb) {
                     const { data, error } = await sb.functions.invoke('send-weekstaat', {
@@ -2062,33 +2065,36 @@
                             subject: `Weekstaat ${projCode} ${weekLabel} — ${userName}`,
                             userName: userName,
                             projectCode: projCode,
-                            projectName: currentProject ? currentProject.name : '',
+                            projectName: projectName,
                             weekLabel: weekLabel,
                             totalHours: total,
-                            totalKm: weekData.reduce((s,e) => s + (e.km||0), 0),
-                            urenstaat: ureBase64,
-                            ureFilename: `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}.pdf`,
-                            inkooporder: poBase64,
-                            poFilename: `Inkooporder_${projCode}_Week${currentWeekNumber}_${currentYear}.pdf`,
+                            totalKm: totalKm,
+                            hotelNachten: hotelNachten,
+                            urenstaat: pdfBase64,
+                            ureFilename: fileName,
                         }
                     });
 
                     if (error) throw error;
-                }
 
-                btn.innerHTML = '✓ Verstuurd — wacht op goedkeuring';
-                btn.style.background = '#64748b';
-                showToast(`✓ Week ${currentWeekNumber} verstuurd naar uren@kuijpers-ts.nl`);
+                    btn.innerHTML = '✅ Verstuurd!';
+                    btn.style.background = '#059669';
+                    showToast(`✅ Weekstaat week ${currentWeekNumber} gemaild naar uren@kuijpers-ts.nl`);
+                } else {
+                    throw new Error('Niet verbonden met database');
+                }
 
             } catch (err) {
                 console.error('Versturen mislukt:', err);
                 btn.innerHTML = '✓ Week afsluiten & versturen ter goedkeuring';
                 btn.disabled = false;
 
-                // Fallback: download de PDF's lokaal
-                showToast('⚠️ Mailen mislukt — PDF\'s worden gedownload');
+                // Fallback: download PDF + open mailto
+                showToast('⚠️ Mail mislukt — PDF wordt gedownload');
                 downloadUrenstaat();
-                setTimeout(() => downloadInkooporder(), 500);
+                const fallbackSubject = `Weekstaat Week ${currentWeekNumber} / ${currentYear}`;
+                const fallbackBody = `Hierbij mijn weekstaat ter goedkeuring.\n\nVoeg de zojuist gedownloade PDF als bijlage toe.`;
+                window.open(`mailto:uren@kuijpers-ts.nl?subject=${encodeURIComponent(fallbackSubject)}&body=${encodeURIComponent(fallbackBody)}`, '_blank');
             }
         }
 
@@ -2345,7 +2351,10 @@
             const sb = getSupabase();
             if (!sb) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Niet verbonden</div>'; return; }
 
-            const { data: projects } = await sb.from('projects').select('*').eq('status', 'active').order('name');
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            let projQuery = sb.from('projects').select('*').eq('status', 'active');
+            if (!isAdmin) projQuery = projQuery.ilike('name', '%demo%');
+            const { data: projects } = await projQuery.order('name');
             if (!projects || projects.length === 0) {
                 list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen projecten gevonden</div>';
                 return;
@@ -2423,24 +2432,20 @@
 
         // ===== OVERZICHT RENDER =====
         function renderOverview() {
-            // Bereken maandcijfers (demo: 4 weken goedgekeurd + huidige week)
-            const approvedWeeklyHours = [40, 38.5, 42, 37.5]; // weken 5-8
+            // Bereken maandcijfers (alleen huidige week)
             const currentWeekHours = weekData.reduce((s,e) => s + e.hours, 0);
-            const totalMonthHours = approvedWeeklyHours.reduce((s,h) => s + h, 0) + currentWeekHours;
+            const totalMonthHours = currentWeekHours;
 
             // Omzet uren (normaal + toeslagen)
             const normalHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
             const satHours = weekData[5].hours;
             const sunHours = weekData[6].hours;
             const currentWeekRevenue = (normalHours * RATE) + (satHours * RATE * SAT_MULTIPLIER) + (sunHours * RATE * SUN_MULTIPLIER);
-            const approvedRevenue = approvedWeeklyHours.reduce((s,h) => s + h * RATE, 0);
-            const totalMonthRevenue = approvedRevenue + currentWeekRevenue;
+            const totalMonthRevenue = currentWeekRevenue;
 
             // Km totalen (vanuit dagkaarten)
-            const urenKm = weekData.reduce((s,e) => s + (e.km || 0), 0);
-            const currentKmTotal = urenKm;
-            const approvedKm = 1700; // demo: eerdere weken
-            const totalMonthKm = approvedKm + currentKmTotal;
+            const currentKmTotal = weekData.reduce((s,e) => s + (e.km || 0), 0);
+            const totalMonthKm = currentKmTotal;
             const totalKmRevenue = totalMonthKm * KM_RATE;
 
             // Hotel totalen vanuit dagkaarten
@@ -2449,8 +2454,7 @@
 
             // Extra kosten totalen
             const currentExpTotal = expEntries.reduce((s,e) => s + e.amount, 0);
-            const approvedExp = 428.50; // demo: eerdere weken
-            const totalMonthExp = approvedExp + currentExpTotal + currentHotelTotal;
+            const totalMonthExp = currentExpTotal + currentHotelTotal;
 
             // Grand total
             const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
@@ -2489,7 +2493,7 @@
 
             // Revenue breakdown
             document.getElementById('overview-revenue').innerHTML = `
-                <div class="summary-title">Omzet breakdown · februari 2026</div>
+                <div class="summary-title">Omzet breakdown · huidige week</div>
                 <div class="summary-row">
                     <span>Uren (${fmt(totalMonthHours)} u × €${RATE})</span>
                     <span class="summary-value">${fmtEuro(totalMonthRevenue)}</span>
@@ -2524,56 +2528,6 @@
         };
 
         let poEntries = [
-            {
-                id: 'KTS2026_02-24022026',
-                projectCode: 'KTS2026_02',
-                date: '2026-02-24',
-                leverancier: {
-                    naam: 'Aart Reijerse',
-                    bedrijf: 'Artecq',
-                    adres: 'Voorbeeldstraat 10',
-                    postcode: '1234AB, Amsterdam',
-                    tel: '+31 6 1234 5678',
-                    email: 'aart@artecq.nl'
-                },
-                project: 'Volt-11800 – PepsiCo Broek op Langedijk',
-                client: 'Kraftblock',
-                period: 'Februari 2026',
-                status: 'concept',
-                opmerkingen: 'Betreft inzet ZZP commissioning engineer',
-                lines: [
-                    { nr: 1, desc: 'Reguliere uren (ma-vr)', unit: 'uur', qty: 32, rate: 85.00 },
-                    { nr: 2, desc: 'Zaterdaguren (150%)', unit: 'uur', qty: 0, rate: 127.50 },
-                    { nr: 3, desc: 'Zondag-/feestdaguren (200%)', unit: 'uur', qty: 0, rate: 170.00 },
-                    { nr: 4, desc: 'Km-vergoeding', unit: 'km', qty: 768, rate: 0.50 },
-                    { nr: 5, desc: 'Verblijfskosten', unit: 'bedrag', qty: 1, rate: 143.50 },
-                ]
-            },
-            {
-                id: 'KTS2026_01-03012026',
-                projectCode: 'KTS2026_01',
-                date: '2026-01-03',
-                leverancier: {
-                    naam: 'Aart Reijerse',
-                    bedrijf: 'Artecq',
-                    adres: 'Voorbeeldstraat 10',
-                    postcode: '1234AB, Amsterdam',
-                    tel: '+31 6 1234 5678',
-                    email: 'aart@artecq.nl'
-                },
-                project: 'Volt-11800 – PepsiCo Broek op Langedijk',
-                client: 'Kraftblock',
-                period: 'Januari 2026',
-                status: 'goedgekeurd',
-                opmerkingen: 'Betreft inzet ZZP commissioning engineer',
-                lines: [
-                    { nr: 1, desc: 'Reguliere uren (ma-vr)', unit: 'uur', qty: 168, rate: 85.00 },
-                    { nr: 2, desc: 'Zaterdaguren (150%)', unit: 'uur', qty: 0, rate: 127.50 },
-                    { nr: 3, desc: 'Zondag-/feestdaguren (200%)', unit: 'uur', qty: 0, rate: 170.00 },
-                    { nr: 4, desc: 'Km-vergoeding', unit: 'km', qty: 2040, rate: 0.50 },
-                    { nr: 5, desc: 'Verblijfskosten', unit: 'bedrag', qty: 1, rate: 645.00 },
-                ]
-            }
         ];
 
         function renderPOList() {
@@ -2790,7 +2744,7 @@
         }
 
         function demoLogin() {
-            currentUser = { name: 'Demo Gebruiker', role: 'admin' };
+            currentUser = { name: 'Demo Gebruiker', role: 'engineer' };
             document.getElementById('login-overlay').style.display = 'none';
             document.querySelector('.user-badge').childNodes[0].textContent = '👤 Demo ';
             showToast('✓ Demo modus — data wordt niet opgeslagen');
@@ -2950,9 +2904,11 @@
         async function loadDataFromSupabase() {
             if (!getSupabase() || !currentUser || !currentUser.id) return;
 
-            // Haal actieve projecten op
-            const { data: projects } = await getSupabase()
-                .from('projects').select('*').eq('status', 'active').order('name');
+            // Haal actieve projecten op (niet-admins zien alleen demo project)
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            let projectQuery = getSupabase().from('projects').select('*').eq('status', 'active');
+            if (!isAdmin) projectQuery = projectQuery.ilike('name', '%demo%');
+            const { data: projects } = await projectQuery.order('name');
 
             if (projects && projects.length > 0) {
                 // Kies laatst geselecteerd project (uit localStorage) of het eerste
