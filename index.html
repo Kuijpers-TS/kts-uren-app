@@ -2914,9 +2914,11 @@
                 };
 
                 if (existing) {
-                    await sb.from('time_entries').update(entry).eq('id', existing.id);
+                    const { error } = await sb.from('time_entries').update(entry).eq('id', existing.id);
+                    if (error) console.error('time_entries update error dag ' + i + ':', error.message, error.details);
                 } else {
-                    await sb.from('time_entries').insert(entry);
+                    const { error } = await sb.from('time_entries').insert(entry);
+                    if (error) console.error('time_entries insert error dag ' + i + ':', error.message, error.details);
                 }
             }
             return true;
@@ -3258,7 +3260,7 @@
                 _editingId = existing ? existing.id : null;
                 title = existing ? 'Project bewerken' : 'Nieuw project';
                 fields = `
-                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026-02" value="${existing ? existing.project_code || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026_02" value="${existing ? existing.project_code || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800" value="${existing ? existing.name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
@@ -3307,8 +3309,8 @@
                         <div class="form-group"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Za-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sat" value="${existing ? existing.saturday_multiplier : '1.50'}"></div>
-                        <div class="form-group"><label>Zo-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sun" value="${existing ? existing.sunday_holiday_multiplier : '2.00'}"></div>
+                        <div class="form-group"><label>Za-toeslag (%)</label><input type="number" step="1" id="adm-tar-sat" placeholder="150" value="${existing ? Math.round(existing.saturday_multiplier * 100) : '150'}"></div>
+                        <div class="form-group"><label>Zo-toeslag (%)</label><input type="number" step="1" id="adm-tar-sun" placeholder="200" value="${existing ? Math.round(existing.sunday_holiday_multiplier * 100) : '200'}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
                         <div class="form-group"><label>Geldig vanaf</label><input type="date" id="adm-tar-from" value="${existing ? existing.valid_from || '' : ''}"></div>
@@ -3393,8 +3395,8 @@
                     project_id: projId,
                     hourly_rate: hourly,
                     km_rate: parseFloat(document.getElementById('adm-tar-km').value) || 0.50,
-                    saturday_multiplier: parseFloat(document.getElementById('adm-tar-sat').value) || 1.50,
-                    sunday_holiday_multiplier: parseFloat(document.getElementById('adm-tar-sun').value) || 2.00,
+                    saturday_multiplier: (parseFloat(document.getElementById('adm-tar-sat').value) || 150) / 100,
+                    sunday_holiday_multiplier: (parseFloat(document.getElementById('adm-tar-sun').value) || 200) / 100,
                     valid_from: from,
                     valid_to: document.getElementById('adm-tar-to').value || null,
                 };
