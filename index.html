@@ -733,7 +733,7 @@
 
         <!-- ===== OVERZICHT SCREEN ===== -->
         <div class="screen" id="screen-overzicht">
-            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Maandoverzicht · Februari 2026</h2>
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px" id="overview-title">Maandoverzicht</h2>
 
             <div class="stats-grid" id="overview-stats">
                 <!-- Wordt dynamisch gevuld -->
@@ -746,31 +746,14 @@
 
             <div class="week-summary">
                 <div class="summary-title">Status per week</div>
-                <div class="summary-row">
-                    <span>Week 5 (27 jan – 2 feb)</span>
-                    <span class="status-badge status-approved">Goedgekeurd</span>
-                </div>
-                <div class="summary-row">
-                    <span>Week 6 (3 – 9 feb)</span>
-                    <span class="status-badge status-approved">Goedgekeurd</span>
-                </div>
-                <div class="summary-row">
-                    <span>Week 7 (10 – 16 feb)</span>
-                    <span class="status-badge status-approved">Goedgekeurd</span>
-                </div>
-                <div class="summary-row">
-                    <span>Week 8 (17 – 23 feb)</span>
-                    <span class="status-badge status-submitted">Verstuurd</span>
-                </div>
-                <div class="summary-row">
-                    <span>Week 9 (24 feb – 2 mrt)</span>
-                    <span class="status-badge status-draft">Concept</span>
+                <div id="week-status-list">
+                    <!-- Dynamisch gevuld door renderOverview -->
                 </div>
             </div>
 
             <div style="margin-top:16px">
                 <button class="btn btn-success btn-block" id="submit-week-btn" onclick="submitWeek()" style="padding:14px;font-size:0.95rem">
-                    ✓ Week afsluiten & versturen ter goedkeuring
+                    ✓ Week <span id="submit-week-num"></span> afsluiten & versturen
                 </button>
             </div>
 
@@ -2042,9 +2025,17 @@
                 const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
                 const userName = currentUser ? currentUser.name : 'Onbekend';
 
-                // 3. Urenstaat PDF genereren
+                // 3. Wacht op jsPDF als die nog laadt
+                if (!window.jspdf) {
+                    btn.innerHTML = '📄 PDF library laden...';
+                    for (let w = 0; w < 10; w++) {
+                        await new Promise(r => setTimeout(r, 500));
+                        if (window.jspdf) break;
+                    }
+                }
+
                 const urenstaat = generateUrenstaat();
-                if (!urenstaat) throw new Error('PDF generatie mislukt');
+                if (!urenstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
                 const fileName = `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
                 const projectName = currentProject ? currentProject.name : '';
@@ -2511,6 +2502,78 @@
                     <span class="summary-value">${fmtEuro(grandTotal)}</span>
                 </div>
             `;
+
+            // Maandtitel updaten
+            const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            document.getElementById('overview-title').textContent = `Maandoverzicht · ${MONTHS_LONG[currentWeekMonday.getMonth()]} ${currentWeekMonday.getFullYear()}`;
+
+            // Weeknummer in verstuurknop
+            document.getElementById('submit-week-num').textContent = currentWeekNumber;
+
+            // Status per week lijst (4 weken terug + huidige week)
+            const weekListEl = document.getElementById('week-status-list');
+            let weekRows = '';
+            for (let offset = -4; offset <= 0; offset++) {
+                const d = new Date(currentWeekMonday);
+                d.setDate(d.getDate() + (offset * 7));
+                const wn = getISOWeek(d);
+                const endD = new Date(d); endD.setDate(endD.getDate() + 6);
+                const label = `Week ${wn} (${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
+                const isCurrent = offset === 0;
+                const statusClass = isCurrent ? 'status-draft' : 'status-approved';
+                const statusLabel = isCurrent ? 'Huidig' : 'Concept';
+
+                weekRows += `
+                    <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${offset})">
+                        <span style="${isCurrent ? 'font-weight:700;color:var(--kts-blue)' : ''}">${label}</span>
+                        <span style="display:flex;align-items:center;gap:6px">
+                            <span class="status-badge ${statusClass}">${statusLabel}</span>
+                            <span style="color:var(--muted);font-size:0.75rem">→</span>
+                        </span>
+                    </div>`;
+            }
+            weekListEl.innerHTML = weekRows;
+
+            // Verstuurknop verbergen bij historische weken
+            const submitBtn = document.getElementById('submit-week-btn');
+            if (submitBtn) submitBtn.parentElement.style.display = weekSummary ? 'none' : 'block';
+        }
+
+        async function goToWeek(offset) {
+            // Auto-save huidige week
+            if (weekDataDirty && getSupabase() && currentUser && currentUser.id) {
+                await saveWeekToSupabase();
+            }
+
+            // Navigeer naar de week
+            currentWeekMonday.setDate(currentWeekMonday.getDate() + (offset * 7));
+            currentWeekNumber = getISOWeek(currentWeekMonday);
+            currentYear = getISOYear(currentWeekMonday);
+
+            weekData = defaultWeekData();
+            weekSummary = null;
+            expandedDay = -1;
+            weekDataDirty = false;
+
+            updateWeekLabel();
+
+            if (getSupabase() && currentUser && currentUser.id) {
+                await loadWeekFromSupabase();
+            }
+
+            renderDays();
+            renderSummary();
+            renderExpenses();
+            renderOverview();
+
+            // Schakel naar Uren tab
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-uren').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach((n, i) => {
+                n.classList.toggle('active', i === 0);
+            });
+
+            showToast(`📅 Week ${currentWeekNumber}`);
         }
 
         // ===== INKOOPORDER (PO) =====
@@ -2999,6 +3062,7 @@
 
         // ===== OPSLAAN NAAR SUPABASE =====
         async function saveWeek(tab) {
+            if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
             const labels = { uren: 'Uren', kosten: 'Declaraties' };
 
             if (getSupabase() && currentUser && currentUser.id) {
@@ -3073,11 +3137,14 @@
             const s1 = document.createElement('script');
             s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
             s1.onload = function() {
+                console.log('jsPDF geladen, nu AutoTable...');
                 const s2 = document.createElement('script');
                 s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
-                s2.onload = function() { console.log('jsPDF + AutoTable geladen'); };
+                s2.onload = function() { console.log('jsPDF + AutoTable geladen!'); };
+                s2.onerror = function() { console.error('AutoTable CDN mislukt'); };
                 document.head.appendChild(s2);
             };
+            s1.onerror = function() { console.error('jsPDF CDN mislukt'); };
             document.head.appendChild(s1);
         })();
 
