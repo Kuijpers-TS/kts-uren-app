@@ -702,7 +702,7 @@
 
             <div id="days-container"></div>
 
-            <div style="margin-top:16px">
+            <div style="margin-top:16px" id="save-uren-btn-wrap">
                 <button class="btn btn-primary btn-block" onclick="saveWeek('uren')" style="padding:14px 20px;border-radius:12px;font-size:0.9rem;letter-spacing:0.3px">
                     💾 Week opslaan
                 </button>
@@ -724,7 +724,7 @@
 
             <div class="week-summary" style="margin-top:16px" id="expense-summary"></div>
 
-            <div style="margin-top:16px">
+            <div style="margin-top:16px" id="save-kosten-btn-wrap">
                 <button class="btn btn-primary btn-block" onclick="saveWeek('kosten')">
                     💾 Week opslaan
                 </button>
@@ -2409,7 +2409,7 @@
 
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) { overlay.classList.remove('active'); showRouteSelection(); }
+                if (e.target === overlay) { overlay.classList.remove('active'); }
             });
         });
 
@@ -3055,6 +3055,17 @@
                 weekDataDirty = false;
                 renderDays();
                 renderOverview();
+
+                // Verberg opslaan-knoppen bij historische weken
+                const isReadOnly = !!weekSummary;
+                const urenWrap = document.getElementById('save-uren-btn-wrap');
+                const kostenWrap = document.getElementById('save-kosten-btn-wrap');
+                if (urenWrap) urenWrap.style.display = isReadOnly ? 'none' : 'block';
+                if (kostenWrap) kostenWrap.style.display = isReadOnly ? 'none' : 'block';
+
+                // Verberg verstuurknop bij historische weken
+                const submitBtn = document.getElementById('submit-week-btn');
+                if (submitBtn) submitBtn.parentElement.style.display = isReadOnly ? 'none' : 'block';
             } catch (err) {
                 console.warn('Laden fout:', err);
             }
@@ -3132,20 +3143,33 @@
             tryNext();
         })();
 
-        // ===== jsPDF + AutoTable laden =====
+        // ===== jsPDF + AutoTable laden (met fallback CDNs) =====
         (function() {
-            const s1 = document.createElement('script');
-            s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
-            s1.onload = function() {
-                console.log('jsPDF geladen, nu AutoTable...');
-                const s2 = document.createElement('script');
-                s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
-                s2.onload = function() { console.log('jsPDF + AutoTable geladen!'); };
-                s2.onerror = function() { console.error('AutoTable CDN mislukt'); };
-                document.head.appendChild(s2);
-            };
-            s1.onerror = function() { console.error('jsPDF CDN mislukt'); };
-            document.head.appendChild(s1);
+            const jspdfUrls = [
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
+                'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js',
+                'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'
+            ];
+            const autoTableUrls = [
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+                'https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
+                'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+            ];
+
+            function loadScript(urls, idx, label, onSuccess) {
+                if (idx >= urls.length) { console.error(label + ' — alle CDNs mislukt'); return; }
+                const s = document.createElement('script');
+                s.src = urls[idx];
+                s.onload = function() { console.log(label + ' geladen via ' + urls[idx]); onSuccess(); };
+                s.onerror = function() { console.warn(label + ' mislukt: ' + urls[idx]); loadScript(urls, idx + 1, label, onSuccess); };
+                document.head.appendChild(s);
+            }
+
+            loadScript(jspdfUrls, 0, 'jsPDF', function() {
+                loadScript(autoTableUrls, 0, 'AutoTable', function() {
+                    console.log('jsPDF + AutoTable volledig geladen!');
+                });
+            });
         })();
 
         // ===== ADMIN FUNCTIES =====
