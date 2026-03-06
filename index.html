@@ -777,7 +777,6 @@
                 <button class="btn btn-sm" style="flex:1" onclick="switchAdminTab('projecten')" id="admin-tab-projecten">Projecten</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Personen</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
-                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('documenten')" id="admin-tab-documenten">Nummers</button>
             </div>
 
             <!-- ===== PROJECTEN TAB ===== -->
@@ -807,20 +806,6 @@
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
-            <!-- ===== DOCUMENTEN TAB ===== -->
-            <div id="admin-documenten" style="display:none">
-                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Facturen & Inkooporders</div>
-
-                <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px;margin-top:12px">📄 Verstuurde facturen (KTS → klant)</div>
-                <div id="admin-factuur-list"><div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Laden...</div></div>
-
-                <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px;margin-top:16px">📋 Inkooporders (KTS → ZZP)</div>
-                <div id="admin-po-list"><div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Laden...</div></div>
-
-                <div style="margin-top:16px">
-                    <button class="btn btn-secondary btn-block" onclick="exportDocumentNumbers()" style="padding:10px">📊 Export naar Excel</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -3182,13 +3167,12 @@
         }
 
         function switchAdminTab(tab) {
-            ['projecten','personen','tarieven','documenten'].forEach(t => {
+            ['projecten','personen','tarieven'].forEach(t => {
                 document.getElementById('admin-' + t).style.display = t === tab ? 'block' : 'none';
                 const btn = document.getElementById('admin-tab-' + t);
                 if (t === tab) { btn.className = 'btn btn-sm btn-primary'; btn.style.flex = '1'; }
                 else { btn.className = 'btn btn-sm btn-secondary'; btn.style.flex = '1'; }
             });
-            if (tab === 'documenten') loadDocumentNumbers();
         }
 
         async function loadAdminData() {
@@ -3197,10 +3181,11 @@
 
             // Projecten laden
             const { data: projects } = await sb.from('projects').select('*, client_company_id(name)').order('created_at', { ascending: false });
+            window._adminProjects = projects || [];
             const projList = document.getElementById('admin-project-list');
             if (projects && projects.length > 0) {
-                projList.innerHTML = projects.map(p => `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:6px">
+                projList.innerHTML = projects.map((p, idx) => `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:6px;cursor:pointer" onclick="openAdminModal('project', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700;font-size:0.9rem">${p.name}</div>
@@ -3216,10 +3201,11 @@
 
             // Personen laden (companies van type zzp)
             const { data: companies } = await sb.from('companies').select('*').order('name');
+            window._adminCompanies = companies || [];
             const persList = document.getElementById('admin-persoon-list');
             if (companies && companies.length > 0) {
-                persList.innerHTML = companies.map(c => `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px">
+                persList.innerHTML = companies.map((c, idx) => `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('persoon', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700;font-size:0.9rem">${c.name}</div>
@@ -3235,12 +3221,13 @@
 
             // Tarieven laden
             const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code)').order('valid_from', { ascending: false });
+            window._adminRates = rates || [];
             const tariefList = document.getElementById('admin-tarief-list');
             if (rates && rates.length > 0) {
-                tariefList.innerHTML = rates.map(r => {
+                tariefList.innerHTML = rates.map((r, idx) => {
                     const proj = r.project_id || {};
                     return `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px">
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('tarief', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700;font-size:0.9rem">${proj.name || 'Onbekend project'}</div>
@@ -3258,51 +3245,74 @@
             }
         }
 
-        // ===== ADMIN MODALS: Nieuw project/persoon/tarief toevoegen =====
-        function openAdminModal(type) {
-            let title, fields;
+        // ===== ADMIN MODALS: Nieuw/bewerk project/persoon/tarief =====
+        let _editingId = null; // ID van het record dat bewerkt wordt (null = nieuw)
+
+        function openAdminModal(type, editIdx) {
+            const isEdit = typeof editIdx === 'number';
+            _editingId = null;
+            let title, fields, existing = null;
+
             if (type === 'project') {
-                title = 'Nieuw project';
+                existing = isEdit ? (window._adminProjects || [])[editIdx] : null;
+                _editingId = existing ? existing.id : null;
+                title = existing ? 'Project bewerken' : 'Nieuw project';
                 fields = `
-                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026-02"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V."></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026-02" value="${existing ? existing.project_code || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800" value="${existing ? existing.name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-proj-km" placeholder="96" value="${existing ? existing.km_single_trip || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Status</label>
+                        <select id="adm-proj-status">
+                            <option value="active" ${!existing || existing.status === 'active' ? 'selected' : ''}>Active</option>
+                            <option value="inactive" ${existing && existing.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                        </select>
+                    </div>
                 `;
             } else if (type === 'persoon') {
-                title = 'Nieuw persoon / bedrijf';
+                existing = isEdit ? (window._adminCompanies || [])[editIdx] : null;
+                _editingId = existing ? existing.id : null;
+                title = existing ? 'Persoon bewerken' : 'Nieuw persoon / bedrijf';
                 fields = `
-                    <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq" value="${existing ? existing.name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Type</label>
-                        <select id="adm-pers-type"><option value="zzp">ZZP'er</option><option value="client">Klant</option><option value="kts">KTS medewerker</option></select>
+                        <select id="adm-pers-type">
+                            <option value="zzp" ${existing && existing.type === 'zzp' ? 'selected' : ''}>ZZP'er</option>
+                            <option value="client" ${existing && existing.type === 'client' ? 'selected' : ''}>Klant</option>
+                            <option value="kts" ${existing && existing.type === 'kts' ? 'selected' : ''}>KTS medewerker</option>
+                        </select>
                     </div>
-                    <div class="form-group" style="margin-bottom:12px"><label>KVK-nummer</label><input type="text" id="adm-pers-kvk" placeholder="Bijv. 89133315"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>BTW-nummer</label><input type="text" id="adm-pers-btw" placeholder="Bijv. NL004694925B15"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>KVK-nummer</label><input type="text" id="adm-pers-kvk" placeholder="Bijv. 89133315" value="${existing ? existing.kvk_number || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>BTW-nummer</label><input type="text" id="adm-pers-btw" placeholder="Bijv. NL004694925B15" value="${existing ? existing.btw_number || '' : ''}"></div>
                     <div class="form-row">
-                        <div class="form-group"><label>Adres</label><input type="text" id="adm-pers-addr" placeholder="Straat + nr"></div>
+                        <div class="form-group"><label>Adres</label><input type="text" id="adm-pers-addr" placeholder="Straat + nr" value="${existing ? existing.address || '' : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB"></div>
-                        <div class="form-group"><label>Plaats</label><input type="text" id="adm-pers-city" placeholder="Zeewolde"></div>
+                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB" value="${existing ? existing.postcode || '' : ''}"></div>
+                        <div class="form-group"><label>Plaats</label><input type="text" id="adm-pers-city" placeholder="Zeewolde" value="${existing ? existing.city || '' : ''}"></div>
                     </div>
-                    <div class="form-group" style="margin-top:12px"><label>E-mail</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl"></div>
+                    <div class="form-group" style="margin-top:12px"><label>E-mail</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl" value="${existing ? existing.email || '' : ''}"></div>
                 `;
             } else if (type === 'tarief') {
-                title = 'Nieuw tarief';
+                existing = isEdit ? (window._adminRates || [])[editIdx] : null;
+                _editingId = existing ? existing.id : null;
+                title = existing ? 'Tarief bewerken' : 'Nieuw tarief';
+                const proj = existing ? existing.project_id : null;
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Project</label><select id="adm-tar-project"><option value="">Laden...</option></select></div>
                     <div class="form-row">
-                        <div class="form-group"><label>Uurtarief (€)</label><input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00"></div>
-                        <div class="form-group"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60"></div>
+                        <div class="form-group"><label>Uurtarief (€)</label><input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? existing.hourly_rate || '' : ''}"></div>
+                        <div class="form-group"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Za-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sat" value="1.50"></div>
-                        <div class="form-group"><label>Zo-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sun" value="2.00"></div>
+                        <div class="form-group"><label>Za-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sat" value="${existing ? existing.saturday_multiplier : '1.50'}"></div>
+                        <div class="form-group"><label>Zo-toeslag (×)</label><input type="number" step="0.01" id="adm-tar-sun" value="${existing ? existing.sunday_holiday_multiplier : '2.00'}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Geldig vanaf</label><input type="date" id="adm-tar-from"></div>
-                        <div class="form-group"><label>Geldig t/m (optioneel)</label><input type="date" id="adm-tar-to"></div>
+                        <div class="form-group"><label>Geldig vanaf</label><input type="date" id="adm-tar-from" value="${existing ? existing.valid_from || '' : ''}"></div>
+                        <div class="form-group"><label>Geldig t/m (optioneel)</label><input type="date" id="adm-tar-to" value="${existing ? existing.valid_to || '' : ''}"></div>
                     </div>
                 `;
             }
@@ -3315,7 +3325,15 @@
             modal.classList.add('active');
 
             // Vul project-dropdown als tarief
-            if (type === 'tarief') loadProjectDropdown();
+            if (type === 'tarief') {
+                loadProjectDropdown().then(() => {
+                    if (existing && existing.project_id) {
+                        const projId = typeof existing.project_id === 'object' ? existing.project_id.id : existing.project_id;
+                        const sel = document.getElementById('adm-tar-project');
+                        if (sel) sel.value = projId;
+                    }
+                });
+            }
         }
 
         async function loadProjectDropdown() {
@@ -3337,19 +3355,23 @@
                 const code = document.getElementById('adm-proj-code').value.trim();
                 const name = document.getElementById('adm-proj-name').value.trim();
                 if (!code || !name) { showToast('⚠️ Vul minimaal code en naam in'); return; }
-                result = await sb.from('projects').insert({
+                const data = {
                     project_code: code,
                     name: name,
                     client_name: document.getElementById('adm-proj-client').value.trim() || null,
                     location: document.getElementById('adm-proj-location').value.trim() || null,
+                    km_single_trip: parseFloat(document.getElementById('adm-proj-km').value) || 0,
                     start_date: document.getElementById('adm-proj-start').value || null,
-                    status: 'active'
-                });
+                    status: document.getElementById('adm-proj-status').value || 'active'
+                };
+                result = _editingId
+                    ? await sb.from('projects').update(data).eq('id', _editingId)
+                    : await sb.from('projects').insert(data);
             } else if (type === 'persoon') {
                 const name = document.getElementById('adm-pers-name').value.trim();
                 const ptype = document.getElementById('adm-pers-type').value;
                 if (!name) { showToast('⚠️ Vul minimaal een naam in'); return; }
-                result = await sb.from('companies').insert({
+                const data = {
                     name: name,
                     type: ptype,
                     kvk_number: document.getElementById('adm-pers-kvk').value.trim() || null,
@@ -3358,13 +3380,16 @@
                     postcode: document.getElementById('adm-pers-postcode').value.trim() || null,
                     city: document.getElementById('adm-pers-city').value.trim() || null,
                     email: document.getElementById('adm-pers-email').value.trim() || null,
-                });
+                };
+                result = _editingId
+                    ? await sb.from('companies').update(data).eq('id', _editingId)
+                    : await sb.from('companies').insert(data);
             } else if (type === 'tarief') {
                 const projId = document.getElementById('adm-tar-project').value;
                 const hourly = parseFloat(document.getElementById('adm-tar-hourly').value);
                 const from = document.getElementById('adm-tar-from').value;
                 if (!projId || !hourly || !from) { showToast('⚠️ Vul project, uurtarief en startdatum in'); return; }
-                result = await sb.from('rates').insert({
+                const data = {
                     project_id: projId,
                     hourly_rate: hourly,
                     km_rate: parseFloat(document.getElementById('adm-tar-km').value) || 0.50,
@@ -3372,7 +3397,10 @@
                     sunday_holiday_multiplier: parseFloat(document.getElementById('adm-tar-sun').value) || 2.00,
                     valid_from: from,
                     valid_to: document.getElementById('adm-tar-to').value || null,
-                });
+                };
+                result = _editingId
+                    ? await sb.from('rates').update(data).eq('id', _editingId)
+                    : await sb.from('rates').insert(data);
             }
 
             if (result && result.error) {
@@ -3380,6 +3408,7 @@
             } else {
                 closeModal('admin-modal');
                 showToast('✓ Opgeslagen');
+                _editingId = null;
                 loadAdminData();
             }
         }
