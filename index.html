@@ -2197,6 +2197,8 @@
 
         function openSignatureModal() {
             if (!currentUser || !currentUser.id) { showToast('⚠️ Log in om te ondertekenen (niet beschikbaar in demo)'); return; }
+            const weekStatus = getWeekStatus();
+            if (!weekStatus.editable) { showToast('⚠️ ' + weekStatus.reason); return; }
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
 
@@ -2812,10 +2814,13 @@
             if (signNumEl) signNumEl.textContent = currentWeekNumber;
             if (submitNumEl) submitNumEl.textContent = currentWeekNumber;
 
-            // Reset knop-status
+            // Reset knop-status — verberg als week niet bewerkbaar is
+            const weekStatus = getWeekStatus();
             const signBtn = document.getElementById('sign-week-btn');
             const submitBtn2 = document.getElementById('submit-week-btn');
-            if (signBtn) signBtn.style.display = 'block';
+            const actionBtns = document.getElementById('week-action-btns');
+            if (actionBtns) actionBtns.style.display = weekStatus.editable ? 'flex' : 'none';
+            if (signBtn) signBtn.style.display = weekStatus.editable ? 'block' : 'none';
             if (submitBtn2) submitBtn2.style.display = 'none';
             signatureData = { zzp: null, client: null };
 
@@ -3438,7 +3443,7 @@
                     await saveWeekToSupabase();
                     weekDataDirty = false;
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
-                    renderOverview(); // Maandoverzicht bijwerken
+                    await renderOverview(); // Maandoverzicht bijwerken met verse data
                 } catch (err) {
                     showToast('⚠️ Opslaan mislukt — probeer opnieuw');
                     console.error('Save error:', err);
