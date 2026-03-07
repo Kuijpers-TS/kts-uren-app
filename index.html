@@ -591,10 +591,12 @@
             margin: 8px 0;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
             font-size: 0.82rem;
             color: #92400e;
             font-weight: 500;
+            text-align: center;
             animation: reminderSlide 0.4s ease;
         }
         .reminder-banner .reminder-close {
@@ -820,6 +822,14 @@
 
         <!-- ===== EXTRA KOSTEN SCREEN ===== -->
         <div class="screen" id="screen-kosten">
+            <div class="week-nav">
+                <button onclick="changeWeek(-1)">◀</button>
+                <div style="text-align:center">
+                    <div class="week-label" id="kosten-week-label">Laden...</div>
+                    <div class="week-total" id="kosten-week-total"></div>
+                </div>
+                <button onclick="changeWeek(1)">▶</button>
+            </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                 <h2 style="font-size:1.1rem;font-weight:700">Extra kosten</h2>
                 <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Toevoegen</button>
@@ -1040,6 +1050,12 @@
         <div class="modal" style="max-width:420px">
             <div class="modal-handle"></div>
             <div class="modal-title">✍️ Week ondertekenen</div>
+
+            <!-- Opmerkingen (optioneel) -->
+            <div style="margin-bottom:16px">
+                <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Opmerkingen <span style="font-weight:400;color:var(--muted)">(optioneel)</span></div>
+                <textarea id="sig-opmerkingen" placeholder="Eventuele opmerkingen bij deze weekstaat..." style="width:100%;min-height:60px;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;resize:vertical;font-family:inherit"></textarea>
+            </div>
 
             <!-- ZZP'er handtekening -->
             <div style="margin-bottom:16px">
@@ -1274,8 +1290,6 @@
         function openWeekDefaults() {
             document.getElementById('user-menu').style.display = 'none';
             const defaults = getWeekDefaults();
-            const hasThuiswerk = typeof userHasThuiswerk === 'function' && userHasThuiswerk();
-            const hasHotel = typeof userHasHotel === 'function' && userHasHotel();
             const container = document.getElementById('weekdefaults-days');
             container.innerHTML = defaults.map((d, i) => {
                 const isWeekend = i >= 5;
@@ -1284,21 +1298,29 @@
                 <div style="padding:8px 0;border-bottom:1px solid var(--border);${isWeekend ? 'opacity:0.6' : ''}">
                     <div style="display:flex;align-items:center;gap:8px">
                         <label style="width:36px;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:4px">
-                            <input type="checkbox" ${d.active ? 'checked' : ''} onchange="document.querySelectorAll('.wd-row-${i} input,.wd-row-${i} select').forEach(el=>{if(el.type!=='checkbox')el.disabled=!this.checked})">
+                            <input type="checkbox" ${d.active ? 'checked' : ''} onchange="document.querySelectorAll('.wd-row-${i} select,.wd-row-${i} input').forEach(el=>{if(el.type!=='checkbox')el.disabled=!this.checked})">
                             ${DAYS_FULL[i].substring(0,2)}
                         </label>
                         <div class="wd-row-${i}" style="display:flex;gap:5px;align-items:center;flex:1;flex-wrap:wrap">
-                            <input type="time" value="${d.start}" ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;width:82px" data-field="start" data-day="${i}">
-                            <span style="color:var(--muted);font-size:0.75rem">–</span>
-                            <input type="time" value="${d.end}" ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;width:82px" data-field="end" data-day="${i}">
-                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem" data-field="breakMin" data-day="${i}">
-                                <option value="0" ${d.breakMin===0?'selected':''}>0 min</option>
-                                <option value="30" ${d.breakMin===30?'selected':''}>30 min</option>
-                                <option value="60" ${d.breakMin===60?'selected':''}>60 min</option>
-                                <option value="90" ${d.breakMin===90?'selected':''}>90 min</option>
+                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;width:76px" data-field="start" data-day="${i}">
+                                <option value="">—</option>
+                                ${generateTimeOptions(d.start)}
                             </select>
-                            ${hasThuiswerk ? '<label style="display:flex;align-items:center;gap:3px;font-size:0.75rem;color:var(--muted);white-space:nowrap"><input type="checkbox" ' + (d.thuiswerk?'checked':'') + ' ' + dis + ' data-field="thuiswerk" data-day="' + i + '"> 🏠</label>' : ''}
-                            ${hasHotel && !d.thuiswerk ? '<label style="display:flex;align-items:center;gap:3px;font-size:0.75rem;color:var(--muted);white-space:nowrap"><input type="checkbox" ' + (d.hotel?'checked':'') + ' ' + dis + ' data-field="hotel" data-day="' + i + '"> 🏨</label>' : ''}
+                            <span style="color:var(--muted);font-size:0.75rem">–</span>
+                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;width:76px" data-field="end" data-day="${i}">
+                                <option value="">—</option>
+                                ${generateTimeOptions(d.end)}
+                            </select>
+                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem" data-field="breakMin" data-day="${i}">
+                                <option value="0" ${d.breakMin===0?'selected':''}>0:00</option>
+                                <option value="15" ${d.breakMin===15?'selected':''}>0:15</option>
+                                <option value="30" ${d.breakMin===30?'selected':''}>0:30</option>
+                                <option value="45" ${d.breakMin===45?'selected':''}>0:45</option>
+                                <option value="60" ${d.breakMin===60?'selected':''}>1:00</option>
+                                <option value="90" ${d.breakMin===90?'selected':''}>1:30</option>
+                            </select>
+                            <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.thuiswerk?'#059669':'var(--muted)'};white-space:nowrap;font-weight:${d.thuiswerk?'600':'400'}"><input type="checkbox" ${d.thuiswerk?'checked':''} ${dis} data-field="thuiswerk" data-day="${i}"> 🏠 Thuis</label>
+                            <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.hotel?'var(--kts-blue)':'var(--muted)'};white-space:nowrap;font-weight:${d.hotel?'600':'400'}"><input type="checkbox" ${d.hotel?'checked':''} ${dis} data-field="hotel" data-day="${i}"> 🏨 Hotel</label>
                         </div>
                     </div>
                 </div>`;
@@ -1430,8 +1452,9 @@
             const state = getClockState();
             const dayIdx = getTodayDayIndex();
 
-            // Verberg klok als vandaag niet in deze week zit of als week niet bewerkbaar is
-            if (dayIdx === -1 || weekSummary) {
+            // Verberg klok als vandaag niet in deze week zit, week niet bewerkbaar, of historisch
+            const weekStatus = getWeekStatus();
+            if (dayIdx === -1 || weekSummary || !weekStatus.editable) {
                 wrap.style.display = 'none';
                 stopClockTimer();
                 return;
@@ -1518,9 +1541,17 @@
                     km = kmH + kmT;
                 }
 
+                // Auto-invul locatie
+                let loc = '';
+                if (isThuiswerk) {
+                    loc = 'Thuis';
+                } else if (currentProject && currentProject.default_location) {
+                    loc = currentProject.default_location;
+                }
+
                 return {
                     start: d.start, end: d.end, breakMin: effectiveBreak,
-                    desc: '', location: '', km: km, kmHeen: kmH, kmTerug: kmT,
+                    desc: '', location: loc, km: km, kmHeen: kmH, kmTerug: kmT,
                     hotel: isHotel, thuiswerk: isThuiswerk, hours: hours
                 };
             });
@@ -1529,6 +1560,7 @@
         let weekData = defaultWeekData();
         let expandedDay = -1;
         let weekDataDirty = false; // track unsaved changes
+        let weekOpmerkingen = ''; // opmerkingen bij de weekstaat
 
         // Waarschuw bij browser sluiten/refresh als er onopgeslagen wijzigingen zijn
         window.addEventListener('beforeunload', function(e) {
@@ -1593,7 +1625,14 @@
         const catIcons = { hotel: '🏨', meals: '🍽️', transport: '🚌', parkeren: '🅿️', materiaal: '🔧', other: '📦' };
         const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', parkeren: 'Parkeren', materiaal: 'Materiaal', other: 'Overig' };
 
-        function fmt(n) { return n.toFixed(1).replace('.', ','); }
+        function fmt(n) {
+            // Toon als uren:minuten (bijv. 7:30)
+            const totalMin = Math.round(n * 60);
+            const h = Math.floor(totalMin / 60);
+            const m = totalMin % 60;
+            return h + ':' + m.toString().padStart(2, '0');
+        }
+        function fmtDecimal(n) { return n.toFixed(2).replace('.', ','); }
         function fmtEuro(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
         function todayLabel() {
             const d = new Date();
@@ -1719,6 +1758,18 @@
         }
 
         // ===== UREN RENDER =====
+        // Genereer time-opties in 15-min stappen (05:00 – 23:45)
+        function generateTimeOptions(selected) {
+            let html = '';
+            for (let h = 5; h < 24; h++) {
+                for (let m = 0; m < 60; m += 15) {
+                    const val = h.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0');
+                    html += '<option value="' + val + '"' + (val === selected ? ' selected' : '') + '>' + val + '</option>';
+                }
+            }
+            return html;
+        }
+
         function renderDays() {
             const container = document.getElementById('days-container');
 
@@ -1792,30 +1843,38 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Start</label>
-                                    <input type="time" value="${entry.start}" onchange="updateEntry(${i},'start',this.value)">
+                                    <select onchange="updateEntry(${i},'start',this.value)" style="font-size:16px">
+                                        <option value="">—</option>
+                                        ${generateTimeOptions(entry.start)}
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Eind</label>
-                                    <input type="time" value="${entry.end}" onchange="updateEntry(${i},'end',this.value)">
+                                    <select onchange="updateEntry(${i},'end',this.value)" style="font-size:16px">
+                                        <option value="">—</option>
+                                        ${generateTimeOptions(entry.end)}
+                                    </select>
                                 </div>
                                 <div class="form-group" style="flex:0.7">
-                                    <label>Pauze (uur)</label>
+                                    <label>Pauze</label>
                                     <select onchange="updateEntry(${i},'breakMin',this.value)" style="font-size:16px">
-                                        <option value="0" ${entry.breakMin==0?'selected':''}>0</option>
-                                        <option value="30" ${entry.breakMin==30?'selected':''}>0,5</option>
-                                        <option value="60" ${entry.breakMin==60?'selected':''}>1</option>
-                                        <option value="90" ${entry.breakMin==90?'selected':''}>1,5</option>
+                                        <option value="0" ${entry.breakMin==0?'selected':''}>0:00</option>
+                                        <option value="15" ${entry.breakMin==15?'selected':''}>0:15</option>
+                                        <option value="30" ${entry.breakMin==30?'selected':''}>0:30</option>
+                                        <option value="45" ${entry.breakMin==45?'selected':''}>0:45</option>
+                                        <option value="60" ${entry.breakMin==60?'selected':''}>1:00</option>
+                                        <option value="90" ${entry.breakMin==90?'selected':''}>1:30</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top:12px">
-                                <label>Omschrijving werkzaamheden</label>
-                                <textarea onchange="updateEntry(${i},'desc',this.value)" placeholder="${currentProject && currentProject.default_description ? currentProject.default_description : 'Bijv. commissioning, I/O checks, vendor overleg...'}">${entry.desc}</textarea>
+                                <label>Werkzaamheden</label>
+                                <textarea onchange="updateEntry(${i},'desc',this.value)" placeholder="Beschrijf hier de werkzaamheden van vandaag">${entry.desc}</textarea>
                             </div>
                             <div class="form-row" ${entry.thuiswerk ? 'style="display:none"' : ''}>
                                 <div class="form-group">
                                     <label>Locatie</label>
-                                    <input type="text" value="${entry.location||''}" placeholder="${currentProject && currentProject.default_location ? currentProject.default_location : 'Bijv. Broek op Langedijk'}" onchange="updateEntry(${i},'location',this.value)">
+                                    <input type="text" value="${entry.location||''}" placeholder="${currentProject && currentProject.default_location ? currentProject.default_location : 'Projectlocatie'}" onchange="updateEntry(${i},'location',this.value)">
                                 </div>
                             </div>
 
@@ -1909,10 +1968,12 @@
                 e.km = 0;
                 e.kmHeen = 0;
                 e.kmTerug = 0;
+                e.location = 'Thuis';
             } else {
                 e.kmHeen = 0;
                 e.kmTerug = 0;
                 e.km = getUserKmRetour();
+                e.location = currentProject && currentProject.default_location ? currentProject.default_location : '';
             }
             renderDays();
         }
@@ -1956,7 +2017,17 @@
         function updateEntry(i, field, value) {
             markDirty();
             const e = weekData[i];
-            if (field === 'start') e.start = value;
+            if (field === 'start') {
+                e.start = value;
+                // Auto-invul locatie als die nog leeg is
+                if (value && !e.location) {
+                    if (e.thuiswerk) {
+                        e.location = 'Thuis';
+                    } else if (currentProject && currentProject.default_location) {
+                        e.location = currentProject.default_location;
+                    }
+                }
+            }
             if (field === 'end') e.end = value;
             if (field === 'breakMin') e.breakMin = Math.max(0, parseInt(value) || 0);
             if (field === 'desc') e.desc = value;
@@ -2237,7 +2308,38 @@
             email: 'info@kuijpers-ts.nl'
         };
 
-        const KTS_LOGO_B64 = 'data:image/jpeg;base64,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2T+y7dftAaFo194dktLPxbpMuyKe7kaJJbZz88ZdVYgqwV1OOCGHG7Ney/Cq38VWnw+0S18bNaS+J7e3EN7PYymSKd1+USglVOWADEY4JNZV6qqwhNOzXT9V6m2FoOjUqU5K6eqe912b8j89Pgh8cb74Qfs4/GjwTqUptfEOkSmGwic4ZJrlzazBfTZIpk/4ETX1R+wR8M1+H37PelXksPl3/iJ21aXcuGEbALAv0ESofq5ryL9oH9gzxP8AEn46al4j0C70q08Ma3Nbz36T3LpOjnatwVQRkNkLvHzD5mPTrX3Hp+n2+lafb2NpEsFrbRLDDEgwqIoAVR7AACtMVWpyh+7esnd/dt99zHBYerCp+9WkFaPnrv8AdZHwh4C5/wCCnHir/rldf+kcFVbm7i8A/wDBTo3OsP5NtqrKlvNJwp+0WKxxc+8iFPrXr/hb9mzxbo/7Z2t/FO4l0w+GbxJ1iRLlzc5e3ijGU2YHKN/F0xXTftUfso6d+0Tp1lfWt8NE8W6YhS01BkLRyRk7vKlA527uVYcqSSM5IN+2p86Tejik/Ij6tV9nJxXvKbkl31/U98ByM18t/wDBR0Z/Zzb/ALDNl/6E1cNY/Dz9sezsl8PR+NdFFgqmBdVmnilmCdN3mNAZCfcjd7165+0d8D/F/wAXP2edI8HWd/YXfie3ksJLu8vZnjimeJcSvu2s2WbJGR35rnpwjRqwk5pq/Q661SeJoVIKm07Pf/hzwn4PfsYeJfHHws8K6/a/GnxLodvqWmw3Mem2yy+VbKygiNcXCjA7YA+lfa3hfwemi+ANL8MapdN4hjttOj0+5ub5dxvQsYR2kDFs7+cgk9Tya+RfCnwl/a48EeGtM0DRfGPhOz0nTYEtrWEiNykajCjc1qSfqTXuFj4J+LniD9nrU/D/AIg8W2dj8SbrzVh13TspFCPNDR4MaIQdg25C8Zzz3rENzes01fp/wxGEjGnG0aUk7devluzwH4y/8E+m8NS3fi74Sa9daLf2Qa6i0iSZlKYyxW3uVIdOmAr5HbcBWr+zZ+3CdS+GkUXjrztQ1yyuGthfRKqtcxBEZHkHA3/OVJAGduepNZ+ufDL9sLXdLufDF54w0WbSLhDbS30dxDFI8R4OZFgEgyODgA17T8A/2RvDPwj+HsGjaxBa+I9Xlma6u714iqeYyquyNc5CKqKBnk8njOBtUqR9ly1pKT6W3+8wo0pqvzYeDhG2t9r9LK575RRRXkHvBRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//2Q==';
+        // KTS Logo dynamisch laden (niet als base64 in de HTML)
+        let KTS_LOGO_B64 = null;
+        (function preloadKTSLogo() {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                KTS_LOGO_B64 = canvas.toDataURL('image/png');
+            };
+            img.src = 'KTS BV logo2.png';
+        })();
+
+        // Tandwiel icoon dynamisch laden (niet als base64 in de HTML)
+        let TANDWIEL_DATA_URL = null;
+        (function preloadTandwiel() {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                // Resize naar klein formaat voor PDF (32x32 px)
+                const canvas = document.createElement('canvas');
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 32, 32);
+                TANDWIEL_DATA_URL = canvas.toDataURL('image/png');
+            };
+            img.src = 'tandwiel-blauw.png';
+        })();
 
         function getWeekDates() {
             return Array.from({length: 7}, (_, i) => {
@@ -2276,48 +2378,58 @@
             const projCode = currentProject ? (currentProject.project_code || '') : '';
             const clientName = currentProject ? (currentProject.client_name || '') : '';
 
-            // --- Rij 1: URENSTAAT (links) ---
+            // --- Rij 1: Tandwiel + URENSTAAT (links, verticaal gecentreerd) ---
+            const titleY = 20;
+            // Tandwiel icoon links van URENSTAAT
+            if (TANDWIEL_DATA_URL) {
+                try { doc.addImage(TANDWIEL_DATA_URL, 'PNG', ml, titleY - 7, 8, 8); } catch(e) {}
+            }
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...ktsBlue);
-            doc.text('URENSTAAT', ml, 22);
+            doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? 10 : 0), titleY);
 
-            // --- KTS Logo rechtsboven ---
+            // --- KTS Logo rechtsboven (iets groter) ---
             const rightX = pw - mr - 65;
-            const logoW = 28, logoH = logoW * (283 / 300);
+            const logoW = 34, logoH = logoW * (283 / 300);
             const logoX = rightX + (65 - logoW) / 2;
-            doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 5, logoW, logoH);
+            if (KTS_LOGO_B64) {
+                doc.addImage(KTS_LOGO_B64, 'PNG', logoX, 3, logoW, logoH);
+            }
 
             // --- KTS adresgegevens (onder logo) ---
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 37);
-            doc.text(KTS_INFO.postcode, pw - mr, 37, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 42);
-            doc.text(KTS_INFO.tel2, pw - mr, 42, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 38);
+            doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
+            doc.setFont('helvetica', 'bold');
+            doc.text(KTS_INFO.tel1, rightX, 43);
+            doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 47);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(0, 0, 0);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 47, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 48);
+            doc.setTextColor(...ktsBlue);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // --- Rij 3-4: Naam + Periode ---
+            // --- Rij 3-4: Naam + Periode (labels bold) ---
             let y = 30;
             doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Naam: ', ml, y);
-            doc.text('Periode: ', ml + uw * 0.38, y);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Naam:', ml, y);
+            doc.text('Periode:', ml + uw * 0.38, y);
             y += 5;
+            doc.setFont('helvetica', 'normal');
             doc.text(userName, ml, y);
             doc.text(`Week ${currentWeekNumber} ${currentYear}`, ml + uw * 0.38, y);
 
-            // --- Rij 6-7: Project + Klant ---
+            // --- Rij 6-7: Project + Klant (labels bold) ---
             y += 6;
+            doc.setFont('helvetica', 'bold');
             doc.text('Project:', ml, y);
             doc.text('Klant:', ml + uw * 0.38, y);
             y += 5;
+            doc.setFont('helvetica', 'normal');
             doc.text(`${projCode}${projCode && projName ? ' – ' : ''}${projName}${projLoc ? ' ' + projLoc : ''}`, ml, y);
             doc.text(clientName, ml + uw * 0.38, y);
 
@@ -2331,8 +2443,8 @@
                 fmtDate(dates[i]),
                 e.start || '',
                 e.end || '',
-                e.breakMin > 0 ? (e.breakMin / 60).toFixed(1).replace('.0','') : '',
-                e.hours > 0 ? e.hours.toString() : '',
+                e.breakMin > 0 ? (e.breakMin / 60).toFixed(2).replace('.', ',') : '',
+                e.hours > 0 ? e.hours.toFixed(2).replace('.', ',') : '',
                 e.desc || '',
                 e.location || '',
                 (e.km || 0) > 0 ? e.km.toString() : ''
@@ -2384,20 +2496,28 @@
             doc.text('Aantal uren', ml + 44, y + 4);
 
             hLine(sumRightX, pw - mr, y); hLine(sumRightX, pw - mr, y + rh);
-            doc.text('Direct kosten', sumRightX + 1, y + 4);
+            doc.text('Extra kosten', sumRightX + 1, y + 4);
 
             // Data rijen
             doc.setFont('helvetica', 'normal');
             const sumRows = [
-                ['Reguliere uren (ma-vr)', regHours > 0 ? regHours.toString() : ''],
-                ['Zaterdaguren', satHours > 0 ? satHours.toString() : ''],
-                ['Zondag-/feestdaguren', sunHours > 0 ? sunHours.toString() : ''],
+                ['Reguliere uren (ma-vr)', regHours > 0 ? regHours.toFixed(2).replace('.', ',') : ''],
+                ['Zaterdaguren', satHours > 0 ? satHours.toFixed(2).replace('.', ',') : ''],
+                ['Zondag-/feestdaguren', sunHours > 0 ? sunHours.toFixed(2).replace('.', ',') : ''],
                 ['Reis kilometers', totalKm > 0 ? totalKm.toString() : ''],
             ];
 
-            const directKostenText = hotelNights > 0
-                ? `Hotelovernachting ${hotelNights}x á €${HOTEL_RATE.toFixed(0)},- per nacht`
-                : '';
+            // Verzamel extra kosten teksten
+            const extraKostenLines = [];
+            if (hotelNights > 0) {
+                extraKostenLines.push(`Hotelovernachting ${hotelNights}x á €${HOTEL_RATE.toFixed(0)},- per nacht`);
+            }
+            // Extra kosten uit declaraties toevoegen
+            if (expEntries && expEntries.length > 0) {
+                expEntries.forEach(exp => {
+                    extraKostenLines.push(`${exp.catLabel || exp.cat}: ${exp.desc} — ${fmtEuroPdf(exp.amount)}`);
+                });
+            }
 
             for (let i = 0; i < sumRows.length; i++) {
                 const ry = y + rh + (i * rh);
@@ -2405,9 +2525,9 @@
                 cellRect(ml + 42, ry, 22, rh);
                 doc.text(sumRows[i][1], ml + 53, ry + 4, { align: 'center' });
 
-                // Direct kosten rij (borders rechts)
+                // Extra kosten rij (borders rechts)
                 hLine(sumRightX, pw - mr, ry); hLine(sumRightX, pw - mr, ry + rh);
-                if (i === 0 && directKostenText) doc.text(directKostenText, sumRightX + 1, ry + 4);
+                if (i < extraKostenLines.length) doc.text(extraKostenLines[i], sumRightX + 1, ry + 4);
             }
 
             // Totaal rij
@@ -2416,7 +2536,7 @@
             hLine(ml, ml + 42, totY + rh);
             doc.text('Totaal te factureren uren', ml + 1, totY + 4);
             cellRect(ml + 42, totY, 22, rh);
-            doc.text(totalHours.toString(), ml + 53, totY + 4, { align: 'center' });
+            doc.text(totalHours.toFixed(2).replace('.', ','), ml + 53, totY + 4, { align: 'center' });
             hLine(sumRightX, pw - mr, totY); hLine(sumRightX, pw - mr, totY + rh);
 
             // --- Rij 26+: Handtekeningen ---
@@ -2436,6 +2556,14 @@
             doc.setLineWidth(lw);
             doc.setDrawColor(...borderColor);
             doc.rect(ml, y + rh, sigW, sigH);
+            // Vul opmerkingen in als die er zijn
+            if (weekOpmerkingen) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                const opmLines = doc.splitTextToSize(weekOpmerkingen, sigW - 4);
+                doc.text(opmLines, ml + 2, y + rh + 4);
+                doc.setFontSize(8);
+            }
 
             // Handtekening opdrachtnemer
             const sig2x = ml + sigW + 5;
@@ -2815,6 +2943,9 @@
 
         async function confirmSignatures() {
             if (!signatureData.zzp) { showToast('⚠️ ZZP\'er handtekening is verplicht'); return; }
+            // Opmerkingen opslaan
+            const opmEl = document.getElementById('sig-opmerkingen');
+            if (opmEl) weekOpmerkingen = opmEl.value.trim();
             const btn = document.getElementById('sig-confirm-btn');
             if (btn) { btn.innerHTML = '⏳ Ondertekenen...'; btn.disabled = true; }
             closeModal('signature-modal');
@@ -3147,7 +3278,10 @@
         }
 
         function updateWeekLabel() {
-            document.getElementById('week-label').textContent = getWeekLabel();
+            const label = getWeekLabel();
+            document.getElementById('week-label').textContent = label;
+            const kostenLabel = document.getElementById('kosten-week-label');
+            if (kostenLabel) kostenLabel.textContent = label;
         }
 
         // ===== EXPENSE ACTIONS =====
@@ -3536,16 +3670,24 @@
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
-            } else if (signatureData.zzp) {
-                // Net ondertekend (handtekening in geheugen): toon verstuur-knop
-                if (actionBtns) actionBtns.style.display = 'flex';
-                if (signBtn) signBtn.style.display = 'none';
-                if (submitBtn2) submitBtn2.style.display = 'block';
             } else if (weekStatus.editable) {
-                // Bewerkbaar: toon onderteken-knop (ook als eerder ondertekend maar handtekening verloren)
+                // Week is bewerkbaar
                 if (actionBtns) actionBtns.style.display = 'flex';
-                if (signBtn) signBtn.style.display = 'block';
-                if (submitBtn2) submitBtn2.style.display = 'none';
+
+                if (signatureData.zzp) {
+                    // Handtekening in geheugen: toon verstuur-knop, verberg onderteken-knop
+                    if (signBtn) signBtn.style.display = 'none';
+                    if (submitBtn2) submitBtn2.style.display = 'block';
+                } else if (isOndertekend) {
+                    // DB zegt ondertekend maar geen handtekening in geheugen: toon BEIDE knoppen
+                    // Onderteken-knop om opnieuw te tekenen (nodig voor PDF)
+                    if (signBtn) { signBtn.style.display = 'block'; signBtn.innerHTML = '✍️ Week ' + currentWeekNumber + ' opnieuw ondertekenen'; }
+                    if (submitBtn2) submitBtn2.style.display = 'none';
+                } else {
+                    // Niet ondertekend: toon onderteken-knop
+                    if (signBtn) { signBtn.style.display = 'block'; signBtn.innerHTML = '✍️ Week <span id="sign-week-num">' + currentWeekNumber + '</span> ondertekenen'; }
+                    if (submitBtn2) submitBtn2.style.display = 'none';
+                }
             } else {
                 // Niet bewerkbaar: verberg alles
                 if (actionBtns) actionBtns.style.display = 'none';
@@ -3914,9 +4056,17 @@
             updateClockUI();
             checkWeekReminder();
 
-            // Eerste keer? Toon welkomst
+            // Eerste keer? Toon welkomst (of admin heeft reset aangevraagd)
             const firstLoginKey = 'kts-welcomed-' + currentUser.id;
-            if (!localStorage.getItem(firstLoginKey)) {
+            let showWelcome = !localStorage.getItem(firstLoginKey);
+            // Check of admin een reset heeft aangevraagd via DB
+            if (!showWelcome && currentUser.reset_welcome) {
+                showWelcome = true;
+                localStorage.removeItem(firstLoginKey);
+                // Reset de DB flag
+                getSupabase().from('users').update({ reset_welcome: false }).eq('id', currentUser.id).then(() => {});
+            }
+            if (showWelcome) {
                 localStorage.setItem(firstLoginKey, '1');
                 showWelcomeGuide();
             } else {
@@ -4560,8 +4710,15 @@
                 return;
             }
 
-            // Check of week al verstuurd is
-            if (weekSummary) {
+            // Check of week al verstuurd is, niet bewerkbaar, of historisch
+            const wkStatus = getWeekStatus();
+            if (weekSummary || !wkStatus.editable) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Niet tonen als de week niet de huidige actieve week is (bijv. navigatie naar andere week)
+            if (!currentProject || currentProject.status === 'inactive') {
                 container.innerHTML = '';
                 return;
             }
@@ -4968,6 +5125,7 @@
                         <div class="form-group" id="adm-user-km-wrap" style="${existing && existing.allow_km === false ? 'display:none' : ''}"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
                         <div class="form-group" id="adm-user-hotel-wrap" style="${existing && existing.allow_hotel === false ? 'display:none' : ''}"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
                     </div>
+                    ${existing ? '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"><button type="button" class="btn btn-sm btn-secondary" onclick="resetWelcomeGuide(\'' + existing.id + '\', \'' + (existing.name || existing.email) + '\')" style="font-size:0.8rem">🔄 Welkomstgids opnieuw tonen bij volgende login</button></div>' : ''}
                 `;
             }
 
@@ -5084,6 +5242,16 @@
         }
 
         // toggleAssignmentSetting verwijderd — feature flags staan nu op users tabel
+
+        async function resetWelcomeGuide(userId, userName) {
+            if (!confirm('Welkomstgids opnieuw tonen voor ' + userName + ' bij volgende login?')) return;
+            const { error } = await getSupabase().from('users').update({ reset_welcome: true }).eq('id', userId);
+            if (error) {
+                showToast('❌ Fout: ' + error.message);
+            } else {
+                showToast('✓ Welkomstgids wordt opnieuw getoond bij volgende login van ' + userName);
+            }
+        }
 
         async function assignUserToProject() {
             const sb = getSupabase();
