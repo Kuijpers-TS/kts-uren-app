@@ -3430,6 +3430,7 @@
                     await saveWeekToSupabase();
                     weekDataDirty = false;
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
+                    renderOverview(); // Maandoverzicht bijwerken
                 } catch (err) {
                     showToast('⚠️ Opslaan mislukt — probeer opnieuw');
                     console.error('Save error:', err);
