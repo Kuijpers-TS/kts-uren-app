@@ -2312,15 +2312,17 @@
         let KTS_LOGO_B64 = null;
         (function preloadKTSLogo() {
             const img = new Image();
-            img.crossOrigin = 'anonymous';
             img.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                KTS_LOGO_B64 = canvas.toDataURL('image/png');
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    KTS_LOGO_B64 = canvas.toDataURL('image/png');
+                } catch(e) { console.warn('KTS logo canvas error:', e); }
             };
+            img.onerror = function() { console.warn('KTS logo kon niet geladen worden'); };
             img.src = 'KTS BV logo2.png';
         })();
 
@@ -2328,16 +2330,17 @@
         let TANDWIEL_DATA_URL = null;
         (function preloadTandwiel() {
             const img = new Image();
-            img.crossOrigin = 'anonymous';
             img.onload = function() {
-                // Resize naar klein formaat voor PDF (32x32 px)
-                const canvas = document.createElement('canvas');
-                canvas.width = 32;
-                canvas.height = 32;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, 32, 32);
-                TANDWIEL_DATA_URL = canvas.toDataURL('image/png');
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 32;
+                    canvas.height = 32;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 32, 32);
+                    TANDWIEL_DATA_URL = canvas.toDataURL('image/png');
+                } catch(e) { console.warn('Tandwiel canvas error:', e); }
             };
+            img.onerror = function() { console.warn('Tandwiel kon niet geladen worden'); };
             img.src = 'tandwiel-blauw.png';
         })();
 
@@ -2379,15 +2382,20 @@
             const clientName = currentProject ? (currentProject.client_name || '') : '';
 
             // --- Rij 1: Tandwiel + URENSTAAT (links, verticaal gecentreerd) ---
+            const titleFontSize = 16;
             const titleY = 20;
-            // Tandwiel icoon links van URENSTAAT
-            if (TANDWIEL_DATA_URL) {
-                try { doc.addImage(TANDWIEL_DATA_URL, 'PNG', ml, titleY - 7, 8, 8); } catch(e) {}
-            }
-            doc.setFontSize(16);
+            doc.setFontSize(titleFontSize);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...ktsBlue);
-            doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? 10 : 0), titleY);
+            // Tandwiel icoon links van URENSTAAT — verticaal gecentreerd op de tekst
+            const iconSize = 8;
+            // Tekst baseline = titleY, cap height ~70% van font size in mm (16pt ≈ 5.6mm, cap ≈ 4mm)
+            const textCapHeightMm = titleFontSize * 0.3528 * 0.72; // pt->mm * cap height ratio
+            const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
+            if (TANDWIEL_DATA_URL) {
+                try { doc.addImage(TANDWIEL_DATA_URL, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
+            }
+            doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? iconSize + 2 : 0), titleY);
 
             // --- KTS Logo rechtsboven (iets groter) ---
             const rightX = pw - mr - 65;
@@ -2399,7 +2407,7 @@
 
             // --- KTS adresgegevens (onder logo) ---
             doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
+            doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
             doc.text(KTS_INFO.adres, rightX, 38);
             doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
@@ -2438,37 +2446,48 @@
             const dates = getWeekDates();
             const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
-            const tableData = weekData.map((e, i) => [
-                dagNamen[i],
-                fmtDate(dates[i]),
-                e.start || '',
-                e.end || '',
-                e.breakMin > 0 ? (e.breakMin / 60).toFixed(2).replace('.', ',') : '',
-                e.hours > 0 ? e.hours.toFixed(2).replace('.', ',') : '',
-                e.desc || '',
-                e.location || '',
-                (e.km || 0) > 0 ? e.km.toString() : ''
-            ]);
+            // Km kolom alleen tonen als gebruiker km-permissie heeft OF er km-data in de week zit
+            const showKmCol = userHasKm() || weekData.some(e => (e.km || 0) > 0);
+
+            const tableData = weekData.map((e, i) => {
+                const row = [
+                    dagNamen[i],
+                    fmtDate(dates[i]),
+                    e.start || '',
+                    e.end || '',
+                    e.breakMin > 0 ? (e.breakMin / 60).toFixed(2).replace('.', ',') : '',
+                    e.hours > 0 ? e.hours.toFixed(2).replace('.', ',') : '',
+                    e.desc || '',
+                    e.location || '',
+                ];
+                if (showKmCol) row.push((e.km || 0) > 0 ? e.km.toString() : '');
+                return row;
+            });
+
+            const tableHead = ['Dag', 'Datum', 'Begintijd', 'Eindtijd', 'Pauze (uur)', 'Gewerkte uren', 'Omschrijving werkzaamheden', 'Locatie'];
+            if (showKmCol) tableHead.push('Kilometers');
+
+            const colStyles = {
+                0: { cellWidth: 20 },
+                1: { cellWidth: 24, halign: 'center' },
+                2: { cellWidth: 18, halign: 'center' },
+                3: { cellWidth: 18, halign: 'center' },
+                4: { cellWidth: 18, halign: 'center' },
+                5: { cellWidth: 22, halign: 'center' },
+                6: { cellWidth: 'auto', halign: 'center' },
+                7: { cellWidth: showKmCol ? 32 : 'auto', halign: 'center' },
+            };
+            if (showKmCol) colStyles[8] = { cellWidth: 22, halign: 'center' };
 
             doc.autoTable({
                 startY: y,
                 margin: { left: ml, right: mr },
-                head: [['Dag', 'Datum', 'Begintijd', 'Eindtijd', 'Pauze (uur)', 'Gewerkte uren', 'Omschrijving werkzaamheden', 'Locatie', 'Kilometers']],
+                head: [tableHead],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 2, lineColor: borderColor, lineWidth: lw, font: 'helvetica', textColor: [0, 0, 0] },
-                headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
+                headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8, halign: 'center' },
                 bodyStyles: { fillColor: [255, 255, 255] },
-                columnStyles: {
-                    0: { cellWidth: 20 },
-                    1: { cellWidth: 24, halign: 'center' },
-                    2: { cellWidth: 18, halign: 'center' },
-                    3: { cellWidth: 18, halign: 'center' },
-                    4: { cellWidth: 18, halign: 'center' },
-                    5: { cellWidth: 22, halign: 'center' },
-                    6: { cellWidth: 'auto', halign: 'center' },
-                    7: { cellWidth: 32, halign: 'center' },
-                    8: { cellWidth: 22, halign: 'center' },
-                },
+                columnStyles: colStyles,
             });
 
             // --- Rij 19-24: Samenvatting ---
@@ -2504,8 +2523,11 @@
                 ['Reguliere uren (ma-vr)', regHours > 0 ? regHours.toFixed(2).replace('.', ',') : ''],
                 ['Zaterdaguren', satHours > 0 ? satHours.toFixed(2).replace('.', ',') : ''],
                 ['Zondag-/feestdaguren', sunHours > 0 ? sunHours.toFixed(2).replace('.', ',') : ''],
-                ['Reis kilometers', totalKm > 0 ? totalKm.toString() : ''],
             ];
+            // Reis kilometers alleen tonen als km-kolom actief is
+            if (showKmCol) {
+                sumRows.push(['Reis kilometers', totalKm > 0 ? totalKm.toString() : '']);
+            }
 
             // Verzamel extra kosten teksten
             const extraKostenLines = [];
