@@ -430,6 +430,8 @@
             font-weight: 600;
         }
         .status-draft { background: #f1f5f9; color: var(--muted); }
+        .status-saved { background: #fef3c7; color: #d97706; }
+        .status-signed { background: #dbeafe; color: #2563eb; }
         .status-submitted { background: #dbeafe; color: #2563eb; }
         .status-approved { background: #d1fae5; color: #059669; }
         .status-pending { background: #fef3c7; color: #d97706; }
@@ -2215,9 +2217,11 @@
             }, 100);
         }
 
-        function confirmSignatures() {
+        async function confirmSignatures() {
             if (!signatureData.zzp) { showToast('⚠️ ZZP\'er handtekening is verplicht'); return; }
             closeModal('signature-modal');
+
+            await updateWeekStatus('ondertekend');
             showToast('✓ Week ' + currentWeekNumber + ' ondertekend');
 
             // Toon verstuur-knop, verberg onderteken-knop
@@ -2225,6 +2229,7 @@
             const submitBtn = document.getElementById('submit-week-btn');
             if (signBtn) { signBtn.style.display = 'none'; }
             if (submitBtn) { submitBtn.style.display = 'block'; }
+            await renderOverview();
         }
 
         // ===== WEEK VERSTUREN =====
@@ -2284,12 +2289,26 @@
 
                     if (error) throw error;
 
+                    await updateWeekStatus('verstuurd');
                     btn.innerHTML = '✅ Verstuurd!';
                     btn.style.background = '#059669';
-                    const msg = data && data.email
-                        ? `✅ Week ${currentWeekNumber} opgeslagen in OneDrive + notificatie verstuurd`
-                        : `✅ Week ${currentWeekNumber} opgeslagen in OneDrive`;
-                    showToast(msg);
+                    showToast('✅ Week ' + currentWeekNumber + ' opgeslagen in OneDrive');
+                    await renderOverview();
+
+                    // Open vooringevulde email vanuit de ZZP'er naar uren@kuijpers-ts.nl
+                    const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userName + ' - ' + projectName);
+                    const mailBody = encodeURIComponent(
+                        'Beste Mark,\n\n' +
+                        'Hierbij meld ik dat mijn weekstaat is ingediend.\n\n' +
+                        'Medewerker: ' + userName + '\n' +
+                        'Project: ' + projectName + '\n' +
+                        'Week: ' + currentWeekNumber + ' / ' + currentYear + '\n' +
+                        'Bestand: ' + fileName + '\n\n' +
+                        'De weekstaat is opgeslagen in OneDrive (Urenstaten 2026).\n\n' +
+                        'Met vriendelijke groet,\n' +
+                        userName
+                    );
+                    window.location.href = 'mailto:uren@kuijpers-ts.nl?subject=' + mailSubject + '&body=' + mailBody;
                 } else {
                     throw new Error('Niet verbonden met database');
                 }
@@ -2698,7 +2717,7 @@
             let sunHours = 0;
 
             monthEntries.forEach(e => {
-                const hours = parseFloat(e.hours) || 0;
+                const hours = parseFloat(e.total_hours) || 0;
                 totalMonthHours += hours;
                 if (hasKm) totalMonthKm += parseFloat(e.km) || 0;
                 if (hasHotel && e.hotel) totalHotelNights++;
@@ -2828,6 +2847,17 @@
             const weekListEl = document.getElementById('week-status-list');
             let weekRows = '';
 
+            // Haal week statussen op uit database
+            const weekStatuses = await getMonthWeekStatuses();
+
+            // Status-configuratie: label, kleur, CSS class
+            const STATUS_CONFIG = {
+                concept:     { label: 'Concept',     class: 'status-draft' },
+                opgeslagen:  { label: 'Opgeslagen',  class: 'status-saved' },
+                ondertekend: { label: 'Ondertekend', class: 'status-signed' },
+                verstuurd:   { label: 'Verstuurd',   class: 'status-approved' }
+            };
+
             // Bepaal alle weken die (deels) in deze maand vallen
             const firstDay = new Date(overviewYear, overviewMonth, 1);
             const lastDay = new Date(overviewYear, overviewMonth + 1, 0);
@@ -2847,16 +2877,23 @@
                 const we = endD.toISOString().split('T')[0];
                 const weekHours = monthEntries
                     .filter(e => e.entry_date >= ws && e.entry_date <= we)
-                    .reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+                    .reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
 
-                let statusClass = '';
-                let statusLabel = '';
-                if (isCurrent) {
-                    statusClass = 'status-draft';
-                    statusLabel = 'Huidig';
-                } else if (weekHours > 0) {
-                    statusClass = 'status-approved';
-                    statusLabel = fmt(weekHours) + ' u';
+                // Status badge bepalen
+                const dbStatus = weekStatuses[wn];
+                let statusBadges = '';
+
+                if (dbStatus && STATUS_CONFIG[dbStatus]) {
+                    const cfg = STATUS_CONFIG[dbStatus];
+                    statusBadges = '<span class="status-badge ' + cfg.class + '">' + cfg.label + '</span>';
+                }
+
+                if (weekHours > 0) {
+                    statusBadges = '<span style="font-size:0.75rem;color:var(--muted);font-weight:600">' + fmt(weekHours) + ' u</span>' + statusBadges;
+                }
+
+                if (isCurrent && !dbStatus) {
+                    statusBadges = '<span class="status-badge status-draft">Huidig</span>';
                 }
 
                 // Bereken offset in weken ten opzichte van currentWeekMonday
@@ -2867,7 +2904,7 @@
                     <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${weekOffset})">
                         <span style="${isCurrent ? 'font-weight:700;color:var(--kts-blue)' : ''}">${label}</span>
                         <span style="display:flex;align-items:center;gap:6px">
-                            ${statusLabel ? '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>' : ''}
+                            ${statusBadges}
                             <span style="color:var(--muted);font-size:0.75rem">→</span>
                         </span>
                     </div>`;
@@ -3433,6 +3470,44 @@
             }
         }
 
+        // ===== WEEK STATUS BIJWERKEN =====
+        async function updateWeekStatus(newStatus) {
+            const sb = getSupabase();
+            if (!sb || !currentUser || !currentUser.id || !currentProject) return;
+
+            const extra = {};
+            if (newStatus === 'ondertekend') extra.signed_at = new Date().toISOString();
+            if (newStatus === 'verstuurd') extra.submitted_at = new Date().toISOString();
+
+            const { error } = await sb.from('week_status').upsert({
+                user_id: currentUser.id,
+                project_id: currentProject.id,
+                week_number: currentWeekNumber,
+                year: currentYear,
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+                ...extra
+            }, { onConflict: 'user_id,project_id,week_number,year' });
+
+            if (error) console.error('Week status update mislukt:', error.message);
+        }
+
+        // Haal week statussen op voor een maand
+        async function getMonthWeekStatuses() {
+            const sb = getSupabase();
+            if (!sb || !currentUser || !currentUser.id || !currentProject) return {};
+
+            const { data } = await sb.from('week_status')
+                .select('week_number, status')
+                .eq('user_id', currentUser.id)
+                .eq('project_id', currentProject.id)
+                .eq('year', overviewYear);
+
+            const map = {};
+            if (data) data.forEach(d => { map[d.week_number] = d.status; });
+            return map;
+        }
+
         // ===== OPSLAAN NAAR SUPABASE =====
         async function saveWeek(tab) {
             if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
@@ -3441,6 +3516,7 @@
             if (getSupabase() && currentUser && currentUser.id) {
                 try {
                     await saveWeekToSupabase();
+                    await updateWeekStatus('opgeslagen');
                     weekDataDirty = false;
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
                     await renderOverview(); // Maandoverzicht bijwerken met verse data
