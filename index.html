@@ -2969,13 +2969,16 @@
             if (signNumEl) signNumEl.textContent = currentWeekNumber;
             if (submitNumEl) submitNumEl.textContent = currentWeekNumber;
 
+            // Haal week statussen op uit database (nodig voor knop-status + weeklijst)
+            const weekStatuses = await getMonthWeekStatuses();
+
             // Knop-status bepalen op basis van week-status
             const weekStatus = getWeekStatus();
             const signBtn = document.getElementById('sign-week-btn');
             const submitBtn2 = document.getElementById('submit-week-btn');
             const actionBtns = document.getElementById('week-action-btns');
 
-            // Haal de db-status van de huidige week op
+            // DB-status van de huidige week
             const currentWeekDbStatus = weekStatuses[currentWeekNumber];
             const isOndertekend = currentWeekDbStatus === 'ondertekend';
             const isVerstuurd = currentWeekDbStatus === 'verstuurd';
@@ -3005,9 +3008,6 @@
             // Weken van deze maand ophalen en tonen
             const weekListEl = document.getElementById('week-status-list');
             let weekRows = '';
-
-            // Haal week statussen op uit database
-            const weekStatuses = await getMonthWeekStatuses();
 
             // Status-configuratie: label, kleur, CSS class
             const STATUS_CONFIG = {
