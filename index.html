@@ -990,7 +990,7 @@
         // Helper functies voor feature flags (uit users tabel)
         function userHasKm() {
             if (currentUser && currentUser.allow_km === false) return false;
-            return currentProject && parseFloat(currentProject.km_single_trip) > 0;
+            return currentUser && parseFloat(currentUser.km_single_trip) > 0;
         }
         function userHasThuiswerk() {
             return !currentUser || currentUser.allow_thuiswerk !== false;
@@ -1020,12 +1020,13 @@
         // ===== CONFIG =====
         let RATE = 85;
         let KM_RATE = 0.50;
-        let HOTEL_RATE = 110.00; // default, wordt overschreven door project.hotel_rate
+        let HOTEL_RATE = 110.00; // default, wordt overschreven door currentUser.hotel_rate
         let SAT_MULTIPLIER = 1.50;
         let SUN_MULTIPLIER = 2.00;
         let currentRates = null; // geladen uit Supabase rates tabel
-        const KM_THUIS_PROJECT = 96;  // enkele reis thuis → project
-        const KM_THUIS_RETOUR = 192;  // standaard retour thuis ↔ project (= 2 × 96)
+        // Dynamische km-waarden op basis van currentUser.km_single_trip
+        function getUserKmEnkel() { return currentUser ? parseFloat(currentUser.km_single_trip) || 0 : 0; }
+        function getUserKmRetour() { return getUserKmEnkel() * 2; }
         const KM_PROJECT_HOTEL = 12;  // enkele reis project → hotel
         const KM_HOTEL_PROJECT = 12;  // enkele reis hotel → project
         const DAYS_FULL = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -1128,8 +1129,8 @@
 
         // ===== STATE =====
         function defaultWeekData() {
-            const kmEnkel = currentProject ? parseFloat(currentProject.km_single_trip) || 0 : 0;
-            const kmRetour = kmEnkel * 2;
+            const kmEnkel = getUserKmEnkel();
+            const kmRetour = getUserKmRetour();
             const weekday = () => ({ start: '07:00', end: '16:00', breakMin: 60, desc: '', location: '', km: kmRetour, kmHeen: kmEnkel, kmTerug: kmEnkel, hotel: false, thuiswerk: false, hours: 8 });
             const weekend = () => ({ start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 });
             return [weekday(), weekday(), weekday(), weekday(), weekday(), weekend(), weekend()];
@@ -1460,7 +1461,7 @@
             } else {
                 e.kmHeen = 0;
                 e.kmTerug = 0;
-                e.km = KM_THUIS_RETOUR;
+                e.km = getUserKmRetour();
             }
             renderDays();
         }
@@ -1478,7 +1479,7 @@
                     e.kmTerug = KM_PROJECT_HOTEL;
                 } else {
                     // Eerste hoteldag: thuis→project + project→hotel
-                    e.kmHeen = KM_THUIS_PROJECT;
+                    e.kmHeen = getUserKmEnkel();
                     e.kmTerug = KM_PROJECT_HOTEL;
                 }
                 e.km = e.kmHeen + e.kmTerug;
@@ -1486,7 +1487,7 @@
                 // Geen hotel: retour thuis↔project
                 e.kmHeen = 0;
                 e.kmTerug = 0;
-                e.km = KM_THUIS_RETOUR;
+                e.km = getUserKmRetour();
             }
             renderDays();
         }
@@ -1545,7 +1546,7 @@
         function fillStandard() {
             for (let i = 0; i < 5; i++) {
                 if (weekData[i].hours === 0) {
-                    weekData[i] = { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: 'Broek op Langedijk', km: KM_THUIS_RETOUR, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 };
+                    weekData[i] = { start: '07:00', end: '16:00', breakMin: 60, desc: '', location: 'Broek op Langedijk', km: getUserKmRetour(), kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 8 };
                 }
             }
             renderDays();
@@ -2726,7 +2727,7 @@
             if (!project) { showToast('⚠️ Project niet gevonden'); return; }
 
             currentProject = project;
-            if (currentProject.hotel_rate) HOTEL_RATE = parseFloat(currentProject.hotel_rate);
+            if (currentUser && currentUser.hotel_rate) HOTEL_RATE = parseFloat(currentUser.hotel_rate);
             document.querySelector('.project-name').textContent = currentProject.name;
             document.querySelector('.project-meta').textContent =
                 (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
@@ -3856,7 +3857,7 @@
             }
 
             // Tarieven laden (user_id verwijst naar auth.users, dus apart users ophalen)
-            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code, km_single_trip)').order('valid_from', { ascending: false });
+            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code)').order('valid_from', { ascending: false });
             window._adminRates = rates || [];
             // Haal user-namen op voor weergave
             const { data: allUsersForRates } = await sb.from('users').select('id, name, email');
@@ -3879,7 +3880,7 @@
                             </div>
                             <div style="text-align:right">
                                 <div style="font-weight:700;color:var(--kts-blue)">€${r.hourly_rate}/u</div>
-                                ${proj.km_single_trip && parseFloat(proj.km_single_trip) > 0 ? '<div style="font-size:0.7rem;color:var(--muted)">€' + r.km_rate + '/km</div>' : ''}
+                                ${r.km_rate ? '<div style="font-size:0.7rem;color:var(--muted)">€' + r.km_rate + '/km</div>' : ''}
                             </div>
                         </div>
                     </div>`;
@@ -3908,12 +3909,7 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? existing.default_description || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.default_location || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px">
-                        <div class="form-group"><label>Km enkele reis (huis → werklocatie)</label><input type="number" step="0.1" id="adm-proj-km" placeholder="0 = geen km-vergoeding" value="${existing ? existing.km_single_trip || '' : ''}"></div>
-                    </div>
-                    <div class="form-group" style="margin-bottom:12px">
-                        <div class="form-group"><label>Hotelprijs per nacht (€)</label><input type="number" step="0.01" id="adm-proj-hotel-rate" placeholder="0 = geen hotel" value="${existing ? existing.hotel_rate || '' : ''}"></div>
-                    </div>
+                    <!-- Km en hotelprijs staan nu bij Personen instellingen -->
                     <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
                         <select id="adm-proj-status">
@@ -4043,7 +4039,7 @@
         async function loadProjectDropdown() {
             const sb = getSupabase();
             if (!sb) return;
-            const { data: projects } = await sb.from('projects').select('id, name, project_code, km_single_trip').order('name');
+            const { data: projects } = await sb.from('projects').select('id, name, project_code').order('name');
             window._tariffProjects = projects || [];
             const sel = document.getElementById('adm-tar-project');
             if (projects) {
@@ -4061,12 +4057,9 @@
         }
 
         function updateTariffKmVisibility() {
-            const sel = document.getElementById('adm-tar-project');
+            // Km-tarief altijd tonen in tarief modal (km_single_trip staat nu op user)
             const kmWrap = document.getElementById('adm-tar-km-wrap');
-            if (!sel || !kmWrap) return;
-            const proj = (window._tariffProjects || []).find(p => p.id === sel.value);
-            const hasKm = proj && parseFloat(proj.km_single_trip) > 0;
-            kmWrap.style.display = hasKm ? 'block' : 'none';
+            if (kmWrap) kmWrap.style.display = 'block';
         }
 
         // ===== PROJECTTOEWIJZING FUNCTIES =====
@@ -4186,8 +4179,7 @@
                     location: document.getElementById('adm-proj-location').value.trim() || null,
                     default_description: document.getElementById('adm-proj-desc').value.trim() || null,
                     default_location: document.getElementById('adm-proj-deflocation').value.trim() || null,
-                    km_single_trip: parseFloat(document.getElementById('adm-proj-km').value) || 0,
-                    hotel_rate: parseFloat(document.getElementById('adm-proj-hotel-rate').value) || null,
+                    // km_single_trip en hotel_rate staan nu op users tabel
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active'
                 };
