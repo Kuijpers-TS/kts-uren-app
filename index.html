@@ -974,7 +974,30 @@
         let sbClient = null;
         let currentUser = null;
         let currentProject = null;
+        let currentUserProject = null; // user_projects record met feature flags
         let savedFolderHandle = null; // File System Access API — map voor PDF opslag
+
+        // Helper functies voor feature flags (user_projects > project fallback)
+        function userHasKm() {
+            if (currentUserProject) return currentUserProject.allow_km !== false && currentProject && parseFloat(currentProject.km_single_trip) > 0;
+            return currentProject && parseFloat(currentProject.km_single_trip) > 0;
+        }
+        function userHasThuiswerk() {
+            if (currentUserProject) return currentUserProject.allow_thuiswerk !== false;
+            return currentProject && currentProject.allow_thuiswerk;
+        }
+        function userHasHotel() {
+            if (currentUserProject) return currentUserProject.allow_hotel !== false;
+            return currentProject && currentProject.allow_hotel;
+        }
+        function userCanSeeRates() {
+            if (currentUserProject) return currentUserProject.show_rates !== false;
+            return true;
+        }
+        function userCanDeclareExpenses() {
+            if (currentUserProject) return currentUserProject.can_declare_expenses !== false;
+            return true;
+        }
 
         // Lazy init — pas aanmaken als CDN geladen is
         function getSupabase() {
@@ -1128,8 +1151,7 @@
         // ===== KM SECTION HELPER =====
         function renderKmSection(entry, i) {
             // Geen km-sectie tonen als project geen km-vergoeding heeft
-            const hasKmVergoeding = currentProject && parseFloat(currentProject.km_single_trip) > 0;
-            if (!hasKmVergoeding) return '';
+            if (!userHasKm()) return '';
 
             if (entry.hotel) {
                 const prevHotel = i > 0 && weekData[i-1].hotel;
@@ -1283,11 +1305,10 @@
 
                 // Build badges
                 let badges = '';
-                const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
                 if (isFilled) {
-                    if (currentProject && currentProject.allow_thuiswerk && entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
-                    if (hasKm && entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
-                    if (currentProject && currentProject.allow_hotel && entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
+                    if (userHasThuiswerk() && entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
+                    if (userHasKm() && entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
+                    if (userHasHotel() && entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
                 }
 
                 // Location for collapsed view
@@ -1343,19 +1364,19 @@
                             <!-- TOGGLES: Thuiswerk + Hotel + Km (alleen tonen als project het toelaat) -->
                             <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
 
-                                <!-- Thuiswerk toggle (alleen als project thuiswerk toestaat) -->
-                                ${currentProject && currentProject.allow_thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.thuiswerk?'#f0fdf4':'#f8fafc') + ';border:1px solid ' + (entry.thuiswerk?'#86efac':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(' + i + ')">' +
+                                <!-- Thuiswerk toggle (alleen als gebruiker thuiswerk mag) -->
+                                ${userHasThuiswerk() ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.thuiswerk?'#f0fdf4':'#f8fafc') + ';border:1px solid ' + (entry.thuiswerk?'#86efac':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(' + i + ')">' +
                                     '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.thuiswerk?'#059669':'#cbd5e1') + ';background:' + (entry.thuiswerk?'#059669':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
                                         (entry.thuiswerk ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
                                     '</div>' +
                                     '<div style="flex:1">' +
                                         '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.thuiswerk?'#059669':'var(--muted)') + '">🏠 Thuiswerk</div>' +
-                                        '<div style="font-size:0.75rem;color:var(--muted)">' + (currentProject && parseFloat(currentProject.km_single_trip) > 0 ? 'Geen reiskilometers' : 'Werken vanuit huis') + '</div>' +
+                                        '<div style="font-size:0.75rem;color:var(--muted)">' + (userHasKm() ? 'Geen reiskilometers' : 'Werken vanuit huis') + '</div>' +
                                     '</div>' +
                                 '</div>' : ''}
 
-                                <!-- Hotel toggle (alleen als project hotel toestaat en niet thuiswerk) -->
-                                ${currentProject && currentProject.allow_hotel && !entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'#eff6ff':'#f8fafc') + ';border:1px solid ' + (entry.hotel?'#93c5fd':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
+                                <!-- Hotel toggle (alleen als gebruiker hotel mag en niet thuiswerk) -->
+                                ${userHasHotel() && !entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'#eff6ff':'#f8fafc') + ';border:1px solid ' + (entry.hotel?'#93c5fd':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
                                     '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + ';background:' + (entry.hotel?'var(--kts-blue)':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
                                         (entry.hotel ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
                                     '</div>' +
@@ -1379,13 +1400,11 @@
                     </div>`;
             }).join('');
 
-            const projHasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
-            const projHasHotel = currentProject && currentProject.allow_hotel;
-            const totalKmWeek = projHasKm ? weekData.reduce((s,e) => s + (e.km||0), 0) : 0;
-            const totalHotelWeek = projHasHotel ? weekData.filter(e => e.hotel).length : 0;
+            const totalKmWeek = userHasKm() ? weekData.reduce((s,e) => s + (e.km||0), 0) : 0;
+            const totalHotelWeek = userHasHotel() ? weekData.filter(e => e.hotel).length : 0;
             let weekTotalText = `Totaal: ${fmt(totalHours)} uur`;
-            if (projHasKm && totalKmWeek > 0) weekTotalText += ` · ${totalKmWeek} km`;
-            if (projHasHotel && totalHotelWeek > 0) weekTotalText += ` · ${totalHotelWeek}× 🏨`;
+            if (userHasKm() && totalKmWeek > 0) weekTotalText += ` · ${totalKmWeek} km`;
+            if (userHasHotel() && totalHotelWeek > 0) weekTotalText += ` · ${totalHotelWeek}× 🏨`;
             document.getElementById('week-total').textContent = weekTotalText;
             renderSummary();
             renderOverview();
@@ -2623,7 +2642,7 @@
                 return;
             }
             // Blokkeer kosten scherm als gebruiker geen declaratierechten heeft
-            if (name === 'kosten' && currentUser && currentUser.role !== 'admin' && currentUser.can_declare_expenses === false) {
+            if (name === 'kosten' && currentUser && currentUser.role !== 'admin' && !userCanDeclareExpenses()) {
                 showToast('⚠️ Extra kosten niet beschikbaar');
                 return;
             }
@@ -2711,6 +2730,18 @@
                 localStorage.setItem('kts_last_project_' + currentUser.id, currentProject.id);
             }
 
+            // Laad user_projects feature flags voor nieuw project
+            currentUserProject = null;
+            if (currentUser && currentUser.id) {
+                const { data: upData } = await sb.from('user_projects')
+                    .select('allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses')
+                    .eq('user_id', currentUser.id).eq('project_id', currentProject.id).single();
+                currentUserProject = upData || null;
+                // Extra kosten tab tonen/verbergen
+                const navKosten = document.getElementById('nav-kosten');
+                if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
+            }
+
             // Laad tarieven voor nieuw project
             await loadProjectRates();
 
@@ -2755,10 +2786,10 @@
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
 
             // Project feature flags
-            const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
-            const hasThuiswerk = currentProject && currentProject.allow_thuiswerk;
-            const hasHotel = currentProject && currentProject.allow_hotel;
-            const canSeeRates = !currentUser || currentUser.show_rates !== false;
+            const hasKm = userHasKm();
+            const hasThuiswerk = userHasThuiswerk();
+            const hasHotel = userHasHotel();
+            const canSeeRates = userCanSeeRates();
 
             // Maandlabel updaten
             document.getElementById('month-label').textContent = `${MONTHS_LONG[overviewMonth]} ${overviewYear}`;
@@ -3485,14 +3516,24 @@
                     (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
             }
 
+            // Laad user_projects feature flags voor huidige gebruiker + project
+            currentUserProject = null;
+            if (currentProject && currentUser && currentUser.id) {
+                const { data: upData } = await getSupabase().from('user_projects')
+                    .select('allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_id', currentProject.id)
+                    .single();
+                currentUserProject = upData || null;
+            }
+
             // Laad tarieven voor het project
             await loadProjectRates();
 
             // Extra kosten tab tonen/verbergen op basis van rechten
             const navKosten = document.getElementById('nav-kosten');
             if (navKosten) {
-                const canExpenses = isAdmin || currentUser.can_declare_expenses !== false;
-                navKosten.style.display = canExpenses ? '' : 'none';
+                navKosten.style.display = (isAdmin || userCanDeclareExpenses()) ? '' : 'none';
             }
 
             // Laad uren voor huidige week
@@ -3843,33 +3884,10 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? existing.default_description || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.default_location || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px">
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                            <input type="checkbox" id="adm-proj-km-toggle" ${existing && existing.km_single_trip > 0 ? 'checked' : ''}
-                                onchange="document.getElementById('adm-proj-km-wrap').style.display = this.checked ? 'block' : 'none'"
-                                style="width:18px;height:18px;accent-color:var(--kts-blue)">
-                            Km-vergoeding
-                        </label>
-                    </div>
-                    <div id="adm-proj-km-wrap" style="display:${existing && existing.km_single_trip > 0 ? 'block' : 'none'};margin-bottom:12px">
-                        <div class="form-group"><label>Km enkele reis (huis → werklocatie)</label><input type="number" step="0.1" id="adm-proj-km" placeholder="96" value="${existing ? existing.km_single_trip || '' : ''}"></div>
+                        <div class="form-group"><label>Km enkele reis (huis → werklocatie)</label><input type="number" step="0.1" id="adm-proj-km" placeholder="0 = geen km-vergoeding" value="${existing ? existing.km_single_trip || '' : ''}"></div>
                     </div>
                     <div class="form-group" style="margin-bottom:12px">
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                            <input type="checkbox" id="adm-proj-thuiswerk" ${existing && existing.allow_thuiswerk ? 'checked' : ''}
-                                style="width:18px;height:18px;accent-color:var(--kts-blue)">
-                            Thuiswerk mogelijk
-                        </label>
-                    </div>
-                    <div class="form-group" style="margin-bottom:12px">
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                            <input type="checkbox" id="adm-proj-hotel" ${existing && existing.allow_hotel ? 'checked' : ''}
-                                onchange="document.getElementById('adm-proj-hotel-wrap').style.display = this.checked ? 'block' : 'none'"
-                                style="width:18px;height:18px;accent-color:var(--kts-blue)">
-                            Hotelovernachting mogelijk
-                        </label>
-                    </div>
-                    <div id="adm-proj-hotel-wrap" style="display:${existing && existing.allow_hotel ? 'block' : 'none'};margin-bottom:12px">
-                        <div class="form-group"><label>Hotelprijs per nacht (€)</label><input type="number" step="0.01" id="adm-proj-hotel-rate" placeholder="110.00" value="${existing ? existing.hotel_rate || '110' : '110'}"></div>
+                        <div class="form-group"><label>Hotelprijs per nacht (€)</label><input type="number" step="0.01" id="adm-proj-hotel-rate" placeholder="0 = geen hotel" value="${existing ? existing.hotel_rate || '' : ''}"></div>
                     </div>
                     <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
@@ -4000,11 +4018,13 @@
             const sb = getSupabase();
             if (!sb) return;
 
-            // Haal toegewezen gebruikers op
-            const { data: assignments } = await sb.from('user_projects').select('id, user_id').eq('project_id', projectId);
+            // Haal toegewezen gebruikers op met feature flags
+            const { data: assignments } = await sb.from('user_projects')
+                .select('id, user_id, allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses')
+                .eq('project_id', projectId);
 
-            // Haal alle gebruikers op (voor dropdown + show_rates status)
-            const { data: allUsers } = await sb.from('users').select('id, name, email, show_rates').order('name');
+            // Haal alle gebruikers op (voor dropdown)
+            const { data: allUsers } = await sb.from('users').select('id, name, email').order('name');
 
             const assignedIds = (assignments || []).map(a => a.user_id);
             const container = document.getElementById('adm-proj-users');
@@ -4015,21 +4035,23 @@
                 container.innerHTML = assignments.map(a => {
                     const user = allUsers.find(u => u.id === a.user_id);
                     const name = user ? (user.name || user.email) : a.user_id;
-                    const showRates = user ? (user.show_rates !== false) : true;
-                    const canExpenses = user ? (user.can_declare_expenses !== false) : true;
-                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:4px">
-                        <div style="display:flex;flex-direction:column;gap:2px">
-                            <span style="font-size:0.85rem;font-weight:500">👤 ${name}</span>
-                            <div style="display:flex;flex-direction:column;gap:1px">
-                                <label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);cursor:pointer">
-                                    <input type="checkbox" ${showRates ? 'checked' : ''} onchange="toggleUserSetting('${a.user_id}', 'show_rates', this.checked)" style="width:14px;height:14px">
-                                    Tarieven zichtbaar
-                                </label>
-                                <label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);cursor:pointer">
-                                    <input type="checkbox" ${canExpenses ? 'checked' : ''} onchange="toggleUserSetting('${a.user_id}', 'can_declare_expenses', this.checked)" style="width:14px;height:14px">
-                                    Extra kosten declareren
-                                </label>
-                            </div>
+                    const flags = [
+                        { field: 'allow_km', label: 'Km-vergoeding', val: a.allow_km !== false },
+                        { field: 'allow_thuiswerk', label: 'Thuiswerken', val: a.allow_thuiswerk !== false },
+                        { field: 'allow_hotel', label: 'Hotelovernachtingen', val: a.allow_hotel !== false },
+                        { field: 'show_rates', label: 'Tarieven zichtbaar', val: a.show_rates !== false },
+                        { field: 'can_declare_expenses', label: 'Extra kosten declareren', val: a.can_declare_expenses !== false },
+                    ];
+                    const checksHtml = flags.map(f =>
+                        `<label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);cursor:pointer">
+                            <input type="checkbox" ${f.val ? 'checked' : ''} onchange="toggleAssignmentSetting('${a.id}', '${f.field}', this.checked)" style="width:14px;height:14px">
+                            ${f.label}
+                        </label>`
+                    ).join('');
+                    return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 10px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:6px">
+                        <div style="display:flex;flex-direction:column;gap:3px">
+                            <span style="font-size:0.85rem;font-weight:600">👤 ${name}</span>
+                            <div style="display:flex;flex-direction:column;gap:2px">${checksHtml}</div>
                         </div>
                         <button type="button" onclick="removeUserFromProject('${a.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:2px 6px">✕</button>
                     </div>`;
@@ -4046,21 +4068,16 @@
             }
         }
 
-        async function toggleUserSetting(userId, field, value) {
+        async function toggleAssignmentSetting(assignmentId, field, value) {
             const sb = getSupabase();
             if (!sb) return;
             const update = {};
             update[field] = value;
-            const { error } = await sb.from('users').update(update).eq('id', userId);
+            const { error } = await sb.from('user_projects').update(update).eq('id', assignmentId);
             if (error) {
                 showToast('⚠️ Fout bij opslaan: ' + error.message);
-                console.error('Toggle ' + field + ' mislukt:', error.message);
             } else {
-                const labels = {
-                    show_rates: value ? '✓ Tarieven zichtbaar' : '✓ Tarieven verborgen',
-                    can_declare_expenses: value ? '✓ Extra kosten toegestaan' : '✓ Extra kosten uitgeschakeld'
-                };
-                showToast(labels[field] || '✓ Opgeslagen');
+                showToast('✓ Opgeslagen');
             }
         }
 
@@ -4130,10 +4147,8 @@
                     location: document.getElementById('adm-proj-location').value.trim() || null,
                     default_description: document.getElementById('adm-proj-desc').value.trim() || null,
                     default_location: document.getElementById('adm-proj-deflocation').value.trim() || null,
-                    km_single_trip: document.getElementById('adm-proj-km-toggle').checked ? (parseFloat(document.getElementById('adm-proj-km').value) || 0) : 0,
-                    allow_thuiswerk: document.getElementById('adm-proj-thuiswerk').checked,
-                    allow_hotel: document.getElementById('adm-proj-hotel').checked,
-                    hotel_rate: document.getElementById('adm-proj-hotel').checked ? (parseFloat(document.getElementById('adm-proj-hotel-rate').value) || 110) : null,
+                    km_single_trip: parseFloat(document.getElementById('adm-proj-km').value) || 0,
+                    hotel_rate: parseFloat(document.getElementById('adm-proj-hotel-rate').value) || null,
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active'
                 };
