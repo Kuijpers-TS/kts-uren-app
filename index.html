@@ -903,10 +903,10 @@
         <div class="screen" id="screen-admin">
             <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">⚙️ Instellingen</h2>
 
-            <!-- Tabs: Projecten / Personen / Tarieven / Documenten -->
+            <!-- Tabs: Projecten / Bedrijven / Tarieven / Documenten -->
             <div id="admin-tabs" style="display:flex;gap:6px;margin-bottom:16px">
                 <button class="btn btn-sm" style="flex:1" onclick="switchAdminTab('projecten')" id="admin-tab-projecten">Projecten</button>
-                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Personen</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Bedrijven</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
             </div>
 
@@ -926,10 +926,10 @@
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Actieve gebruikers</div>
                     <div id="admin-user-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
                 </div>
-                <!-- Personen & bedrijven -->
+                <!-- Bedrijven (ZZP, klanten, KTS) -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & bedrijven</div>
-                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw persoon</button>
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Bedrijven</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw bedrijf</button>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
@@ -1204,6 +1204,7 @@
         let currentWeekNumber = getISOWeek(new Date());
         let currentYear = getISOYear(new Date());
         let weekSummary = null; // als er een week_summaries record is (historische data)
+        let currentWeekDbStatus = null; // DB status: 'opgeslagen', 'ondertekend', 'verstuurd'
 
         // Maandnavigatie voor overzicht
         let overviewMonth = new Date().getMonth(); // 0-indexed
@@ -1233,6 +1234,11 @@
 
         // ===== WEEK STATUS CHECK =====
         function getWeekStatus() {
+            // Week al verstuurd? Dan vergrendeld
+            if (currentWeekDbStatus === 'verstuurd') {
+                return { editable: false, reason: 'Week is al verstuurd', icon: '📤', detail: 'Verstuurde weken kunnen niet meer worden aangepast' };
+            }
+
             if (!currentProject) return { editable: true };
             const weekFriday = new Date(currentWeekMonday);
             weekFriday.setDate(weekFriday.getDate() + 4);
@@ -2015,6 +2021,7 @@
         }
 
         function updateEntry(i, field, value) {
+            if (currentWeekDbStatus === 'verstuurd') { showToast('🔒 Verstuurde week kan niet meer worden aangepast'); return; }
             markDirty();
             const e = weekData[i];
             if (field === 'start') {
@@ -3521,12 +3528,13 @@
             let monthEntries = [];
             const sb = getSupabase();
             if (sb && currentUser && currentUser.id) {
-                const { data } = await sb.from('time_entries')
+                let monthQuery = sb.from('time_entries')
                     .select('*')
                     .eq('user_id', currentUser.id)
                     .gte('entry_date', monthStart)
-                    .lte('entry_date', monthEnd)
-                    .order('entry_date');
+                    .lte('entry_date', monthEnd);
+                if (currentProject) monthQuery = monthQuery.eq('project_id', currentProject.id);
+                const { data } = await monthQuery.order('entry_date');
                 monthEntries = data || [];
             }
 
@@ -4022,6 +4030,36 @@
             showToast('Inkooporder genereren op basis van goedgekeurde uren — komt in volgende versie');
         }
 
+        // ===== AUTO-PROVISIONING =====
+        async function getOrCreateUserProfile(userId, email) {
+            const sb = getSupabase();
+            // Probeer bestaand profiel op te halen
+            const { data: profile } = await sb.from('users').select('*').eq('id', userId).single();
+            if (profile) return profile;
+
+            // Profiel bestaat niet — maak het automatisch aan
+            console.log('Auto-provisioning nieuw gebruikersprofiel voor', email);
+            const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const newUser = {
+                id: userId,
+                email: email,
+                name: name,
+                role: 'engineer',
+                allow_km: false,
+                allow_thuiswerk: false,
+                allow_hotel: false,
+                show_rates: false,
+                can_declare_expenses: false,
+            };
+            const { data: created, error } = await sb.from('users').insert(newUser).select().single();
+            if (error) {
+                console.error('Auto-provisioning mislukt:', error);
+                return { ...newUser }; // fallback met lokale data
+            }
+            showToast('🆕 Profiel automatisch aangemaakt — admin kan je instellingen aanpassen');
+            return created;
+        }
+
         // ===== AUTH =====
         async function doLogin() {
             const email = document.getElementById('login-email').value;
@@ -4064,9 +4102,8 @@
                 return;
             }
 
-            // Haal user profiel op
-            const { data: profile } = await getSupabase().from('users').select('*').eq('id', data.user.id).single();
-            currentUser = profile || { name: data.user.email, role: 'engineer' };
+            // Haal user profiel op (auto-provisioning als het nog niet bestaat)
+            currentUser = await getOrCreateUserProfile(data.user.id, data.user.email);
 
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
@@ -4154,8 +4191,8 @@
             try {
                 const { data: { session } } = await getSupabase().auth.getSession();
                 if (session) {
-                    const { data: profile } = await getSupabase().from('users').select('*').eq('id', session.user.id).single();
-                    currentUser = profile || { name: session.user.email, role: 'engineer' };
+                    // Auto-provisioning als profiel nog niet bestaat
+                    currentUser = await getOrCreateUserProfile(session.user.id, session.user.email);
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
                     await loadDataFromSupabase();
@@ -4295,13 +4332,14 @@
                     const d = weekData[i];
                     const entryDate = getDateForDayIndex(i);
 
-                    // Check of er al een entry bestaat voor deze datum
-                    const { data: existing } = await sb
+                    // Check of er al een entry bestaat voor deze datum + project
+                    let existQuery = sb
                         .from('time_entries')
                         .select('id')
                         .eq('user_id', currentUser.id)
-                        .eq('entry_date', entryDate)
-                        .maybeSingle();
+                        .eq('entry_date', entryDate);
+                    if (currentProject) existQuery = existQuery.eq('project_id', currentProject.id);
+                    const { data: existing } = await existQuery.maybeSingle();
 
                     if (d.hours <= 0 && !d.thuiswerk) {
                         // Geen data voor deze dag — verwijder bestaande entry als die er is
@@ -4492,16 +4530,27 @@
             const weekStart = getDateForDayIndex(0);
             const weekEnd = getDateForDayIndex(6);
             weekSummary = null; // reset
+            currentWeekDbStatus = null; // reset
 
             try {
-                // 1. Probeer eerst dag-entries te laden
-                const { data: entries, error } = await getSupabase()
+                // Haal eerst de week-status op uit de DB (project-specifiek)
+                let statusQuery = getSupabase().from('week_status')
+                    .select('status')
+                    .eq('user_id', currentUser.id)
+                    .eq('week_number', currentWeekNumber)
+                    .eq('year', currentYear);
+                if (currentProject) statusQuery = statusQuery.eq('project_id', currentProject.id);
+                const { data: statusRow } = await statusQuery.maybeSingle();
+                if (statusRow) currentWeekDbStatus = statusRow.status;
+                // 1. Dag-entries laden (project-specifiek)
+                let entryQuery = getSupabase()
                     .from('time_entries')
                     .select('*')
                     .eq('user_id', currentUser.id)
                     .gte('entry_date', weekStart)
-                    .lte('entry_date', weekEnd)
-                    .order('entry_date');
+                    .lte('entry_date', weekEnd);
+                if (currentProject) entryQuery = entryQuery.eq('project_id', currentProject.id);
+                const { data: entries, error } = await entryQuery.order('entry_date');
 
                 if (error) { console.warn('Laden mislukt:', error.message); return; }
 
@@ -4594,13 +4643,13 @@
                     ...extra
                 };
 
-                // Probeer eerst met nieuwe constraint (user_id,week_number,year)
-                let { error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,week_number,year' });
+                // Upsert met project-specifieke constraint
+                let { error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,project_id,week_number,year' });
 
-                // Fallback: oude constraint (user_id,project_id,week_number,year) als migratie 016 nog niet is uitgevoerd
+                // Fallback: oude constraint zonder project_id
                 if (error) {
-                    console.warn('Probeer oude constraint:', error.message);
-                    ({ error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,project_id,week_number,year' }));
+                    console.warn('Probeer constraint zonder project_id:', error.message);
+                    ({ error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,week_number,year' }));
                 }
 
                 if (error) {
@@ -4619,10 +4668,12 @@
             if (!sb || !currentUser || !currentUser.id) return {};
 
             try {
-                const { data, error } = await sb.from('week_status')
+                let q = sb.from('week_status')
                     .select('week_number, status')
                     .eq('user_id', currentUser.id)
                     .eq('year', overviewYear);
+                if (currentProject) q = q.eq('project_id', currentProject.id);
+                const { data, error } = await q;
 
                 if (error) { console.error('getMonthWeekStatuses fout:', error.message); return {}; }
                 const map = {};
@@ -4788,6 +4839,7 @@
         // ===== OPSLAAN NAAR SUPABASE =====
         async function saveWeek(tab) {
             if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
+            if (currentWeekDbStatus === 'verstuurd') { showToast('🔒 Verstuurde week kan niet meer worden aangepast'); return; }
             const labels = { uren: 'Uren', kosten: 'Declaraties' };
             const btn = document.querySelector('#save-uren-btn-wrap .btn') || document.querySelector('#save-kosten-btn-wrap .btn');
 
@@ -4977,7 +5029,7 @@
                 userList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen gebruikers gevonden</div>';
             }
 
-            // Personen laden (companies van type zzp)
+            // Bedrijven laden (ZZP, klant, KTS)
             const { data: companies } = await sb.from('companies').select('*').order('name');
             window._adminCompanies = companies || [];
             const persList = document.getElementById('admin-persoon-list');
@@ -4997,7 +5049,7 @@
                     </div>`;
                 }).join('');
             } else {
-                persList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen personen gevonden</div>';
+                persList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen bedrijven gevonden</div>';
             }
 
             // Tarieven laden (user_id verwijst naar auth.users, dus apart users ophalen)
@@ -5060,7 +5112,7 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? existing.default_description || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.default_location || '' : ''}"></div>
-                    <!-- Km en hotelprijs staan nu bij Personen instellingen -->
+                    <!-- Km en hotelprijs staan nu bij gebruikersinstellingen -->
                     <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
                         <select id="adm-proj-status">
@@ -5073,7 +5125,7 @@
             } else if (type === 'persoon') {
                 existing = isEdit ? (window._adminCompanies || [])[editIdx] : null;
                 _editingId = existing ? existing.id : null;
-                title = existing ? 'Persoon bewerken' : 'Nieuw persoon / bedrijf';
+                title = existing ? 'Bedrijf bewerken' : 'Nieuw bedrijf';
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq" value="${existing ? existing.name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Contactpersoon / ZZP'er naam</label><input type="text" id="adm-pers-contact" placeholder="Bijv. Jan de Vries" value="${existing ? existing.contact_name || '' : ''}"></div>
