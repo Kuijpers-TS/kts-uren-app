@@ -534,6 +534,83 @@
         }
         .toast.show { opacity: 1; }
 
+        /* ===== KLOK IN/UIT ===== */
+        .clock-btn-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 12px 0 8px;
+        }
+        .clock-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border-radius: 14px;
+            border: 2px solid var(--kts-blue);
+            background: white;
+            color: var(--kts-blue);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(7,86,127,0.08);
+        }
+        .clock-btn:active { transform: scale(0.97); }
+        .clock-btn.clocked-in {
+            background: var(--kts-blue);
+            color: white;
+            animation: clockPulse 2s infinite;
+        }
+        .clock-btn .clock-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--kts-blue);
+        }
+        .clock-btn.clocked-in .clock-dot {
+            background: #4ade80;
+            box-shadow: 0 0 6px #4ade80;
+        }
+        .clock-timer {
+            font-size: 0.75rem;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+        @keyframes clockPulse {
+            0%, 100% { box-shadow: 0 2px 8px rgba(7,86,127,0.15); }
+            50% { box-shadow: 0 2px 16px rgba(7,86,127,0.3); }
+        }
+
+        /* ===== HERINNERING BANNER ===== */
+        .reminder-banner {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+            color: #92400e;
+            font-weight: 500;
+            animation: reminderSlide 0.4s ease;
+        }
+        .reminder-banner .reminder-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #b45309;
+            padding: 2px 6px;
+        }
+        @keyframes reminderSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* ===== BOTTOM NAV ===== */
         .bottom-nav {
             position: fixed;
@@ -714,6 +791,13 @@
 
         <!-- ===== UREN SCREEN ===== -->
         <div class="screen active" id="screen-uren">
+            <div id="reminder-container"></div>
+            <div class="clock-btn-wrap" id="clock-wrap">
+                <button class="clock-btn" id="clock-btn" onclick="toggleClock()">
+                    <span class="clock-dot"></span>
+                    <span id="clock-label">⏱️ Inklokken</span>
+                </button>
+            </div>
             <div class="week-nav">
                 <button onclick="changeWeek(-1)">◀</button>
                 <div style="text-align:center">
@@ -1243,6 +1327,169 @@
             showToast('✓ Standaard werkweek opgeslagen');
         }
 
+        // ===== KLOK IN/UIT =====
+        let clockTimerInterval = null;
+
+        function getClockKey() {
+            return 'kts-clock-' + (currentUser ? currentUser.id : 'anon');
+        }
+
+        function getClockState() {
+            try {
+                const stored = localStorage.getItem(getClockKey());
+                if (stored) return JSON.parse(stored);
+            } catch (e) {}
+            return null;
+        }
+
+        function getTodayDayIndex() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            // Check of vandaag in de huidige week valt
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(currentWeekMonday);
+                d.setDate(d.getDate() + i);
+                if (d.toISOString().split('T')[0] === todayStr) return i;
+            }
+            return -1; // vandaag valt niet in deze week
+        }
+
+        function toggleClock() {
+            const state = getClockState();
+            if (state && state.clockedIn) {
+                clockOut();
+            } else {
+                clockIn();
+            }
+        }
+
+        function clockIn() {
+            const dayIdx = getTodayDayIndex();
+            if (dayIdx === -1) {
+                showToast('⚠️ Vandaag valt niet in deze week');
+                return;
+            }
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+            // Sla starttijd op in weekData
+            weekData[dayIdx].start = timeStr;
+            markDirty();
+
+            // Sla klokstatus op
+            localStorage.setItem(getClockKey(), JSON.stringify({
+                clockedIn: true,
+                startTime: now.getTime(),
+                dayIndex: dayIdx,
+                timeStr: timeStr
+            }));
+
+            expandedDay = dayIdx;
+            renderDays();
+            updateClockUI();
+            showToast('✓ Ingeklokt om ' + timeStr);
+        }
+
+        function clockOut() {
+            const state = getClockState();
+            if (!state || !state.clockedIn) return;
+
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            const dayIdx = state.dayIndex;
+
+            // Sla eindtijd op in weekData als de dag nog in huidige week zit
+            if (dayIdx >= 0 && dayIdx < 7) {
+                weekData[dayIdx].end = timeStr;
+                // Herbereken uren
+                if (weekData[dayIdx].start) {
+                    const [sh, sm] = weekData[dayIdx].start.split(':').map(Number);
+                    const [eh, em] = timeStr.split(':').map(Number);
+                    const werkMin = (eh * 60 + em) - (sh * 60 + sm);
+                    if (werkMin > 0) {
+                        weekData[dayIdx].hours = Math.max(0, (werkMin - weekData[dayIdx].breakMin) / 60);
+                    }
+                }
+                markDirty();
+                expandedDay = dayIdx;
+                renderDays();
+            }
+
+            // Wis klokstatus
+            localStorage.removeItem(getClockKey());
+            updateClockUI();
+            showToast('✓ Uitgeklokt om ' + timeStr);
+        }
+
+        function updateClockUI() {
+            const btn = document.getElementById('clock-btn');
+            const label = document.getElementById('clock-label');
+            const wrap = document.getElementById('clock-wrap');
+            if (!btn || !label || !wrap) return;
+
+            const state = getClockState();
+            const dayIdx = getTodayDayIndex();
+
+            // Verberg klok als vandaag niet in deze week zit of als week niet bewerkbaar is
+            if (dayIdx === -1 || weekSummary) {
+                wrap.style.display = 'none';
+                stopClockTimer();
+                return;
+            }
+            wrap.style.display = '';
+
+            if (state && state.clockedIn) {
+                btn.classList.add('clocked-in');
+                startClockTimer(state.startTime);
+            } else {
+                btn.classList.remove('clocked-in');
+                label.innerHTML = '⏱️ Inklokken';
+                stopClockTimer();
+            }
+        }
+
+        function startClockTimer(startTime) {
+            stopClockTimer();
+            function update() {
+                const label = document.getElementById('clock-label');
+                if (!label) return;
+                const elapsed = Date.now() - startTime;
+                const hrs = Math.floor(elapsed / 3600000);
+                const mins = Math.floor((elapsed % 3600000) / 60000);
+                const secs = Math.floor((elapsed % 60000) / 1000);
+                label.innerHTML = '🔴 Ingeklokt <span class="clock-timer">' +
+                    hrs.toString().padStart(2, '0') + ':' +
+                    mins.toString().padStart(2, '0') + ':' +
+                    secs.toString().padStart(2, '0') + '</span>';
+            }
+            update();
+            clockTimerInterval = setInterval(update, 1000);
+        }
+
+        function stopClockTimer() {
+            if (clockTimerInterval) {
+                clearInterval(clockTimerInterval);
+                clockTimerInterval = null;
+            }
+        }
+
+        // ===== DEBOUNCE HELPER =====
+        function debounce(fn, delay) {
+            let timer;
+            return function(...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        // Debounced versie van renderDays — voor tekst-inputs (desc, location)
+        const renderDaysDebounced = debounce(() => renderDays(), 300);
+
+        // Debounced auto-save naar localStorage bij elke wijziging
+        const autoSaveLocalDebounced = debounce(() => {
+            if (typeof saveWeekLocal === 'function') saveWeekLocal();
+        }, 2000);
+
         // ===== STATE =====
         function defaultWeekData() {
             const kmEnkel = getUserKmEnkel();
@@ -1748,7 +1995,19 @@
                     e.hours = Math.max(0, (werkMin - e.breakMin) / 60);
                 }
             }
-            renderDays();
+            // Tekstvelden debounced renderen, rest direct
+            if (field === 'desc' || field === 'location') {
+                // Update alleen het totaal direct (geen volledige rerender)
+                const totalEl = document.getElementById('week-total');
+                if (totalEl) {
+                    const total = weekData.reduce((s, d) => s + d.hours, 0);
+                    totalEl.textContent = 'Totaal: ' + fmt(total) + ' uur';
+                }
+            } else {
+                renderDays();
+            }
+            // Auto-save naar localStorage
+            autoSaveLocalDebounced();
         }
 
         function clearDay(i) {
@@ -2562,6 +2821,7 @@
 
             try {
                 await updateWeekStatus('ondertekend');
+                logAudit('week_ondertekend', { week: currentWeekNumber });
                 notifyOtherTabs();
                 showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
                 await renderOverview();
@@ -2641,6 +2901,7 @@
 
                 // 7. Status bijwerken
                 await updateWeekStatus('verstuurd');
+                logAudit('week_verstuurd', { week: currentWeekNumber, fileName: fileName });
                 notifyOtherTabs();
                 btn.innerHTML = '✅ Verstuurd!';
                 btn.style.background = '#059669';
@@ -2881,6 +3142,8 @@
             }
 
             renderDays();
+            updateClockUI();
+            checkWeekReminder();
         }
 
         function updateWeekLabel() {
@@ -3632,6 +3895,8 @@
                 errorEl.style.display = 'block';
                 btn.textContent = 'Inloggen';
                 btn.disabled = false;
+                document.getElementById('login-password').value = '';
+                document.getElementById('login-password').focus();
                 return;
             }
 
@@ -3645,6 +3910,9 @@
             // Laad data vanuit Supabase
             await loadDataFromSupabase();
             startSessionMonitor();
+            logAudit('ingelogd', { device: /Mobi/i.test(navigator.userAgent) ? 'mobiel' : 'desktop' });
+            updateClockUI();
+            checkWeekReminder();
 
             // Eerste keer? Toon welkomst
             const firstLoginKey = 'kts-welcomed-' + currentUser.id;
@@ -4003,6 +4271,33 @@
             }
         }
 
+        // ===== OFFLINE LOKALE OPSLAG =====
+        function getWeekLocalKey() {
+            if (!currentUser || !currentUser.id) return null;
+            return 'kts-week-' + currentUser.id + '-' + currentYear + '-w' + currentWeekNumber;
+        }
+
+        function saveWeekLocal() {
+            const key = getWeekLocalKey();
+            if (!key) return;
+            try {
+                localStorage.setItem(key, JSON.stringify(weekData));
+            } catch (e) { console.warn('Lokale opslag mislukt:', e); }
+        }
+
+        function loadWeekLocal() {
+            const key = getWeekLocalKey();
+            if (!key) return false;
+            try {
+                const stored = localStorage.getItem(key);
+                if (stored) {
+                    weekData = JSON.parse(stored);
+                    return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+
         async function loadWeekFromSupabase() {
             if (!getSupabase() || !currentUser || !currentUser.id) return;
 
@@ -4062,9 +4357,13 @@
                     }
                 }
 
+                // Sla weekdata lokaal op als backup
+                saveWeekLocal();
+
                 markClean();
                 renderDays();
                 renderOverview();
+                updateClockUI();
 
                 // Verberg opslaan-knoppen bij historische of niet-bewerkbare weken
                 const isReadOnly = !!weekSummary || !getWeekStatus().editable;
@@ -4076,7 +4375,14 @@
                 // Knop-status wordt afgehandeld door renderOverview()
             } catch (err) {
                 console.error('loadWeekFromSupabase fout:', err);
-                showToast('⚠️ Weekdata laden mislukt');
+                // Offline fallback: probeer lokale data
+                if (loadWeekLocal()) {
+                    showToast('📴 Offline — lokale data geladen');
+                    renderDays();
+                    renderOverview();
+                } else {
+                    showToast('⚠️ Weekdata laden mislukt');
+                }
             }
         }
 
@@ -4140,6 +4446,150 @@
             }
         }
 
+        // ===== PUNT 16: AUDIT LOG =====
+        async function logAudit(action, details) {
+            try {
+                const sb = getSupabase();
+                if (!sb || !currentUser) return;
+                await sb.from('audit_log').insert({
+                    user_id: currentUser.id,
+                    user_name: currentUser.name || '',
+                    action: action,
+                    details: typeof details === 'string' ? details : JSON.stringify(details),
+                    week_number: currentWeekNumber,
+                    year: currentYear,
+                    project_id: currentProject ? currentProject.id : null,
+                    created_at: new Date().toISOString()
+                });
+            } catch (e) {
+                // Audit log mag nooit de app breken
+                console.warn('Audit log fout (niet kritiek):', e.message);
+            }
+        }
+
+        // ===== PUNT 19: ERROR MONITORING =====
+        window.addEventListener('error', function(event) {
+            const errorInfo = {
+                message: event.message,
+                source: event.filename,
+                line: event.lineno,
+                col: event.colno,
+                stack: event.error ? event.error.stack : ''
+            };
+            console.error('Global error:', errorInfo);
+            // Log naar Supabase als verbinding beschikbaar
+            logErrorToSupabase(errorInfo);
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            const errorInfo = {
+                message: event.reason ? (event.reason.message || String(event.reason)) : 'Onbekende promise rejection',
+                stack: event.reason ? event.reason.stack : ''
+            };
+            console.error('Unhandled rejection:', errorInfo);
+            logErrorToSupabase(errorInfo);
+        });
+
+        async function logErrorToSupabase(errorInfo) {
+            try {
+                const sb = getSupabase();
+                if (!sb) return;
+                await sb.from('error_log').insert({
+                    user_id: currentUser ? currentUser.id : null,
+                    user_name: currentUser ? currentUser.name : 'niet ingelogd',
+                    error_message: (errorInfo.message || '').substring(0, 500),
+                    error_stack: (errorInfo.stack || '').substring(0, 2000),
+                    source: errorInfo.source || '',
+                    line: errorInfo.line || null,
+                    url: window.location.href,
+                    user_agent: navigator.userAgent.substring(0, 300),
+                    created_at: new Date().toISOString()
+                });
+            } catch (e) {
+                // Error logging mag nooit de app breken
+                console.warn('Error log fout:', e.message);
+            }
+        }
+
+        // ===== PUNT 17: HERINNERING BANNER =====
+        function checkWeekReminder() {
+            const container = document.getElementById('reminder-container');
+            if (!container) return;
+
+            const now = new Date();
+            const today = now.getDay(); // 0=zo, 5=vr, 6=za
+
+            // Toon herinnering op vrijdag (5), zaterdag (6) of zondag (0)
+            const isReminderDay = today === 5 || today === 6 || today === 0;
+            // Of als het maandag/dinsdag is en vorige week nog niet verstuurd
+            const isEarlyNextWeek = today === 1 || today === 2;
+
+            if (!isReminderDay && !isEarlyNextWeek) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Check of deze week (of vorige bij ma/di) al is verstuurd
+            const dismissKey = 'kts-reminder-dismissed-' + currentWeekNumber + '-' + currentYear;
+            if (localStorage.getItem(dismissKey)) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Alleen tonen als de huidige week de echte huidige week is
+            const realWeek = getISOWeek(now);
+            const realYear = getISOYear(now);
+            if (currentWeekNumber !== realWeek || currentYear !== realYear) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Check of week al verstuurd is
+            if (weekSummary) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Check week status
+            const sb = getSupabase();
+            if (sb && currentUser) {
+                sb.from('week_status')
+                    .select('status')
+                    .eq('user_id', currentUser.id)
+                    .eq('week_number', currentWeekNumber)
+                    .eq('year', currentYear)
+                    .maybeSingle()
+                    .then(({ data }) => {
+                        if (data && data.status === 'verstuurd') {
+                            container.innerHTML = '';
+                            return;
+                        }
+                        showReminderBanner(container, dismissKey, data ? data.status : null);
+                    });
+            }
+        }
+
+        function showReminderBanner(container, dismissKey, status) {
+            let msg = '📋 Vergeet niet je weekstaat in te vullen en te versturen!';
+            if (status === 'opgeslagen') {
+                msg = '📋 Je weekstaat is opgeslagen maar nog niet verstuurd — onderteken en verstuur!';
+            } else if (status === 'ondertekend') {
+                msg = '📋 Je weekstaat is ondertekend — vergeet niet om te versturen!';
+            }
+
+            container.innerHTML = `
+                <div class="reminder-banner">
+                    <span>${msg}</span>
+                    <button class="reminder-close" onclick="dismissReminder('${dismissKey}')" title="Sluit">✕</button>
+                </div>`;
+        }
+
+        function dismissReminder(key) {
+            localStorage.setItem(key, '1');
+            const container = document.getElementById('reminder-container');
+            if (container) container.innerHTML = '';
+        }
+
         // ===== OPSLAAN NAAR SUPABASE =====
         async function saveWeek(tab) {
             if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
@@ -4152,12 +4602,16 @@
                     showOverviewLoading();
                     await saveWeekToSupabase();
                     await updateWeekStatus('opgeslagen');
+                    saveWeekLocal();
                     markClean();
                     notifyOtherTabs();
+                    logAudit('week_opgeslagen', { week: currentWeekNumber, tab: tab });
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
                     await renderOverview();
                 } catch (err) {
-                    showToast('⚠️ Opslaan mislukt — probeer opnieuw');
+                    // Offline: sla lokaal op
+                    saveWeekLocal();
+                    showToast('⚠️ Opslaan mislukt — data lokaal bewaard');
                     console.error('Save error:', err);
                     await renderOverview();
                 } finally {
