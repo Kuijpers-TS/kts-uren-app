@@ -812,6 +812,12 @@
 
             <!-- ===== PERSONEN TAB ===== -->
             <div id="admin-personen" style="display:none">
+                <!-- Actieve gebruikers -->
+                <div style="margin-bottom:20px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Actieve gebruikers</div>
+                    <div id="admin-user-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+                </div>
+                <!-- Personen & bedrijven -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & bedrijven</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw persoon</button>
@@ -977,29 +983,25 @@
         let sbClient = null;
         let currentUser = null;
         let currentProject = null;
-        let currentUserProject = null; // user_projects record met feature flags
+        // Feature flags staan nu direct op currentUser (users tabel)
         let savedFolderHandle = null; // File System Access API — map voor PDF opslag
 
-        // Helper functies voor feature flags (user_projects > project fallback)
+        // Helper functies voor feature flags (uit users tabel)
         function userHasKm() {
-            if (currentUserProject) return currentUserProject.allow_km !== false && currentProject && parseFloat(currentProject.km_single_trip) > 0;
+            if (currentUser && currentUser.allow_km === false) return false;
             return currentProject && parseFloat(currentProject.km_single_trip) > 0;
         }
         function userHasThuiswerk() {
-            if (currentUserProject) return currentUserProject.allow_thuiswerk !== false;
-            return currentProject && currentProject.allow_thuiswerk;
+            return !currentUser || currentUser.allow_thuiswerk !== false;
         }
         function userHasHotel() {
-            if (currentUserProject) return currentUserProject.allow_hotel !== false;
-            return currentProject && currentProject.allow_hotel;
+            return !currentUser || currentUser.allow_hotel !== false;
         }
         function userCanSeeRates() {
-            if (currentUserProject) return currentUserProject.show_rates !== false;
-            return true;
+            return !currentUser || currentUser.show_rates !== false;
         }
         function userCanDeclareExpenses() {
-            if (currentUserProject) return currentUserProject.can_declare_expenses !== false;
-            return true;
+            return !currentUser || currentUser.can_declare_expenses !== false;
         }
 
         // Lazy init — pas aanmaken als CDN geladen is
@@ -2733,17 +2735,9 @@
                 localStorage.setItem('kts_last_project_' + currentUser.id, currentProject.id);
             }
 
-            // Laad user_projects feature flags voor nieuw project
-            currentUserProject = null;
-            if (currentUser && currentUser.id) {
-                const { data: upData } = await sb.from('user_projects')
-                    .select('allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses')
-                    .eq('user_id', currentUser.id).eq('project_id', currentProject.id).single();
-                currentUserProject = upData || null;
-                // Extra kosten tab tonen/verbergen
-                const navKosten = document.getElementById('nav-kosten');
-                if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
-            }
+            // Extra kosten tab tonen/verbergen (flags staan nu op users tabel)
+            const navKosten = document.getElementById('nav-kosten');
+            if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
 
             // Laad tarieven voor nieuw project
             await loadProjectRates();
@@ -2843,58 +2837,63 @@
             const totalMonthExp = totalHotelTotal;
             const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
 
-            // Stats grid
-            let statsHtml = `
+            // Stats grid — verberg alles als er geen uren zijn
+            let statsHtml = '';
+            if (totalMonthHours === 0) {
+                statsHtml = '';
+            } else {
+                statsHtml = `
                 <div class="stat-card highlight">
                     <div class="stat-value">${fmt(totalMonthHours)}</div>
                     <div class="stat-label">Uren deze maand</div>
                 </div>`;
 
-            if (canSeeRates && totalMonthHours > 0) {
-                statsHtml += `
+                if (canSeeRates) {
+                    statsHtml += `
                 <div class="stat-card" style="background:#059669;color:white">
                     <div class="stat-value" style="color:white">${fmtEuro(totalMonthRevenue)}</div>
                     <div class="stat-label" style="color:rgba(255,255,255,0.7)">Omzet uren</div>
                 </div>`;
-            }
+                }
 
-            if (hasKm) {
-                statsHtml += `
+                if (hasKm && totalMonthKm > 0) {
+                    statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalMonthKm.toLocaleString('nl-NL')}</div>
                     <div class="stat-label">Kilometers</div>
                 </div>`;
-                if (canSeeRates) {
-                    statsHtml += `
+                    if (canSeeRates) {
+                        statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${fmtEuro(totalKmRevenue)}</div>
                     <div class="stat-label">Km-vergoeding</div>
                 </div>`;
+                    }
                 }
-            }
 
-            if (hasThuiswerk) {
-                statsHtml += `
+                if (hasThuiswerk && totalThuiswerkDagen > 0) {
+                    statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalThuiswerkDagen}</div>
                     <div class="stat-label">Thuiswerkdagen</div>
                 </div>`;
-            }
+                }
 
-            if (hasHotel && totalHotelNights > 0) {
-                statsHtml += `
+                if (hasHotel && totalHotelNights > 0) {
+                    statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalHotelNights}× 🏨</div>
                     <div class="stat-label">Hotelnachten${canSeeRates ? ' (' + fmtEuro(totalHotelTotal) + ')' : ''}</div>
                 </div>`;
-            }
+                }
 
-            if (canSeeRates && totalMonthHours > 0) {
-                statsHtml += `
+                if (canSeeRates) {
+                    statsHtml += `
                 <div class="stat-card" style="background:var(--kts-blue);grid-column:1/-1">
                     <div class="stat-value" style="color:white">${fmtEuro(grandTotal)}</div>
                     <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal omzet</div>
                 </div>`;
+                }
             }
 
             document.getElementById('overview-stats').innerHTML = statsHtml;
@@ -2930,7 +2929,7 @@
                     <span class="summary-value">${fmtEuro(grandTotal)}</span>
                 </div>`;
             } else {
-                revenueHtml = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.85rem">Nog geen uren ingevuld voor ${MONTHS_LONG[overviewMonth]}</div>`;
+                revenueHtml = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.85rem">Nog geen uren ingevuld voor ${MONTHS_LONG[overviewMonth]} ${overviewYear}</div>`;
             }
             document.getElementById('overview-revenue').innerHTML = revenueHtml;
 
@@ -3519,16 +3518,7 @@
                     (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
             }
 
-            // Laad user_projects feature flags voor huidige gebruiker + project
-            currentUserProject = null;
-            if (currentProject && currentUser && currentUser.id) {
-                const { data: upData } = await getSupabase().from('user_projects')
-                    .select('allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses')
-                    .eq('user_id', currentUser.id)
-                    .eq('project_id', currentProject.id)
-                    .single();
-                currentUserProject = upData || null;
-            }
+            // Feature flags staan nu op users tabel (currentUser), geen aparte query nodig
 
             // Laad tarieven voor het project
             await loadProjectRates();
@@ -3586,11 +3576,11 @@
                     });
                 } else {
                     // 2. Geen dag-entries: check week_summaries (historische data)
-                    if (currentProject) {
+                    if (currentUser && currentUser.id) {
                         const { data: summary } = await getSupabase()
                             .from('week_summaries')
                             .select('*')
-                            .eq('project_id', currentProject.id)
+                            .eq('user_id', currentUser.id)
                             .eq('year', currentYear)
                             .eq('week_number', currentWeekNumber)
                             .maybeSingle();
@@ -3624,7 +3614,7 @@
         // ===== WEEK STATUS BIJWERKEN =====
         async function updateWeekStatus(newStatus) {
             const sb = getSupabase();
-            if (!sb || !currentUser || !currentUser.id || !currentProject) return;
+            if (!sb || !currentUser || !currentUser.id) return;
 
             const extra = {};
             if (newStatus === 'ondertekend') extra.signed_at = new Date().toISOString();
@@ -3632,13 +3622,13 @@
 
             const { error } = await sb.from('week_status').upsert({
                 user_id: currentUser.id,
-                project_id: currentProject.id,
+                project_id: currentProject ? currentProject.id : null,
                 week_number: currentWeekNumber,
                 year: currentYear,
                 status: newStatus,
                 updated_at: new Date().toISOString(),
                 ...extra
-            }, { onConflict: 'user_id,project_id,week_number,year' });
+            }, { onConflict: 'user_id,week_number,year' });
 
             if (error) console.error('Week status update mislukt:', error.message);
         }
@@ -3646,12 +3636,11 @@
         // Haal week statussen op voor een maand
         async function getMonthWeekStatuses() {
             const sb = getSupabase();
-            if (!sb || !currentUser || !currentUser.id || !currentProject) return {};
+            if (!sb || !currentUser || !currentUser.id) return {};
 
             const { data } = await sb.from('week_status')
                 .select('week_number, status')
                 .eq('user_id', currentUser.id)
-                .eq('project_id', currentProject.id)
                 .eq('year', overviewYear);
 
             const map = {};
@@ -3810,6 +3799,38 @@
                 projList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen projecten gevonden</div>';
             }
 
+            // Actieve gebruikers laden
+            const { data: appUsers } = await sb.from('users').select('*').order('name');
+            window._adminUsers = appUsers || [];
+            const userList = document.getElementById('admin-user-list');
+            if (appUsers && appUsers.length > 0) {
+                userList.innerHTML = appUsers.map((u, idx) => {
+                    const flags = [];
+                    if (u.allow_km !== false) flags.push('Km');
+                    if (u.allow_thuiswerk !== false) flags.push('Thuis');
+                    if (u.allow_hotel !== false) flags.push('Hotel');
+                    if (u.show_rates !== false) flags.push('Tarieven');
+                    if (u.can_declare_expenses !== false) flags.push('Declaraties');
+                    const flagsHtml = flags.map(f => '<span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-size:0.65rem">' + f + '</span>').join(' ');
+                    const priceInfo = [];
+                    if (u.km_single_trip) priceInfo.push(u.km_single_trip + ' km');
+                    if (u.hotel_rate) priceInfo.push('€' + u.hotel_rate + '/nacht');
+                    return `
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('gebruiker', ${idx})">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <div style="font-weight:700;font-size:0.9rem">${u.name || u.email}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${u.email}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
+                                <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${flagsHtml}</div>
+                            </div>
+                            <span class="status-badge ${u.role === 'admin' ? 'status-signed' : 'status-draft'}" style="text-transform:uppercase">${u.role}</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                userList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen gebruikers gevonden</div>';
+            }
+
             // Personen laden (companies van type zzp)
             const { data: companies } = await sb.from('companies').select('*').order('name');
             window._adminCompanies = companies || [];
@@ -3948,6 +3969,37 @@
                         <div class="form-group"><label>Geldig t/m (optioneel)</label><input type="date" id="adm-tar-to" value="${existing ? existing.valid_to || '' : ''}"></div>
                     </div>
                 `;
+            } else if (type === 'gebruiker') {
+                existing = isEdit ? (window._adminUsers || [])[editIdx] : null;
+                _editingId = existing ? existing.id : null;
+                title = existing ? (existing.name || existing.email) + ' — Instellingen' : 'Gebruiker';
+                const chk = (field) => existing && existing[field] !== false ? 'checked' : '';
+                fields = `
+                    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${existing ? existing.email : ''}</div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Rechten</div>
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-km" ${chk('allow_km')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Km-vergoeding
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-thuiswerk" ${chk('allow_thuiswerk')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Thuiswerken
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-hotel" ${chk('allow_hotel')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Hotelovernachtingen
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-expenses" ${chk('can_declare_expenses')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Extra kosten declareren
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-rates" ${chk('show_rates')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Tarieven zichtbaar
+                        </label>
+                    </div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Tarieven</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
+                        <div class="form-group"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
+                    </div>
+                `;
             }
 
             // Maak modal-content
@@ -4021,40 +4073,34 @@
             const sb = getSupabase();
             if (!sb) return;
 
-            // Haal toegewezen gebruikers op met feature flags
-            const { data: assignments } = await sb.from('user_projects')
-                .select('id, user_id, allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses')
-                .eq('project_id', projectId);
+            // Haal toegewezen gebruikers op
+            const { data: assignments } = await sb.from('user_projects').select('id, user_id').eq('project_id', projectId);
 
-            // Haal alle gebruikers op (voor dropdown)
-            const { data: allUsers } = await sb.from('users').select('id, name, email').order('name');
+            // Haal alle gebruikers op (voor dropdown + feature flags tonen)
+            const { data: allUsers } = await sb.from('users').select('id, name, email, allow_km, allow_thuiswerk, allow_hotel, show_rates, can_declare_expenses').order('name');
 
             const assignedIds = (assignments || []).map(a => a.user_id);
             const container = document.getElementById('adm-proj-users');
             const select = document.getElementById('adm-proj-user-select');
 
-            // Toon toegewezen gebruikers
+            // Toon toegewezen gebruikers (read-only badges)
             if (assignments && assignments.length > 0 && allUsers) {
                 container.innerHTML = assignments.map(a => {
                     const user = allUsers.find(u => u.id === a.user_id);
                     const name = user ? (user.name || user.email) : a.user_id;
-                    const flags = [
-                        { field: 'allow_km', label: 'Km-vergoeding', val: a.allow_km !== false },
-                        { field: 'allow_thuiswerk', label: 'Thuiswerken', val: a.allow_thuiswerk !== false },
-                        { field: 'allow_hotel', label: 'Hotelovernachtingen', val: a.allow_hotel !== false },
-                        { field: 'show_rates', label: 'Tarieven zichtbaar', val: a.show_rates !== false },
-                        { field: 'can_declare_expenses', label: 'Extra kosten declareren', val: a.can_declare_expenses !== false },
-                    ];
-                    const checksHtml = flags.map(f =>
-                        `<label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);cursor:pointer">
-                            <input type="checkbox" ${f.val ? 'checked' : ''} onchange="toggleAssignmentSetting('${a.id}', '${f.field}', this.checked)" style="width:14px;height:14px">
-                            ${f.label}
-                        </label>`
-                    ).join('');
-                    return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 10px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:6px">
-                        <div style="display:flex;flex-direction:column;gap:3px">
+                    const badges = [];
+                    if (user) {
+                        if (user.allow_km !== false) badges.push('Km');
+                        if (user.allow_thuiswerk !== false) badges.push('Thuis');
+                        if (user.allow_hotel !== false) badges.push('Hotel');
+                        if (user.show_rates !== false) badges.push('Tarieven');
+                        if (user.can_declare_expenses !== false) badges.push('Declaraties');
+                    }
+                    const badgesHtml = badges.map(b => '<span style="background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;font-size:0.6rem">' + b + '</span>').join(' ');
+                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:4px">
+                        <div>
                             <span style="font-size:0.85rem;font-weight:600">👤 ${name}</span>
-                            <div style="display:flex;flex-direction:column;gap:2px">${checksHtml}</div>
+                            <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px">${badgesHtml}</div>
                         </div>
                         <button type="button" onclick="removeUserFromProject('${a.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:2px 6px">✕</button>
                     </div>`;
@@ -4071,18 +4117,7 @@
             }
         }
 
-        async function toggleAssignmentSetting(assignmentId, field, value) {
-            const sb = getSupabase();
-            if (!sb) return;
-            const update = {};
-            update[field] = value;
-            const { error } = await sb.from('user_projects').update(update).eq('id', assignmentId);
-            if (error) {
-                showToast('⚠️ Fout bij opslaan: ' + error.message);
-            } else {
-                showToast('✓ Opgeslagen');
-            }
-        }
+        // toggleAssignmentSetting verwijderd — feature flags staan nu op users tabel
 
         async function assignUserToProject() {
             const sb = getSupabase();
@@ -4197,6 +4232,18 @@
                 result = _editingId
                     ? await sb.from('rates').update(data).eq('id', _editingId)
                     : await sb.from('rates').insert(data);
+            } else if (type === 'gebruiker') {
+                if (!_editingId) return;
+                const data = {
+                    allow_km: document.getElementById('adm-user-km').checked,
+                    allow_thuiswerk: document.getElementById('adm-user-thuiswerk').checked,
+                    allow_hotel: document.getElementById('adm-user-hotel').checked,
+                    show_rates: document.getElementById('adm-user-rates').checked,
+                    can_declare_expenses: document.getElementById('adm-user-expenses').checked,
+                    km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
+                    hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
+                };
+                result = await sb.from('users').update(data).eq('id', _editingId);
             }
 
             if (result && result.error) {
