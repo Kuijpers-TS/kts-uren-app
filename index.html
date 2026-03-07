@@ -727,7 +727,14 @@
 
         <!-- ===== OVERZICHT SCREEN ===== -->
         <div class="screen" id="screen-overzicht">
-            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px" id="overview-title">Maandoverzicht</h2>
+            <div class="week-nav" style="margin-bottom:16px">
+                <button onclick="changeMonth(-1)">◀</button>
+                <div style="text-align:center">
+                    <div class="week-label" id="month-label">Laden...</div>
+                    <div class="week-total" id="month-total"></div>
+                </div>
+                <button onclick="changeMonth(1)">▶</button>
+            </div>
 
             <div class="stats-grid" id="overview-stats">
                 <!-- Wordt dynamisch gevuld -->
@@ -997,6 +1004,10 @@
         let currentWeekNumber = getISOWeek(new Date());
         let currentYear = getISOYear(new Date());
         let weekSummary = null; // als er een week_summaries record is (historische data)
+
+        // Maandnavigatie voor overzicht
+        let overviewMonth = new Date().getMonth(); // 0-indexed
+        let overviewYear = new Date().getFullYear();
 
         function getDateForDayIndex(i) {
             const d = new Date(currentWeekMonday);
@@ -2479,6 +2490,10 @@
             currentWeekNumber = getISOWeek(currentWeekMonday);
             currentYear = getISOYear(currentWeekMonday);
 
+            // Sync overzicht-maand mee
+            overviewMonth = currentWeekMonday.getMonth();
+            overviewYear = currentWeekMonday.getFullYear();
+
             // Reset week data naar standaard
             weekData = defaultWeekData();
             weekSummary = null;
@@ -2635,47 +2650,71 @@
         }
 
         // ===== OVERZICHT RENDER =====
-        function renderOverview() {
+        async function renderOverview() {
+            const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+
             // Project feature flags
             const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
             const hasThuiswerk = currentProject && currentProject.allow_thuiswerk;
             const hasHotel = currentProject && currentProject.allow_hotel;
 
-            // Bereken maandcijfers (alleen huidige week)
-            const currentWeekHours = weekData.reduce((s,e) => s + e.hours, 0);
-            const totalMonthHours = currentWeekHours;
+            // Maandlabel updaten
+            document.getElementById('month-label').textContent = `${MONTHS_LONG[overviewMonth]} ${overviewYear}`;
 
-            // Omzet uren (normaal + toeslagen)
-            const normalHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
-            const satHours = weekData[5].hours;
-            const sunHours = weekData[6].hours;
-            const currentWeekRevenue = (normalHours * RATE) + (satHours * RATE * SAT_MULTIPLIER) + (sunHours * RATE * SUN_MULTIPLIER);
-            const totalMonthRevenue = currentWeekHours > 0 ? currentWeekRevenue : 0;
+            // Bepaal eerste en laatste dag van de geselecteerde maand
+            const monthStart = new Date(overviewYear, overviewMonth, 1).toISOString().split('T')[0];
+            const monthEnd = new Date(overviewYear, overviewMonth + 1, 0).toISOString().split('T')[0];
 
-            // Km totalen (vanuit dagkaarten)
-            const currentKmTotal = hasKm ? weekData.reduce((s,e) => s + (e.km || 0), 0) : 0;
-            const totalMonthKm = currentKmTotal;
+            // Haal alle time_entries van deze maand op uit Supabase
+            let monthEntries = [];
+            const sb = getSupabase();
+            if (sb && currentUser && currentUser.id) {
+                const { data } = await sb.from('time_entries')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .gte('entry_date', monthStart)
+                    .lte('entry_date', monthEnd)
+                    .order('entry_date');
+                monthEntries = data || [];
+            }
+
+            // Bereken maandtotalen
+            let totalMonthHours = 0;
+            let totalMonthKm = 0;
+            let totalHotelNights = 0;
+            let totalThuiswerkDagen = 0;
+            let weekdayHours = 0;
+            let satHours = 0;
+            let sunHours = 0;
+
+            monthEntries.forEach(e => {
+                const hours = parseFloat(e.hours) || 0;
+                totalMonthHours += hours;
+                if (hasKm) totalMonthKm += parseFloat(e.km) || 0;
+                if (hasHotel && e.hotel) totalHotelNights++;
+                if (hasThuiswerk && e.thuiswerk) totalThuiswerkDagen++;
+                const dayOfWeek = new Date(e.entry_date + 'T12:00:00').getDay();
+                if (dayOfWeek === 6) satHours += hours;
+                else if (dayOfWeek === 0) sunHours += hours;
+                else weekdayHours += hours;
+            });
+
+            const totalMonthRevenue = (weekdayHours * RATE) + (satHours * RATE * SAT_MULTIPLIER) + (sunHours * RATE * SUN_MULTIPLIER);
             const totalKmRevenue = totalMonthKm * KM_RATE;
+            const totalHotelTotal = totalHotelNights * HOTEL_RATE;
 
-            // Hotel totalen vanuit dagkaarten
-            const currentHotelNights = hasHotel ? weekData.filter(e => e.hotel).length : 0;
-            const currentHotelTotal = currentHotelNights * HOTEL_RATE;
-
-            // Extra kosten totalen
-            const currentExpTotal = expEntries.reduce((s,e) => s + e.amount, 0);
-            const totalMonthExp = currentExpTotal + currentHotelTotal;
-
-            // Grand total
+            // TODO: maandelijks expenses ophalen
+            const totalMonthExp = totalHotelTotal;
             const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
 
-            // Stats grid — dynamisch op basis van projectinstellingen
+            // Stats grid
             let statsHtml = `
                 <div class="stat-card highlight">
                     <div class="stat-value">${fmt(totalMonthHours)}</div>
-                    <div class="stat-label">Uren deze week</div>
+                    <div class="stat-label">Uren deze maand</div>
                 </div>`;
 
-            if (currentWeekHours > 0) {
+            if (totalMonthHours > 0) {
                 statsHtml += `
                 <div class="stat-card" style="background:#059669;color:white">
                     <div class="stat-value" style="color:white">${fmtEuro(totalMonthRevenue)}</div>
@@ -2698,18 +2737,20 @@
             if (hasThuiswerk) {
                 statsHtml += `
                 <div class="stat-card">
-                    <div class="stat-value">${weekData.filter(e=>e.thuiswerk).length}</div>
+                    <div class="stat-value">${totalThuiswerkDagen}</div>
                     <div class="stat-label">Thuiswerkdagen</div>
                 </div>`;
             }
 
-            statsHtml += `
+            if (hasHotel && totalHotelNights > 0) {
+                statsHtml += `
                 <div class="stat-card">
-                    <div class="stat-value">${fmtEuro(totalMonthExp)}</div>
-                    <div class="stat-label">Declaraties</div>
+                    <div class="stat-value">${totalHotelNights}× 🏨</div>
+                    <div class="stat-label">Hotelnachten (${fmtEuro(totalHotelTotal)})</div>
                 </div>`;
+            }
 
-            if (currentWeekHours > 0) {
+            if (totalMonthHours > 0) {
                 statsHtml += `
                 <div class="stat-card" style="background:var(--kts-blue)">
                     <div class="stat-value" style="color:white">${fmtEuro(grandTotal)}</div>
@@ -2719,88 +2760,119 @@
 
             document.getElementById('overview-stats').innerHTML = statsHtml;
 
-            // Revenue breakdown — alleen tonen als er uren zijn
+            // Revenue breakdown
             let revenueHtml = '';
-            if (currentWeekHours > 0) {
+            if (totalMonthHours > 0) {
                 revenueHtml = `
-                <div class="summary-title">Omzet breakdown · huidige week</div>
+                <div class="summary-title">Omzet breakdown · ${MONTHS_LONG[overviewMonth]}</div>
                 <div class="summary-row">
                     <span>Uren (${fmt(totalMonthHours)} u × €${RATE})</span>
                     <span class="summary-value">${fmtEuro(totalMonthRevenue)}</span>
                 </div>`;
-                if (hasKm) {
+                if (hasKm && totalMonthKm > 0) {
                     revenueHtml += `
                 <div class="summary-row">
                     <span>Km-vergoeding (${totalMonthKm.toLocaleString('nl-NL')} km × €${KM_RATE.toFixed(2).replace('.',',')})</span>
                     <span class="summary-value">${fmtEuro(totalKmRevenue)}</span>
                 </div>`;
                 }
-                revenueHtml += `
+                if (totalMonthExp > 0) {
+                    revenueHtml += `
                 <div class="summary-row">
-                    <span>Declaraties</span>
+                    <span>Declaraties + hotel</span>
                     <span class="summary-value">${fmtEuro(totalMonthExp)}</span>
-                </div>
+                </div>`;
+                }
+                revenueHtml += `
                 <div class="summary-row total" style="font-size:1rem">
                     <span>Totale omzet</span>
                     <span class="summary-value">${fmtEuro(grandTotal)}</span>
                 </div>`;
             } else {
-                revenueHtml = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.85rem">Nog geen uren ingevuld voor deze week</div>`;
+                revenueHtml = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.85rem">Nog geen uren ingevuld voor ${MONTHS_LONG[overviewMonth]}</div>`;
             }
             document.getElementById('overview-revenue').innerHTML = revenueHtml;
 
-            // Maandtitel updaten
-            const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-            document.getElementById('overview-title').textContent = `Maandoverzicht · ${MONTHS_LONG[currentWeekMonday.getMonth()]} ${currentWeekMonday.getFullYear()}`;
+            // Maandtotaal in navigatiebalk
+            document.getElementById('month-total').textContent = totalMonthHours > 0
+                ? `${fmt(totalMonthHours)} uur · ${fmtEuro(grandTotal)}`
+                : '';
 
-            // Weeknummer in knoppen
+            // Weeknummer in onderteken/verstuur knoppen
             const signNumEl = document.getElementById('sign-week-num');
             const submitNumEl = document.getElementById('submit-week-num');
             if (signNumEl) signNumEl.textContent = currentWeekNumber;
             if (submitNumEl) submitNumEl.textContent = currentWeekNumber;
 
-            // Reset knop-status: toon onderteken, verberg versturen
+            // Reset knop-status
             const signBtn = document.getElementById('sign-week-btn');
             const submitBtn2 = document.getElementById('submit-week-btn');
             if (signBtn) signBtn.style.display = 'block';
             if (submitBtn2) submitBtn2.style.display = 'none';
-            // Reset handtekeningen bij week-wissel
             signatureData = { zzp: null, client: null };
 
-            // Status per week lijst (4 weken terug + huidige week)
+            // Weken van deze maand ophalen en tonen
             const weekListEl = document.getElementById('week-status-list');
             let weekRows = '';
-            for (let offset = -4; offset <= 0; offset++) {
-                const d = new Date(currentWeekMonday);
-                d.setDate(d.getDate() + (offset * 7));
-                const wn = getISOWeek(d);
-                const endD = new Date(d); endD.setDate(endD.getDate() + 6);
-                const label = `Week ${wn} (${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
-                const isCurrent = offset === 0;
 
-                // Check week status op basis van project datums
+            // Bepaal alle weken die (deels) in deze maand vallen
+            const firstDay = new Date(overviewYear, overviewMonth, 1);
+            const lastDay = new Date(overviewYear, overviewMonth + 1, 0);
+            let weekStart = getWeekMonday(firstDay);
+
+            while (weekStart <= lastDay) {
+                const wn = getISOWeek(weekStart);
+                const endD = new Date(weekStart);
+                endD.setDate(endD.getDate() + 6);
+                const label = `Week ${wn} (${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
+
+                // Check of dit de week is waar de gebruiker nu op staat (uren tab)
+                const isCurrent = weekStart.getTime() === currentWeekMonday.getTime();
+
+                // Tel uren voor deze week
+                const ws = weekStart.toISOString().split('T')[0];
+                const we = endD.toISOString().split('T')[0];
+                const weekHours = monthEntries
+                    .filter(e => e.entry_date >= ws && e.entry_date <= we)
+                    .reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+
                 let statusClass = '';
                 let statusLabel = '';
                 if (isCurrent) {
                     statusClass = 'status-draft';
                     statusLabel = 'Huidig';
+                } else if (weekHours > 0) {
+                    statusClass = 'status-approved';
+                    statusLabel = fmt(weekHours) + ' u';
                 }
-                // Toekomstige statuslogica kan later uitgebreid worden met ingediend/goedgekeurd
+
+                // Bereken offset in weken ten opzichte van currentWeekMonday
+                const diffDays = Math.round((weekStart.getTime() - currentWeekMonday.getTime()) / (1000*60*60*24));
+                const weekOffset = Math.round(diffDays / 7);
 
                 weekRows += `
-                    <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${offset})">
+                    <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${weekOffset})">
                         <span style="${isCurrent ? 'font-weight:700;color:var(--kts-blue)' : ''}">${label}</span>
                         <span style="display:flex;align-items:center;gap:6px">
                             ${statusLabel ? '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>' : ''}
                             <span style="color:var(--muted);font-size:0.75rem">→</span>
                         </span>
                     </div>`;
+
+                weekStart.setDate(weekStart.getDate() + 7);
             }
             weekListEl.innerHTML = weekRows;
 
             // Verstuurknop verbergen bij historische weken
             const submitBtn = document.getElementById('submit-week-btn');
             if (submitBtn) submitBtn.parentElement.style.display = weekSummary ? 'none' : 'block';
+        }
+
+        async function changeMonth(dir) {
+            overviewMonth += dir;
+            if (overviewMonth > 11) { overviewMonth = 0; overviewYear++; }
+            if (overviewMonth < 0) { overviewMonth = 11; overviewYear--; }
+            await renderOverview();
         }
 
         async function goToWeek(offset) {
@@ -2813,6 +2885,8 @@
             currentWeekMonday.setDate(currentWeekMonday.getDate() + (offset * 7));
             currentWeekNumber = getISOWeek(currentWeekMonday);
             currentYear = getISOYear(currentWeekMonday);
+            overviewMonth = currentWeekMonday.getMonth();
+            overviewYear = currentWeekMonday.getFullYear();
 
             weekData = defaultWeekData();
             weekSummary = null;
