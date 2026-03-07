@@ -834,9 +834,12 @@
             <div class="modal-handle"></div>
             <div class="modal-title" id="admin-modal-title">Nieuw item</div>
             <div id="admin-modal-fields"></div>
-            <div class="form-actions" style="margin-top:16px">
-                <button class="btn btn-secondary" onclick="closeModal('admin-modal')">Annuleren</button>
-                <button class="btn btn-primary" id="admin-modal-save">Opslaan</button>
+            <div class="form-actions" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
+                <button class="btn" id="admin-modal-delete" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;display:none" onclick="deleteAdminItem()">Verwijderen</button>
+                <div style="display:flex;gap:8px;margin-left:auto">
+                    <button class="btn btn-secondary" onclick="closeModal('admin-modal')">Annuleren</button>
+                    <button class="btn btn-primary" id="admin-modal-save">Opslaan</button>
+                </div>
             </div>
         </div>
     </div>
@@ -865,24 +868,40 @@
                 <div class="form-group">
                     <label>Categorie</label>
                     <select id="exp-cat">
-                        <option value="transport">Transport / Parkeren</option>
+                        <option value="transport">Transport</option>
+                        <option value="parkeren">Parkeren</option>
                         <option value="meals">Maaltijd</option>
-                        <option value="other">Materiaal / Overig</option>
+                        <option value="materiaal">Materiaal</option>
+                        <option value="other">Overig</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Bedrag (€)</label>
-                    <input type="number" step="0.01" id="exp-amount" placeholder="119.00">
+                    <input type="number" step="0.01" id="exp-amount" placeholder="">
                 </div>
             </div>
             <div class="form-group" style="margin-top:12px">
                 <label>Omschrijving</label>
-                <input type="text" id="exp-desc" placeholder="Bijv. Hotel Van der Valk">
+                <input type="text" id="exp-desc" placeholder="">
             </div>
             <div class="form-group" style="margin-top:12px">
                 <label>Bon uploaden</label>
-                <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:0.85rem;cursor:pointer">
-                    📷 Tik om foto te maken of bestand te kiezen
+                <div style="display:flex;gap:8px">
+                    <label style="flex:1;border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;color:var(--muted);font-size:0.85rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px">
+                        📷 Maak foto
+                        <input type="file" accept="image/*" capture="environment" id="exp-photo-camera" onchange="previewExpensePhoto(this)" style="display:none">
+                    </label>
+                    <label style="flex:1;border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;color:var(--muted);font-size:0.85rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px">
+                        📁 Kies bestand
+                        <input type="file" accept="image/*,.pdf" id="exp-photo-file" onchange="previewExpensePhoto(this)" style="display:none">
+                    </label>
+                </div>
+                <div id="exp-photo-preview" style="margin-top:8px;display:none">
+                    <img id="exp-photo-img" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+                        <span id="exp-photo-name" style="font-size:0.75rem;color:var(--muted)"></span>
+                        <button type="button" onclick="clearExpensePhoto()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.8rem">✕ Verwijder</button>
+                    </div>
                 </div>
             </div>
             <div class="form-actions" style="margin-top:16px">
@@ -937,7 +956,7 @@
                 <div class="nav-icon">⏱️</div>
                 Uren
             </div>
-            <div class="nav-item" onclick="switchScreen('kosten')">
+            <div class="nav-item" id="nav-kosten" onclick="switchScreen('kosten')">
                 <div class="nav-icon">🧾</div>
                 Extra
             </div>
@@ -1094,8 +1113,8 @@
         let expEntries = [];
         let expNextId = 1;
 
-        const catIcons = { hotel: '🏨', meals: '🍽️', transport: '🚌', other: '📦' };
-        const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', other: 'Materiaal / Overig' };
+        const catIcons = { hotel: '🏨', meals: '🍽️', transport: '🚌', parkeren: '🅿️', materiaal: '🔧', other: '📦' };
+        const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', parkeren: 'Parkeren', materiaal: 'Materiaal', other: 'Overig' };
 
         function fmt(n) { return n.toFixed(1).replace('.', ','); }
         function fmtEuro(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
@@ -2548,6 +2567,32 @@
         }
 
         // ===== EXPENSE ACTIONS =====
+        function previewExpensePhoto(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const preview = document.getElementById('exp-photo-preview');
+            const img = document.getElementById('exp-photo-img');
+            const nameEl = document.getElementById('exp-photo-name');
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => { img.src = e.target.result; preview.style.display = 'block'; };
+                reader.readAsDataURL(file);
+            } else {
+                img.src = '';
+                preview.style.display = 'block';
+            }
+            nameEl.textContent = file.name;
+        }
+
+        function clearExpensePhoto() {
+            document.getElementById('exp-photo-preview').style.display = 'none';
+            document.getElementById('exp-photo-img').src = '';
+            const cam = document.getElementById('exp-photo-camera');
+            const fil = document.getElementById('exp-photo-file');
+            if (cam) cam.value = '';
+            if (fil) fil.value = '';
+        }
+
         function addExpense() {
             const cat = document.getElementById('exp-cat').value;
             const amount = parseFloat(document.getElementById('exp-amount').value);
@@ -2575,6 +2620,11 @@
             // Blokkeer admin scherm voor niet-admins
             if (name === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
                 showToast('⚠️ Alleen voor beheerders');
+                return;
+            }
+            // Blokkeer kosten scherm als gebruiker geen declaratierechten heeft
+            if (name === 'kosten' && currentUser && currentUser.role !== 'admin' && currentUser.can_declare_expenses === false) {
+                showToast('⚠️ Extra kosten niet beschikbaar');
                 return;
             }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -2708,6 +2758,7 @@
             const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
             const hasThuiswerk = currentProject && currentProject.allow_thuiswerk;
             const hasHotel = currentProject && currentProject.allow_hotel;
+            const canSeeRates = !currentUser || currentUser.show_rates !== false;
 
             // Maandlabel updaten
             document.getElementById('month-label').textContent = `${MONTHS_LONG[overviewMonth]} ${overviewYear}`;
@@ -2765,7 +2816,7 @@
                     <div class="stat-label">Uren deze maand</div>
                 </div>`;
 
-            if (totalMonthHours > 0) {
+            if (canSeeRates && totalMonthHours > 0) {
                 statsHtml += `
                 <div class="stat-card" style="background:#059669;color:white">
                     <div class="stat-value" style="color:white">${fmtEuro(totalMonthRevenue)}</div>
@@ -2778,11 +2829,14 @@
                 <div class="stat-card">
                     <div class="stat-value">${totalMonthKm.toLocaleString('nl-NL')}</div>
                     <div class="stat-label">Kilometers</div>
-                </div>
+                </div>`;
+                if (canSeeRates) {
+                    statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${fmtEuro(totalKmRevenue)}</div>
                     <div class="stat-label">Km-vergoeding</div>
                 </div>`;
+                }
             }
 
             if (hasThuiswerk) {
@@ -2797,13 +2851,13 @@
                 statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalHotelNights}× 🏨</div>
-                    <div class="stat-label">Hotelnachten (${fmtEuro(totalHotelTotal)})</div>
+                    <div class="stat-label">Hotelnachten${canSeeRates ? ' (' + fmtEuro(totalHotelTotal) + ')' : ''}</div>
                 </div>`;
             }
 
-            if (totalMonthHours > 0) {
+            if (canSeeRates && totalMonthHours > 0) {
                 statsHtml += `
-                <div class="stat-card" style="background:var(--kts-blue)">
+                <div class="stat-card" style="background:var(--kts-blue);grid-column:1/-1">
                     <div class="stat-value" style="color:white">${fmtEuro(grandTotal)}</div>
                     <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal omzet</div>
                 </div>`;
@@ -2811,9 +2865,11 @@
 
             document.getElementById('overview-stats').innerHTML = statsHtml;
 
-            // Revenue breakdown
+            // Revenue breakdown (alleen zichtbaar als gebruiker tarieven mag zien)
             let revenueHtml = '';
-            if (totalMonthHours > 0) {
+            if (!canSeeRates) {
+                // Geen omzet breakdown tonen
+            } else if (totalMonthHours > 0) {
                 revenueHtml = `
                 <div class="summary-title">Omzet breakdown · ${MONTHS_LONG[overviewMonth]}</div>
                 <div class="summary-row">
@@ -2846,7 +2902,7 @@
 
             // Maandtotaal in navigatiebalk
             document.getElementById('month-total').textContent = totalMonthHours > 0
-                ? `${fmt(totalMonthHours)} uur · ${fmtEuro(grandTotal)}`
+                ? (canSeeRates ? `${fmt(totalMonthHours)} uur · ${fmtEuro(grandTotal)}` : `${fmt(totalMonthHours)} uur`)
                 : '';
 
             // Weeknummer in onderteken/verstuur knoppen
@@ -3432,6 +3488,13 @@
             // Laad tarieven voor het project
             await loadProjectRates();
 
+            // Extra kosten tab tonen/verbergen op basis van rechten
+            const navKosten = document.getElementById('nav-kosten');
+            if (navKosten) {
+                const canExpenses = isAdmin || currentUser.can_declare_expenses !== false;
+                navKosten.style.display = canExpenses ? '' : 'none';
+            }
+
             // Laad uren voor huidige week
             await loadWeekFromSupabase();
         }
@@ -3871,6 +3934,12 @@
             document.getElementById('admin-modal-title').textContent = title;
             document.getElementById('admin-modal-fields').innerHTML = fields;
             document.getElementById('admin-modal-save').onclick = () => saveAdminItem(type);
+            // Verwijder-knop tonen bij bewerken van tarieven
+            const delBtn = document.getElementById('admin-modal-delete');
+            if (delBtn) {
+                delBtn.style.display = (isEdit && type === 'tarief') ? 'block' : 'none';
+                delBtn.dataset.type = type;
+            }
             modal.classList.add('active');
 
             // Vul project-dropdown als tarief
@@ -3934,8 +4003,8 @@
             // Haal toegewezen gebruikers op
             const { data: assignments } = await sb.from('user_projects').select('id, user_id').eq('project_id', projectId);
 
-            // Haal alle gebruikers op (voor dropdown)
-            const { data: allUsers } = await sb.from('users').select('id, name, email').order('name');
+            // Haal alle gebruikers op (voor dropdown + show_rates status)
+            const { data: allUsers } = await sb.from('users').select('id, name, email, show_rates').order('name');
 
             const assignedIds = (assignments || []).map(a => a.user_id);
             const container = document.getElementById('adm-proj-users');
@@ -3946,8 +4015,22 @@
                 container.innerHTML = assignments.map(a => {
                     const user = allUsers.find(u => u.id === a.user_id);
                     const name = user ? (user.name || user.email) : a.user_id;
+                    const showRates = user ? (user.show_rates !== false) : true;
+                    const canExpenses = user ? (user.can_declare_expenses !== false) : true;
                     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:4px">
-                        <span style="font-size:0.85rem;font-weight:500">👤 ${name}</span>
+                        <div style="display:flex;flex-direction:column;gap:2px">
+                            <span style="font-size:0.85rem;font-weight:500">👤 ${name}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px">
+                                <label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);cursor:pointer">
+                                    <input type="checkbox" ${showRates ? 'checked' : ''} onchange="toggleUserSetting('${a.user_id}', 'show_rates', this.checked)" style="width:14px;height:14px">
+                                    Tarieven zichtbaar
+                                </label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);cursor:pointer">
+                                    <input type="checkbox" ${canExpenses ? 'checked' : ''} onchange="toggleUserSetting('${a.user_id}', 'can_declare_expenses', this.checked)" style="width:14px;height:14px">
+                                    Extra kosten declareren
+                                </label>
+                            </div>
+                        </div>
                         <button type="button" onclick="removeUserFromProject('${a.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:2px 6px">✕</button>
                     </div>`;
                 }).join('');
@@ -3960,6 +4043,24 @@
                 const available = allUsers.filter(u => !assignedIds.includes(u.id));
                 select.innerHTML = '<option value="">Kies gebruiker...</option>' +
                     available.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+            }
+        }
+
+        async function toggleUserSetting(userId, field, value) {
+            const sb = getSupabase();
+            if (!sb) return;
+            const update = {};
+            update[field] = value;
+            const { error } = await sb.from('users').update(update).eq('id', userId);
+            if (error) {
+                showToast('⚠️ Fout bij opslaan: ' + error.message);
+                console.error('Toggle ' + field + ' mislukt:', error.message);
+            } else {
+                const labels = {
+                    show_rates: value ? '✓ Tarieven zichtbaar' : '✓ Tarieven verborgen',
+                    can_declare_expenses: value ? '✓ Extra kosten toegestaan' : '✓ Extra kosten uitgeschakeld'
+                };
+                showToast(labels[field] || '✓ Opgeslagen');
             }
         }
 
@@ -3989,6 +4090,28 @@
             }
             showToast('✓ Toewijzing verwijderd');
             await loadProjectAssignments(_editingId);
+        }
+
+        async function deleteAdminItem() {
+            if (!_editingId) return;
+            const delBtn = document.getElementById('admin-modal-delete');
+            const type = delBtn ? delBtn.dataset.type : '';
+            if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            let table = '';
+            if (type === 'tarief') table = 'rates';
+            else if (type === 'project') table = 'projects';
+            else if (type === 'persoon') table = 'companies';
+            if (!table) return;
+            const { error } = await sb.from(table).delete().eq('id', _editingId);
+            if (error) {
+                showToast('⚠️ Verwijderen mislukt: ' + error.message);
+            } else {
+                showToast('✓ Verwijderd');
+                closeModal('admin-modal');
+                loadAdminData();
+            }
         }
 
         async function saveAdminItem(type) {
