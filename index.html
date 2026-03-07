@@ -808,7 +808,7 @@
             <!-- ===== TARIEVEN TAB ===== -->
             <div id="admin-tarieven" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project</div>
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project / medewerker</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
@@ -1320,7 +1320,7 @@
                                     '</div>' +
                                     '<div style="flex:1">' +
                                         '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.thuiswerk?'#059669':'var(--muted)') + '">🏠 Thuiswerk</div>' +
-                                        '<div style="font-size:0.75rem;color:var(--muted)">Geen reiskilometers</div>' +
+                                        '<div style="font-size:0.75rem;color:var(--muted)">' + (currentProject && parseFloat(currentProject.km_single_trip) > 0 ? 'Geen reiskilometers' : 'Werken vanuit huis') + '</div>' +
                                     '</div>' +
                                 '</div>' : ''}
 
@@ -3332,23 +3332,44 @@
         async function loadProjectRates() {
             if (!getSupabase() || !currentProject) return;
             const sb = getSupabase();
-            // Haal het geldige tarief op voor het huidige project (op basis van vandaag)
             const today = new Date().toISOString().slice(0, 10);
-            const { data: rates } = await sb
-                .from('rates')
-                .select('*')
-                .eq('project_id', currentProject.id)
-                .lte('valid_from', today)
-                .order('valid_from', { ascending: false })
-                .limit(1);
 
-            if (rates && rates.length > 0) {
-                currentRates = rates[0];
+            // Probeer eerst user-specifiek tarief te laden
+            let foundRate = null;
+            if (currentUser && currentUser.id) {
+                const { data: userRates } = await sb
+                    .from('rates')
+                    .select('*')
+                    .eq('project_id', currentProject.id)
+                    .eq('user_id', currentUser.id)
+                    .lte('valid_from', today)
+                    .order('valid_from', { ascending: false })
+                    .limit(1);
+                if (userRates && userRates.length > 0) foundRate = userRates[0];
+            }
+
+            // Fallback: project-breed tarief (user_id is null)
+            if (!foundRate) {
+                const { data: projRates } = await sb
+                    .from('rates')
+                    .select('*')
+                    .eq('project_id', currentProject.id)
+                    .is('user_id', null)
+                    .lte('valid_from', today)
+                    .order('valid_from', { ascending: false })
+                    .limit(1);
+                if (projRates && projRates.length > 0) foundRate = projRates[0];
+            }
+
+            if (foundRate) {
+                currentRates = foundRate;
                 RATE = parseFloat(currentRates.hourly_rate) || 85;
                 KM_RATE = parseFloat(currentRates.km_rate) || 0.50;
                 SAT_MULTIPLIER = parseFloat(currentRates.saturday_multiplier) || 1.50;
                 SUN_MULTIPLIER = parseFloat(currentRates.sunday_holiday_multiplier) || 2.00;
-                console.log(`Tarieven geladen: €${RATE}/u, €${KM_RATE}/km, Za×${SAT_MULTIPLIER}, Zo×${SUN_MULTIPLIER}`);
+                const who = currentRates.user_id ? 'user-specifiek' : 'project-breed';
+                const fn = currentRates.function_title ? ` (${currentRates.function_title})` : '';
+                console.log(`Tarieven geladen (${who}${fn}): €${RATE}/u, €${KM_RATE}/km, Za×${SAT_MULTIPLIER}, Zo×${SUN_MULTIPLIER}`);
             } else {
                 console.log('Geen tarieven gevonden voor project, defaults gebruikt');
             }
@@ -3455,14 +3476,14 @@
                 renderDays();
                 renderOverview();
 
-                // Verberg opslaan-knoppen bij historische weken
-                const isReadOnly = !!weekSummary;
+                // Verberg opslaan-knoppen bij historische of niet-bewerkbare weken
+                const isReadOnly = !!weekSummary || !getWeekStatus().editable;
                 const urenWrap = document.getElementById('save-uren-btn-wrap');
                 const kostenWrap = document.getElementById('save-kosten-btn-wrap');
                 if (urenWrap) urenWrap.style.display = isReadOnly ? 'none' : 'block';
                 if (kostenWrap) kostenWrap.style.display = isReadOnly ? 'none' : 'block';
 
-                // Verberg verstuurknop bij historische weken
+                // Verberg verstuurknop bij historische of niet-bewerkbare weken
                 const submitBtn = document.getElementById('submit-week-btn');
                 if (submitBtn) submitBtn.parentElement.style.display = isReadOnly ? 'none' : 'block';
             } catch (err) {
@@ -3681,22 +3702,26 @@
             }
 
             // Tarieven laden
-            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code)').order('valid_from', { ascending: false });
+            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code, km_single_trip), user_id(name, email)').order('valid_from', { ascending: false });
             window._adminRates = rates || [];
             const tariefList = document.getElementById('admin-tarief-list');
             if (rates && rates.length > 0) {
                 tariefList.innerHTML = rates.map((r, idx) => {
                     const proj = r.project_id || {};
+                    const user = r.user_id && typeof r.user_id === 'object' ? r.user_id : null;
+                    const userName = user ? (user.name || user.email) : 'Alle medewerkers';
+                    const funcTitle = r.function_title ? ` · ${r.function_title}` : '';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('tarief', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700;font-size:0.9rem">${proj.name || 'Onbekend project'}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${proj.project_code || ''} · vanaf ${r.valid_from}${r.valid_to ? ' t/m ' + r.valid_to : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${userName}${funcTitle}</div>
+                                <div style="font-size:0.7rem;color:var(--muted)">${proj.project_code || ''} · vanaf ${r.valid_from}${r.valid_to ? ' t/m ' + r.valid_to : ''}</div>
                             </div>
                             <div style="text-align:right">
                                 <div style="font-weight:700;color:var(--kts-blue)">€${r.hourly_rate}/u</div>
-                                <div style="font-size:0.7rem;color:var(--muted)">€${r.km_rate}/km</div>
+                                ${proj.km_single_trip && parseFloat(proj.km_single_trip) > 0 ? '<div style="font-size:0.7rem;color:var(--muted)">€' + r.km_rate + '/km</div>' : ''}
                             </div>
                         </div>
                     </div>`;
@@ -3794,10 +3819,12 @@
                 title = existing ? 'Tarief bewerken' : 'Nieuw tarief';
                 const proj = existing ? existing.project_id : null;
                 fields = `
-                    <div class="form-group" style="margin-bottom:12px"><label>Project</label><select id="adm-tar-project"><option value="">Laden...</option></select></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Project</label><select id="adm-tar-project" onchange="updateTariffKmVisibility()"><option value="">Laden...</option></select></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Medewerker</label><select id="adm-tar-user"><option value="">Projectbreed (alle medewerkers)</option></select></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Functie</label><input type="text" id="adm-tar-function" placeholder="Bijv. Maintenance Engineer A" value="${existing ? existing.function_title || '' : ''}"></div>
                     <div class="form-row">
                         <div class="form-group"><label>Uurtarief (€)</label><input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? existing.hourly_rate || '' : ''}"></div>
-                        <div class="form-group"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
+                        <div class="form-group" id="adm-tar-km-wrap"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
                         <div class="form-group"><label>Za-toeslag (%)</label><input type="number" step="1" id="adm-tar-sat" placeholder="150" value="${existing ? Math.round(existing.saturday_multiplier * 100) : '150'}"></div>
@@ -3824,6 +3851,13 @@
                         const projId = typeof existing.project_id === 'object' ? existing.project_id.id : existing.project_id;
                         const sel = document.getElementById('adm-tar-project');
                         if (sel) sel.value = projId;
+                        updateTariffKmVisibility();
+                    }
+                    // Selecteer gebruiker bij bewerken
+                    if (existing && existing.user_id) {
+                        const userId = typeof existing.user_id === 'object' ? existing.user_id.id : existing.user_id;
+                        const userSel = document.getElementById('adm-tar-user');
+                        if (userSel) userSel.value = userId;
                     }
                 });
             }
@@ -3837,11 +3871,30 @@
         async function loadProjectDropdown() {
             const sb = getSupabase();
             if (!sb) return;
-            const { data: projects } = await sb.from('projects').select('id, name, project_code').order('name');
+            const { data: projects } = await sb.from('projects').select('id, name, project_code, km_single_trip').order('name');
+            window._tariffProjects = projects || [];
             const sel = document.getElementById('adm-tar-project');
             if (projects) {
                 sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.project_code} — ${p.name}</option>`).join('');
             }
+            updateTariffKmVisibility();
+            // Gebruikers dropdown vullen
+            const { data: users } = await sb.from('users').select('id, email, name').order('name');
+            window._tariffUsers = users || [];
+            const userSel = document.getElementById('adm-tar-user');
+            if (userSel && users) {
+                userSel.innerHTML = '<option value="">Projectbreed (alle medewerkers)</option>' +
+                    users.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+            }
+        }
+
+        function updateTariffKmVisibility() {
+            const sel = document.getElementById('adm-tar-project');
+            const kmWrap = document.getElementById('adm-tar-km-wrap');
+            if (!sel || !kmWrap) return;
+            const proj = (window._tariffProjects || []).find(p => p.id === sel.value);
+            const hasKm = proj && parseFloat(proj.km_single_trip) > 0;
+            kmWrap.style.display = hasKm ? 'block' : 'none';
         }
 
         // ===== PROJECTTOEWIJZING FUNCTIES =====
@@ -3958,8 +4011,12 @@
                 const hourly = parseFloat(document.getElementById('adm-tar-hourly').value);
                 const from = document.getElementById('adm-tar-from').value;
                 if (!projId || !hourly || !from) { showToast('⚠️ Vul project, uurtarief en startdatum in'); return; }
+                const userId = document.getElementById('adm-tar-user').value || null;
+                const functionTitle = document.getElementById('adm-tar-function').value.trim() || null;
                 const data = {
                     project_id: projId,
+                    user_id: userId,
+                    function_title: functionTitle,
                     hourly_rate: hourly,
                     km_rate: parseFloat(document.getElementById('adm-tar-km').value) || 0.50,
                     saturday_multiplier: (parseFloat(document.getElementById('adm-tar-sat').value) || 150) / 100,
