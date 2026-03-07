@@ -113,6 +113,9 @@
             cursor: pointer;
             transition: background 0.15s;
             font-weight: 500;
+            text-align: center;
+            line-height: 1.3;
+            max-width: 120px;
         }
         .user-badge:hover { background: rgba(255,255,255,0.25); }
         .project-selector {
@@ -609,6 +612,7 @@
                 <div style="flex:1;padding:36px 32px;display:flex;flex-direction:column;justify-content:center">
                     <div style="font-weight:700;font-size:1.15rem;color:var(--text);margin-bottom:24px">Welkom terug</div>
 
+                    <form onsubmit="event.preventDefault();doLogin()">
                     <div style="margin-bottom:14px">
                         <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">E-mailadres</label>
                         <div style="position:relative">
@@ -627,14 +631,13 @@
                             <input type="password" id="login-password" placeholder="••••••••" style="
                                 width:100%;padding:13px 12px 13px 38px;border:2px solid var(--border);border-radius:10px;
                                 font-size:16px;transition:border-color 0.2s;background:#f8fafc;
-                            " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'"
-                            onkeydown="if(event.key==='Enter')doLogin()">
+                            " onfocus="this.style.borderColor='#07567F';this.style.background='white'" onblur="this.style.borderColor='var(--border)';this.style.background='#f8fafc'">
                         </div>
                     </div>
 
                     <div id="login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;background:#fef2f2;padding:10px 14px;border-radius:8px;border:1px solid #fecaca"></div>
 
-                    <button onclick="doLogin()" id="login-btn" style="
+                    <button type="submit" id="login-btn" style="
                         width:100%;padding:14px;font-size:1rem;font-weight:700;
                         background:linear-gradient(135deg, #07567F, #0a6d9e);color:white;
                         border:none;border-radius:12px;cursor:pointer;
@@ -644,6 +647,7 @@
                        onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(7,86,127,0.3)'">
                         Inloggen
                     </button>
+                    </form>
 
                 </div>
             </div>
@@ -677,7 +681,7 @@
         <div class="header-inner">
             <div class="header-top">
                 <div class="logo"><img src="tandwiel-wit.png" alt="KTS">Kuijpers <span>| Technical Services</span></div>
-                <div class="user-badge" onclick="toggleUserMenu()" style="position:relative">👤 M. Kuijpers
+                <div class="user-badge" onclick="toggleUserMenu()" style="position:relative"><span id="user-badge-name">👤 M. Kuijpers</span>
                     <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;overflow:hidden;z-index:200">
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
                         <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Instellingen</div>
@@ -988,6 +992,14 @@
         // Feature flags staan nu direct op currentUser (users tabel)
         let savedFolderHandle = null; // File System Access API — map voor PDF opslag
 
+        // Helper: naam splitsen voor badge (voornaam\nachternaam)
+        function formatBadgeName(name) {
+            if (!name) return '👤';
+            const parts = name.trim().split(/\s+/);
+            if (parts.length <= 1) return '👤 ' + name;
+            return '👤 ' + parts[0] + '<br>' + parts.slice(1).join(' ');
+        }
+
         // Helper functies voor feature flags (uit users tabel)
         function userHasKm() {
             if (currentUser && currentUser.allow_km === false) return false;
@@ -1141,6 +1153,29 @@
         let expandedDay = -1;
         let weekDataDirty = false; // track unsaved changes
 
+        // Waarschuw bij browser sluiten/refresh als er onopgeslagen wijzigingen zijn
+        window.addEventListener('beforeunload', function(e) {
+            if (weekDataDirty) {
+                e.preventDefault();
+                e.returnValue = 'Je hebt onopgeslagen wijzigingen. Weet je zeker dat je wilt afsluiten?';
+                return e.returnValue;
+            }
+        });
+
+        // Visuele feedback voor onopgeslagen wijzigingen
+        function markDirty() {
+            markDirty();
+            const btn = document.querySelector('#save-uren-btn-wrap .btn');
+            if (btn) {
+                btn.innerHTML = '💾 Week opslaan <span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;margin-left:6px;vertical-align:middle"></span>';
+            }
+        }
+        function markClean() {
+            weekDataDirty = false;
+            const btn = document.querySelector('#save-uren-btn-wrap .btn');
+            if (btn) btn.innerHTML = '💾 Week opslaan';
+        }
+
         let expEntries = [];
         let expNextId = 1;
 
@@ -1196,7 +1231,7 @@
             return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
                 <div style="font-size:1.1rem">🚗</div>
                 <div style="flex:1">
-                    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel)' : ' (retour thuis ↔ project)'}</div>
+                    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel; bijv. spullen halen of afspraak)' : ' (retour thuis ↔ project)'}</div>
                     <input type="number" value="${entry.km||0}" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600" onchange="updateEntry(${i},'km',this.value)">
                     <span style="font-size:0.8rem;color:var(--muted);margin-left:6px">km · ${fmtEuro((entry.km||0) * KM_RATE)}</span>
                 </div>
@@ -1451,7 +1486,7 @@
         function toggleDay(i) { expandedDay = expandedDay === i ? -1 : i; renderDays(); }
 
         function toggleThuiswerk(i) {
-            weekDataDirty = true;
+            markDirty();
             const e = weekData[i];
             e.thuiswerk = !e.thuiswerk;
             if (e.thuiswerk) {
@@ -1468,7 +1503,7 @@
         }
 
         function toggleHotel(i) {
-            weekDataDirty = true;
+            markDirty();
             const e = weekData[i];
             e.hotel = !e.hotel;
             if (e.hotel) {
@@ -1494,7 +1529,7 @@
         }
 
         function updateEntry(i, field, value) {
-            weekDataDirty = true;
+            markDirty();
             const e = weekData[i];
             if (field === 'start') e.start = value;
             if (field === 'end') e.end = value;
@@ -2582,7 +2617,12 @@
         async function changeWeek(dir) {
             // Auto-save huidige week als er wijzigingen zijn
             if (weekDataDirty && getSupabase() && currentUser && currentUser.id) {
-                await saveWeekToSupabase();
+                try {
+                    await saveWeekToSupabase();
+                } catch (e) {
+                    showToast('⚠️ Auto-save mislukt — wijzigingen niet opgeslagen');
+                    console.error('Auto-save fout bij week wissel:', e);
+                }
             }
 
             // Navigeer naar vorige/volgende week
@@ -2598,7 +2638,7 @@
             weekData = defaultWeekData();
             weekSummary = null;
             expandedDay = -1;
-            weekDataDirty = false;
+            markClean();
 
             // Update label
             updateWeekLabel();
@@ -2742,7 +2782,12 @@
 
             // Auto-save huidige week als er wijzigingen zijn
             if (weekDataDirty && currentUser && currentUser.id) {
-                await saveWeekToSupabase();
+                try {
+                    await saveWeekToSupabase();
+                } catch (e) {
+                    showToast('⚠️ Auto-save mislukt — wijzigingen niet opgeslagen');
+                    console.error('Auto-save fout bij project wissel:', e);
+                }
             }
 
             // Haal geselecteerd project op
@@ -2770,7 +2815,7 @@
             // Reset en herlaad weekdata voor dit project
             weekData = defaultWeekData();
             weekSummary = null;
-            weekDataDirty = false;
+            markClean();
             expandedDay = -1;
             await loadWeekFromSupabase();
 
@@ -2805,6 +2850,7 @@
         }
 
         async function renderOverview() {
+          try {
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
 
             // Project feature flags
@@ -3082,6 +3128,9 @@
             // Verstuurknop verbergen bij historische weken
             const submitBtn = document.getElementById('submit-week-btn');
             if (submitBtn) submitBtn.parentElement.style.display = weekSummary ? 'none' : 'block';
+          } catch (err) {
+            console.error('renderOverview fout:', err);
+          }
         }
 
         async function changeMonth(dir) {
@@ -3095,7 +3144,12 @@
         async function goToWeek(offset) {
             // Auto-save huidige week
             if (weekDataDirty && getSupabase() && currentUser && currentUser.id) {
-                await saveWeekToSupabase();
+                try {
+                    await saveWeekToSupabase();
+                } catch (e) {
+                    showToast('⚠️ Auto-save mislukt — wijzigingen niet opgeslagen');
+                    console.error('Auto-save fout bij goToWeek:', e);
+                }
             }
 
             // Navigeer naar de week
@@ -3108,7 +3162,7 @@
             weekData = defaultWeekData();
             weekSummary = null;
             expandedDay = -1;
-            weekDataDirty = false;
+            markClean();
 
             updateWeekLabel();
 
@@ -3354,7 +3408,7 @@
             currentUser = profile || { name: data.user.email, role: 'engineer' };
 
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelector('.user-badge').childNodes[0].textContent = '👤 ' + currentUser.name + ' ';
+            document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
             showToast('✓ Welkom, ' + currentUser.name);
 
             // Laad data vanuit Supabase
@@ -3364,7 +3418,7 @@
         function demoLogin() {
             currentUser = { name: 'Demo Gebruiker', role: 'engineer' };
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelector('.user-badge').childNodes[0].textContent = '👤 Demo ';
+            document.getElementById('user-badge-name').innerHTML = '👤 Demo';
             showToast('✓ Demo modus — data wordt niet opgeslagen');
         }
 
@@ -3400,12 +3454,15 @@
             currentUser = null;
             currentProject = null;
             weekData = defaultWeekData();
-            weekDataDirty = false;
+            markClean();
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('user-menu').style.display = 'none';
             document.getElementById('login-email').value = '';
             document.getElementById('login-password').value = '';
             document.getElementById('login-error').style.display = 'none';
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.textContent = 'Inloggen';
+            loginBtn.disabled = false;
             renderDays();
             showToast('✓ Uitgelogd');
         }
@@ -3413,13 +3470,17 @@
         // Check bestaande sessie
         async function checkSession() {
             if (!getSupabase()) return;
-            const { data: { session } } = await getSupabase().auth.getSession();
-            if (session) {
-                const { data: profile } = await getSupabase().from('users').select('*').eq('id', session.user.id).single();
-                currentUser = profile || { name: session.user.email, role: 'engineer' };
-                document.getElementById('login-overlay').style.display = 'none';
-                document.querySelector('.user-badge').childNodes[0].textContent = '👤 ' + currentUser.name + ' ';
-                await loadDataFromSupabase();
+            try {
+                const { data: { session } } = await getSupabase().auth.getSession();
+                if (session) {
+                    const { data: profile } = await getSupabase().from('users').select('*').eq('id', session.user.id).single();
+                    currentUser = profile || { name: session.user.email, role: 'engineer' };
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
+                    await loadDataFromSupabase();
+                }
+            } catch (err) {
+                console.error('checkSession fout:', err);
             }
         }
 
@@ -3429,116 +3490,135 @@
             if (!getSupabase() || !currentUser || !currentUser.id) return false;
             const sb = getSupabase();
 
-            // Haal huidig project op (of maak aan)
-            if (!currentProject) {
-                const { data: projects } = await sb.from('projects').select('*').limit(1);
-                if (projects && projects.length > 0) {
-                    currentProject = projects[0];
-                } else {
-                    const { data: newProject } = await sb.from('projects').insert({
-                        project_code: 'KTS2026_01',
-                        name: 'Demo Project',
-                        client_name: '',
-                        location: ''
-                    }).select().single();
-                    currentProject = newProject;
-                }
-            }
-
-            // Uren opslaan per dag
-            for (let i = 0; i < weekData.length; i++) {
-                const d = weekData[i];
-                const entryDate = getDateForDayIndex(i);
-
-                // Check of er al een entry bestaat voor deze datum
-                const { data: existing } = await sb
-                    .from('time_entries')
-                    .select('id')
-                    .eq('user_id', currentUser.id)
-                    .eq('entry_date', entryDate)
-                    .maybeSingle();
-
-                if (d.hours <= 0 && !d.thuiswerk) {
-                    // Geen data voor deze dag — verwijder bestaande entry als die er is
-                    if (existing) {
-                        await sb.from('time_entries').delete().eq('id', existing.id);
+            try {
+                // Haal huidig project op (of maak aan)
+                if (!currentProject) {
+                    const { data: projects } = await sb.from('projects').select('*').limit(1);
+                    if (projects && projects.length > 0) {
+                        currentProject = projects[0];
+                    } else {
+                        const { data: newProject } = await sb.from('projects').insert({
+                            project_code: 'KTS2026_01',
+                            name: 'Demo Project',
+                            client_name: '',
+                            location: ''
+                        }).select().single();
+                        currentProject = newProject;
                     }
-                    continue;
                 }
 
-                const entry = {
-                    user_id: currentUser.id,
-                    project_id: currentProject.id,
-                    entry_date: entryDate,
-                    start_time: d.start || null,
-                    end_time: d.end || null,
-                    break_minutes: d.breakMin || 0,
-                    total_hours: d.hours,
-                    description: d.desc || '',
-                    location: d.location || '',
-                    km: d.km || 0,
-                    km_heen: d.kmHeen || 0,
-                    km_terug: d.kmTerug || 0,
-                    hotel: d.hotel || false,
-                    thuiswerk: d.thuiswerk || false,
-                    status: 'draft'
-                };
+                let saveErrors = 0;
 
-                if (existing) {
-                    const { error } = await sb.from('time_entries').update(entry).eq('id', existing.id);
-                    if (error) console.error('time_entries update error dag ' + i + ':', error.message, error.details);
-                } else {
-                    const { error } = await sb.from('time_entries').insert(entry);
-                    if (error) console.error('time_entries insert error dag ' + i + ':', error.message, error.details);
+                // Uren opslaan per dag
+                for (let i = 0; i < weekData.length; i++) {
+                    const d = weekData[i];
+                    const entryDate = getDateForDayIndex(i);
+
+                    // Check of er al een entry bestaat voor deze datum
+                    const { data: existing } = await sb
+                        .from('time_entries')
+                        .select('id')
+                        .eq('user_id', currentUser.id)
+                        .eq('entry_date', entryDate)
+                        .maybeSingle();
+
+                    if (d.hours <= 0 && !d.thuiswerk) {
+                        // Geen data voor deze dag — verwijder bestaande entry als die er is
+                        if (existing) {
+                            await sb.from('time_entries').delete().eq('id', existing.id);
+                        }
+                        continue;
+                    }
+
+                    const entry = {
+                        user_id: currentUser.id,
+                        project_id: currentProject.id,
+                        entry_date: entryDate,
+                        start_time: d.start || null,
+                        end_time: d.end || null,
+                        break_minutes: d.breakMin || 0,
+                        total_hours: d.hours,
+                        description: d.desc || '',
+                        location: d.location || '',
+                        km: d.km || 0,
+                        km_heen: d.kmHeen || 0,
+                        km_terug: d.kmTerug || 0,
+                        hotel: d.hotel || false,
+                        thuiswerk: d.thuiswerk || false,
+                        status: 'draft'
+                    };
+
+                    if (existing) {
+                        const { error } = await sb.from('time_entries').update(entry).eq('id', existing.id);
+                        if (error) { console.error('time_entries update error dag ' + i + ':', error.message); saveErrors++; }
+                    } else {
+                        const { error } = await sb.from('time_entries').insert(entry);
+                        if (error) { console.error('time_entries insert error dag ' + i + ':', error.message); saveErrors++; }
+                    }
                 }
+
+                if (saveErrors > 0) {
+                    showToast('⚠️ ' + saveErrors + ' dag(en) niet opgeslagen — probeer opnieuw');
+                    return false;
+                }
+                return true;
+            } catch (err) {
+                console.error('saveWeekToSupabase fout:', err);
+                showToast('⚠️ Opslaan mislukt — controleer je internetverbinding');
+                return false;
             }
-            return true;
         }
 
         // ===== TARIEVEN LADEN VOOR HUIDIG PROJECT =====
         async function loadProjectRates() {
             if (!getSupabase() || !currentProject) return;
             const sb = getSupabase();
-            const today = new Date().toISOString().slice(0, 10);
 
-            // Probeer eerst user-specifiek tarief te laden
-            let foundRate = null;
-            if (currentUser && currentUser.id) {
-                const { data: userRates } = await sb
-                    .from('rates')
-                    .select('*')
-                    .eq('project_id', currentProject.id)
-                    .eq('user_id', currentUser.id)
-                    .lte('valid_from', today)
-                    .order('valid_from', { ascending: false })
-                    .limit(1);
-                if (userRates && userRates.length > 0) foundRate = userRates[0];
-            }
+            try {
+                const today = new Date().toISOString().slice(0, 10);
 
-            // Fallback: project-breed tarief (user_id is null)
-            if (!foundRate) {
-                const { data: projRates } = await sb
-                    .from('rates')
-                    .select('*')
-                    .eq('project_id', currentProject.id)
-                    .is('user_id', null)
-                    .lte('valid_from', today)
-                    .order('valid_from', { ascending: false })
-                    .limit(1);
-                if (projRates && projRates.length > 0) foundRate = projRates[0];
-            }
+                // Probeer eerst user-specifiek tarief te laden
+                let foundRate = null;
+                if (currentUser && currentUser.id) {
+                    const { data: userRates } = await sb
+                        .from('rates')
+                        .select('*')
+                        .eq('project_id', currentProject.id)
+                        .eq('user_id', currentUser.id)
+                        .lte('valid_from', today)
+                        .order('valid_from', { ascending: false })
+                        .limit(1);
+                    if (userRates && userRates.length > 0) foundRate = userRates[0];
+                }
 
-            if (foundRate) {
-                currentRates = foundRate;
-                RATE = parseFloat(currentRates.hourly_rate) || 85;
-                KM_RATE = parseFloat(currentRates.km_rate) || 0.50;
-                SAT_MULTIPLIER = parseFloat(currentRates.saturday_multiplier) || 1.50;
-                SUN_MULTIPLIER = parseFloat(currentRates.sunday_holiday_multiplier) || 2.00;
-                const who = currentRates.user_id ? 'user-specifiek' : 'project-breed';
-                const fn = currentRates.function_title ? ` (${currentRates.function_title})` : '';
-                console.log(`Tarieven geladen (${who}${fn}): €${RATE}/u, €${KM_RATE}/km, Za×${SAT_MULTIPLIER}, Zo×${SUN_MULTIPLIER}`);
-            } else {
-                console.log('Geen tarieven gevonden voor project, defaults gebruikt');
+                // Fallback: project-breed tarief (user_id is null)
+                if (!foundRate) {
+                    const { data: projRates } = await sb
+                        .from('rates')
+                        .select('*')
+                        .eq('project_id', currentProject.id)
+                        .is('user_id', null)
+                        .lte('valid_from', today)
+                        .order('valid_from', { ascending: false })
+                        .limit(1);
+                    if (projRates && projRates.length > 0) foundRate = projRates[0];
+                }
+
+                if (foundRate) {
+                    currentRates = foundRate;
+                    RATE = parseFloat(currentRates.hourly_rate) || 85;
+                    KM_RATE = parseFloat(currentRates.km_rate) || 0.50;
+                    SAT_MULTIPLIER = parseFloat(currentRates.saturday_multiplier) || 1.50;
+                    SUN_MULTIPLIER = parseFloat(currentRates.sunday_holiday_multiplier) || 2.00;
+                    const who = currentRates.user_id ? 'user-specifiek' : 'project-breed';
+                    const fn = currentRates.function_title ? ` (${currentRates.function_title})` : '';
+                    console.log(`Tarieven geladen (${who}${fn}): €${RATE}/u, €${KM_RATE}/km, Za×${SAT_MULTIPLIER}, Zo×${SUN_MULTIPLIER}`);
+                } else {
+                    console.log('Geen tarieven gevonden voor project, defaults gebruikt');
+                }
+            } catch (err) {
+                console.error('loadProjectRates fout:', err);
+                showToast('⚠️ Tarieven laden mislukt — standaardtarieven worden gebruikt');
             }
         }
 
@@ -3546,46 +3626,51 @@
         async function loadDataFromSupabase() {
             if (!getSupabase() || !currentUser || !currentUser.id) return;
 
-            // Haal actieve projecten op — admins zien alles, ZZP'ers alleen toegewezen projecten
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            let projects = [];
-            if (isAdmin) {
-                const { data } = await getSupabase().from('projects').select('*').eq('status', 'active').order('name');
-                projects = data || [];
-            } else {
-                // Haal project IDs op waar deze user aan toegewezen is
-                const { data: assignments } = await getSupabase().from('user_projects').select('project_id').eq('user_id', currentUser.id);
-                if (assignments && assignments.length > 0) {
-                    const projectIds = assignments.map(a => a.project_id);
-                    const { data } = await getSupabase().from('projects').select('*').in('id', projectIds).eq('status', 'active').order('name');
+            try {
+                // Haal actieve projecten op — admins zien alles, ZZP'ers alleen toegewezen projecten
+                const isAdmin = currentUser && currentUser.role === 'admin';
+                let projects = [];
+                if (isAdmin) {
+                    const { data } = await getSupabase().from('projects').select('*').eq('status', 'active').order('name');
                     projects = data || [];
+                } else {
+                    // Haal project IDs op waar deze user aan toegewezen is
+                    const { data: assignments } = await getSupabase().from('user_projects').select('project_id').eq('user_id', currentUser.id);
+                    if (assignments && assignments.length > 0) {
+                        const projectIds = assignments.map(a => a.project_id);
+                        const { data } = await getSupabase().from('projects').select('*').in('id', projectIds).eq('status', 'active').order('name');
+                        projects = data || [];
+                    }
                 }
+
+                if (projects && projects.length > 0) {
+                    // Kies laatst geselecteerd project (uit localStorage) of het eerste
+                    const lastProjectId = localStorage.getItem('kts_last_project_' + currentUser.id);
+                    const saved = lastProjectId && projects.find(p => p.id === lastProjectId);
+                    currentProject = saved || projects[0];
+
+                    document.querySelector('.project-name').textContent = currentProject.name;
+                    document.querySelector('.project-meta').textContent =
+                        (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
+                }
+
+                // Feature flags staan nu op users tabel (currentUser), geen aparte query nodig
+
+                // Laad tarieven voor het project
+                await loadProjectRates();
+
+                // Extra kosten tab tonen/verbergen op basis van rechten
+                const navKosten = document.getElementById('nav-kosten');
+                if (navKosten) {
+                    navKosten.style.display = (isAdmin || userCanDeclareExpenses()) ? '' : 'none';
+                }
+
+                // Laad uren voor huidige week
+                await loadWeekFromSupabase();
+            } catch (err) {
+                console.error('loadDataFromSupabase fout:', err);
+                showToast('⚠️ Data laden mislukt — probeer de pagina te herladen');
             }
-
-            if (projects && projects.length > 0) {
-                // Kies laatst geselecteerd project (uit localStorage) of het eerste
-                const lastProjectId = localStorage.getItem('kts_last_project_' + currentUser.id);
-                const saved = lastProjectId && projects.find(p => p.id === lastProjectId);
-                currentProject = saved || projects[0];
-
-                document.querySelector('.project-name').textContent = currentProject.name;
-                document.querySelector('.project-meta').textContent =
-                    (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
-            }
-
-            // Feature flags staan nu op users tabel (currentUser), geen aparte query nodig
-
-            // Laad tarieven voor het project
-            await loadProjectRates();
-
-            // Extra kosten tab tonen/verbergen op basis van rechten
-            const navKosten = document.getElementById('nav-kosten');
-            if (navKosten) {
-                navKosten.style.display = (isAdmin || userCanDeclareExpenses()) ? '' : 'none';
-            }
-
-            // Laad uren voor huidige week
-            await loadWeekFromSupabase();
         }
 
         async function loadWeekFromSupabase() {
@@ -3647,7 +3732,7 @@
                     }
                 }
 
-                weekDataDirty = false;
+                markClean();
                 renderDays();
                 renderOverview();
 
@@ -3660,7 +3745,8 @@
 
                 // Knop-status wordt afgehandeld door renderOverview()
             } catch (err) {
-                console.warn('Laden fout:', err);
+                console.error('loadWeekFromSupabase fout:', err);
+                showToast('⚠️ Weekdata laden mislukt');
             }
         }
 
@@ -3669,30 +3755,38 @@
             const sb = getSupabase();
             if (!sb || !currentUser || !currentUser.id) return;
 
-            const extra = {};
-            if (newStatus === 'ondertekend') extra.signed_at = new Date().toISOString();
-            if (newStatus === 'verstuurd') extra.submitted_at = new Date().toISOString();
+            try {
+                const extra = {};
+                if (newStatus === 'ondertekend') extra.signed_at = new Date().toISOString();
+                if (newStatus === 'verstuurd') extra.submitted_at = new Date().toISOString();
 
-            const record = {
-                user_id: currentUser.id,
-                project_id: currentProject ? currentProject.id : null,
-                week_number: currentWeekNumber,
-                year: currentYear,
-                status: newStatus,
-                updated_at: new Date().toISOString(),
-                ...extra
-            };
+                const record = {
+                    user_id: currentUser.id,
+                    project_id: currentProject ? currentProject.id : null,
+                    week_number: currentWeekNumber,
+                    year: currentYear,
+                    status: newStatus,
+                    updated_at: new Date().toISOString(),
+                    ...extra
+                };
 
-            // Probeer eerst met nieuwe constraint (user_id,week_number,year)
-            let { error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,week_number,year' });
+                // Probeer eerst met nieuwe constraint (user_id,week_number,year)
+                let { error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,week_number,year' });
 
-            // Fallback: oude constraint (user_id,project_id,week_number,year) als migratie 016 nog niet is uitgevoerd
-            if (error) {
-                console.warn('Probeer oude constraint:', error.message);
-                ({ error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,project_id,week_number,year' }));
+                // Fallback: oude constraint (user_id,project_id,week_number,year) als migratie 016 nog niet is uitgevoerd
+                if (error) {
+                    console.warn('Probeer oude constraint:', error.message);
+                    ({ error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,project_id,week_number,year' }));
+                }
+
+                if (error) {
+                    console.error('Week status update mislukt:', error.message);
+                    showToast('⚠️ Status bijwerken mislukt — probeer opnieuw');
+                }
+            } catch (err) {
+                console.error('updateWeekStatus fout:', err);
+                showToast('⚠️ Status bijwerken mislukt — controleer je verbinding');
             }
-
-            if (error) console.error('Week status update mislukt:', error.message);
         }
 
         // Haal week statussen op voor een maand
@@ -3700,14 +3794,20 @@
             const sb = getSupabase();
             if (!sb || !currentUser || !currentUser.id) return {};
 
-            const { data } = await sb.from('week_status')
-                .select('week_number, status')
-                .eq('user_id', currentUser.id)
-                .eq('year', overviewYear);
+            try {
+                const { data, error } = await sb.from('week_status')
+                    .select('week_number, status')
+                    .eq('user_id', currentUser.id)
+                    .eq('year', overviewYear);
 
-            const map = {};
-            if (data) data.forEach(d => { map[d.week_number] = d.status; });
-            return map;
+                if (error) { console.error('getMonthWeekStatuses fout:', error.message); return {}; }
+                const map = {};
+                if (data) data.forEach(d => { map[d.week_number] = d.status; });
+                return map;
+            } catch (err) {
+                console.error('getMonthWeekStatuses fout:', err);
+                return {};
+            }
         }
 
         // ===== OPSLAAN NAAR SUPABASE =====
@@ -3720,7 +3820,7 @@
                     showOverviewLoading(); // Direct loading state tonen
                     await saveWeekToSupabase();
                     await updateWeekStatus('opgeslagen');
-                    weekDataDirty = false;
+                    markClean();
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
                     await renderOverview(); // Maandoverzicht bijwerken met verse data
                 } catch (err) {
@@ -4339,7 +4439,7 @@
         function skipLogin() {
             currentUser = { id: null, name: 'Demo gebruiker', role: 'engineer' };
             document.getElementById('login-overlay').style.display = 'none';
-            document.querySelector('.user-badge').childNodes[0].textContent = '👤 Demo modus ';
+            document.getElementById('user-badge-name').innerHTML = '👤 Demo';
             showToast('Demo modus — data wordt niet opgeslagen');
         }
     </script>
