@@ -1739,78 +1739,73 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             const pw = 297, ph = 210, ml = 15, mr = 15, uw = pw - ml - mr;
+            const ktsBlue = [7, 86, 127]; // #07567F
+            const borderColor = [180, 180, 180];
+            const lw = 0.2; // line width
 
-            // --- KTS Logo (rechtsboven) ---
-            // We gebruiken tekst als fallback i.p.v. afbeelding
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(7, 86, 127);
-            doc.text('URENSTAAT', ml, 18);
+            // Helper: dunne border lijn
+            function hLine(x1, x2, y) { doc.setDrawColor(...borderColor); doc.setLineWidth(lw); doc.line(x1, y, x2, y); }
+            function vLine(x, y1, y2) { doc.setDrawColor(...borderColor); doc.setLineWidth(lw); doc.line(x, y1, x, y2); }
+            function cellRect(x, y, w, h) { doc.setDrawColor(...borderColor); doc.setLineWidth(lw); doc.rect(x, y, w, h); }
 
-            // KTS bedrijfsnaam rechtsboven
-            doc.setFontSize(14);
-            doc.text('Kuijpers', pw - mr - 45, 14);
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100, 100, 100);
-            doc.text('TECHNICAL SERVICES', pw - mr - 45, 19);
-            doc.text(`${KTS_INFO.adres}, ${KTS_INFO.postcode}`, pw - mr - 55, 25);
-            doc.text(`${KTS_INFO.tel1}  |  ${KTS_INFO.tel2}`, pw - mr - 55, 29);
-            doc.setTextColor(7, 86, 127);
-            doc.text(KTS_INFO.email, pw - mr - 55, 33);
-            doc.setTextColor(0, 0, 0);
-
-            // --- Naam + Periode ---
-            let y = 38;
             const userName = currentUser ? currentUser.name : 'Onbekend';
-
-            // Haal ZZP-bedrijfsnaam op (als beschikbaar)
-            const zzpLabel = userName;
-
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'bold');
-            doc.setFillColor(232, 236, 240);
-            doc.rect(ml, y, uw/2, 6, 'F');
-            doc.rect(ml + uw/2, y, uw/2, 6, 'F');
-            doc.rect(ml, y, uw/2, 6, 'S');
-            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
-            doc.text('Naam:', ml + 2, y + 4);
-            doc.text('Periode:', ml + uw/2 + 2, y + 4);
-
-            y += 6;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.rect(ml, y, uw/2, 6, 'S');
-            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
-            doc.text(zzpLabel, ml + 2, y + 4);
-            doc.text(`Week ${currentWeekNumber} ${currentYear}`, ml + uw/2 + 2, y + 4);
-
-            // --- Project + Klant ---
-            y += 9;
             const projName = currentProject ? currentProject.name : '';
             const projLoc = currentProject ? (currentProject.location || '') : '';
+            const projCode = currentProject ? (currentProject.project_code || '') : '';
             const clientName = currentProject ? (currentProject.client_name || '') : '';
 
-            doc.setFontSize(7);
+            // --- Rij 1: URENSTAAT (links) ---
+            doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.setFillColor(232, 236, 240);
-            doc.rect(ml, y, uw/2, 6, 'F');
-            doc.rect(ml + uw/2, y, uw/2, 6, 'F');
-            doc.rect(ml, y, uw/2, 6, 'S');
-            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
-            doc.text('Project:', ml + 2, y + 4);
-            doc.text('Klant:', ml + uw/2 + 2, y + 4);
+            doc.setTextColor(...ktsBlue);
+            doc.text('URENSTAAT', ml, 16);
 
-            y += 6;
-            doc.setFont('helvetica', 'normal');
+            // --- KTS Logo/naam rechtsboven (kolom I-J in Excel = ca. 200mm+) ---
+            const rightX = pw - mr - 65;
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...ktsBlue);
+            doc.text('Kuijpers', rightX + 20, 12);
             doc.setFontSize(8);
-            doc.rect(ml, y, uw/2, 6, 'S');
-            doc.rect(ml + uw/2, y, uw/2, 6, 'S');
-            doc.text(`${projName}${projLoc ? ' - ' + projLoc : ''}`, ml + 2, y + 4);
-            doc.text(clientName, ml + uw/2 + 2, y + 4);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...ktsBlue);
+            doc.text('TECHNICAL SERVICES', rightX + 20, 17);
 
-            // --- Dagtabel ---
-            y += 10;
+            // --- KTS adresgegevens (rij 5-7 rechts) ---
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text(KTS_INFO.adres, rightX, 24);
+            doc.text(KTS_INFO.postcode, pw - mr, 24, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 29);
+            doc.text(KTS_INFO.tel2, pw - mr, 29, { align: 'right' });
+            doc.setTextColor(...ktsBlue);
+            doc.text(KTS_INFO.email, rightX, 34);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 34, { align: 'right' });
+            doc.setTextColor(0, 0, 0);
+
+            // --- Rij 3-4: Naam + Periode ---
+            let y = 22;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Naam: ', ml, y);
+            doc.text('Periode: ', ml + uw * 0.38, y);
+            y += 5;
+            doc.text(userName, ml, y);
+            doc.text(`Week ${currentWeekNumber} ${currentYear}`, ml + uw * 0.38, y);
+
+            // --- Rij 6-7: Project + Klant ---
+            y += 6;
+            doc.text('Project:', ml, y);
+            doc.text('Klant:', ml + uw * 0.38, y);
+            y += 5;
+            doc.text(`${projCode}${projCode && projName ? ' – ' : ''}${projName}${projLoc ? ' ' + projLoc : ''}`, ml, y);
+            doc.text(clientName, ml + uw * 0.38, y);
+
+            // --- Rij 9-16: Dagtabel ---
+            y += 7;
             const dates = getWeekDates();
             const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
@@ -1831,96 +1826,123 @@
                 margin: { left: ml, right: mr },
                 head: [['Dag', 'Datum', 'Begintijd', 'Eindtijd', 'Pauze (uur)', 'Gewerkte uren', 'Omschrijving werkzaamheden', 'Locatie', 'Kilometers']],
                 body: tableData,
-                styles: { fontSize: 7.5, cellPadding: 1.5, lineColor: [176, 190, 197], lineWidth: 0.3, font: 'helvetica' },
-                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7 },
+                styles: { fontSize: 8, cellPadding: 2, lineColor: borderColor, lineWidth: lw, font: 'helvetica', textColor: [0, 0, 0] },
+                headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
+                bodyStyles: { fillColor: [255, 255, 255] },
                 columnStyles: {
                     0: { cellWidth: 20 },
-                    1: { cellWidth: 22 },
+                    1: { cellWidth: 24, halign: 'center' },
                     2: { cellWidth: 18, halign: 'center' },
                     3: { cellWidth: 18, halign: 'center' },
                     4: { cellWidth: 18, halign: 'center' },
-                    5: { cellWidth: 20, halign: 'center' },
-                    6: { cellWidth: 'auto' },
-                    7: { cellWidth: 32 },
-                    8: { cellWidth: 20, halign: 'right' },
+                    5: { cellWidth: 22, halign: 'center' },
+                    6: { cellWidth: 'auto', halign: 'center' },
+                    7: { cellWidth: 32, halign: 'center' },
+                    8: { cellWidth: 22, halign: 'center' },
                 },
-                alternateRowStyles: { fillColor: [240, 244, 248] },
             });
 
-            // --- Samenvatting ---
-            y = doc.lastAutoTable.finalY + 5;
+            // --- Rij 19-24: Samenvatting ---
+            y = doc.lastAutoTable.finalY + 6;
             const regHours = weekData.slice(0,5).reduce((s,e) => s + e.hours, 0);
             const satHours = weekData[5].hours;
             const sunHours = weekData[6].hours;
             const totalHours = weekData.reduce((s,e) => s + e.hours, 0);
             const totalKm = weekData.reduce((s,e) => s + (e.km || 0), 0);
+            const hotelNights = weekData.filter(e => e.hotel).length;
 
-            // Type inzet tabel (links)
-            const sumData = [
-                ['Reguliere uren (ma-vr)', regHours.toString()],
-                ['Zaterdaguren', satHours.toString()],
-                ['Zondag-/feestdaguren', sunHours.toString()],
-                ['Reis kilometers', totalKm.toString()],
+            // Type inzet tabel (links) + Direct kosten (rechts) — zelfde layout als Excel
+            const sumLeftW = 65; // Type inzet breedte
+            const sumRightX = ml + 85; // Direct kosten start
+            const sumRightW = uw - 85;
+            const rh = 5.5; // rijhoogte
+
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+
+            // Headers
+            hLine(ml, ml + 42, y); hLine(ml, ml + 42, y + rh);
+            doc.text('Type inzet', ml + 1, y + 4);
+            cellRect(ml + 42, y, 22, rh);
+            doc.text('Aantal uren', ml + 44, y + 4);
+
+            hLine(sumRightX, pw - mr, y); hLine(sumRightX, pw - mr, y + rh);
+            doc.text('Direct kosten', sumRightX + 1, y + 4);
+
+            // Data rijen
+            doc.setFont('helvetica', 'normal');
+            const sumRows = [
+                ['Reguliere uren (ma-vr)', regHours > 0 ? regHours.toString() : ''],
+                ['Zaterdaguren', satHours > 0 ? satHours.toString() : ''],
+                ['Zondag-/feestdaguren', sunHours > 0 ? sunHours.toString() : ''],
+                ['Reis kilometers', totalKm > 0 ? totalKm.toString() : ''],
             ];
 
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml },
-                tableWidth: 65,
-                head: [['Type inzet', 'Aantal uren']],
-                body: sumData,
-                foot: [['Totaal te factureren uren', totalHours.toString()]],
-                styles: { fontSize: 7, cellPadding: 1.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
-                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
-                footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold' },
-                columnStyles: { 1: { halign: 'center', cellWidth: 22 } },
-            });
+            const directKostenText = hotelNights > 0
+                ? `Hotelovernachting ${hotelNights}x á €${HOTEL_RATE.toFixed(0)},- per nacht`
+                : '';
 
-            // Direct kosten (rechts naast type inzet)
-            const hotelNights = weekData.filter(e => e.hotel).length;
-            const directKosten = [];
-            if (hotelNights > 0) directKosten.push([`Hotel: ${hotelNights} nachten × ${fmtEuroPdf(HOTEL_RATE)} = ${fmtEuroPdf(hotelNights * HOTEL_RATE)}`]);
-            while (directKosten.length < 5) directKosten.push(['']);
+            for (let i = 0; i < sumRows.length; i++) {
+                const ry = y + rh + (i * rh);
+                doc.text(sumRows[i][0], ml + 1, ry + 4);
+                cellRect(ml + 42, ry, 22, rh);
+                doc.text(sumRows[i][1], ml + 53, ry + 4, { align: 'center' });
 
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml + 70 },
-                tableWidth: uw - 70,
-                head: [['Direct kosten']],
-                body: directKosten,
-                styles: { fontSize: 7, cellPadding: 1.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
-                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
-            });
+                // Direct kosten rij (borders rechts)
+                hLine(sumRightX, pw - mr, ry); hLine(sumRightX, pw - mr, ry + rh);
+                if (i === 0 && directKostenText) doc.text(directKostenText, sumRightX + 1, ry + 4);
+            }
 
-            // --- Handtekeningen ---
-            y = doc.lastAutoTable.finalY + 5;
-            const sigW = uw / 3;
-            const sigH = 18;
+            // Totaal rij
+            const totY = y + rh + (sumRows.length * rh);
+            doc.setFont('helvetica', 'bold');
+            hLine(ml, ml + 42, totY + rh);
+            doc.text('Totaal te factureren uren', ml + 1, totY + 4);
+            cellRect(ml + 42, totY, 22, rh);
+            doc.text(totalHours.toString(), ml + 53, totY + 4, { align: 'center' });
+            hLine(sumRightX, pw - mr, totY); hLine(sumRightX, pw - mr, totY + rh);
+
+            // --- Rij 26+: Handtekeningen ---
+            y = totY + rh + 8;
+            const sigW = (uw - 10) / 3;
+            const sigH = 20;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.4);
 
             // Opmerkingen
-            doc.setFillColor(232, 236, 240);
-            doc.rect(ml, y, sigW, 5, 'FD');
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Opmerkingen', ml + 2, y + 3.5);
-            doc.rect(ml, y + 5, sigW, sigH, 'S');
+            doc.line(ml, y, ml + sigW, y);
+            doc.line(ml, y + rh, ml + sigW, y + rh);
+            doc.text('Opmerkingen', ml + 1, y + 4);
+            doc.setLineWidth(lw);
+            doc.setDrawColor(...borderColor);
+            doc.rect(ml, y + rh, sigW, sigH);
 
             // Handtekening opdrachtnemer
-            doc.setFillColor(232, 236, 240);
-            doc.rect(ml + sigW, y, sigW, 5, 'FD');
-            doc.text(`Handtekening Opdrachtnemer / ${userName}`, ml + sigW + 2, y + 3.5);
-            doc.rect(ml + sigW, y + 5, sigW, sigH, 'S');
+            const sig2x = ml + sigW + 5;
+            doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.4);
+            doc.line(sig2x, y, sig2x + sigW, y);
+            doc.line(sig2x, y + rh, sig2x + sigW, y + rh);
+            doc.text(`Handtekening Opdrachtnemer / ${userName}`, sig2x + 1, y + 4);
+            doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
+            doc.rect(sig2x, y + rh, sigW, sigH);
             if (signatureData.zzp) {
-                try { doc.addImage(signatureData.zzp, 'PNG', ml + sigW + 2, y + 6, sigW - 4, sigH - 3); } catch(e) {}
+                try { doc.addImage(signatureData.zzp, 'PNG', sig2x + 2, y + rh + 1, sigW - 4, sigH - 2); } catch(e) {}
             }
 
             // Handtekening opdrachtgever
-            doc.setFillColor(232, 236, 240);
-            doc.rect(ml + sigW*2, y, uw - sigW*2, 5, 'FD');
-            doc.text('Handtekening Opdrachtgever', ml + sigW*2 + 2, y + 3.5);
-            doc.rect(ml + sigW*2, y + 5, uw - sigW*2, sigH, 'S');
+            const sig3x = sig2x + sigW + 5;
+            const sig3w = pw - mr - sig3x;
+            doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.4);
+            doc.line(sig3x, y, pw - mr, y);
+            doc.line(sig3x, y + rh, pw - mr, y + rh);
+            doc.text('Handtekening Opdrachtgever', sig3x + 1, y + 4);
+            doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
+            doc.rect(sig3x, y + rh, sig3w, sigH);
             if (signatureData.client) {
-                try { doc.addImage(signatureData.client, 'PNG', ml + sigW*2 + 2, y + 6, uw - sigW*2 - 4, sigH - 3); } catch(e) {}
+                try { doc.addImage(signatureData.client, 'PNG', sig3x + 2, y + rh + 1, sig3w - 4, sigH - 2); } catch(e) {}
             }
 
             return doc;
@@ -3629,9 +3651,7 @@
                 if (urenWrap) urenWrap.style.display = isReadOnly ? 'none' : 'block';
                 if (kostenWrap) kostenWrap.style.display = isReadOnly ? 'none' : 'block';
 
-                // Verberg verstuurknop bij historische of niet-bewerkbare weken
-                const submitBtn = document.getElementById('submit-week-btn');
-                if (submitBtn) submitBtn.parentElement.style.display = isReadOnly ? 'none' : 'block';
+                // Knop-status wordt afgehandeld door renderOverview()
             } catch (err) {
                 console.warn('Laden fout:', err);
             }
@@ -3646,7 +3666,7 @@
             if (newStatus === 'ondertekend') extra.signed_at = new Date().toISOString();
             if (newStatus === 'verstuurd') extra.submitted_at = new Date().toISOString();
 
-            const { error } = await sb.from('week_status').upsert({
+            const record = {
                 user_id: currentUser.id,
                 project_id: currentProject ? currentProject.id : null,
                 week_number: currentWeekNumber,
@@ -3654,7 +3674,16 @@
                 status: newStatus,
                 updated_at: new Date().toISOString(),
                 ...extra
-            }, { onConflict: 'user_id,week_number,year' });
+            };
+
+            // Probeer eerst met nieuwe constraint (user_id,week_number,year)
+            let { error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,week_number,year' });
+
+            // Fallback: oude constraint (user_id,project_id,week_number,year) als migratie 016 nog niet is uitgevoerd
+            if (error) {
+                console.warn('Probeer oude constraint:', error.message);
+                ({ error } = await sb.from('week_status').upsert(record, { onConflict: 'user_id,project_id,week_number,year' }));
+            }
 
             if (error) console.error('Week status update mislukt:', error.message);
         }
