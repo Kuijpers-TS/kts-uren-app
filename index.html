@@ -3352,9 +3352,9 @@
             }
             weekListEl.innerHTML = weekRows;
 
-            // Verstuurknop verbergen bij historische weken
-            const submitBtn = document.getElementById('submit-week-btn');
-            if (submitBtn) submitBtn.parentElement.style.display = weekSummary ? 'none' : 'block';
+            // Actieknoppen verbergen bij historische weken
+            const actionBtnsEnd = document.getElementById('week-action-btns');
+            if (actionBtnsEnd && weekSummary) actionBtnsEnd.style.display = 'none';
           } catch (err) {
             console.error('renderOverview fout:', err);
           }
@@ -3640,6 +3640,7 @@
 
             // Laad data vanuit Supabase
             await loadDataFromSupabase();
+            startSessionMonitor();
         }
 
         function demoLogin() {
@@ -3705,9 +3706,57 @@
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
                     await loadDataFromSupabase();
+                    startSessionMonitor();
                 }
             } catch (err) {
                 console.error('checkSession fout:', err);
+            }
+        }
+
+        // ===== SESSIE-TIMEOUT MONITOR =====
+        let sessionMonitorInterval = null;
+
+        function startSessionMonitor() {
+            if (sessionMonitorInterval) return;
+            // Luister naar auth state changes (sign-out, token refresh fail)
+            if (getSupabase()) {
+                getSupabase().auth.onAuthStateChange((event, session) => {
+                    if (event === 'SIGNED_OUT' && currentUser) {
+                        handleSessionExpired();
+                    }
+                    if (event === 'TOKEN_REFRESHED') {
+                        console.log('Sessie vernieuwd');
+                    }
+                });
+            }
+            // Periodieke check elke 5 minuten
+            sessionMonitorInterval = setInterval(async () => {
+                if (!getSupabase() || !currentUser) return;
+                try {
+                    const { data: { session } } = await getSupabase().auth.getSession();
+                    if (!session) {
+                        handleSessionExpired();
+                    }
+                } catch (err) {
+                    console.warn('Sessie-check mislukt:', err);
+                }
+            }, 5 * 60 * 1000);
+        }
+
+        function handleSessionExpired() {
+            clearInterval(sessionMonitorInterval);
+            sessionMonitorInterval = null;
+            if (weekDataDirty) {
+                showToast('⚠️ Je sessie is verlopen — sla je werk lokaal op of log opnieuw in');
+                // Toon persistent waarschuwing bovenaan
+                const warning = document.createElement('div');
+                warning.id = 'session-expired-bar';
+                warning.innerHTML = '⚠️ Sessie verlopen — <a href="#" onclick="location.reload();return false" style="color:white;font-weight:700;text-decoration:underline">opnieuw inloggen</a>';
+                warning.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ef4444;color:white;text-align:center;padding:10px;font-size:0.85rem;z-index:10000';
+                if (!document.getElementById('session-expired-bar')) document.body.prepend(warning);
+            } else {
+                showToast('Sessie verlopen — je wordt uitgelogd');
+                setTimeout(() => location.reload(), 2000);
             }
         }
 
