@@ -982,6 +982,32 @@
             return dates;
         }
 
+        // ===== WEEK STATUS CHECK =====
+        function getWeekStatus() {
+            if (!currentProject) return { editable: true };
+            const weekFriday = new Date(currentWeekMonday);
+            weekFriday.setDate(weekFriday.getDate() + 4);
+            const weekMondayStr = currentWeekMonday.toISOString().split('T')[0];
+            const weekFridayStr = weekFriday.toISOString().split('T')[0];
+
+            // Project niet actief
+            if (currentProject.status === 'inactive') {
+                return { editable: false, reason: 'Project is niet actief', icon: '⏸️' };
+            }
+
+            // Week valt voor startdatum
+            if (currentProject.start_date && weekFridayStr < currentProject.start_date) {
+                return { editable: false, reason: 'Project nog niet gestart', icon: '🔒', detail: 'Start: ' + new Date(currentProject.start_date).toLocaleDateString('nl-NL') };
+            }
+
+            // Week valt na einddatum
+            if (currentProject.end_date && weekMondayStr > currentProject.end_date) {
+                return { editable: false, reason: 'Project is afgerond', icon: '🏁' };
+            }
+
+            return { editable: true };
+        }
+
         function getWeekLabel() {
             const endDate = new Date(currentWeekMonday);
             endDate.setDate(endDate.getDate() + 6);
@@ -1138,6 +1164,26 @@
             // Als er een weekSummary is: toon historische samenvatting i.p.v. dagkaarten
             if (weekSummary) {
                 renderWeekSummary(container);
+                return;
+            }
+
+            // Check of week bewerkbaar is (project start/einddatum en status)
+            const weekStatus = getWeekStatus();
+            if (!weekStatus.editable) {
+                container.innerHTML = `
+                    <div style="text-align:center;padding:48px 24px;color:var(--muted)">
+                        <div style="font-size:2.5rem;margin-bottom:12px">${weekStatus.icon}</div>
+                        <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:6px">${weekStatus.reason}</div>
+                        ${weekStatus.detail ? '<div style="font-size:0.85rem">' + weekStatus.detail + '</div>' : ''}
+                    </div>`;
+                document.getElementById('week-total').textContent = '';
+                // Verberg knoppen
+                const urenWrap = document.getElementById('save-uren-btn-wrap');
+                const kostenWrap = document.getElementById('save-kosten-btn-wrap');
+                const submitBtn = document.getElementById('submit-week-btn');
+                if (urenWrap) urenWrap.style.display = 'none';
+                if (kostenWrap) kostenWrap.style.display = 'none';
+                if (submitBtn) submitBtn.parentElement.style.display = 'none';
                 return;
             }
 
@@ -3205,9 +3251,9 @@
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700;font-size:0.9rem">${c.name}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${c.type} · ${c.city || ''} ${c.kvk_number ? '· KVK ' + c.kvk_number : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}</div>
                             </div>
-                            <span class="status-badge status-draft" style="text-transform:capitalize">${c.type}</span>
+                            <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
                         </div>
                     </div>
                 `).join('');
@@ -3258,7 +3304,17 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800" value="${existing ? existing.name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-proj-km" placeholder="96" value="${existing ? existing.km_single_trip || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="adm-proj-km-toggle" ${existing && existing.km_single_trip > 0 ? 'checked' : ''}
+                                onchange="document.getElementById('adm-proj-km-wrap').style.display = this.checked ? 'block' : 'none'"
+                                style="width:18px;height:18px;accent-color:var(--kts-blue)">
+                            Km-vergoeding
+                        </label>
+                    </div>
+                    <div id="adm-proj-km-wrap" style="display:${existing && existing.km_single_trip > 0 ? 'block' : 'none'};margin-bottom:12px">
+                        <div class="form-group"><label>Km enkele reis (huis → werklocatie)</label><input type="number" step="0.1" id="adm-proj-km" placeholder="96" value="${existing ? existing.km_single_trip || '' : ''}"></div>
+                    </div>
                     <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
                         <select id="adm-proj-status">
@@ -3273,6 +3329,7 @@
                 title = existing ? 'Persoon bewerken' : 'Nieuw persoon / bedrijf';
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq" value="${existing ? existing.name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Contactpersoon / ZZP'er naam</label><input type="text" id="adm-pers-contact" placeholder="Bijv. Jan de Vries" value="${existing ? existing.contact_name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Type</label>
                         <select id="adm-pers-type">
                             <option value="zzp" ${existing && existing.type === 'zzp' ? 'selected' : ''}>ZZP'er</option>
@@ -3356,7 +3413,7 @@
                     name: name,
                     client_name: document.getElementById('adm-proj-client').value.trim() || null,
                     location: document.getElementById('adm-proj-location').value.trim() || null,
-                    km_single_trip: parseFloat(document.getElementById('adm-proj-km').value) || 0,
+                    km_single_trip: document.getElementById('adm-proj-km-toggle').checked ? (parseFloat(document.getElementById('adm-proj-km').value) || 0) : 0,
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active'
                 };
@@ -3369,6 +3426,7 @@
                 if (!name) { showToast('⚠️ Vul minimaal een naam in'); return; }
                 const data = {
                     name: name,
+                    contact_name: document.getElementById('adm-pers-contact').value.trim() || null,
                     type: ptype,
                     kvk_number: document.getElementById('adm-pers-kvk').value.trim() || null,
                     btw_number: document.getElementById('adm-pers-btw').value.trim() || null,
