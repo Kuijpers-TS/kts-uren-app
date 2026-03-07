@@ -2279,13 +2279,9 @@
             closeModal('signature-modal');
 
             await updateWeekStatus('ondertekend');
-            showToast('✓ Week ' + currentWeekNumber + ' ondertekend');
+            showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
 
-            // Toon verstuur-knop, verberg onderteken-knop
-            const signBtn = document.getElementById('sign-week-btn');
-            const submitBtn = document.getElementById('submit-week-btn');
-            if (signBtn) { signBtn.style.display = 'none'; }
-            if (submitBtn) { submitBtn.style.display = 'block'; }
+            // renderOverview handelt knop-status af op basis van db-status + signatureData
             await renderOverview();
         }
 
@@ -2322,62 +2318,66 @@
                 }
 
                 // 4. Genereer PDF met handtekeningen
+                btn.innerHTML = '📄 PDF genereren...';
                 const urenstaat = generateUrenstaat();
                 if (!urenstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
                 const fileName = `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
-                const pdfBase64 = urenstaat.output('datauristring').split(',')[1];
 
-                // 5. Upload naar OneDrive + stuur notificatie via Edge Function
-                btn.innerHTML = '☁️ Uploaden naar OneDrive...';
+                // 5. Download PDF lokaal
+                urenstaat.save(fileName);
 
+                // 6. Probeer upload naar OneDrive (optioneel)
                 const sb = getSupabase();
                 if (sb) {
-                    const { data, error } = await sb.functions.invoke('submit-weekstaat', {
-                        body: {
-                            pdfBase64: pdfBase64,
-                            fileName: fileName,
-                            userName: userName,
-                            weekNumber: currentWeekNumber,
-                            year: currentYear,
-                            projectName: projectName,
+                    try {
+                        btn.innerHTML = '☁️ Uploaden naar OneDrive...';
+                        const pdfBase64 = urenstaat.output('datauristring').split(',')[1];
+                        const { data, error } = await sb.functions.invoke('submit-weekstaat', {
+                            body: {
+                                pdfBase64: pdfBase64,
+                                fileName: fileName,
+                                userName: userName,
+                                weekNumber: currentWeekNumber,
+                                year: currentYear,
+                                projectName: projectName,
+                            }
+                        });
+                        if (!error) {
+                            showToast('✅ Ook opgeslagen in OneDrive');
                         }
-                    });
-
-                    if (error) throw error;
-
-                    await updateWeekStatus('verstuurd');
-                    btn.innerHTML = '✅ Verstuurd!';
-                    btn.style.background = '#059669';
-                    showToast('✅ Week ' + currentWeekNumber + ' opgeslagen in OneDrive');
-                    await renderOverview();
-
-                    // Open vooringevulde email vanuit de ZZP'er naar uren@kuijpers-ts.nl
-                    const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userName + ' - ' + projectName);
-                    const mailBody = encodeURIComponent(
-                        'Beste Mark,\n\n' +
-                        'Hierbij meld ik dat mijn weekstaat is ingediend.\n\n' +
-                        'Medewerker: ' + userName + '\n' +
-                        'Project: ' + projectName + '\n' +
-                        'Week: ' + currentWeekNumber + ' / ' + currentYear + '\n' +
-                        'Bestand: ' + fileName + '\n\n' +
-                        'De weekstaat is opgeslagen in OneDrive (Urenstaten 2026).\n\n' +
-                        'Met vriendelijke groet,\n' +
-                        userName
-                    );
-                    window.location.href = 'mailto:uren@kuijpers-ts.nl?subject=' + mailSubject + '&body=' + mailBody;
-                } else {
-                    throw new Error('Niet verbonden met database');
+                    } catch (uploadErr) {
+                        console.warn('OneDrive upload overgeslagen:', uploadErr.message);
+                    }
                 }
+
+                // 7. Status bijwerken
+                await updateWeekStatus('verstuurd');
+                btn.innerHTML = '✅ Verstuurd!';
+                btn.style.background = '#059669';
+                await renderOverview();
+
+                // 8. Open vooringevulde email
+                const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userName + ' - ' + projectName);
+                const mailBody = encodeURIComponent(
+                    'Beste Mark,\n\n' +
+                    'Hierbij mijn weekstaat voor week ' + currentWeekNumber + '.\n\n' +
+                    'Medewerker: ' + userName + '\n' +
+                    'Project: ' + projectName + '\n' +
+                    'Week: ' + currentWeekNumber + ' / ' + currentYear + '\n' +
+                    'Bestand: ' + fileName + '\n\n' +
+                    'Met vriendelijke groet,\n' +
+                    userName
+                );
+                window.location.href = 'mailto:uren@kuijpers-ts.nl?subject=' + mailSubject + '&body=' + mailBody;
+
+                showToast('✅ Week ' + currentWeekNumber + ' verstuurd — PDF gedownload en email geopend');
 
             } catch (err) {
                 console.error('Versturen mislukt:', err);
                 btn.innerHTML = '✓ Week versturen';
                 btn.disabled = false;
-
-                // Fallback: download PDF lokaal
-                showToast('⚠️ Upload mislukt — PDF wordt gedownload');
-                downloadUrenstaat();
+                showToast('⚠️ Versturen mislukt: ' + err.message);
             }
         }
 
@@ -2947,15 +2947,38 @@
             if (signNumEl) signNumEl.textContent = currentWeekNumber;
             if (submitNumEl) submitNumEl.textContent = currentWeekNumber;
 
-            // Reset knop-status — verberg als week niet bewerkbaar is
+            // Knop-status bepalen op basis van week-status
             const weekStatus = getWeekStatus();
             const signBtn = document.getElementById('sign-week-btn');
             const submitBtn2 = document.getElementById('submit-week-btn');
             const actionBtns = document.getElementById('week-action-btns');
-            if (actionBtns) actionBtns.style.display = weekStatus.editable ? 'flex' : 'none';
-            if (signBtn) signBtn.style.display = weekStatus.editable ? 'block' : 'none';
-            if (submitBtn2) submitBtn2.style.display = 'none';
-            signatureData = { zzp: null, client: null };
+
+            // Haal de db-status van de huidige week op
+            const currentWeekDbStatus = weekStatuses[currentWeekNumber];
+            const isOndertekend = currentWeekDbStatus === 'ondertekend';
+            const isVerstuurd = currentWeekDbStatus === 'verstuurd';
+
+            if (isVerstuurd) {
+                // Al verstuurd: verberg alles
+                if (actionBtns) actionBtns.style.display = 'none';
+                if (signBtn) signBtn.style.display = 'none';
+                if (submitBtn2) submitBtn2.style.display = 'none';
+            } else if (isOndertekend || signatureData.zzp) {
+                // Ondertekend maar nog niet verstuurd: toon verstuur-knop
+                if (actionBtns) actionBtns.style.display = 'flex';
+                if (signBtn) signBtn.style.display = 'none';
+                if (submitBtn2) submitBtn2.style.display = 'block';
+            } else if (weekStatus.editable) {
+                // Bewerkbaar en nog niet ondertekend: toon onderteken-knop
+                if (actionBtns) actionBtns.style.display = 'flex';
+                if (signBtn) signBtn.style.display = 'block';
+                if (submitBtn2) submitBtn2.style.display = 'none';
+            } else {
+                // Niet bewerkbaar: verberg alles
+                if (actionBtns) actionBtns.style.display = 'none';
+                if (signBtn) signBtn.style.display = 'none';
+                if (submitBtn2) submitBtn2.style.display = 'none';
+            }
 
             // Weken van deze maand ophalen en tonen
             const weekListEl = document.getElementById('week-status-list');
@@ -3894,6 +3917,13 @@
         // ===== ADMIN MODALS: Nieuw/bewerk project/persoon/tarief =====
         let _editingId = null; // ID van het record dat bewerkt wordt (null = nieuw)
 
+        function toggleUserFieldVisibility() {
+            const kmWrap = document.getElementById('adm-user-km-wrap');
+            const hotelWrap = document.getElementById('adm-user-hotel-wrap');
+            if (kmWrap) kmWrap.style.display = document.getElementById('adm-user-km').checked ? '' : 'none';
+            if (hotelWrap) hotelWrap.style.display = document.getElementById('adm-user-hotel').checked ? '' : 'none';
+        }
+
         function openAdminModal(type, editIdx) {
             const isEdit = typeof editIdx === 'number';
             _editingId = null;
@@ -3977,13 +4007,13 @@
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Rechten</div>
                     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
-                            <input type="checkbox" id="adm-user-km" ${chk('allow_km')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Km-vergoeding
+                            <input type="checkbox" id="adm-user-km" ${chk('allow_km')} onchange="toggleUserFieldVisibility()" style="width:16px;height:16px;accent-color:var(--kts-blue)"> Km-vergoeding
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-user-thuiswerk" ${chk('allow_thuiswerk')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Thuiswerken
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
-                            <input type="checkbox" id="adm-user-hotel" ${chk('allow_hotel')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Hotelovernachtingen
+                            <input type="checkbox" id="adm-user-hotel" ${chk('allow_hotel')} onchange="toggleUserFieldVisibility()" style="width:16px;height:16px;accent-color:var(--kts-blue)"> Hotelovernachtingen
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-user-expenses" ${chk('can_declare_expenses')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Extra kosten declareren
@@ -3994,8 +4024,8 @@
                     </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Tarieven</div>
                     <div class="form-row">
-                        <div class="form-group"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
-                        <div class="form-group"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
+                        <div class="form-group" id="adm-user-km-wrap" style="${existing && existing.allow_km === false ? 'display:none' : ''}"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
+                        <div class="form-group" id="adm-user-hotel-wrap" style="${existing && existing.allow_hotel === false ? 'display:none' : ''}"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
                     </div>
                 `;
             }
