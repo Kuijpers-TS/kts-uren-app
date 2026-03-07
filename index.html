@@ -745,9 +745,12 @@
                 </div>
             </div>
 
-            <div style="margin-top:16px">
-                <button class="btn btn-success btn-block" id="submit-week-btn" onclick="submitWeek()" style="padding:14px;font-size:0.95rem">
-                    ✓ Week <span id="submit-week-num"></span> afsluiten & versturen
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px" id="week-action-btns">
+                <button class="btn btn-primary btn-block" id="sign-week-btn" onclick="openSignatureModal()" style="padding:14px;font-size:0.95rem">
+                    ✍️ Week <span id="sign-week-num"></span> ondertekenen
+                </button>
+                <button class="btn btn-success btn-block" id="submit-week-btn" onclick="submitWeek()" style="padding:14px;font-size:0.95rem;display:none">
+                    ✓ Week <span id="submit-week-num"></span> versturen
                 </button>
             </div>
 
@@ -868,6 +871,39 @@
     </div>
 
     </div><!-- /app-content -->
+
+    <!-- HANDTEKENING MODAL -->
+    <div class="modal-overlay" id="signature-modal">
+        <div class="modal" style="max-width:420px">
+            <div class="modal-handle"></div>
+            <div class="modal-title">✍️ Week ondertekenen</div>
+
+            <!-- ZZP'er handtekening -->
+            <div style="margin-bottom:16px">
+                <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Handtekening ZZP'er <span style="color:var(--red)">*</span></div>
+                <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
+                    <canvas id="sig-canvas-zzp" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
+                    <button onclick="clearSignature('zzp')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
+                </div>
+                <div id="sig-zzp-status" style="font-size:0.7rem;color:var(--muted);margin-top:4px">Teken hierboven met je vinger of muis</div>
+            </div>
+
+            <!-- Opdrachtgever handtekening -->
+            <div style="margin-bottom:16px">
+                <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Handtekening opdrachtgever <span style="font-weight:400;color:var(--muted)">(optioneel)</span></div>
+                <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
+                    <canvas id="sig-canvas-client" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
+                    <button onclick="clearSignature('client')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
+                </div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Laat de opdrachtgever hier tekenen (optioneel)</div>
+            </div>
+
+            <div class="form-actions" style="margin-top:16px">
+                <button class="btn btn-secondary" onclick="closeModal('signature-modal')">Annuleren</button>
+                <button class="btn btn-primary" id="sig-confirm-btn" onclick="confirmSignatures()" disabled style="opacity:0.5">Ondertekenen</button>
+            </div>
+        </div>
+    </div>
 
     <!-- TOAST -->
     <div class="toast" id="toast"></div>
@@ -1046,6 +1082,10 @@
 
         // ===== KM SECTION HELPER =====
         function renderKmSection(entry, i) {
+            // Geen km-sectie tonen als project geen km-vergoeding heeft
+            const hasKmVergoeding = currentProject && parseFloat(currentProject.km_single_trip) > 0;
+            if (!hasKmVergoeding) return '';
+
             if (entry.hotel) {
                 const prevHotel = i > 0 && weekData[i-1].hotel;
                 const heenLabel = prevHotel ? 'Hotel → Project' : 'Thuis → Project';
@@ -1198,9 +1238,10 @@
 
                 // Build badges
                 let badges = '';
+                const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
                 if (isFilled) {
                     if (entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
-                    if (entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
+                    if (hasKm && entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
                     if (entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
                 }
 
@@ -1795,12 +1836,18 @@
             doc.rect(ml + sigW, y, sigW, 5, 'FD');
             doc.text(`Handtekening Opdrachtnemer / ${userName}`, ml + sigW + 2, y + 3.5);
             doc.rect(ml + sigW, y + 5, sigW, sigH, 'S');
+            if (signatureData.zzp) {
+                try { doc.addImage(signatureData.zzp, 'PNG', ml + sigW + 2, y + 6, sigW - 4, sigH - 3); } catch(e) {}
+            }
 
             // Handtekening opdrachtgever
             doc.setFillColor(232, 236, 240);
             doc.rect(ml + sigW*2, y, uw - sigW*2, 5, 'FD');
-            doc.text('Handtekening Opdrachtgever / Mark Kuijpers', ml + sigW*2 + 2, y + 3.5);
+            doc.text('Handtekening Opdrachtgever', ml + sigW*2 + 2, y + 3.5);
             doc.rect(ml + sigW*2, y + 5, uw - sigW*2, sigH, 'S');
+            if (signatureData.client) {
+                try { doc.addImage(signatureData.client, 'PNG', ml + sigW*2 + 2, y + 6, uw - sigW*2 - 4, sigH - 3); } catch(e) {}
+            }
 
             return doc;
         }
@@ -2028,9 +2075,145 @@
             }
         }
 
+        // ===== HANDTEKENING CANVAS =====
+        let signatureData = { zzp: null, client: null };
+        const sigCanvases = {};
+        const sigContexts = {};
+        let sigDrawing = false;
+
+        function initSignatureCanvas(type) {
+            const canvas = document.getElementById('sig-canvas-' + type);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            // Hi-DPI support
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            sigCanvases[type] = canvas;
+            sigContexts[type] = ctx;
+
+            let drawing = false;
+            let hasStrokes = false;
+
+            function getPos(e) {
+                const r = canvas.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : e;
+                return { x: touch.clientX - r.left, y: touch.clientY - r.top };
+            }
+
+            function startDraw(e) {
+                e.preventDefault();
+                drawing = true;
+                const p = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+            }
+
+            function draw(e) {
+                if (!drawing) return;
+                e.preventDefault();
+                const p = getPos(e);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+                hasStrokes = true;
+            }
+
+            function endDraw(e) {
+                if (!drawing) return;
+                drawing = false;
+                if (hasStrokes) {
+                    // Sla signature data op
+                    signatureData[type] = canvas.toDataURL('image/png');
+                    updateSignatureUI();
+                }
+            }
+
+            // Muis events
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mouseleave', endDraw);
+
+            // Touch events
+            canvas.addEventListener('touchstart', startDraw, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', endDraw);
+
+            // Store hasStrokes check
+            canvas._hasStrokes = () => hasStrokes;
+            canvas._resetStrokes = () => { hasStrokes = false; };
+        }
+
+        function clearSignature(type) {
+            const canvas = sigCanvases[type];
+            const ctx = sigContexts[type];
+            if (!canvas || !ctx) return;
+            const dpr = window.devicePixelRatio || 1;
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            signatureData[type] = null;
+            if (canvas._resetStrokes) canvas._resetStrokes();
+            updateSignatureUI();
+        }
+
+        function updateSignatureUI() {
+            // ZZP status
+            const zzpStatus = document.getElementById('sig-zzp-status');
+            if (zzpStatus) {
+                zzpStatus.textContent = signatureData.zzp ? '✓ Getekend' : 'Teken hierboven met je vinger of muis';
+                zzpStatus.style.color = signatureData.zzp ? 'var(--green)' : 'var(--muted)';
+            }
+
+            // Bevestig-knop: actief als ZZP handtekening gezet
+            const btn = document.getElementById('sig-confirm-btn');
+            if (btn) {
+                btn.disabled = !signatureData.zzp;
+                btn.style.opacity = signatureData.zzp ? '1' : '0.5';
+            }
+        }
+
+        function openSignatureModal() {
+            if (!currentUser || !currentUser.id) { showToast('⚠️ Log in om te ondertekenen (niet beschikbaar in demo)'); return; }
+            const total = weekData.reduce((s,e) => s + e.hours, 0);
+            if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
+
+            // Reset
+            signatureData = { zzp: null, client: null };
+
+            document.getElementById('signature-modal').classList.add('active');
+
+            // Init canvassen na modal open (nodig voor correcte afmetingen)
+            setTimeout(() => {
+                initSignatureCanvas('zzp');
+                initSignatureCanvas('client');
+                updateSignatureUI();
+            }, 100);
+        }
+
+        function confirmSignatures() {
+            if (!signatureData.zzp) { showToast('⚠️ ZZP\'er handtekening is verplicht'); return; }
+            closeModal('signature-modal');
+            showToast('✓ Week ' + currentWeekNumber + ' ondertekend');
+
+            // Toon verstuur-knop, verberg onderteken-knop
+            const signBtn = document.getElementById('sign-week-btn');
+            const submitBtn = document.getElementById('submit-week-btn');
+            if (signBtn) { signBtn.style.display = 'none'; }
+            if (submitBtn) { submitBtn.style.display = 'block'; }
+        }
+
         // ===== WEEK VERSTUREN =====
         async function submitWeek() {
             if (!currentUser || !currentUser.id) { showToast('⚠️ Log in om te versturen (niet beschikbaar in demo)'); return; }
+            if (!signatureData.zzp) { showToast('⚠️ Onderteken eerst de week'); return; }
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
             if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen?`)) return;
@@ -2047,8 +2230,8 @@
 
                 // 2. Gegevens verzamelen
                 const projCode = currentProject ? currentProject.project_code : 'KTS';
-                const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
                 const userName = currentUser ? currentUser.name : 'Onbekend';
+                const projectName = currentProject ? currentProject.name : '';
 
                 // 3. Wacht op jsPDF als die nog laadt
                 if (!window.jspdf) {
@@ -2059,35 +2242,26 @@
                     }
                 }
 
+                // 4. Genereer PDF met handtekeningen
                 const urenstaat = generateUrenstaat();
                 if (!urenstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
                 const fileName = `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
-                const projectName = currentProject ? currentProject.name : '';
-                const totalKm = weekData.reduce((s,e) => s + (e.km||0), 0);
-                const hotelNachten = weekData.filter(e => e.hotel).length;
-
-                // 4. PDF base64 voor email bijlage
                 const pdfBase64 = urenstaat.output('datauristring').split(',')[1];
 
-                // 5. Verstuur via Supabase Edge Function → Resend
-                btn.innerHTML = '📧 E-mail versturen...';
+                // 5. Upload naar OneDrive + stuur notificatie via Edge Function
+                btn.innerHTML = '☁️ Uploaden naar OneDrive...';
 
                 const sb = getSupabase();
                 if (sb) {
-                    const { data, error } = await sb.functions.invoke('send-weekstaat', {
+                    const { data, error } = await sb.functions.invoke('submit-weekstaat', {
                         body: {
-                            to: 'uren@kuijpers-ts.nl',
-                            subject: `Weekstaat ${projCode} ${weekLabel} — ${userName}`,
+                            pdfBase64: pdfBase64,
+                            fileName: fileName,
                             userName: userName,
-                            projectCode: projCode,
+                            weekNumber: currentWeekNumber,
+                            year: currentYear,
                             projectName: projectName,
-                            weekLabel: weekLabel,
-                            totalHours: total,
-                            totalKm: totalKm,
-                            hotelNachten: hotelNachten,
-                            urenstaat: pdfBase64,
-                            ureFilename: fileName,
                         }
                     });
 
@@ -2095,22 +2269,22 @@
 
                     btn.innerHTML = '✅ Verstuurd!';
                     btn.style.background = '#059669';
-                    showToast(`✅ Weekstaat week ${currentWeekNumber} gemaild naar uren@kuijpers-ts.nl`);
+                    const msg = data && data.email
+                        ? `✅ Week ${currentWeekNumber} opgeslagen in OneDrive + notificatie verstuurd`
+                        : `✅ Week ${currentWeekNumber} opgeslagen in OneDrive`;
+                    showToast(msg);
                 } else {
                     throw new Error('Niet verbonden met database');
                 }
 
             } catch (err) {
                 console.error('Versturen mislukt:', err);
-                btn.innerHTML = '✓ Week afsluiten & versturen ter goedkeuring';
+                btn.innerHTML = '✓ Week versturen';
                 btn.disabled = false;
 
-                // Fallback: download PDF + open mailto
-                showToast('⚠️ Mail mislukt — PDF wordt gedownload');
+                // Fallback: download PDF lokaal
+                showToast('⚠️ Upload mislukt — PDF wordt gedownload');
                 downloadUrenstaat();
-                const fallbackSubject = `Weekstaat Week ${currentWeekNumber} / ${currentYear}`;
-                const fallbackBody = `Hierbij mijn weekstaat ter goedkeuring.\n\nVoeg de zojuist gedownloade PDF als bijlage toe.`;
-                window.open(`mailto:uren@kuijpers-ts.nl?subject=${encodeURIComponent(fallbackSubject)}&body=${encodeURIComponent(fallbackBody)}`, '_blank');
             }
         }
 
@@ -2532,8 +2706,19 @@
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
             document.getElementById('overview-title').textContent = `Maandoverzicht · ${MONTHS_LONG[currentWeekMonday.getMonth()]} ${currentWeekMonday.getFullYear()}`;
 
-            // Weeknummer in verstuurknop
-            document.getElementById('submit-week-num').textContent = currentWeekNumber;
+            // Weeknummer in knoppen
+            const signNumEl = document.getElementById('sign-week-num');
+            const submitNumEl = document.getElementById('submit-week-num');
+            if (signNumEl) signNumEl.textContent = currentWeekNumber;
+            if (submitNumEl) submitNumEl.textContent = currentWeekNumber;
+
+            // Reset knop-status: toon onderteken, verberg versturen
+            const signBtn = document.getElementById('sign-week-btn');
+            const submitBtn2 = document.getElementById('submit-week-btn');
+            if (signBtn) signBtn.style.display = 'block';
+            if (submitBtn2) submitBtn2.style.display = 'none';
+            // Reset handtekeningen bij week-wissel
+            signatureData = { zzp: null, client: null };
 
             // Status per week lijst (4 weken terug + huidige week)
             const weekListEl = document.getElementById('week-status-list');
@@ -3038,10 +3223,8 @@
                 if (error) { console.warn('Laden mislukt:', error.message); return; }
 
                 if (entries && entries.length > 0) {
-                    weekData = Array.from({length: 7}, () => ({
-                        start: '', end: '', breakMin: 0, desc: '', location: '',
-                        km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0
-                    }));
+                    // Start met defaults (ma-vr vooringevuld) en overschrijf met opgeslagen data
+                    weekData = defaultWeekData();
 
                     entries.forEach(e => {
                         const dayIndex = getDayIndexForDate(e.entry_date);
