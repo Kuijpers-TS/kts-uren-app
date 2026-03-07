@@ -3997,8 +3997,6 @@
         // ===== WELKOMSTGIDS =====
         function showWelcomeGuide() {
             const name = currentUser ? currentUser.name.split(' ')[0] : '';
-            const container = document.getElementById('days-container');
-            if (!container) return;
 
             const steps = [
                 { icon: '👋', title: 'Welkom' + (name ? ', ' + name : '') + '!', text: 'Dit is de KTS Uren App. Hier registreer je je werkuren, kilometers en onkosten.' },
@@ -4007,27 +4005,45 @@
                 { icon: '💾', title: 'Opslaan & versturen', text: 'Sla je week op, onderteken hem en verstuur de PDF naar KTS.' },
             ];
 
-            const guideHtml = `
-                <div style="padding:16px 0">
+            // Verberg de hele app (header, content, bottom nav)
+            document.querySelector('.header').style.display = 'none';
+            document.querySelector('.app-content').style.display = 'none';
+            document.querySelector('.bottom-nav').style.display = 'none';
+
+            // Maak fullscreen welkomst-overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'welcome-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
+            overlay.innerHTML = `
+                <div style="max-width:420px;width:100%">
                     ${steps.map(s => `
-                        <div style="display:flex;gap:14px;padding:14px;margin-bottom:8px;background:#f0f9ff;border-radius:12px;border:1px solid #bfdbfe">
-                            <div style="font-size:1.5rem;flex-shrink:0">${s.icon}</div>
+                        <div style="display:flex;gap:14px;padding:16px;margin-bottom:10px;background:#f0f9ff;border-radius:14px;border:1px solid #bfdbfe">
+                            <div style="font-size:1.6rem;flex-shrink:0">${s.icon}</div>
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem;color:var(--kts-blue);margin-bottom:2px">${s.title}</div>
-                                <div style="font-size:0.82rem;color:var(--text);line-height:1.4">${s.text}</div>
+                                <div style="font-weight:700;font-size:0.95rem;color:var(--kts-blue);margin-bottom:3px">${s.title}</div>
+                                <div style="font-size:0.84rem;color:var(--text);line-height:1.45">${s.text}</div>
                             </div>
                         </div>
                     `).join('')}
-                    <button class="btn btn-primary btn-block" onclick="this.parentElement.remove();renderDays()" style="margin-top:12px;padding:12px;border-radius:10px">
+                    <button class="btn btn-primary btn-block" onclick="dismissWelcomeGuide()" style="margin-top:16px;padding:14px;border-radius:12px;font-size:0.95rem">
                         ✓ Begrepen, aan de slag!
                     </button>
                 </div>`;
 
-            // Toon boven de dagkaarten
-            const guide = document.createElement('div');
-            guide.id = 'welcome-guide';
-            guide.innerHTML = guideHtml;
-            container.parentElement.insertBefore(guide, container);
+            document.body.appendChild(overlay);
+        }
+
+        function dismissWelcomeGuide() {
+            const overlay = document.getElementById('welcome-overlay');
+            if (overlay) overlay.remove();
+
+            // Toon de app weer
+            document.querySelector('.header').style.display = '';
+            document.querySelector('.app-content').style.display = '';
+            document.querySelector('.bottom-nav').style.display = '';
+
+            renderDays();
+            updateClockUI();
         }
 
         // ===== SESSIE-TIMEOUT MONITOR =====
