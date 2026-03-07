@@ -2540,10 +2540,15 @@
 
         // ===== NAV =====
         function switchScreen(name) {
+            // Blokkeer admin scherm voor niet-admins
+            if (name === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
+                showToast('⚠️ Alleen voor beheerders');
+                return;
+            }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(`screen-${name}`).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
         }
 
         // ===== MODALS =====
@@ -3524,6 +3529,10 @@
 
         // ===== ADMIN FUNCTIES =====
         function goToAdmin() {
+            if (!currentUser || currentUser.role !== 'admin') {
+                showToast('⚠️ Alleen voor beheerders');
+                return;
+            }
             document.getElementById('user-menu').style.display = 'none';
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('screen-admin').classList.add('active');
