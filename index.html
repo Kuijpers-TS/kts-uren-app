@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTS Uren App</title>
+    <title>KTS BV | Uren App</title>
     <link rel="icon" type="image/png" href="tandwiel-blauw.png">
     <style>
         /* ===== DAXLINE PRO FONTS ===== */
@@ -4311,6 +4311,25 @@
             } else {
                 closeModal('admin-modal');
                 showToast('✓ Opgeslagen');
+
+                // Als we de huidige gebruiker bewerkt hebben: currentUser bijwerken + UI herladen
+                if (type === 'gebruiker' && _editingId === currentUser.id) {
+                    const { data: freshUser } = await sb.from('users')
+                        .select('*')
+                        .eq('id', currentUser.id)
+                        .single();
+                    if (freshUser) {
+                        Object.assign(currentUser, freshUser);
+                        // Tabs/features direct bijwerken
+                        const navKosten = document.getElementById('nav-kosten');
+                        if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
+                        // Overzicht + dagkaarten herladen met nieuwe flags
+                        renderDays();
+                        renderSummary();
+                        renderOverview();
+                    }
+                }
+
                 _editingId = null;
                 loadAdminData();
             }
