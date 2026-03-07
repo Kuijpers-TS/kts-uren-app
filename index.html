@@ -755,7 +755,8 @@
             </div>
 
 
-            <!-- Maandfactuur (admin only) -->
+            <!-- Maandfactuur (admin only — tijdelijk verborgen, later uitbreiden) -->
+            <!--
             <div id="admin-invoice-section" style="display:none;margin-top:20px;padding:16px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:2px solid var(--kts-blue);border-radius:14px">
                 <div style="font-weight:700;font-size:0.95rem;color:var(--kts-blue);margin-bottom:8px">📨 Maandfactuur naar eindklant</div>
                 <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Genereer een verkoopfactuur van KTS naar de eindklant op basis van alle goedgekeurde weken van deze maand.</div>
@@ -763,6 +764,7 @@
                     📄 Maandfactuur genereren
                 </button>
             </div>
+            -->
         </div>
 
         <!-- ===== ADMIN SCREEN (alleen voor admin) ===== -->
@@ -950,7 +952,7 @@
         // ===== CONFIG =====
         let RATE = 85;
         let KM_RATE = 0.50;
-        let HOTEL_RATE = 110.00; // vast afgesproken tarief per nacht
+        let HOTEL_RATE = 110.00; // default, wordt overschreven door project.hotel_rate
         let SAT_MULTIPLIER = 1.50;
         let SUN_MULTIPLIER = 2.00;
         let currentRates = null; // geladen uit Supabase rates tabel
@@ -1240,9 +1242,9 @@
                 let badges = '';
                 const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
                 if (isFilled) {
-                    if (entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
+                    if (currentProject && currentProject.allow_thuiswerk && entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
                     if (hasKm && entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
-                    if (entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
+                    if (currentProject && currentProject.allow_hotel && entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
                 }
 
                 // Location for collapsed view
@@ -1286,31 +1288,31 @@
                             </div>
                             <div class="form-group" style="margin-top:12px">
                                 <label>Omschrijving werkzaamheden</label>
-                                <textarea onchange="updateEntry(${i},'desc',this.value)" placeholder="Bijv. commissioning, I/O checks, vendor overleg...">${entry.desc}</textarea>
+                                <textarea onchange="updateEntry(${i},'desc',this.value)" placeholder="${currentProject && currentProject.default_description ? currentProject.default_description : 'Bijv. commissioning, I/O checks, vendor overleg...'}">${entry.desc}</textarea>
                             </div>
                             <div class="form-row" ${entry.thuiswerk ? 'style="display:none"' : ''}>
                                 <div class="form-group">
                                     <label>Locatie</label>
-                                    <input type="text" value="${entry.location||''}" placeholder="Bijv. Broek op Langedijk" onchange="updateEntry(${i},'location',this.value)">
+                                    <input type="text" value="${entry.location||''}" placeholder="${currentProject && currentProject.default_location ? currentProject.default_location : 'Bijv. Broek op Langedijk'}" onchange="updateEntry(${i},'location',this.value)">
                                 </div>
                             </div>
 
-                            <!-- TOGGLES: Thuiswerk + Hotel + Km -->
+                            <!-- TOGGLES: Thuiswerk + Hotel + Km (alleen tonen als project het toelaat) -->
                             <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
 
-                                <!-- Thuiswerk toggle -->
-                                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${entry.thuiswerk?'#f0fdf4':'#f8fafc'};border:1px solid ${entry.thuiswerk?'#86efac':'var(--border)'};border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(${i})">
-                                    <div style="width:20px;height:20px;border-radius:4px;border:2px solid ${entry.thuiswerk?'#059669':'#cbd5e1'};background:${entry.thuiswerk?'#059669':'white'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                                        ${entry.thuiswerk ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : ''}
-                                    </div>
-                                    <div style="flex:1">
-                                        <div style="font-weight:600;font-size:0.85rem;color:${entry.thuiswerk?'#059669':'var(--muted)'}">🏠 Thuiswerk</div>
-                                        <div style="font-size:0.75rem;color:var(--muted)">Geen reiskilometers</div>
-                                    </div>
-                                </div>
+                                <!-- Thuiswerk toggle (alleen als project thuiswerk toestaat) -->
+                                ${currentProject && currentProject.allow_thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.thuiswerk?'#f0fdf4':'#f8fafc') + ';border:1px solid ' + (entry.thuiswerk?'#86efac':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(' + i + ')">' +
+                                    '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.thuiswerk?'#059669':'#cbd5e1') + ';background:' + (entry.thuiswerk?'#059669':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+                                        (entry.thuiswerk ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
+                                    '</div>' +
+                                    '<div style="flex:1">' +
+                                        '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.thuiswerk?'#059669':'var(--muted)') + '">🏠 Thuiswerk</div>' +
+                                        '<div style="font-size:0.75rem;color:var(--muted)">Geen reiskilometers</div>' +
+                                    '</div>' +
+                                '</div>' : ''}
 
-                                <!-- Hotel toggle (verborgen bij thuiswerk) -->
-                                ${!entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'#eff6ff':'#f8fafc') + ';border:1px solid ' + (entry.hotel?'#93c5fd':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
+                                <!-- Hotel toggle (alleen als project hotel toestaat en niet thuiswerk) -->
+                                ${currentProject && currentProject.allow_hotel && !entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'#eff6ff':'#f8fafc') + ';border:1px solid ' + (entry.hotel?'#93c5fd':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
                                     '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + ';background:' + (entry.hotel?'var(--kts-blue)':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
                                         (entry.hotel ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
                                     '</div>' +
@@ -1334,11 +1336,13 @@
                     </div>`;
             }).join('');
 
-            const totalKmWeek = weekData.reduce((s,e) => s + (e.km||0), 0);
-            const totalHotelWeek = weekData.filter(e => e.hotel).length;
+            const projHasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
+            const projHasHotel = currentProject && currentProject.allow_hotel;
+            const totalKmWeek = projHasKm ? weekData.reduce((s,e) => s + (e.km||0), 0) : 0;
+            const totalHotelWeek = projHasHotel ? weekData.filter(e => e.hotel).length : 0;
             let weekTotalText = `Totaal: ${fmt(totalHours)} uur`;
-            if (totalKmWeek > 0) weekTotalText += ` · ${totalKmWeek} km`;
-            if (totalHotelWeek > 0) weekTotalText += ` · ${totalHotelWeek}× 🏨`;
+            if (projHasKm && totalKmWeek > 0) weekTotalText += ` · ${totalKmWeek} km`;
+            if (projHasHotel && totalHotelWeek > 0) weekTotalText += ` · ${totalHotelWeek}× 🏨`;
             document.getElementById('week-total').textContent = weekTotalText;
             renderSummary();
             renderOverview();
@@ -2583,6 +2587,7 @@
             if (!project) { showToast('⚠️ Project niet gevonden'); return; }
 
             currentProject = project;
+            if (currentProject.hotel_rate) HOTEL_RATE = parseFloat(currentProject.hotel_rate);
             document.querySelector('.project-name').textContent = currentProject.name;
             document.querySelector('.project-meta').textContent =
                 (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
@@ -2622,6 +2627,11 @@
 
         // ===== OVERZICHT RENDER =====
         function renderOverview() {
+            // Project feature flags
+            const hasKm = currentProject && parseFloat(currentProject.km_single_trip) > 0;
+            const hasThuiswerk = currentProject && currentProject.allow_thuiswerk;
+            const hasHotel = currentProject && currentProject.allow_hotel;
+
             // Bereken maandcijfers (alleen huidige week)
             const currentWeekHours = weekData.reduce((s,e) => s + e.hours, 0);
             const totalMonthHours = currentWeekHours;
@@ -2631,15 +2641,15 @@
             const satHours = weekData[5].hours;
             const sunHours = weekData[6].hours;
             const currentWeekRevenue = (normalHours * RATE) + (satHours * RATE * SAT_MULTIPLIER) + (sunHours * RATE * SUN_MULTIPLIER);
-            const totalMonthRevenue = currentWeekRevenue;
+            const totalMonthRevenue = currentWeekHours > 0 ? currentWeekRevenue : 0;
 
             // Km totalen (vanuit dagkaarten)
-            const currentKmTotal = weekData.reduce((s,e) => s + (e.km || 0), 0);
+            const currentKmTotal = hasKm ? weekData.reduce((s,e) => s + (e.km || 0), 0) : 0;
             const totalMonthKm = currentKmTotal;
             const totalKmRevenue = totalMonthKm * KM_RATE;
 
             // Hotel totalen vanuit dagkaarten
-            const currentHotelNights = weekData.filter(e => e.hotel).length;
+            const currentHotelNights = hasHotel ? weekData.filter(e => e.hotel).length : 0;
             const currentHotelTotal = currentHotelNights * HOTEL_RATE;
 
             // Extra kosten totalen
@@ -2649,49 +2659,74 @@
             // Grand total
             const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
 
-            // Stats grid
-            document.getElementById('overview-stats').innerHTML = `
+            // Stats grid — dynamisch op basis van projectinstellingen
+            let statsHtml = `
                 <div class="stat-card highlight">
                     <div class="stat-value">${fmt(totalMonthHours)}</div>
-                    <div class="stat-label">Uren deze maand</div>
-                </div>
+                    <div class="stat-label">Uren deze week</div>
+                </div>`;
+
+            if (currentWeekHours > 0) {
+                statsHtml += `
                 <div class="stat-card" style="background:#059669;color:white">
                     <div class="stat-value" style="color:white">${fmtEuro(totalMonthRevenue)}</div>
                     <div class="stat-label" style="color:rgba(255,255,255,0.7)">Omzet uren</div>
-                </div>
+                </div>`;
+            }
+
+            if (hasKm) {
+                statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalMonthKm.toLocaleString('nl-NL')}</div>
                     <div class="stat-label">Kilometers</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">${weekData.filter(e=>e.thuiswerk).length}</div>
-                    <div class="stat-label">Thuiswerkdagen</div>
-                </div>
-                <div class="stat-card">
                     <div class="stat-value">${fmtEuro(totalKmRevenue)}</div>
                     <div class="stat-label">Km-vergoeding</div>
-                </div>
+                </div>`;
+            }
+
+            if (hasThuiswerk) {
+                statsHtml += `
+                <div class="stat-card">
+                    <div class="stat-value">${weekData.filter(e=>e.thuiswerk).length}</div>
+                    <div class="stat-label">Thuiswerkdagen</div>
+                </div>`;
+            }
+
+            statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${fmtEuro(totalMonthExp)}</div>
                     <div class="stat-label">Declaraties</div>
-                </div>
+                </div>`;
+
+            if (currentWeekHours > 0) {
+                statsHtml += `
                 <div class="stat-card" style="background:var(--kts-blue)">
                     <div class="stat-value" style="color:white">${fmtEuro(grandTotal)}</div>
                     <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal omzet</div>
-                </div>
-            `;
+                </div>`;
+            }
 
-            // Revenue breakdown
-            document.getElementById('overview-revenue').innerHTML = `
+            document.getElementById('overview-stats').innerHTML = statsHtml;
+
+            // Revenue breakdown — alleen tonen als er uren zijn
+            let revenueHtml = '';
+            if (currentWeekHours > 0) {
+                revenueHtml = `
                 <div class="summary-title">Omzet breakdown · huidige week</div>
                 <div class="summary-row">
                     <span>Uren (${fmt(totalMonthHours)} u × €${RATE})</span>
                     <span class="summary-value">${fmtEuro(totalMonthRevenue)}</span>
-                </div>
+                </div>`;
+                if (hasKm) {
+                    revenueHtml += `
                 <div class="summary-row">
                     <span>Km-vergoeding (${totalMonthKm.toLocaleString('nl-NL')} km × €${KM_RATE.toFixed(2).replace('.',',')})</span>
                     <span class="summary-value">${fmtEuro(totalKmRevenue)}</span>
-                </div>
+                </div>`;
+                }
+                revenueHtml += `
                 <div class="summary-row">
                     <span>Declaraties</span>
                     <span class="summary-value">${fmtEuro(totalMonthExp)}</span>
@@ -2699,8 +2734,11 @@
                 <div class="summary-row total" style="font-size:1rem">
                     <span>Totale omzet</span>
                     <span class="summary-value">${fmtEuro(grandTotal)}</span>
-                </div>
-            `;
+                </div>`;
+            } else {
+                revenueHtml = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.85rem">Nog geen uren ingevuld voor deze week</div>`;
+            }
+            document.getElementById('overview-revenue').innerHTML = revenueHtml;
 
             // Maandtitel updaten
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
@@ -2730,14 +2768,21 @@
                 const endD = new Date(d); endD.setDate(endD.getDate() + 6);
                 const label = `Week ${wn} (${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
                 const isCurrent = offset === 0;
-                const statusClass = isCurrent ? 'status-draft' : 'status-approved';
-                const statusLabel = isCurrent ? 'Huidig' : 'Concept';
+
+                // Check week status op basis van project datums
+                let statusClass = '';
+                let statusLabel = '';
+                if (isCurrent) {
+                    statusClass = 'status-draft';
+                    statusLabel = 'Huidig';
+                }
+                // Toekomstige statuslogica kan later uitgebreid worden met ingediend/goedgekeurd
 
                 weekRows += `
                     <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${offset})">
                         <span style="${isCurrent ? 'font-weight:700;color:var(--kts-blue)' : ''}">${label}</span>
                         <span style="display:flex;align-items:center;gap:6px">
-                            <span class="status-badge ${statusClass}">${statusLabel}</span>
+                            ${statusLabel ? '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>' : ''}
                             <span style="color:var(--muted);font-size:0.75rem">→</span>
                         </span>
                     </div>`;
@@ -3033,8 +3078,9 @@
                 const adminItem = document.getElementById('admin-menu-item');
                 const isAdmin = currentUser && currentUser.role === 'admin';
                 if (adminItem) adminItem.style.display = isAdmin ? 'flex' : 'none';
-                const adminInv = document.getElementById('admin-invoice-section');
-                if (adminInv) adminInv.style.display = isAdmin ? 'block' : 'none';
+                // Maandfactuur tijdelijk verborgen
+                // const adminInv = document.getElementById('admin-invoice-section');
+                // if (adminInv) adminInv.style.display = isAdmin ? 'block' : 'none';
                 // Sluit menu bij klik ergens anders
                 setTimeout(() => {
                     document.addEventListener('click', function closeMenu(e) {
@@ -3487,6 +3533,8 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800" value="${existing ? existing.name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? existing.default_description || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.default_location || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px">
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
                             <input type="checkbox" id="adm-proj-km-toggle" ${existing && existing.km_single_trip > 0 ? 'checked' : ''}
@@ -3497,6 +3545,24 @@
                     </div>
                     <div id="adm-proj-km-wrap" style="display:${existing && existing.km_single_trip > 0 ? 'block' : 'none'};margin-bottom:12px">
                         <div class="form-group"><label>Km enkele reis (huis → werklocatie)</label><input type="number" step="0.1" id="adm-proj-km" placeholder="96" value="${existing ? existing.km_single_trip || '' : ''}"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="adm-proj-thuiswerk" ${existing && existing.allow_thuiswerk ? 'checked' : ''}
+                                style="width:18px;height:18px;accent-color:var(--kts-blue)">
+                            Thuiswerk mogelijk
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="adm-proj-hotel" ${existing && existing.allow_hotel ? 'checked' : ''}
+                                onchange="document.getElementById('adm-proj-hotel-wrap').style.display = this.checked ? 'block' : 'none'"
+                                style="width:18px;height:18px;accent-color:var(--kts-blue)">
+                            Hotelovernachting mogelijk
+                        </label>
+                    </div>
+                    <div id="adm-proj-hotel-wrap" style="display:${existing && existing.allow_hotel ? 'block' : 'none'};margin-bottom:12px">
+                        <div class="form-group"><label>Hotelprijs per nacht (€)</label><input type="number" step="0.01" id="adm-proj-hotel-rate" placeholder="110.00" value="${existing ? existing.hotel_rate || '110' : '110'}"></div>
                     </div>
                     <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
@@ -3596,7 +3662,12 @@
                     name: name,
                     client_name: document.getElementById('adm-proj-client').value.trim() || null,
                     location: document.getElementById('adm-proj-location').value.trim() || null,
+                    default_description: document.getElementById('adm-proj-desc').value.trim() || null,
+                    default_location: document.getElementById('adm-proj-deflocation').value.trim() || null,
                     km_single_trip: document.getElementById('adm-proj-km-toggle').checked ? (parseFloat(document.getElementById('adm-proj-km').value) || 0) : 0,
+                    allow_thuiswerk: document.getElementById('adm-proj-thuiswerk').checked,
+                    allow_hotel: document.getElementById('adm-proj-hotel').checked,
+                    hotel_rate: document.getElementById('adm-proj-hotel').checked ? (parseFloat(document.getElementById('adm-proj-hotel-rate').value) || 110) : null,
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active'
                 };
