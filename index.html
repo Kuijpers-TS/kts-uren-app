@@ -2382,7 +2382,7 @@
                 // 8. Open vooringevulde email
                 const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userName + ' - ' + projectName);
                 const mailBody = encodeURIComponent(
-                    'Beste Mark,\n\n' +
+                    'Beste KTS,\n\n' +
                     'Hierbij mijn weekstaat voor week ' + currentWeekNumber + '.\n\n' +
                     'Medewerker: ' + userName + '\n' +
                     'Project: ' + projectName + '\n' +
@@ -2983,18 +2983,25 @@
             const isOndertekend = currentWeekDbStatus === 'ondertekend';
             const isVerstuurd = currentWeekDbStatus === 'verstuurd';
 
+            // Reset verstuurknop naar standaardstaat
+            if (submitBtn2) {
+                submitBtn2.innerHTML = '✓ Week <span id="submit-week-num">' + currentWeekNumber + '</span> versturen';
+                submitBtn2.disabled = false;
+                submitBtn2.style.background = '';
+            }
+
             if (isVerstuurd) {
-                // Al verstuurd: verberg alles
+                // Al verstuurd: verberg knoppen
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
-            } else if (isOndertekend || signatureData.zzp) {
-                // Ondertekend maar nog niet verstuurd: toon verstuur-knop
+            } else if (signatureData.zzp) {
+                // Net ondertekend (handtekening in geheugen): toon verstuur-knop
                 if (actionBtns) actionBtns.style.display = 'flex';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'block';
             } else if (weekStatus.editable) {
-                // Bewerkbaar en nog niet ondertekend: toon onderteken-knop
+                // Bewerkbaar: toon onderteken-knop (ook als eerder ondertekend maar handtekening verloren)
                 if (actionBtns) actionBtns.style.display = 'flex';
                 if (signBtn) signBtn.style.display = 'block';
                 if (submitBtn2) submitBtn2.style.display = 'none';
