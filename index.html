@@ -40,6 +40,8 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --kts-blue: #07567F;
+            --kts-dark: #043B56;
+            --kts-darker: #0A1628;
             --kts-light: #3b82f6;
             --green: #10b981;
             --orange: #f59e0b;
@@ -81,7 +83,7 @@
 
         /* ===== HEADER ===== */
         .header {
-            background: var(--kts-blue);
+            background: linear-gradient(135deg, var(--kts-darker) 0%, var(--kts-dark) 40%, var(--kts-blue) 100%);
             color: white;
             padding: 16px 20px;
             position: sticky;
@@ -99,7 +101,8 @@
             align-items: center;
             margin-bottom: 12px;
         }
-        .logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.3px; }
+        .logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+        .logo img { height: 22px; width: 22px; }
         .logo span { color: rgba(255,255,255,0.6); font-weight: 400; }
         .user-badge {
             font-size: 0.75rem;
@@ -571,7 +574,7 @@
     <div id="login-overlay" style="
         position:fixed;inset:0;z-index:9999;
         display:flex;align-items:center;justify-content:center;
-        background:linear-gradient(160deg, #07567F 0%, #064a6d 40%, #053d5a 100%);
+        background:linear-gradient(135deg, #0A1628 0%, #043B56 40%, #07567F 100%);
         overflow:hidden;
     ">
         <!-- Subtle pattern overlay -->
@@ -671,7 +674,7 @@
     <div class="header">
         <div class="header-inner">
             <div class="header-top">
-                <div class="logo">Kuijpers <span>Technical Services</span></div>
+                <div class="logo"><img src="tandwiel-wit.png" alt="KTS">Kuijpers <span>| Technical Services</span></div>
                 <div class="user-badge" onclick="toggleUserMenu()" style="position:relative">👤 M. Kuijpers
                     <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;overflow:hidden;z-index:200">
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
