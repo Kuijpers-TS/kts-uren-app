@@ -436,6 +436,17 @@
         .status-approved { background: #d1fae5; color: #059669; }
         .status-pending { background: #fef3c7; color: #d97706; }
 
+        /* ===== LOADING SPINNER ===== */
+        .loading-spinner {
+            width: 18px; height: 18px;
+            border: 2.5px solid #e2e8f0;
+            border-top-color: var(--kts-blue);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         /* ===== MODAL ===== */
         .modal-overlay {
             display: none;
@@ -2679,6 +2690,17 @@
         }
 
         // ===== OVERZICHT RENDER =====
+        function showOverviewLoading() {
+            const spinner = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;color:var(--muted);font-size:0.85rem"><div class="loading-spinner"></div> Laden...</div>';
+            const statsEl = document.getElementById('overview-stats');
+            const revenueEl = document.getElementById('overview-revenue');
+            const weekListEl = document.getElementById('week-status-list');
+            if (statsEl) statsEl.innerHTML = spinner;
+            if (revenueEl) revenueEl.innerHTML = '';
+            if (weekListEl) weekListEl.innerHTML = spinner;
+            document.getElementById('month-total').textContent = '';
+        }
+
         async function renderOverview() {
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
 
@@ -2922,6 +2944,7 @@
             overviewMonth += dir;
             if (overviewMonth > 11) { overviewMonth = 0; overviewYear++; }
             if (overviewMonth < 0) { overviewMonth = 11; overviewYear--; }
+            showOverviewLoading();
             await renderOverview();
         }
 
@@ -3536,6 +3559,7 @@
 
             if (getSupabase() && currentUser && currentUser.id) {
                 try {
+                    showOverviewLoading(); // Direct loading state tonen
                     await saveWeekToSupabase();
                     await updateWeekStatus('opgeslagen');
                     weekDataDirty = false;
@@ -3544,6 +3568,7 @@
                 } catch (err) {
                     showToast('⚠️ Opslaan mislukt — probeer opnieuw');
                     console.error('Save error:', err);
+                    await renderOverview(); // Herstel overzicht na fout
                 }
             } else {
                 showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen (lokaal)');
@@ -3701,15 +3726,19 @@
                 persList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen personen gevonden</div>';
             }
 
-            // Tarieven laden
-            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code, km_single_trip), user_id(name, email)').order('valid_from', { ascending: false });
+            // Tarieven laden (user_id verwijst naar auth.users, dus apart users ophalen)
+            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code, km_single_trip)').order('valid_from', { ascending: false });
             window._adminRates = rates || [];
+            // Haal user-namen op voor weergave
+            const { data: allUsersForRates } = await sb.from('users').select('id, name, email');
+            const userMap = {};
+            if (allUsersForRates) allUsersForRates.forEach(u => { userMap[u.id] = u.name || u.email; });
+
             const tariefList = document.getElementById('admin-tarief-list');
             if (rates && rates.length > 0) {
                 tariefList.innerHTML = rates.map((r, idx) => {
                     const proj = r.project_id || {};
-                    const user = r.user_id && typeof r.user_id === 'object' ? r.user_id : null;
-                    const userName = user ? (user.name || user.email) : 'Alle medewerkers';
+                    const userName = r.user_id ? (userMap[r.user_id] || 'Onbekende gebruiker') : 'Alle medewerkers';
                     const funcTitle = r.function_title ? ` · ${r.function_title}` : '';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('tarief', ${idx})">
