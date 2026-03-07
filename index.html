@@ -2549,6 +2549,9 @@
             document.getElementById(`screen-${name}`).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+            // Ververs overzicht bij openen (haalt verse data uit Supabase)
+            if (name === 'overzicht') renderOverview();
         }
 
         // ===== MODALS =====
