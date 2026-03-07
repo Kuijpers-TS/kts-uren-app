@@ -1164,7 +1164,7 @@
 
         // Visuele feedback voor onopgeslagen wijzigingen
         function markDirty() {
-            markDirty();
+            weekDataDirty = true;
             const btn = document.querySelector('#save-uren-btn-wrap .btn');
             if (btn) {
                 btn.innerHTML = '💾 Week opslaan <span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;margin-left:6px;vertical-align:middle"></span>';
@@ -1174,6 +1174,40 @@
             weekDataDirty = false;
             const btn = document.querySelector('#save-uren-btn-wrap .btn');
             if (btn) btn.innerHTML = '💾 Week opslaan';
+        }
+
+        // Conflict-detectie: communicatie tussen tabs
+        const tabChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('kts-uren-sync') : null;
+
+        // Stuur melding naar andere tabs na opslaan
+        function notifyOtherTabs() {
+            if (tabChannel && currentUser) {
+                tabChannel.postMessage({
+                    type: 'saved',
+                    userId: currentUser.id,
+                    weekNumber: currentWeekNumber,
+                    year: currentYear,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        // Luister naar saves van andere tabs
+        if (tabChannel) {
+            tabChannel.onmessage = function(event) {
+                const msg = event.data;
+                if (msg.type === 'saved' && currentUser && msg.userId === currentUser.id
+                    && msg.weekNumber === currentWeekNumber && msg.year === currentYear) {
+                    if (weekDataDirty) {
+                        // Andere tab heeft dezelfde week opgeslagen terwijl wij onopgeslagen wijzigingen hebben
+                        showToast('⚠️ Week ' + currentWeekNumber + ' is in een ander tabblad opgeslagen — herlaad om actuele data te zien');
+                    } else {
+                        // Geen lokale wijzigingen: automatisch herladen
+                        loadWeekFromSupabase();
+                        showToast('🔄 Data bijgewerkt vanuit ander tabblad');
+                    }
+                }
+            };
         }
 
         let expEntries = [];
@@ -1507,6 +1541,8 @@
             const e = weekData[i];
             e.hotel = !e.hotel;
             if (e.hotel) {
+                // Bewaar originele km-waarden vóór hotel-aanpassing
+                e._kmBackup = { km: e.km, kmHeen: e.kmHeen || 0, kmTerug: e.kmTerug || 0 };
                 // Slim bepalen: was gisteren ook hotel?
                 const prevHotel = i > 0 && weekData[i-1].hotel;
                 if (prevHotel) {
@@ -1520,10 +1556,18 @@
                 }
                 e.km = e.kmHeen + e.kmTerug;
             } else {
-                // Geen hotel: retour thuis↔project
-                e.kmHeen = 0;
-                e.kmTerug = 0;
-                e.km = getUserKmRetour();
+                // Herstel originele km-waarden als die er zijn
+                if (e._kmBackup) {
+                    e.km = e._kmBackup.km;
+                    e.kmHeen = e._kmBackup.kmHeen;
+                    e.kmTerug = e._kmBackup.kmTerug;
+                    delete e._kmBackup;
+                } else {
+                    // Fallback: retour thuis↔project
+                    e.kmHeen = 0;
+                    e.kmTerug = 0;
+                    e.km = getUserKmRetour();
+                }
             }
             renderDays();
         }
@@ -1533,23 +1577,42 @@
             const e = weekData[i];
             if (field === 'start') e.start = value;
             if (field === 'end') e.end = value;
-            if (field === 'breakMin') e.breakMin = parseInt(value) || 0;
+            if (field === 'breakMin') e.breakMin = Math.max(0, parseInt(value) || 0);
             if (field === 'desc') e.desc = value;
             if (field === 'location') e.location = value;
-            if (field === 'km') e.km = parseInt(value) || 0;
+            if (field === 'km') e.km = Math.max(0, parseInt(value) || 0);
             if (field === 'kmHeen') {
-                e.kmHeen = parseInt(value) || 0;
+                e.kmHeen = Math.max(0, parseInt(value) || 0);
                 e.km = e.kmHeen + (e.kmTerug || 0);
             }
             if (field === 'kmTerug') {
-                e.kmTerug = parseInt(value) || 0;
+                e.kmTerug = Math.max(0, parseInt(value) || 0);
                 e.km = (e.kmHeen || 0) + e.kmTerug;
             }
             if (field === 'hotel') e.hotel = value;
+
+            // Tijdvalidatie
             if (e.start && e.end) {
                 const [sh,sm] = e.start.split(':').map(Number);
                 const [eh,em] = e.end.split(':').map(Number);
-                e.hours = Math.max(0, ((eh*60+em) - (sh*60+sm) - e.breakMin) / 60);
+                const startMin = sh * 60 + sm;
+                const endMin = eh * 60 + em;
+
+                if (endMin <= startMin) {
+                    // Eindtijd vóór of gelijk aan starttijd
+                    e.hours = 0;
+                    if (field === 'end' || field === 'start') {
+                        showToast('⚠️ Eindtijd moet na starttijd liggen');
+                    }
+                } else {
+                    const werkMin = endMin - startMin;
+                    // Pauze mag niet langer zijn dan de werkduur
+                    if (e.breakMin > werkMin) {
+                        e.breakMin = werkMin;
+                        showToast('⚠️ Pauze aangepast — kan niet langer zijn dan werktijd');
+                    }
+                    e.hours = Math.max(0, (werkMin - e.breakMin) / 60);
+                }
             }
             renderDays();
         }
@@ -1752,6 +1815,8 @@
             email: 'info@kuijpers-ts.nl'
         };
 
+        const KTS_LOGO_B64 = 'data:image/jpeg;base64,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';
+
         function getWeekDates() {
             return Array.from({length: 7}, (_, i) => {
                 const d = new Date(currentWeekMonday);
@@ -1793,36 +1858,31 @@
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...ktsBlue);
-            doc.text('URENSTAAT', ml, 16);
+            doc.text('URENSTAAT', ml, 22);
 
-            // --- KTS Logo/naam rechtsboven (kolom I-J in Excel = ca. 200mm+) ---
+            // --- KTS Logo rechtsboven ---
             const rightX = pw - mr - 65;
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...ktsBlue);
-            doc.text('Kuijpers', rightX + 20, 12);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...ktsBlue);
-            doc.text('TECHNICAL SERVICES', rightX + 20, 17);
+            const logoW = 35, logoH = logoW * (309 / 400);
+            const logoX = rightX + (65 - logoW) / 2;
+            doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 5, logoW, logoH);
 
-            // --- KTS adresgegevens (rij 5-7 rechts) ---
+            // --- KTS adresgegevens (onder logo) ---
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 24);
-            doc.text(KTS_INFO.postcode, pw - mr, 24, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 29);
-            doc.text(KTS_INFO.tel2, pw - mr, 29, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 37);
+            doc.text(KTS_INFO.postcode, pw - mr, 37, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 42);
+            doc.text(KTS_INFO.tel2, pw - mr, 42, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 34);
+            doc.text(KTS_INFO.email, rightX, 47);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(0, 0, 0);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 34, { align: 'right' });
+            doc.text('www.kuijpers-ts.nl', pw - mr, 47, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // --- Rij 3-4: Naam + Periode ---
-            let y = 22;
+            let y = 30;
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
             doc.text('Naam: ', ml, y);
@@ -2333,13 +2393,21 @@
 
         async function confirmSignatures() {
             if (!signatureData.zzp) { showToast('⚠️ ZZP\'er handtekening is verplicht'); return; }
+            const btn = document.getElementById('sig-confirm-btn');
+            if (btn) { btn.innerHTML = '⏳ Ondertekenen...'; btn.disabled = true; }
             closeModal('signature-modal');
 
-            await updateWeekStatus('ondertekend');
-            showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
-
-            // renderOverview handelt knop-status af op basis van db-status + signatureData
-            await renderOverview();
+            try {
+                await updateWeekStatus('ondertekend');
+                notifyOtherTabs();
+                showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
+                await renderOverview();
+            } catch (err) {
+                showToast('⚠️ Ondertekenen mislukt — probeer opnieuw');
+                console.error('Sign error:', err);
+            } finally {
+                if (btn) { btn.innerHTML = 'Ondertekenen'; btn.disabled = false; }
+            }
         }
 
         // ===== WEEK VERSTUREN =====
@@ -2410,6 +2478,7 @@
 
                 // 7. Status bijwerken
                 await updateWeekStatus('verstuurd');
+                notifyOtherTabs();
                 btn.innerHTML = '✅ Verstuurd!';
                 btn.style.background = '#059669';
                 await renderOverview();
@@ -3814,19 +3883,24 @@
         async function saveWeek(tab) {
             if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
             const labels = { uren: 'Uren', kosten: 'Declaraties' };
+            const btn = document.querySelector('#save-uren-btn-wrap .btn') || document.querySelector('#save-kosten-btn-wrap .btn');
 
             if (getSupabase() && currentUser && currentUser.id) {
+                if (btn) { btn.innerHTML = '⏳ Opslaan...'; btn.disabled = true; }
                 try {
-                    showOverviewLoading(); // Direct loading state tonen
+                    showOverviewLoading();
                     await saveWeekToSupabase();
                     await updateWeekStatus('opgeslagen');
                     markClean();
+                    notifyOtherTabs();
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
-                    await renderOverview(); // Maandoverzicht bijwerken met verse data
+                    await renderOverview();
                 } catch (err) {
                     showToast('⚠️ Opslaan mislukt — probeer opnieuw');
                     console.error('Save error:', err);
-                    await renderOverview(); // Herstel overzicht na fout
+                    await renderOverview();
+                } finally {
+                    if (btn) { btn.disabled = false; markClean(); }
                 }
             } else {
                 showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen (lokaal)');
