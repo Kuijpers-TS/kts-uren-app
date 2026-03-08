@@ -1878,7 +1878,7 @@
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top:12px">
-                                <label>Werkzaamheden</label>
+                                <label>Werkzaamheden beschrijving</label>
                                 <textarea onchange="updateEntry(${i},'desc',this.value)" placeholder="Beschrijf hier de werkzaamheden van vandaag">${entry.desc}</textarea>
                             </div>
                             <div class="form-row" ${entry.thuiswerk ? 'style="display:none"' : ''}>
@@ -1920,7 +1920,7 @@
 
                             <div class="form-actions" style="flex-wrap:wrap;margin-top:12px">
                                 <button class="btn btn-secondary btn-sm" onclick="clearDay(${i})">Wissen</button>
-                                <button class="btn btn-primary btn-sm" onclick="toggleDay(-1);showToast('✓ Opgeslagen')">Opslaan</button>
+                                <button class="btn btn-primary btn-sm" onclick="saveDayEntry(${i})">Opslaan</button>
                                 ${i < 6 ? '<button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
                             </div>
                         </div>
@@ -1968,6 +1968,17 @@
 
         // ===== UREN ACTIONS =====
         function toggleDay(i) { expandedDay = expandedDay === i ? -1 : i; renderDays(); }
+
+        function saveDayEntry(i) {
+            const dag = weekData[i];
+            const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+            if (dag.hours > 0 && !(dag.desc || '').trim()) {
+                showToast('⚠️ Vul werkzaamheden beschrijving in voor ' + dagNamen[i]);
+                return;
+            }
+            toggleDay(-1);
+            showToast('✓ Opgeslagen');
+        }
 
         function toggleThuiswerk(i) {
             markDirty();
@@ -2939,6 +2950,11 @@
             if (!currentUser || !currentUser.id) { showToast('⚠️ Log in om te ondertekenen (niet beschikbaar in demo)'); return; }
             const weekStatus = getWeekStatus();
             if (!weekStatus.editable) { showToast('⚠️ ' + weekStatus.reason); return; }
+            // Weekstaat moet eerst opgeslagen zijn
+            if (!currentWeekDbStatus || currentWeekDbStatus === 'concept') {
+                showToast('⚠️ Sla de weekstaat eerst op voordat je kunt ondertekenen');
+                return;
+            }
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
 
@@ -2982,6 +2998,11 @@
         async function submitWeek() {
             if (!currentUser || !currentUser.id) { showToast('⚠️ Log in om te versturen (niet beschikbaar in demo)'); return; }
             if (!signatureData.zzp) { showToast('⚠️ Onderteken eerst de week'); return; }
+            // Weekstaat moet opgeslagen zijn
+            if (!currentWeekDbStatus || currentWeekDbStatus === 'concept') {
+                showToast('⚠️ Sla de weekstaat eerst op voordat je kunt versturen');
+                return;
+            }
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
             if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen?`)) return;
@@ -3701,6 +3722,11 @@
 
             if (isVerstuurd) {
                 // Al verstuurd: verberg knoppen
+                if (actionBtns) actionBtns.style.display = 'none';
+                if (signBtn) signBtn.style.display = 'none';
+                if (submitBtn2) submitBtn2.style.display = 'none';
+            } else if (!localWeekDbStatus || localWeekDbStatus === 'concept') {
+                // Nog niet opgeslagen: verberg onderteken/verstuur knoppen
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
@@ -4929,7 +4955,7 @@
                     }
                 });
                 if (missend.length > 0) {
-                    showToast('⚠️ Vul werkzaamheden in voor: ' + missend.join(', '));
+                    showToast('⚠️ Vul werkzaamheden beschrijving in voor: ' + missend.join(', '));
                     return;
                 }
             }
