@@ -662,6 +662,10 @@
 </head>
 <body>
 
+    <!-- Verborgen afbeeldingen voor PDF (laden bij page start, altijd beschikbaar) -->
+    <img id="pdf-logo" src="KTS BV logo2.png" style="display:none" crossorigin="anonymous">
+    <img id="pdf-tandwiel" src="tandwiel-blauw.png" style="display:none" crossorigin="anonymous">
+
     <!-- LOGIN OVERLAY -->
     <div id="login-overlay" style="
         position:fixed;inset:0;z-index:9999;
@@ -903,10 +907,11 @@
         <div class="screen" id="screen-admin">
             <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">⚙️ Instellingen</h2>
 
-            <!-- Tabs: Projecten / Bedrijven / Tarieven / Documenten -->
+            <!-- Tabs: Projecten / Bedrijven / Gebruikers / Tarieven -->
             <div id="admin-tabs" style="display:flex;gap:6px;margin-bottom:16px">
                 <button class="btn btn-sm" style="flex:1" onclick="switchAdminTab('projecten')" id="admin-tab-projecten">Projecten</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Bedrijven</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('gebruikers')" id="admin-tab-gebruikers">Gebruikers</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
             </div>
 
@@ -919,19 +924,19 @@
                 <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
-            <!-- ===== PERSONEN TAB ===== -->
+            <!-- ===== BEDRIJVEN TAB ===== -->
             <div id="admin-personen" style="display:none">
-                <!-- Actieve gebruikers -->
-                <div style="margin-bottom:20px">
-                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Actieve gebruikers</div>
-                    <div id="admin-user-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
-                </div>
-                <!-- Bedrijven (ZZP, klanten, KTS) -->
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Bedrijven</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw bedrijf</button>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+
+            <!-- ===== GEBRUIKERS TAB ===== -->
+            <div id="admin-gebruikers" style="display:none">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Actieve gebruikers</div>
+                <div id="admin-user-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
             <!-- ===== TARIEVEN TAB ===== -->
@@ -2315,53 +2320,28 @@
             email: 'info@kuijpers-ts.nl'
         };
 
-        // PDF afbeeldingen laden via fetch+FileReader (betrouwbaarder dan Image+Canvas)
-        let KTS_LOGO_B64 = null;
-        let TANDWIEL_DATA_URL = null;
-
-        // Afbeelding laden via fetch, verkleinen via canvas voor kleine PDF
-        // format: 'jpeg' (geen transparantie, kleiner) of 'png' (met transparantie)
-        function fetchAndResizeImage(url, maxSize, format) {
-            format = format || 'jpeg';
-            return fetch(url)
-                .then(function(r) {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.blob();
-                })
-                .then(blob => new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = function() {
-                        const natW = img.naturalWidth || img.width;
-                        const natH = img.naturalHeight || img.height;
-                        const scale = Math.min(1, maxSize / Math.max(natW, natH));
-                        const w = Math.round(natW * scale);
-                        const h = Math.round(natH * scale);
-                        const canvas = document.createElement('canvas');
-                        canvas.width = w; canvas.height = h;
-                        const ctx = canvas.getContext('2d');
-                        if (format === 'jpeg') {
-                            // JPEG: witte achtergrond (geen transparantie)
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(0, 0, w, h);
-                        }
-                        ctx.drawImage(img, 0, 0, w, h);
-                        URL.revokeObjectURL(img.src);
-                        if (format === 'jpeg') {
-                            resolve(canvas.toDataURL('image/jpeg', 0.85));
-                        } else {
-                            resolve(canvas.toDataURL('image/png'));
-                        }
-                    };
-                    img.onerror = () => { console.warn('Afbeelding laden mislukt:', url); resolve(null); };
-                    img.src = URL.createObjectURL(blob);
-                }))
-                .catch(err => { console.warn('Fetch mislukt:', url, err); return null; });
+        // PDF afbeeldingen: lees verborgen <img> tags uit via canvas (simpel & betrouwbaar)
+        function imgToDataUrl(imgEl, maxSize, format) {
+            try {
+                if (!imgEl || !imgEl.naturalWidth) return null;
+                const natW = imgEl.naturalWidth;
+                const natH = imgEl.naturalHeight;
+                const scale = Math.min(1, maxSize / Math.max(natW, natH));
+                const w = Math.round(natW * scale);
+                const h = Math.round(natH * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                if (format === 'jpeg') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, w, h);
+                }
+                ctx.drawImage(imgEl, 0, 0, w, h);
+                return format === 'jpeg'
+                    ? canvas.toDataURL('image/jpeg', 0.85)
+                    : canvas.toDataURL('image/png');
+            } catch(e) { console.warn('imgToDataUrl mislukt:', e); return null; }
         }
-
-        const pdfImagesReady = Promise.all([
-            fetchAndResizeImage('KTS%20BV%20logo2.png', 300, 'jpeg').then(d => { KTS_LOGO_B64 = d; }),
-            fetchAndResizeImage('tandwiel-blauw.png', 128, 'png').then(d => { TANDWIEL_DATA_URL = d; })
-        ]);
 
         function getWeekDates() {
             return Array.from({length: 7}, (_, i) => {
@@ -2382,10 +2362,13 @@
         // ===== URENSTAAT PDF =====
         async function generateUrenstaat() {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
-            // Wacht tot logo en tandwiel geladen zijn (max 3 sec)
-            await Promise.race([pdfImagesReady, new Promise(r => setTimeout(r, 3000))]);
+            // Lees verborgen <img> tags uit naar data URLs (al geladen bij page start)
+            const KTS_LOGO_B64 = imgToDataUrl(document.getElementById('pdf-logo'), 300, 'jpeg');
+            const TANDWIEL_DATA_URL = imgToDataUrl(document.getElementById('pdf-tandwiel'), 128, 'png');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            // DaxlinePro als beschikbaar, anders fallback naar helvetica
+            const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             const pw = 297, ph = 210, ml = 15, mr = 15, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127]; // #07567F
             const borderColor = [180, 180, 180];
@@ -2406,7 +2389,7 @@
             const titleFontSize = 16;
             const titleY = 20;
             doc.setFontSize(titleFontSize);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
             // Tandwiel icoon links van URENSTAAT — verticaal gecentreerd op de tekst
             const iconSize = 8;
@@ -2428,11 +2411,11 @@
 
             // --- KTS adresgegevens (onder logo) ---
             doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
             doc.text(KTS_INFO.adres, rightX, 38);
             doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
             doc.text(KTS_INFO.tel1, rightX, 43);
             doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
             doc.setTextColor(...ktsBlue);
@@ -2441,24 +2424,28 @@
             doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // --- Rij 3-4: Naam + Periode (labels bold) ---
+            // --- Rij 3-4: Naam + Periode (labels KTS blauw bold) ---
             let y = 30;
             doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsBlue);
             doc.text('Naam:', ml, y);
             doc.text('Periode:', ml + uw * 0.38, y);
             y += 5;
-            doc.setFont('helvetica', 'normal');
+            doc.setFont(pdfFont, 'normal');
+            doc.setTextColor(0, 0, 0);
             doc.text(userName, ml, y);
             doc.text(`Week ${currentWeekNumber} ${currentYear}`, ml + uw * 0.38, y);
 
-            // --- Rij 6-7: Project + Klant (labels bold) ---
+            // --- Rij 6-7: Project + Klant (labels KTS blauw bold) ---
             y += 6;
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsBlue);
             doc.text('Project:', ml, y);
             doc.text('Klant:', ml + uw * 0.38, y);
             y += 5;
-            doc.setFont('helvetica', 'normal');
+            doc.setFont(pdfFont, 'normal');
+            doc.setTextColor(0, 0, 0);
             doc.text(`${projCode}${projCode && projName ? ' – ' : ''}${projName}${projLoc ? ' ' + projLoc : ''}`, ml, y);
             doc.text(clientName, ml + uw * 0.38, y);
 
@@ -2527,7 +2514,7 @@
             const rh = 5.5; // rijhoogte
 
             doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
 
             // Headers
             hLine(ml, ml + 42, y); hLine(ml, ml + 42, y + rh);
@@ -2539,7 +2526,7 @@
             doc.text('Extra kosten', sumRightX + 1, y + 4);
 
             // Data rijen
-            doc.setFont('helvetica', 'normal');
+            doc.setFont(pdfFont, 'normal');
             const sumRows = [
                 ['Reguliere uren (ma-vr)', regHours > 0 ? regHours.toFixed(2).replace('.', ',') : ''],
                 ['Zaterdaguren', satHours > 0 ? satHours.toFixed(2).replace('.', ',') : ''],
@@ -2575,7 +2562,7 @@
 
             // Totaal rij
             const totY = y + rh + (sumRows.length * rh);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
             hLine(ml, ml + 42, totY + rh);
             doc.text('Totaal te factureren uren', ml + 1, totY + 4);
             cellRect(ml + 42, totY, 22, rh);
@@ -2587,46 +2574,52 @@
             const sigW = (uw - 10) / 3;
             const sigH = 20;
 
-            doc.setFont('helvetica', 'bold');
+            doc.setFont(pdfFont, 'bold');
             doc.setFontSize(8);
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(0.4);
 
-            // Opmerkingen
+            // Opmerkingen — KTS blauwe strepen
+            doc.setDrawColor(...ktsBlue); doc.setLineWidth(0.5);
             doc.line(ml, y, ml + sigW, y);
             doc.line(ml, y + rh, ml + sigW, y + rh);
+            doc.setTextColor(...ktsBlue);
             doc.text('Opmerkingen', ml + 1, y + 4);
-            doc.setLineWidth(lw);
-            doc.setDrawColor(...borderColor);
+            doc.setTextColor(0, 0, 0);
+            doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
             doc.rect(ml, y + rh, sigW, sigH);
             // Vul opmerkingen in als die er zijn
             if (weekOpmerkingen) {
-                doc.setFont('helvetica', 'normal');
+                doc.setFont(pdfFont, 'normal');
                 doc.setFontSize(7);
                 const opmLines = doc.splitTextToSize(weekOpmerkingen, sigW - 4);
                 doc.text(opmLines, ml + 2, y + rh + 4);
                 doc.setFontSize(8);
             }
 
-            // Handtekening opdrachtnemer
+            // Handtekening opdrachtnemer — KTS blauwe strepen
             const sig2x = ml + sigW + 5;
-            doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.4);
+            doc.setDrawColor(...ktsBlue); doc.setLineWidth(0.5);
             doc.line(sig2x, y, sig2x + sigW, y);
             doc.line(sig2x, y + rh, sig2x + sigW, y + rh);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsBlue);
             doc.text(`Handtekening Opdrachtnemer / ${userName}`, sig2x + 1, y + 4);
+            doc.setTextColor(0, 0, 0);
             doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
             doc.rect(sig2x, y + rh, sigW, sigH);
             if (signatureData.zzp) {
                 try { doc.addImage(signatureData.zzp, 'PNG', sig2x + 2, y + rh + 1, sigW - 4, sigH - 2); } catch(e) {}
             }
 
-            // Handtekening opdrachtgever
+            // Handtekening opdrachtgever — KTS blauwe strepen
             const sig3x = sig2x + sigW + 5;
             const sig3w = pw - mr - sig3x;
-            doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.4);
+            doc.setDrawColor(...ktsBlue); doc.setLineWidth(0.5);
             doc.line(sig3x, y, pw - mr, y);
             doc.line(sig3x, y + rh, pw - mr, y + rh);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsBlue);
             doc.text('Handtekening Opdrachtgever', sig3x + 1, y + 4);
+            doc.setTextColor(0, 0, 0);
             doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
             doc.rect(sig3x, y + rh, sig3w, sigH);
             if (signatureData.client) {
@@ -4962,8 +4955,8 @@
                     notifyOtherTabs();
                     logAudit('week_opgeslagen', { week: currentWeekNumber, tab: tab });
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
-                    // Na opslaan automatisch naar overzicht scherm
-                    switchScreen('overzicht');
+                    // Na uren opslaan naar overzicht; bij kosten blijf je op het scherm
+                    if (tab === 'uren') switchScreen('overzicht');
                 } catch (err) {
                     // Offline: sla lokaal op
                     saveWeekLocal();
@@ -5056,6 +5049,12 @@
             loadScript(jspdfUrls, 0, 'jsPDF', function() {
                 loadScript(autoTableUrls, 0, 'AutoTable', function() {
                     console.log('jsPDF + AutoTable volledig geladen!');
+                    // DaxlinePro fonts laden voor PDF
+                    var fs = document.createElement('script');
+                    fs.src = 'daxline-pdf-fonts.js';
+                    fs.onload = function() { console.log('DaxlinePro PDF fonts geladen'); };
+                    fs.onerror = function() { console.warn('DaxlinePro fonts niet gevonden — PDF gebruikt Helvetica'); };
+                    document.head.appendChild(fs);
                 });
             });
         })();
@@ -5074,7 +5073,7 @@
         }
 
         function switchAdminTab(tab) {
-            ['projecten','personen','tarieven'].forEach(t => {
+            ['projecten','personen','gebruikers','tarieven'].forEach(t => {
                 document.getElementById('admin-' + t).style.display = t === tab ? 'block' : 'none';
                 const btn = document.getElementById('admin-tab-' + t);
                 if (t === tab) { btn.className = 'btn btn-sm btn-primary'; btn.style.flex = '1'; }
