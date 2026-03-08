@@ -1469,13 +1469,16 @@
                 return { editable: false, reason: 'Project is afgerond', icon: '🏁' };
             }
 
-            // Max 2 weken in de toekomst
-            const now = new Date();
-            const thisMonday = getWeekMonday(now);
-            const maxMonday = new Date(thisMonday);
-            maxMonday.setDate(maxMonday.getDate() + 14); // 2 weken vooruit
-            if (currentWeekMonday > maxMonday) {
-                return { editable: false, reason: 'Week ligt te ver in de toekomst', icon: '🔮', detail: 'Je kunt maximaal 2 weken vooruit werken' };
+            // Max 2 weken in de toekomst (admins: geen limiet)
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            if (!isAdmin) {
+                const now = new Date();
+                const thisMonday = getWeekMonday(now);
+                const maxMonday = new Date(thisMonday);
+                maxMonday.setDate(maxMonday.getDate() + 14); // 2 weken vooruit
+                if (currentWeekMonday > maxMonday) {
+                    return { editable: false, reason: 'Week ligt te ver in de toekomst', icon: '🔮', detail: 'Je kunt maximaal 2 weken vooruit werken' };
+                }
             }
 
             return { editable: true };
@@ -3573,8 +3576,9 @@
         }
 
         async function changeWeek(dir) {
-            // Blokkeer navigatie als volgende week te ver in de toekomst is
-            if (dir > 0) {
+            // Blokkeer navigatie als volgende week te ver in de toekomst is (niet voor admins)
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            if (dir > 0 && !isAdmin) {
                 const nextMonday = new Date(currentWeekMonday);
                 nextMonday.setDate(nextMonday.getDate() + 7);
                 const thisMonday = getWeekMonday(new Date());
@@ -3635,13 +3639,14 @@
         }
 
         function updateNavButtonStates() {
-            // Max 2 weken vooruit
+            // Max 2 weken vooruit (admins: geen limiet)
+            const isAdmin = currentUser && currentUser.role === 'admin';
             const thisMonday = getWeekMonday(new Date());
             const maxMonday = new Date(thisMonday);
             maxMonday.setDate(maxMonday.getDate() + 14);
             const nextMonday = new Date(currentWeekMonday);
             nextMonday.setDate(nextMonday.getDate() + 7);
-            const canGoNext = nextMonday <= maxMonday;
+            const canGoNext = isAdmin || nextMonday <= maxMonday;
 
             // Week-knoppen
             ['week-next-btn', 'kosten-next-btn'].forEach(id => {
@@ -4269,14 +4274,16 @@
                     if (newYear > ed.getFullYear() || (newYear === ed.getFullYear() && newMonth > ed.getMonth())) return;
                 }
             }
-            // Max 2 weken vooruit: blokkeer maand als die volledig na de grens valt
-            const thisMonday = getWeekMonday(new Date());
-            const maxDate = new Date(thisMonday);
-            maxDate.setDate(maxDate.getDate() + 20); // ruime marge voor maandweergave
-            const firstOfNewMonth = new Date(newYear, newMonth, 1);
-            if (firstOfNewMonth > maxDate) {
-                showToast('🔮 Je kunt maximaal 2 weken vooruit werken');
-                return;
+            // Max 2 weken vooruit: blokkeer maand als die volledig na de grens valt (niet voor admins)
+            if (!(currentUser && currentUser.role === 'admin')) {
+                const thisMonday = getWeekMonday(new Date());
+                const maxDate = new Date(thisMonday);
+                maxDate.setDate(maxDate.getDate() + 20); // ruime marge voor maandweergave
+                const firstOfNewMonth = new Date(newYear, newMonth, 1);
+                if (firstOfNewMonth > maxDate) {
+                    showToast('🔮 Je kunt maximaal 2 weken vooruit werken');
+                    return;
+                }
             }
 
             overviewMonth = newMonth;
@@ -5766,28 +5773,26 @@
                 // Weekstaat status voor deze maand
                 const userWeekStatuses = weekStatuses.filter(ws => ws.user_id === u.id);
 
-                // Bepaal weken in deze maand
+                // Bepaal weken in deze maand (vanaf startdatum gebruiker)
                 const firstDay = new Date(year, selectedMonth, 1);
                 const lastDay = new Date(year, selectedMonth + 1, 0);
-                const currentWn = getISOWeek(new Date());
+                const userStartDate = u.created_at ? new Date(u.created_at) : null;
+                const userStartWeek = userStartDate ? getISOWeek(userStartDate) : 0;
+                const userStartYear = userStartDate ? userStartDate.getFullYear() : 0;
                 let weekBadges = '';
                 let d = new Date(firstDay);
                 const seenWeeks = new Set();
-                // Bepaal weken waar deze user entries heeft
-                const userEntryWeeks = new Set(userEntries.map(e => {
-                    const ed = new Date(e.entry_date + 'T12:00:00');
-                    return getISOWeek(ed);
-                }));
                 while (d <= lastDay) {
                     const wn = getISOWeek(d);
                     if (!seenWeeks.has(wn)) {
                         seenWeeks.add(wn);
+                        // Sla weken over die vóór de startdatum van de gebruiker vallen
+                        if (userStartDate && (year < userStartYear || (year === userStartYear && wn < userStartWeek))) {
+                            d.setDate(d.getDate() + 1);
+                            continue;
+                        }
                         const ws = userWeekStatuses.find(w => w.week_number === wn);
-                        const hasData = ws || userEntryWeeks.has(wn);
-                        // Toon alleen weken waar data is, of weken die nog niet voorbij zijn (huidige + toekomst)
-                        if (!hasData && wn < currentWn) {
-                            // Lege week in het verleden zonder data → overslaan
-                        } else if (ws && ws.status === 'verstuurd') {
+                        if (ws && ws.status === 'verstuurd') {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: verstuurd">${wn}</span>`;
                         } else if (ws && (ws.status === 'opgeslagen' || ws.status === 'ondertekend')) {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#fef3c7;color:#d97706;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
