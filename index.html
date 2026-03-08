@@ -1128,7 +1128,12 @@
                 <div id="inv-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
                     <div id="inv-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
-                    <button class="btn btn-primary" onclick="generateInvoicePDF()" style="width:100%;margin-top:16px">🧾 Genereer Factuur PDF</button>
+                    <div style="margin-top:14px;padding:12px;background:white;border:1px solid var(--border);border-radius:8px">
+                        <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue);display:block;margin-bottom:4px">Factuurnummer</label>
+                        <input type="text" id="inv-custom-number" placeholder="Bijv. 2026-01" style="width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;font-weight:600;box-sizing:border-box">
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Pas het nummer aan als je zelf een andere nummering hanteert</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="generateInvoicePDF()" style="width:100%;margin-top:12px">🧾 Genereer Factuur PDF</button>
                 </div>
 
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
@@ -6521,6 +6526,24 @@
 
             content.innerHTML = html;
             preview.style.display = 'block';
+
+            // Suggestie factuurnummer: 2026-XX (volgend nummer op basis van bestaande facturen)
+            const numInput = document.getElementById('inv-custom-number');
+            if (numInput) {
+                let nextNum = 13; // Extern al t/m 2026-12 gefactureerd
+                try {
+                    const { data: existing } = await sb.from('invoices')
+                        .select('invoice_number')
+                        .eq('year', yr);
+                    if (existing && existing.length > 0) {
+                        existing.forEach(inv => {
+                            const match = inv.invoice_number.match(/^\d{4}-(\d+)$/);
+                            if (match) nextNum = Math.max(nextNum, parseInt(match[1]) + 1);
+                        });
+                    }
+                } catch(e) {}
+                numInput.value = yr + '-' + String(nextNum).padStart(2, '0');
+            }
         }
 
         async function generateInvoicePDF() {
@@ -6544,7 +6567,8 @@
 
             const today = new Date();
             const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
-            const invoiceNumber = 'F-' + (invData.project?.project_code || '') + '-' + ddmmyyyy;
+            const customNum = document.getElementById('inv-custom-number')?.value?.trim();
+            const invoiceNumber = customNum || ('F-' + (invData.project?.project_code || '') + '-' + ddmmyyyy);
             const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
             const maandTekst = MONTHS_NL[invData.month - 1] + ' ' + invData.year;
             const userName = invData.user ? (invData.user.name || invData.user.email) : '';
