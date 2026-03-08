@@ -3120,10 +3120,16 @@
 
                     // 6a. Supabase Storage backup
                     try {
+                        btn.innerHTML = '💾 PDF backup opslaan...';
                         const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
                         const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
                         const storagePath = `${currentYear}/week-${currentWeekNumber}/${fileName}`;
-                        await sb.storage.from('weekstaten').upload(storagePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
+                        const { error: storageError } = await sb.storage.from('weekstaten').upload(storagePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
+                        if (storageError) {
+                            console.warn('Storage upload fout:', storageError.message);
+                        } else {
+                            console.log('PDF backup opgeslagen:', storagePath);
+                        }
                     } catch (storageErr) {
                         console.warn('Supabase Storage upload overgeslagen:', storageErr.message);
                     }
