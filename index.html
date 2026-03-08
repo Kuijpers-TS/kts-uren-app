@@ -915,6 +915,10 @@
 
             <!-- Tegels grid -->
             <div id="admin-tiles" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+                <div onclick="switchAdminTab('dashboard')" style="background:var(--kts-blue);border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px;grid-column:1/-1" onmouseover="this.style.borderColor='var(--kts-dark)'" onmouseout="this.style.borderColor='transparent'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📊</div>
+                    <div><div style="font-weight:700;font-size:0.85rem;color:white">Dashboard</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.7)">Omzet, uren, projecten & status</div></div>
+                </div>
                 <div onclick="switchAdminTab('projecten')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Projecten</div><div style="font-size:0.7rem;color:var(--muted)">Beheer projecten</div></div>
@@ -943,6 +947,41 @@
             <!-- Terugknop (verborgen totdat een sectie geopend is) -->
             <div id="admin-back-bar" style="display:none;margin-bottom:12px">
                 <button onclick="showAdminTiles()" style="background:none;border:none;color:var(--kts-blue);font-size:0.85rem;font-weight:600;cursor:pointer;padding:4px 0">◀ Terug naar overzicht</button>
+            </div>
+
+            <!-- ===== DASHBOARD TAB ===== -->
+            <div id="admin-dashboard" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Dashboard</div>
+                    <select id="dashboard-month-filter" onchange="loadDashboard()" style="padding:6px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem"></select>
+                </div>
+
+                <!-- Sectie A: Omzet stat cards -->
+                <div id="dashboard-stats" class="stats-grid" style="margin-bottom:16px"></div>
+
+                <!-- Omzet grafiek -->
+                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Omzet per maand</div>
+                    <canvas id="dashboard-chart" style="width:100%;max-height:200px"></canvas>
+                </div>
+
+                <!-- Sectie B: Medewerkers -->
+                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Medewerkers</div>
+                    <div id="dashboard-medewerkers"></div>
+                </div>
+
+                <!-- Sectie C: Project voortgang -->
+                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Projecten</div>
+                    <div id="dashboard-projecten"></div>
+                </div>
+
+                <!-- Sectie D: PO Status -->
+                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Inkooporder status</div>
+                    <div id="dashboard-po-status"></div>
+                </div>
             </div>
 
             <!-- ===== PROJECTEN TAB ===== -->
@@ -5341,6 +5380,16 @@
                     document.head.appendChild(fs);
                 });
             });
+
+            // Chart.js laden voor dashboard grafieken
+            const chartUrls = [
+                'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+                'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
+                'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
+            ];
+            loadScript(chartUrls, 0, 'Chart.js', function() {
+                console.log('Chart.js geladen!');
+            });
         })();
 
         // ===== ADMIN FUNCTIES =====
@@ -5364,10 +5413,11 @@
             if (tiles) tiles.style.display = 'none';
             if (backBar) backBar.style.display = 'block';
 
-            ['projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = t === tab ? 'block' : 'none';
             });
+            if (tab === 'dashboard') loadDashboard();
             if (tab === 'inkooporders') { loadInkooporderFilters(); loadInkooporders(); }
             if (tab === 'weekstaten') loadWeekstaten();
         }
@@ -5377,10 +5427,351 @@
             const backBar = document.getElementById('admin-back-bar');
             if (tiles) tiles.style.display = 'grid';
             if (backBar) backBar.style.display = 'none';
-            ['projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = 'none';
             });
+        }
+
+        // ===== DASHBOARD FUNCTIES =====
+        let _dashboardChart = null; // Chart.js instance
+
+        async function loadDashboard() {
+            const sb = getSupabase();
+            if (!sb) return;
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+
+            // Maand filter opzetten
+            const monthFilter = document.getElementById('dashboard-month-filter');
+            if (monthFilter && monthFilter.options.length === 0) {
+                const MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+                MONTHS.forEach((m, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = m + ' ' + currentYear;
+                    if (i === now.getMonth()) opt.selected = true;
+                    monthFilter.appendChild(opt);
+                });
+            }
+
+            const selectedMonth = parseInt(monthFilter?.value ?? now.getMonth());
+            const monthStart = new Date(currentYear, selectedMonth, 1).toISOString().split('T')[0];
+            const monthEnd = new Date(currentYear, selectedMonth + 1, 0).toISOString().split('T')[0];
+            const yearStart = currentYear + '-01-01';
+            const yearEnd = currentYear + '-12-31';
+
+            // Parallel data ophalen
+            const [entriesRes, yearEntriesRes, weekStatusRes, poWeeksRes, ratesRes] = await Promise.all([
+                sb.from('time_entries').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd),
+                sb.from('time_entries').select('entry_date, total_hours, km, hotel, project_id, user_id').gte('entry_date', yearStart).lte('entry_date', yearEnd),
+                sb.from('week_status').select('*').eq('year', currentYear),
+                sb.from('purchase_order_weeks').select('*').eq('year', currentYear),
+                sb.from('rates').select('*').order('valid_from', { ascending: false })
+            ]);
+
+            const monthEntries = entriesRes.data || [];
+            const yearEntries = yearEntriesRes.data || [];
+            const weekStatuses = weekStatusRes.data || [];
+            const poWeeks = poWeeksRes.data || [];
+            const allRates = ratesRes.data || [];
+            const users = window._adminUsers || [];
+            const projects = (window._adminProjects || []).filter(p => p.status === 'active');
+
+            // Rate lookup helper: user+project → rate, project → rate, default
+            function getRate(userId, projectId) {
+                const userRate = allRates.find(r => r.user_id === userId && r.project_id === projectId);
+                if (userRate) return { hourly: parseFloat(userRate.hourly_rate) || 85, km: parseFloat(userRate.km_rate) || 0.50, sat: parseFloat(userRate.saturday_multiplier) || 1.5, sun: parseFloat(userRate.sunday_holiday_multiplier) || 2.0 };
+                const projRate = allRates.find(r => !r.user_id && r.project_id === projectId);
+                if (projRate) return { hourly: parseFloat(projRate.hourly_rate) || 85, km: parseFloat(projRate.km_rate) || 0.50, sat: parseFloat(projRate.saturday_multiplier) || 1.5, sun: parseFloat(projRate.sunday_holiday_multiplier) || 2.0 };
+                return { hourly: 85, km: 0.50, sat: 1.5, sun: 2.0 };
+            }
+
+            // Omzet berekenen voor een set entries
+            function calcRevenue(entries) {
+                let total = 0;
+                entries.forEach(e => {
+                    const hours = parseFloat(e.total_hours) || 0;
+                    const km = parseFloat(e.km) || 0;
+                    const rate = getRate(e.user_id, e.project_id);
+                    const dow = new Date(e.entry_date + 'T12:00:00').getDay();
+                    if (dow === 6) total += hours * rate.hourly * rate.sat;
+                    else if (dow === 0) total += hours * rate.hourly * rate.sun;
+                    else total += hours * rate.hourly;
+                    total += km * rate.km;
+                });
+                return total;
+            }
+
+            // Render alle secties
+            renderDashboardStats(monthEntries, yearEntries, weekStatuses, poWeeks, selectedMonth, currentYear, calcRevenue);
+            renderDashboardChart(yearEntries, currentYear, calcRevenue);
+            renderMedewerkerOverzicht(monthEntries, weekStatuses, users, selectedMonth, currentYear);
+            renderProjectCards(monthEntries, projects, users, selectedMonth, currentYear, calcRevenue);
+            renderPOStatus(weekStatuses, poWeeks, users, projects, currentYear);
+        }
+
+        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, poWeeks, selectedMonth, year, calcRevenue) {
+            const omzetMaand = calcRevenue(monthEntries);
+
+            // Vorige maand
+            const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+            const prevYear = selectedMonth === 0 ? year - 1 : year;
+            const prevStart = new Date(prevYear, prevMonth, 1).toISOString().split('T')[0];
+            const prevEnd = new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0];
+            const prevEntries = yearEntries.filter(e => e.entry_date >= prevStart && e.entry_date <= prevEnd);
+            const omzetVorig = calcRevenue(prevEntries);
+
+            // Jaar totaal
+            const omzetJaar = calcRevenue(yearEntries);
+
+            // Totaal uren deze maand
+            const totalUrenMaand = monthEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
+
+            // Openstaande weken (verstuurd maar nog niet op PO)
+            const verstuurdeWeken = weekStatuses.filter(w => w.status === 'verstuurd');
+            const poWeekSet = new Set(poWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
+            const openWeeks = verstuurdeWeken.filter(w => !poWeekSet.has(`${w.user_id}_${w.project_id}_${w.week_number}`));
+
+            const el = document.getElementById('dashboard-stats');
+            el.innerHTML = `
+                <div class="stat-card highlight" style="grid-column:1/-1">
+                    <div class="stat-value" style="color:white;font-size:1.8rem">${fmtEuro(omzetMaand)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Omzet deze maand</div>
+                </div>
+                <div class="stat-card" style="background:#059669;color:white">
+                    <div class="stat-value" style="color:white">${fmtEuro(omzetVorig)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Vorige maand</div>
+                </div>
+                <div class="stat-card" style="background:#1e40af;color:white">
+                    <div class="stat-value" style="color:white">${fmtEuro(omzetJaar)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal ${year}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${fmt(totalUrenMaand)}</div>
+                    <div class="stat-label">Uren deze maand</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="${openWeeks.length > 0 ? 'color:#f59e0b' : 'color:#10b981'}">${openWeeks.length}</div>
+                    <div class="stat-label">Weken zonder IO</div>
+                </div>
+            `;
+        }
+
+        function renderDashboardChart(yearEntries, year, calcRevenue) {
+            if (typeof Chart === 'undefined') {
+                document.getElementById('dashboard-chart').parentElement.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.8rem">Chart.js wordt geladen...</div>';
+                return;
+            }
+
+            const MONTHS_SHORT = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+            const monthlyRevenue = [];
+
+            for (let m = 0; m < 12; m++) {
+                const mStart = new Date(year, m, 1).toISOString().split('T')[0];
+                const mEnd = new Date(year, m + 1, 0).toISOString().split('T')[0];
+                const mEntries = yearEntries.filter(e => e.entry_date >= mStart && e.entry_date <= mEnd);
+                monthlyRevenue.push(calcRevenue(mEntries));
+            }
+
+            const canvas = document.getElementById('dashboard-chart');
+            const ctx = canvas.getContext('2d');
+
+            if (_dashboardChart) _dashboardChart.destroy();
+
+            _dashboardChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: MONTHS_SHORT,
+                    datasets: [{
+                        label: 'Omzet',
+                        data: monthlyRevenue,
+                        backgroundColor: 'rgba(7, 86, 127, 0.85)',
+                        borderColor: '#07567F',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) { return '€ ' + ctx.parsed.y.toLocaleString('nl-NL', { minimumFractionDigits: 2 }); }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => '€' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v), font: { size: 10 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderMedewerkerOverzicht(monthEntries, weekStatuses, users, selectedMonth, year) {
+            const el = document.getElementById('dashboard-medewerkers');
+            if (!users.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">Geen gebruikers</div>'; return; }
+
+            // Per user: uren + weekstaat status
+            let html = '';
+            users.forEach(u => {
+                const userEntries = monthEntries.filter(e => e.user_id === u.id);
+                const userHours = userEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
+
+                // Weekstaat status voor deze maand
+                const userWeekStatuses = weekStatuses.filter(ws => ws.user_id === u.id);
+
+                // Bepaal weken in deze maand
+                const firstDay = new Date(year, selectedMonth, 1);
+                const lastDay = new Date(year, selectedMonth + 1, 0);
+                let weekBadges = '';
+                let d = new Date(firstDay);
+                const seenWeeks = new Set();
+                while (d <= lastDay) {
+                    const wn = getISOWeek(d);
+                    if (!seenWeeks.has(wn)) {
+                        seenWeeks.add(wn);
+                        const ws = userWeekStatuses.find(w => w.week_number === wn);
+                        if (ws && ws.status === 'verstuurd') {
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: verstuurd">${wn}</span>`;
+                        } else if (ws && (ws.status === 'opgeslagen' || ws.status === 'ondertekend')) {
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#fef3c7;color:#d97706;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
+                        } else {
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#f1f5f9;color:#94a3b8;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: niet ingevuld">${wn}</span>`;
+                        }
+                    }
+                    d.setDate(d.getDate() + 1);
+                }
+
+                // Laatst actief
+                let actief = '';
+                if (u.last_active_at) {
+                    const diff = Math.floor((Date.now() - new Date(u.last_active_at).getTime()) / 60000);
+                    if (diff < 5) actief = '<span style="color:#10b981;font-size:0.65rem">● Online</span>';
+                    else if (diff < 60) actief = `<span style="color:var(--muted);font-size:0.65rem">${diff}m geleden</span>`;
+                    else if (diff < 1440) actief = `<span style="color:var(--muted);font-size:0.65rem">${Math.floor(diff/60)}u geleden</span>`;
+                    else actief = `<span style="color:var(--muted);font-size:0.65rem">${Math.floor(diff/1440)}d geleden</span>`;
+                }
+
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
+                    <div style="min-width:0">
+                        <div style="font-weight:600;font-size:0.8rem;display:flex;align-items:center;gap:6px">${u.name || u.email} ${actief}</div>
+                        <div style="display:flex;gap:2px;margin-top:4px;flex-wrap:wrap">${weekBadges}</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0">
+                        <div style="font-weight:700;font-size:0.9rem;color:var(--kts-blue)">${fmt(userHours)}</div>
+                        <div style="font-size:0.65rem;color:var(--muted)">uren</div>
+                    </div>
+                </div>`;
+            });
+
+            el.innerHTML = html || '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">Geen data</div>';
+        }
+
+        function renderProjectCards(monthEntries, projects, users, selectedMonth, year, calcRevenue) {
+            const el = document.getElementById('dashboard-projecten');
+            if (!projects.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">Geen actieve projecten</div>'; return; }
+
+            let html = '';
+            projects.forEach(p => {
+                const projEntries = monthEntries.filter(e => e.project_id === p.id);
+                if (projEntries.length === 0) return; // Skip projecten zonder uren
+
+                const totalHours = projEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
+                const totalRevenue = calcRevenue(projEntries);
+                const activeUsers = new Set(projEntries.map(e => e.user_id));
+
+                // Medewerker namen
+                const userNames = [...activeUsers].map(uid => {
+                    const u = users.find(u => u.id === uid);
+                    return u ? (u.name || u.email).split(' ')[0] : '?';
+                }).join(', ');
+
+                html += `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div>
+                            <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue)">${p.project_code}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${p.name}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-weight:700;font-size:0.85rem">${fmtEuro(totalRevenue)}</div>
+                            <div style="font-size:0.65rem;color:var(--muted)">${fmt(totalHours)} · ${activeUsers.size} ${activeUsers.size === 1 ? 'persoon' : 'personen'}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">👤 ${userNames}</div>
+                </div>`;
+            });
+
+            el.innerHTML = html || '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">Geen uren deze maand</div>';
+        }
+
+        function renderPOStatus(weekStatuses, poWeeks, users, projects, year) {
+            const el = document.getElementById('dashboard-po-status');
+
+            // Groepeer per user + project
+            const groups = {};
+            weekStatuses.filter(ws => ws.status === 'verstuurd').forEach(ws => {
+                const key = `${ws.user_id}_${ws.project_id}`;
+                if (!groups[key]) groups[key] = { userId: ws.user_id, projectId: ws.project_id, weeks: {} };
+                groups[key].weeks[ws.week_number] = { verstuurd: true, opPO: false };
+            });
+
+            // PO status markeren
+            const poSet = new Set(poWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
+            Object.values(groups).forEach(g => {
+                Object.keys(g.weeks).forEach(wn => {
+                    if (poSet.has(`${g.userId}_${g.projectId}_${wn}`)) {
+                        g.weeks[wn].opPO = true;
+                    }
+                });
+            });
+
+            if (Object.keys(groups).length === 0) {
+                el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">Geen verstuurde weekstaten</div>';
+                return;
+            }
+
+            let html = '';
+            Object.values(groups).forEach(g => {
+                const user = users.find(u => u.id === g.userId);
+                const project = projects.find(p => p.id === g.projectId);
+                const userName = user ? (user.name || user.email).split(' ')[0] : '?';
+                const projCode = project ? project.project_code : '?';
+
+                const weekNums = Object.keys(g.weeks).map(Number).sort((a, b) => a - b);
+                let weekDots = '';
+                weekNums.forEach(wn => {
+                    const w = g.weeks[wn];
+                    if (w.opPO) {
+                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#dbeafe;color:#1e40af;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: op IO">📋</span>`;
+                    } else {
+                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: verstuurd, nog geen IO">${wn}</span>`;
+                    }
+                });
+
+                const openCount = weekNums.filter(wn => !g.weeks[wn].opPO).length;
+                const statusText = openCount === 0
+                    ? '<span style="color:#10b981;font-size:0.65rem">Alle weken op IO</span>'
+                    : `<span style="color:#f59e0b;font-size:0.65rem">${openCount} ${openCount === 1 ? 'week' : 'weken'} nog open</span>`;
+
+                html += `<div style="padding:8px 0;border-bottom:1px solid #f1f5f9">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div style="font-weight:600;font-size:0.8rem">${userName} · <span style="color:var(--kts-blue)">${projCode}</span></div>
+                        ${statusText}
+                    </div>
+                    <div style="display:flex;gap:2px;margin-top:4px;flex-wrap:wrap">${weekDots}</div>
+                </div>`;
+            });
+
+            el.innerHTML = html;
         }
 
         async function loadAdminData() {
