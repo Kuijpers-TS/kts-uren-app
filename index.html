@@ -7704,6 +7704,12 @@
                     // Goedkeuring badge
                     let approvalBadge = '';
                     let approvalAction = '';
+                    // Admin-goedkeurknop (voor alle statussen behalve 'goedgekeurd')
+                    let adminApproveBtn = '';
+                    if (approvalStatus !== 'goedgekeurd') {
+                        adminApproveBtn = `<button onclick="event.stopPropagation();adminApproveWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Admin goedkeuren">✅</button>`;
+                    }
+
                     if (approvalStatus === 'goedgekeurd') {
                         approvalBadge = '<span style="font-size:0.65rem;background:#d1fae5;color:#059669;padding:2px 6px;border-radius:4px;font-weight:600">✅ Goedgekeurd</span>';
                     } else if (approvalStatus === 'ter_goedkeuring') {
@@ -7724,6 +7730,7 @@
                             <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year} · ${projCode}</div>
                         </div>
                         <div style="display:flex;gap:4px;flex-shrink:0">
+                            ${adminApproveBtn}
                             ${approvalAction}
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem">📄</button>
                         </div>
@@ -7732,6 +7739,28 @@
             } catch (err) {
                 console.error('Weekstaten laden mislukt:', err);
                 listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+            }
+        }
+
+        async function adminApproveWeekstaat(userId, projectId, weekNumber, year) {
+            if (!confirm(`Week ${weekNumber} (${year}) goedkeuren als admin?`)) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                const { error } = await sb.from('week_status')
+                    .update({
+                        approval_status: 'goedgekeurd',
+                        approval_completed_at: new Date().toISOString()
+                    })
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year);
+                if (error) throw error;
+                showToast('✅ Weekstaat goedgekeurd');
+                loadWeekstaten();
+            } catch (e) {
+                showToast('❌ Fout: ' + e.message);
             }
         }
 
