@@ -2588,7 +2588,9 @@
             doc.text('Totaal te factureren uren', ml + 1, totY + 4);
             cellRect(ml + 42, totY, 22, rh);
             doc.text(totalHours.toFixed(2).replace('.', ','), ml + 53, totY + 4, { align: 'center' });
-            hLine(sumRightX, pw - mr, totY); hLine(sumRightX, pw - mr, totY + rh);
+            if (showExtraKosten) {
+                hLine(sumRightX, pw - mr, totY); hLine(sumRightX, pw - mr, totY + rh);
+            }
 
             // --- Rij 26+: Handtekeningen ---
             y = totY + rh + 8;
@@ -2656,7 +2658,7 @@
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(7);
             doc.setTextColor(100, 100, 100);
-            doc.text('Datum: ' + (signatureData.client ? new Date().toLocaleDateString('nl-NL') : '_______________'), sig3x + 1, y + rh + sigH + 4);
+            doc.text('Datum: ' + (signatureData.client ? new Date().toLocaleDateString('nl-NL') : '___________________________________'), sig3x + 1, y + rh + sigH + 4);
             doc.setTextColor(0, 0, 0);
 
             return doc;
