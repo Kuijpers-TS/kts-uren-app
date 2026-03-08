@@ -6,6 +6,7 @@
     <title>KTS BV | Uren App</title>
     <link rel="icon" type="image/png" href="tandwiel-blauw.png">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="theme-color" content="#07567F">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6529,7 +6530,7 @@
 
             const pdfImages = window.KTS_PDF_IMAGES || {};
             const KTS_LOGO_B64 = pdfImages.logo || null;
-            const GEAR_B64 = pdfImages.gear || null;
+            const GEAR_B64 = pdfImages.tandwiel || null;
             const { jsPDF } = window.jspdf;
 
             // Landscape A4, consistent met IO en weekstaat
@@ -6538,7 +6539,7 @@
             doc.setFont(pdfFont);
 
             const pw = 297, ph = 210;
-            const ml = 12, mr = 12, uw = pw - ml - mr;
+            const ml = 15, mr = 15, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
 
             const today = new Date();
@@ -6550,34 +6551,44 @@
             const wekenTekst = Object.values(invData.weekData).map(w => w.weekNum).sort((a,b) => a-b);
             const wekenLabel = wekenTekst.length > 1 ? 'Weken ' + wekenTekst.join(', ') : 'Week ' + (wekenTekst[0] || '');
 
-            // ===== HEADER: Tandwiel + titel links, Logo + KTS info rechts =====
-            if (GEAR_B64) {
-                try { doc.addImage(GEAR_B64, 'PNG', ml, 8, 10, 10); } catch(e) {}
-            }
+            // ===== HEADER (identiek aan weekstaat) =====
+            const titleFontSize = 19;
+            const titleY = 15;
+            doc.setFontSize(titleFontSize);
             doc.setFont(pdfFont, 'bold');
-            doc.setFontSize(20);
             doc.setTextColor(...ktsBlue);
-            doc.text('FACTUUR', ml + (GEAR_B64 ? 13 : 0), 16);
-            doc.setTextColor(0, 0, 0);
-
-            // Logo rechtsboven
-            if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'PNG', pw - mr - 42, 6, 42, 18); } catch(e) {}
+            const iconSize = 10;
+            const textCapHeightMm = titleFontSize * 0.3528 * 0.72;
+            const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
+            if (GEAR_B64) {
+                try { doc.addImage(GEAR_B64, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
             }
-            // KTS contactinfo rechts
-            const infoX = pw - mr;
-            doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(80, 80, 80);
-            doc.text(KTS_INFO.adres, infoX, 28, { align: 'right' });
-            doc.text(KTS_INFO.postcode, infoX, 32, { align: 'right' });
-            doc.text(KTS_INFO.tel + '    ' + KTS_INFO.tel2, infoX, 36, { align: 'right' });
+            doc.text('FACTUUR', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
+
+            // KTS Logo rechtsboven (gecentreerd boven adresblok, zoals weekstaat)
+            const rightX = pw - mr - 65;
+            const adresBlockW = pw - mr - rightX;
+            const logoW = 32, logoH = 32;
+            const logoX = rightX + (adresBlockW - logoW) / 2;
+            if (KTS_LOGO_B64) {
+                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
+            }
+
+            // KTS adresgegevens (onder logo, zoals weekstaat)
+            doc.setFontSize(8);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(KTS_INFO.adres, rightX, 38);
+            doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 43);
+            doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email + '    ' + 'www.kuijpers-ts.nl', infoX, 40, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 48);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // ===== INFO BLOK =====
-            let y = 48;
+            let y = 55;
             const col1 = ml, col2 = ml + 95, col3 = ml + 165;
 
             doc.setFont(pdfFont, 'bold');
@@ -7214,7 +7225,7 @@
 
             const pdfImages = window.KTS_PDF_IMAGES || {};
             const KTS_LOGO_B64 = pdfImages.logo || null;
-            const GEAR_B64 = pdfImages.gear || null;
+            const GEAR_B64 = pdfImages.tandwiel || null;
             const { jsPDF } = window.jspdf;
 
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -7222,9 +7233,8 @@
             doc.setFont(pdfFont);
 
             const pw = 297, ph = 210;
-            const ml = 12, mr = 12, uw = pw - ml - mr;
+            const ml = 15, mr = 15, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
-            const headerBlue = '#07567F';
 
             const today = new Date();
             const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
@@ -7236,35 +7246,45 @@
                 ? 'Weken ' + poData.includedWeeks.join(', ')
                 : 'Week ' + poData.includedWeeks[0];
 
-            // ===== HEADER: Tandwiel + titel links, Logo + KTS info rechts (zoals weekstaat) =====
-            // Tandwiel icoon links
-            if (GEAR_B64) {
-                try { doc.addImage(GEAR_B64, 'PNG', ml, 8, 10, 10); } catch(e) {}
-            }
+            // ===== HEADER (identiek aan weekstaat) =====
+            // Tandwiel + INKOOPORDER links, verticaal gecentreerd
+            const titleFontSize = 19;
+            const titleY = 15;
+            doc.setFontSize(titleFontSize);
             doc.setFont(pdfFont, 'bold');
-            doc.setFontSize(20);
             doc.setTextColor(...ktsBlue);
-            doc.text('INKOOPORDER', ml + (GEAR_B64 ? 13 : 0), 16);
-            doc.setTextColor(0, 0, 0);
-
-            // Logo rechtsboven
-            if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'PNG', pw - mr - 42, 6, 42, 18); } catch(e) {}
+            const iconSize = 10;
+            const textCapHeightMm = titleFontSize * 0.3528 * 0.72;
+            const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
+            if (GEAR_B64) {
+                try { doc.addImage(GEAR_B64, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
             }
-            // KTS contactinfo rechts
-            const infoX = pw - mr;
-            doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(80, 80, 80);
-            doc.text(KTS_INFO.adres, infoX, 28, { align: 'right' });
-            doc.text(KTS_INFO.postcode, infoX, 32, { align: 'right' });
-            doc.text(KTS_INFO.tel + '    ' + KTS_INFO.tel2, infoX, 36, { align: 'right' });
+            doc.text('INKOOPORDER', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
+
+            // KTS Logo rechtsboven (gecentreerd boven adresblok, zoals weekstaat)
+            const rightX = pw - mr - 65;
+            const adresBlockW = pw - mr - rightX;
+            const logoW = 32, logoH = 32;
+            const logoX = rightX + (adresBlockW - logoW) / 2;
+            if (KTS_LOGO_B64) {
+                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
+            }
+
+            // KTS adresgegevens (onder logo, zoals weekstaat)
+            doc.setFontSize(8);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(KTS_INFO.adres, rightX, 38);
+            doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 43);
+            doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email + '    ' + 'www.kuijpers-ts.nl', infoX, 40, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 48);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // ===== INFO BLOK: Medewerker, Periode, Project, Klant (zoals weekstaat) =====
-            let y = 48;
+            // ===== INFO BLOK =====
+            let y = 55;
             const col1 = ml, col2 = ml + 95, col3 = ml + 165;
 
             // Labels
