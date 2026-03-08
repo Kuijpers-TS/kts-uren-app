@@ -663,8 +663,8 @@
 <body>
 
     <!-- Verborgen afbeeldingen voor PDF (laden bij page start, altijd beschikbaar) -->
-    <img id="pdf-logo" src="KTS BV logo2.png" style="display:none" crossorigin="anonymous">
-    <img id="pdf-tandwiel" src="tandwiel-blauw.png" style="display:none" crossorigin="anonymous">
+    <img id="pdf-logo" src="KTS BV logo2.png" style="display:none">
+    <img id="pdf-tandwiel" src="tandwiel-blauw.png" style="display:none">
 
     <!-- LOGIN OVERLAY -->
     <div id="login-overlay" style="
@@ -2320,10 +2320,24 @@
             email: 'info@kuijpers-ts.nl'
         };
 
-        // PDF afbeeldingen: lees verborgen <img> tags uit via canvas (simpel & betrouwbaar)
+        // PDF afbeeldingen: wacht tot img geladen is, lees uit via canvas
+        function waitForImg(imgEl) {
+            return new Promise(function(resolve) {
+                if (!imgEl) { resolve(null); return; }
+                if (imgEl.complete && imgEl.naturalWidth > 0) { resolve(imgEl); return; }
+                imgEl.onload = function() { resolve(imgEl); };
+                imgEl.onerror = function() { console.warn('Afbeelding laden mislukt:', imgEl.src); resolve(null); };
+                // Forceer herladen als img nog niet gestart is
+                if (!imgEl.complete && !imgEl.src) resolve(null);
+            });
+        }
+
         function imgToDataUrl(imgEl, maxSize, format) {
             try {
-                if (!imgEl || !imgEl.naturalWidth) return null;
+                if (!imgEl || !imgEl.naturalWidth) {
+                    console.warn('imgToDataUrl: img niet beschikbaar of nog niet geladen', imgEl?.src);
+                    return null;
+                }
                 const natW = imgEl.naturalWidth;
                 const natH = imgEl.naturalHeight;
                 const scale = Math.min(1, maxSize / Math.max(natW, natH));
@@ -2337,10 +2351,12 @@
                     ctx.fillRect(0, 0, w, h);
                 }
                 ctx.drawImage(imgEl, 0, 0, w, h);
-                return format === 'jpeg'
+                const result = format === 'jpeg'
                     ? canvas.toDataURL('image/jpeg', 0.85)
                     : canvas.toDataURL('image/png');
-            } catch(e) { console.warn('imgToDataUrl mislukt:', e); return null; }
+                console.log('imgToDataUrl OK:', imgEl.src, natW + 'x' + natH, '->', w + 'x' + h, format);
+                return result;
+            } catch(e) { console.warn('imgToDataUrl mislukt:', imgEl?.src, e); return null; }
         }
 
         function getWeekDates() {
@@ -2362,9 +2378,13 @@
         // ===== URENSTAAT PDF =====
         async function generateUrenstaat() {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
-            // Lees verborgen <img> tags uit naar data URLs (al geladen bij page start)
-            const KTS_LOGO_B64 = imgToDataUrl(document.getElementById('pdf-logo'), 300, 'jpeg');
-            const TANDWIEL_DATA_URL = imgToDataUrl(document.getElementById('pdf-tandwiel'), 128, 'png');
+            // Wacht tot afbeeldingen geladen zijn (max 5 sec), lees dan uit via canvas
+            const [logoImg, tandwielImg] = await Promise.race([
+                Promise.all([waitForImg(document.getElementById('pdf-logo')), waitForImg(document.getElementById('pdf-tandwiel'))]),
+                new Promise(r => setTimeout(() => r([null, null]), 5000))
+            ]);
+            const KTS_LOGO_B64 = imgToDataUrl(logoImg, 300, 'jpeg');
+            const TANDWIEL_DATA_URL = imgToDataUrl(tandwielImg, 128, 'png');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             // DaxlinePro als beschikbaar (TTF), anders fallback naar helvetica
