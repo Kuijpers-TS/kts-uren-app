@@ -4264,8 +4264,8 @@
             const { data: profile } = await sb.from('users').select('*').eq('id', userId).single();
             if (profile) {
                 // Update laatste login tijdstip
-                sb.from('users').update({ updated_at: new Date().toISOString() }).eq('id', userId)
-                    .then(({ error }) => { if (error) console.warn('updated_at update mislukt:', error.message); });
+                sb.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', userId)
+                    .then(({ error }) => { if (error) console.warn('last_active_at update mislukt:', error.message); });
                 return profile;
             }
 
@@ -5283,7 +5283,7 @@
                     if (u.hotel_rate) priceInfo.push('€' + u.hotel_rate + '/nacht');
                     // Laatst actief berekenen
                     let laatstActief = 'Nog niet ingelogd';
-                    const loginTs = u.updated_at || u.created_at;
+                    const loginTs = u.last_active_at;
                     if (loginTs) {
                         const d = new Date(loginTs);
                         const nu = new Date();
