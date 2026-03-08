@@ -6013,7 +6013,7 @@
             }
 
             // Tarieven laden (user_id verwijst naar auth.users, dus apart users ophalen)
-            const { data: rates } = await sb.from('rates').select('*, project_id(name, project_code)').order('valid_from', { ascending: false });
+            const { data: rates } = await sb.from('rates').select('*, project_id(id, name, project_code, is_test)').order('valid_from', { ascending: false });
             window._adminRates = rates || [];
             // Haal user-namen op voor weergave
             const { data: allUsersForRates } = await sb.from('users').select('id, name, email');
@@ -6021,11 +6021,11 @@
             if (allUsersForRates) allUsersForRates.forEach(u => { userMap[u.id] = u.name || u.email; });
 
             const tariefList = document.getElementById('admin-tarief-list');
-            // Filter tarieven: toon alleen tarieven van gefilterde projecten
-            const filteredProjIds = new Set(filteredProjects.map(p => typeof p.id === 'string' ? p.id : ''));
+            // Filter tarieven: toon alleen tarieven van projecten die passen bij test/productie modus
             const filteredRates = (rates || []).filter(r => {
-                const projId = typeof r.project_id === 'object' ? r.project_id?.id : r.project_id;
-                return filteredProjIds.has(projId) || !projId;
+                const proj = typeof r.project_id === 'object' ? r.project_id : null;
+                if (!proj) return true; // geen project gekoppeld → altijd tonen
+                return _adminTestMode ? proj.is_test === true : proj.is_test !== true;
             });
             if (filteredRates && filteredRates.length > 0) {
                 tariefList.innerHTML = filteredRates.map((r) => {
