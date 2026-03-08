@@ -890,6 +890,11 @@
                     ✓ Week <span id="submit-week-num"></span> versturen
                 </button>
             </div>
+            <div style="margin-top:10px;display:none" id="download-weekstaat-btn-wrap">
+                <button class="btn btn-block" id="download-weekstaat-btn" onclick="downloadWeekstaat()" style="padding:14px;font-size:0.95rem;background:var(--kts-blue);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer">
+                    📄 Weekstaat PDF downloaden
+                </button>
+            </div>
 
 
             <!-- Maandfactuur (admin only — tijdelijk verborgen, later uitbreiden) -->
@@ -2364,8 +2369,8 @@
             return '€ ' + n.toFixed(2).replace('.', ',');
         }
 
-        // ===== URENSTAAT PDF =====
-        async function generateUrenstaat() {
+        // ===== WEEKSTAAT PDF =====
+        async function generateWeekstaat() {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
             // PDF afbeeldingen uit base64 JS-bestand (kts-pdf-images.js)
             const pdfImages = window.KTS_PDF_IMAGES || {};
@@ -2391,13 +2396,13 @@
             const projCode = currentProject ? (currentProject.project_code || '') : '';
             const clientName = currentProject ? (currentProject.client_name || '') : '';
 
-            // --- Rij 1: Tandwiel + URENSTAAT (links, verticaal gecentreerd) ---
+            // --- Rij 1: Tandwiel + WEEKSTAAT (links, verticaal gecentreerd) ---
             const titleFontSize = 19; // 1.2x groter (was 16)
             const titleY = 20;
             doc.setFontSize(titleFontSize);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
-            // Tandwiel icoon links van URENSTAAT — verticaal gecentreerd op de tekst
+            // Tandwiel icoon links van WEEKSTAAT — verticaal gecentreerd op de tekst
             const iconSize = 10; // 1.2x groter (was 8)
             // Tekst baseline = titleY, cap height ~70% van font size in mm (16pt ≈ 5.6mm, cap ≈ 4mm)
             const textCapHeightMm = titleFontSize * 0.3528 * 0.72; // pt->mm * cap height ratio
@@ -2405,7 +2410,7 @@
             if (TANDWIEL_DATA_URL) {
                 try { doc.addImage(TANDWIEL_DATA_URL, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
             }
-            doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? iconSize + 2 : 0), titleY);
+            doc.text('WEEKSTAAT', ml + (TANDWIEL_DATA_URL ? iconSize + 2 : 0), titleY);
 
             // --- KTS Logo rechtsboven (gecentreerd boven adresblok) ---
             const rightX = pw - mr - 65;
@@ -2840,12 +2845,12 @@
             }
         }
 
-        async function downloadUrenstaat() {
-            const doc = await generateUrenstaat();
+        async function downloadWeekstaat() {
+            const doc = await generateWeekstaat();
             if (doc) {
-                const fileName = `Urenstaat_${currentProject ? currentProject.project_code : 'KTS'}_Week${currentWeekNumber}_${currentYear}.pdf`;
+                const fileName = `Weekstaat_${currentProject ? currentProject.project_code : 'KTS'}_Week${currentWeekNumber}_${currentYear}.pdf`;
                 doc.save(fileName);
-                showToast('✓ Urenstaat gedownload');
+                showToast('✓ Weekstaat gedownload');
             }
         }
 
@@ -3051,20 +3056,20 @@
 
                 // 4. Genereer PDF met handtekeningen
                 btn.innerHTML = '📄 PDF genereren...';
-                const urenstaat = await generateUrenstaat();
-                if (!urenstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
+                const weekstaat = await generateWeekstaat();
+                if (!weekstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
-                const fileName = `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
+                const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
 
                 // 5. Download PDF lokaal
-                urenstaat.save(fileName);
+                weekstaat.save(fileName);
 
                 // 6. Probeer upload naar OneDrive (optioneel)
                 const sb = getSupabase();
                 if (sb) {
                     try {
                         btn.innerHTML = '☁️ Uploaden naar OneDrive...';
-                        const pdfBase64 = urenstaat.output('datauristring').split(',')[1];
+                        const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
                         const { data, error } = await sb.functions.invoke('submit-weekstaat', {
                             body: {
                                 pdfBase64: pdfBase64,
@@ -3095,7 +3100,7 @@
                 const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userName + ' - ' + projectName);
                 const mailBody = encodeURIComponent(
                     'Beste KTS,\n\n' +
-                    'Mijn urenstaat voor week ' + currentWeekNumber + ' is zojuist geüpload naar Onedrive.\n\n' +
+                    'Mijn weekstaat voor week ' + currentWeekNumber + ' is zojuist geüpload naar Onedrive.\n\n' +
                     'Medewerker: ' + userName + '\n' +
                     'Project: ' + projectName + '\n' +
                     'Week: ' + currentWeekNumber + ' / ' + currentYear + '\n' +
@@ -3724,6 +3729,7 @@
             const signBtn = document.getElementById('sign-week-btn');
             const submitBtn2 = document.getElementById('submit-week-btn');
             const actionBtns = document.getElementById('week-action-btns');
+            const downloadBtn = document.getElementById('download-weekstaat-btn-wrap');
 
             // DB-status van de huidige week (ook globale variabele bijwerken)
             const localWeekDbStatus = weekStatuses[currentWeekNumber];
@@ -3739,18 +3745,21 @@
             }
 
             if (isVerstuurd) {
-                // Al verstuurd: verberg knoppen
+                // Al verstuurd: verberg onderteken/verstuur, toon download
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
+                if (downloadBtn) downloadBtn.style.display = 'block';
             } else if (!localWeekDbStatus || localWeekDbStatus === 'concept') {
                 // Nog niet opgeslagen: verberg onderteken/verstuur knoppen
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
+                if (downloadBtn) downloadBtn.style.display = 'none';
             } else if (weekStatus.editable) {
                 // Week is bewerkbaar
                 if (actionBtns) actionBtns.style.display = 'flex';
+                if (downloadBtn) downloadBtn.style.display = 'none';
 
                 if (signatureData.zzp) {
                     // Handtekening in geheugen: toon verstuur-knop, verberg onderteken-knop
@@ -3769,6 +3778,7 @@
             } else {
                 // Niet bewerkbaar: verberg alles
                 if (actionBtns) actionBtns.style.display = 'none';
+                if (downloadBtn) downloadBtn.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
             }
