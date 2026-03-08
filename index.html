@@ -2363,13 +2363,13 @@
             const clientName = currentProject ? (currentProject.client_name || '') : '';
 
             // --- Rij 1: Tandwiel + URENSTAAT (links, verticaal gecentreerd) ---
-            const titleFontSize = 16;
+            const titleFontSize = 19; // 1.2x groter (was 16)
             const titleY = 20;
             doc.setFontSize(titleFontSize);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
             // Tandwiel icoon links van URENSTAAT — verticaal gecentreerd op de tekst
-            const iconSize = 8;
+            const iconSize = 10; // 1.2x groter (was 8)
             // Tekst baseline = titleY, cap height ~70% van font size in mm (16pt ≈ 5.6mm, cap ≈ 4mm)
             const textCapHeightMm = titleFontSize * 0.3528 * 0.72; // pt->mm * cap height ratio
             const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
@@ -2381,7 +2381,7 @@
             // --- KTS Logo rechtsboven (gecentreerd boven adresblok) ---
             const rightX = pw - mr - 65;
             const adresBlockW = pw - mr - rightX; // 65mm breed
-            const logoW = 27, logoH = logoW;
+            const logoW = 32, logoH = logoW; // 1.2x groter (was 27)
             const logoX = rightX + (adresBlockW - logoW) / 2; // horizontaal gecentreerd
             if (KTS_LOGO_B64) {
                 try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
