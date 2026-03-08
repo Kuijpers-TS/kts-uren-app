@@ -1805,11 +1805,13 @@
             // Check of week bewerkbaar is (project start/einddatum en status)
             const weekStatus = getWeekStatus();
             if (!weekStatus.editable) {
+                const showDownload = currentWeekDbStatus === 'verstuurd' || currentWeekDbStatus === 'ondertekend' || currentWeekDbStatus === 'opgeslagen';
                 container.innerHTML = `
                     <div style="text-align:center;padding:48px 24px;color:var(--muted)">
                         <div style="font-size:2.5rem;margin-bottom:12px">${weekStatus.icon}</div>
                         <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:6px">${weekStatus.reason}</div>
                         ${weekStatus.detail ? '<div style="font-size:0.85rem">' + weekStatus.detail + '</div>' : ''}
+                        ${showDownload ? '<button onclick="downloadWeekstaat()" style="margin-top:20px;padding:14px 28px;font-size:0.95rem;background:var(--kts-blue);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer">📄 Weekstaat PDF downloaden</button>' : ''}
                     </div>`;
                 document.getElementById('week-total').textContent = '';
                 // Verberg knoppen
@@ -3744,22 +3746,23 @@
                 submitBtn2.style.background = '';
             }
 
+            // Download-knop tonen zodra week is opgeslagen (ongeacht status)
+            const heeftOpgeslagenData = localWeekDbStatus && localWeekDbStatus !== 'concept';
+            if (downloadBtn) downloadBtn.style.display = heeftOpgeslagenData ? 'block' : 'none';
+
             if (isVerstuurd) {
-                // Al verstuurd: verberg onderteken/verstuur, toon download
+                // Al verstuurd: verberg onderteken/verstuur
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
-                if (downloadBtn) downloadBtn.style.display = 'block';
             } else if (!localWeekDbStatus || localWeekDbStatus === 'concept') {
                 // Nog niet opgeslagen: verberg onderteken/verstuur knoppen
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
-                if (downloadBtn) downloadBtn.style.display = 'none';
             } else if (weekStatus.editable) {
                 // Week is bewerkbaar
                 if (actionBtns) actionBtns.style.display = 'flex';
-                if (downloadBtn) downloadBtn.style.display = 'none';
 
                 if (signatureData.zzp) {
                     // Handtekening in geheugen: toon verstuur-knop, verberg onderteken-knop
@@ -3778,7 +3781,6 @@
             } else {
                 // Niet bewerkbaar: verberg alles
                 if (actionBtns) actionBtns.style.display = 'none';
-                if (downloadBtn) downloadBtn.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
                 if (submitBtn2) submitBtn2.style.display = 'none';
             }
@@ -3854,11 +3856,14 @@
                 const diffDays = Math.round((weekStart.getTime() - currentWeekMonday.getTime()) / (1000*60*60*24));
                 const weekOffset = Math.round(diffDays / 7);
 
+                const downloadIcon = dbStatus === 'verstuurd' ? `<span onclick="event.stopPropagation();goToWeekAndDownload(${weekOffset})" style="cursor:pointer;font-size:0.85rem;padding:4px 8px;background:var(--kts-blue);color:white;border-radius:6px;white-space:nowrap;font-weight:600" title="Download weekstaat PDF">📄</span>` : '';
+
                 weekRows += `
                     <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${weekOffset})">
                         <span style="${isCurrent ? 'font-weight:700;color:var(--kts-blue)' : ''}">${label}</span>
                         <span style="display:flex;align-items:center;gap:6px">
                             ${statusBadges}
+                            ${downloadIcon}
                             <span style="color:var(--muted);font-size:0.75rem">→</span>
                         </span>
                     </div>`;
@@ -3982,6 +3987,12 @@
             });
 
             showToast(`📅 Week ${currentWeekNumber}`);
+        }
+
+        async function goToWeekAndDownload(offset) {
+            // Navigeer naar de week en download daarna de PDF
+            await goToWeek(offset);
+            await downloadWeekstaat();
         }
 
         // ===== INKOOPORDER (PO) =====
