@@ -6890,11 +6890,14 @@
             }
             console.log('PO rate:', rate);
 
-            // Gebruiker + bedrijf ophalen
-            const { data: user } = await sb.from('users').select('*, company_id').eq('id', userId).single();
+            // Gebruiker ophalen
+            const { data: user } = await sb.from('users').select('*').eq('id', userId).single();
+
+            // Klantbedrijf ophalen via project (niet via user)
+            const { data: project_for_company } = await sb.from('projects').select('client_company_id').eq('id', projectId).single();
             let company = null;
-            if (user && user.company_id) {
-                const { data: comp } = await sb.from('companies').select('*').eq('id', user.company_id).single();
+            if (project_for_company && project_for_company.client_company_id) {
+                const { data: comp } = await sb.from('companies').select('*').eq('id', project_for_company.client_company_id).single();
                 company = comp;
             }
             const hotelRate = (user && parseFloat(user.hotel_rate)) || 110;
@@ -7359,7 +7362,7 @@
 
                 // 3. Open mailto
                 if (poData.company && (poData.company.email_po || poData.company.email)) {
-                    const userName = poData.user ? (poData.user.full_name || poData.user.email) : '';
+                    const userName = poData.user ? (poData.user.name || poData.user.email) : '';
                     const projCode = poData.project ? poData.project.project_code : '';
                     const projName = poData.project ? poData.project.name : '';
                     const wekenTekst = poData.includedWeeks.length > 1
@@ -7732,7 +7735,8 @@
                         <div style="display:flex;gap:4px;flex-shrink:0">
                             ${adminApproveBtn}
                             ${approvalAction}
-                            <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem">📄</button>
+                            <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
+                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Weekstaat verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -7762,6 +7766,56 @@
             } catch (e) {
                 showToast('❌ Fout: ' + e.message);
             }
+        }
+
+        async function adminDeleteWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
+            if (!confirm(`Weekstaat verwijderen?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDit verwijdert de weekstatus, time entries en eventuele IO-koppelingen voor deze week.`)) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                // 1. Verwijder week_status
+                await sb.from('week_status')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year);
+
+                // 2. Verwijder time_entries voor deze week
+                const monday = getWeekMondayFromWeekNumber(year, weekNumber);
+                const sunday = new Date(monday);
+                sunday.setDate(sunday.getDate() + 6);
+                const weekStart = monday.toISOString().split('T')[0];
+                const weekEnd = sunday.toISOString().split('T')[0];
+                await sb.from('time_entries')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .gte('entry_date', weekStart)
+                    .lte('entry_date', weekEnd);
+
+                // 3. Verwijder purchase_order_weeks voor deze week
+                await sb.from('purchase_order_weeks')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year);
+
+                showToast('🗑️ Weekstaat verwijderd');
+                loadWeekstaten();
+            } catch (e) {
+                showToast('❌ Fout: ' + e.message);
+            }
+        }
+
+        // Helper: maandag berekenen vanuit jaar + weeknummer (ISO)
+        function getWeekMondayFromWeekNumber(year, week) {
+            const jan4 = new Date(year, 0, 4);
+            const dayOfWeek = jan4.getDay() || 7;
+            const monday = new Date(jan4);
+            monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
+            return monday;
         }
 
         function copyApprovalLink(token) {
