@@ -1554,7 +1554,7 @@
             document.getElementById('weekdefaults-modal').classList.add('active');
         }
 
-        function saveWeekDefaults() {
+        async function saveWeekDefaults() {
             const defaults = [];
             for (let i = 0; i < 7; i++) {
                 const checkbox = document.querySelector(`.wd-row-${i}`).parentElement.querySelector('input[type=checkbox]');
@@ -1572,6 +1572,30 @@
             }
             localStorage.setItem(getWeekDefaultsKey(), JSON.stringify(defaults));
             closeModal('weekdefaults-modal');
+
+            // Pas defaults toe op de huidige week als die nog niet opgeslagen is in Supabase
+            if (getSupabase() && currentUser && currentUser.id && currentProject) {
+                const weekStart = getDateForDayIndex(0);
+                const weekEnd = getDateForDayIndex(6);
+                const { data: entries } = await getSupabase()
+                    .from('time_entries')
+                    .select('id')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_id', currentProject.id)
+                    .gte('entry_date', weekStart)
+                    .lte('entry_date', weekEnd)
+                    .limit(1);
+
+                if (!entries || entries.length === 0) {
+                    // Geen opgeslagen data voor deze week — pas nieuwe defaults toe
+                    weekData = defaultWeekData();
+                    markDirty();
+                    renderDays();
+                    showToast('✓ Standaard werkweek opgeslagen & toegepast op huidige week');
+                    return;
+                }
+            }
+
             showToast('✓ Standaard werkweek opgeslagen');
         }
 
@@ -5458,7 +5482,7 @@
         // ===== ADMIN FUNCTIES =====
         let _adminTestMode = false; // false = productie, true = test
 
-        function toggleTestMode() {
+        async function toggleTestMode() {
             _adminTestMode = document.getElementById('admin-test-toggle').checked;
             const label = document.getElementById('env-label');
             const slider = document.getElementById('env-slider');
@@ -5475,8 +5499,17 @@
             }
             // Slider bullet positie
             slider.innerHTML = `<span style="position:absolute;height:16px;width:16px;left:${_adminTestMode ? '20px' : '3px'};bottom:3px;background:white;border-radius:50%;transition:.3s"></span>`;
-            // Herlaad admin data met nieuwe filter
-            loadAdminData();
+            // Herlaad admin data met nieuwe filter (wacht tot klaar)
+            await loadAdminData();
+            // Herlaad ook actieve sub-tabs die eigen data hebben
+            const wsTab = document.getElementById('admin-weekstaten');
+            if (wsTab && wsTab.style.display !== 'none') loadWeekstaten();
+            const ioTab = document.getElementById('admin-inkooporders');
+            if (ioTab && ioTab.style.display !== 'none') { loadInkooporderFilters(); loadInkooporders(); }
+            const invTab = document.getElementById('admin-facturen');
+            if (invTab && invTab.style.display !== 'none') { loadInvoiceFilters(); loadInvoices(); }
+            const dashTab = document.getElementById('admin-dashboard');
+            if (dashTab && dashTab.style.display !== 'none') loadDashboard();
         }
 
         // Helper: filter users op test/productie modus
@@ -5880,19 +5913,22 @@
             // Projecten laden
             const { data: projects } = await sb.from('projects').select('*, client_company_id(name, email, contact_name)').order('created_at', { ascending: false });
             window._adminProjects = projects || [];
+            const filteredProjects = (projects || []).filter(p => _adminTestMode ? p.is_test === true : p.is_test !== true);
             const projList = document.getElementById('admin-project-list');
-            if (projects && projects.length > 0) {
-                projList.innerHTML = projects.map((p, idx) => `
+            if (filteredProjects && filteredProjects.length > 0) {
+                projList.innerHTML = filteredProjects.map((p) => {
+                    const idx = (window._adminProjects || []).indexOf(p);
+                    return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:6px;cursor:pointer" onclick="openAdminModal('project', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${p.name}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${p.name}${p.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${p.project_code} · ${p.location || ''} · ${p.client_name || ''}</div>
                             </div>
                             <span class="status-badge ${p.status === 'active' ? 'status-approved' : 'status-draft'}">${p.status}</span>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
             } else {
                 projList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen projecten gevonden</div>';
             }
@@ -5954,16 +5990,18 @@
             // Bedrijven laden (ZZP, klant, KTS)
             const { data: companies } = await sb.from('companies').select('*').order('name');
             window._adminCompanies = companies || [];
+            const filteredCompanies = (companies || []).filter(c => _adminTestMode ? c.is_test === true : c.is_test !== true);
             const persList = document.getElementById('admin-persoon-list');
-            if (companies && companies.length > 0) {
-                persList.innerHTML = companies.map((c, idx) => {
+            if (filteredCompanies && filteredCompanies.length > 0) {
+                persList.innerHTML = filteredCompanies.map((c) => {
+                    const idx = (window._adminCompanies || []).indexOf(c);
                     const displayName = c.contact_name || c.name;
                     const subtitle = c.contact_name ? c.name : '';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('persoon', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${displayName}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${displayName}${c.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${subtitle ? subtitle + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}</div>
                             </div>
                             <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
@@ -5983,8 +6021,15 @@
             if (allUsersForRates) allUsersForRates.forEach(u => { userMap[u.id] = u.name || u.email; });
 
             const tariefList = document.getElementById('admin-tarief-list');
-            if (rates && rates.length > 0) {
-                tariefList.innerHTML = rates.map((r, idx) => {
+            // Filter tarieven: toon alleen tarieven van gefilterde projecten
+            const filteredProjIds = new Set(filteredProjects.map(p => typeof p.id === 'string' ? p.id : ''));
+            const filteredRates = (rates || []).filter(r => {
+                const projId = typeof r.project_id === 'object' ? r.project_id?.id : r.project_id;
+                return filteredProjIds.has(projId) || !projId;
+            });
+            if (filteredRates && filteredRates.length > 0) {
+                tariefList.innerHTML = filteredRates.map((r) => {
+                    const idx = (window._adminRates || []).indexOf(r);
                     const proj = r.project_id || {};
                     const userName = r.user_id ? (userMap[r.user_id] || 'Onbekende gebruiker') : 'Alle medewerkers';
                     const funcTitle = r.function_title ? ` · ${r.function_title}` : '';
@@ -7360,6 +7405,12 @@
                             <option value="inactive" ${existing && existing.status === 'inactive' ? 'selected' : ''}>Inactive</option>
                         </select>
                     </div>
+                    <div style="margin-bottom:12px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-proj-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testproject
+                        </label>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testprojecten worden verborgen in productie-modus</div>
+                    </div>
                     ${existing ? '<div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border)"><label style="font-weight:700;font-size:0.85rem;margin-bottom:8px;display:block">Toegewezen gebruikers</label><div id="adm-proj-users" style="margin-bottom:8px"><span style="color:var(--muted);font-size:0.8rem">Laden...</span></div><div style="display:flex;gap:8px"><select id="adm-proj-user-select" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem"><option value="">Kies gebruiker...</option></select><button type="button" class="btn btn-sm btn-primary" onclick="assignUserToProject()" style="white-space:nowrap">+ Toewijzen</button></div></div>' : ''}
                 `;
             } else if (type === 'persoon') {
@@ -7399,6 +7450,12 @@
                     </div>
                     <div class="form-group" style="margin-top:12px"><label>E-mail (primair)</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl" value="${existing ? existing.email || '' : ''}"></div>
                     <div class="form-group" style="margin-top:12px"><label>E-mail ontvangers PO/factuur</label><input type="text" id="adm-pers-email-po" placeholder="inkoop@bedrijf.nl, finance@bedrijf.nl" value="${existing ? existing.email_po || '' : ''}"><div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Komma-gescheiden. Als leeg wordt het primaire e-mailadres gebruikt.</div></div>
+                    <div style="margin-top:12px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-pers-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testbedrijf
+                        </label>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testbedrijven worden verborgen in productie-modus</div>
+                    </div>
                 `;
             } else if (type === 'tarief') {
                 existing = isEdit ? (window._adminRates || [])[editIdx] : null;
@@ -7953,7 +8010,8 @@
                     default_location: document.getElementById('adm-proj-deflocation').value.trim() || null,
                     // km_single_trip en hotel_rate staan nu op users tabel
                     start_date: document.getElementById('adm-proj-start').value || null,
-                    status: document.getElementById('adm-proj-status').value || 'active'
+                    status: document.getElementById('adm-proj-status').value || 'active',
+                    is_test: document.getElementById('adm-proj-test').checked
                 };
                 result = _editingId
                     ? await sb.from('projects').update(data).eq('id', _editingId)
@@ -7975,6 +8033,7 @@
                     phone: document.getElementById('adm-pers-phone').value.trim() || null,
                     email: document.getElementById('adm-pers-email').value.trim() || null,
                     email_po: document.getElementById('adm-pers-email-po').value.trim() || null,
+                    is_test: document.getElementById('adm-pers-test').checked
                 };
                 result = _editingId
                     ? await sb.from('companies').update(data).eq('id', _editingId)
