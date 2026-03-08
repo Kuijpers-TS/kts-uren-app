@@ -5769,15 +5769,25 @@
                 // Bepaal weken in deze maand
                 const firstDay = new Date(year, selectedMonth, 1);
                 const lastDay = new Date(year, selectedMonth + 1, 0);
+                const currentWn = getISOWeek(new Date());
                 let weekBadges = '';
                 let d = new Date(firstDay);
                 const seenWeeks = new Set();
+                // Bepaal weken waar deze user entries heeft
+                const userEntryWeeks = new Set(userEntries.map(e => {
+                    const ed = new Date(e.entry_date + 'T12:00:00');
+                    return getISOWeek(ed);
+                }));
                 while (d <= lastDay) {
                     const wn = getISOWeek(d);
                     if (!seenWeeks.has(wn)) {
                         seenWeeks.add(wn);
                         const ws = userWeekStatuses.find(w => w.week_number === wn);
-                        if (ws && ws.status === 'verstuurd') {
+                        const hasData = ws || userEntryWeeks.has(wn);
+                        // Toon alleen weken waar data is, of weken die nog niet voorbij zijn (huidige + toekomst)
+                        if (!hasData && wn < currentWn) {
+                            // Lege week in het verleden zonder data → overslaan
+                        } else if (ws && ws.status === 'verstuurd') {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: verstuurd">${wn}</span>`;
                         } else if (ws && (ws.status === 'opgeslagen' || ws.status === 'ondertekend')) {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#fef3c7;color:#d97706;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
