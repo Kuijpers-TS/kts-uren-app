@@ -1029,6 +1029,13 @@
                     <div id="po-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
                     <button class="btn btn-primary" onclick="generatePOPDF()" style="width:100%;margin-top:16px">📄 Genereer PO PDF</button>
                 </div>
+
+                <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Gegenereerde inkooporders</div>
+                    <div id="po-list" style="display:flex;flex-direction:column;gap:6px">
+                        <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- ===== WEEKSTATEN TAB ===== -->
@@ -5361,7 +5368,7 @@
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = t === tab ? 'block' : 'none';
             });
-            if (tab === 'inkooporders') loadInkooporderFilters();
+            if (tab === 'inkooporders') { loadInkooporderFilters(); loadInkooporders(); }
             if (tab === 'weekstaten') loadWeekstaten();
         }
 
@@ -5601,6 +5608,95 @@
                         const fmtD = d => `${d.getDate()} ${['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][d.getMonth()]}`;
                         return `<option value="${w}">Week ${w} (${fmtD(monOfWeek)} – ${fmtD(friOfWeek)})</option>`;
                     }).join('');
+            }
+        }
+
+        async function loadInkooporders() {
+            const sb = getSupabase();
+            if (!sb) return;
+            const listEl = document.getElementById('po-list');
+            if (!listEl) return;
+            listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            try {
+                // Haal inkooporder records op uit purchase_order_weeks (gegroepeerd per po_number)
+                const { data: poWeeks, error: poErr } = await sb.from('purchase_order_weeks')
+                    .select('po_number, user_id, project_id, year, month, week_number, created_at')
+                    .order('created_at', { ascending: false });
+
+                if (poErr) throw poErr;
+
+                if (!poWeeks || poWeeks.length === 0) {
+                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen inkooporders gegenereerd</div>';
+                    return;
+                }
+
+                // Groepeer per po_number
+                const poMap = {};
+                poWeeks.forEach(pw => {
+                    if (!poMap[pw.po_number]) {
+                        poMap[pw.po_number] = {
+                            po_number: pw.po_number,
+                            user_id: pw.user_id,
+                            project_id: pw.project_id,
+                            year: pw.year,
+                            month: pw.month,
+                            weeks: [],
+                            created_at: pw.created_at
+                        };
+                    }
+                    poMap[pw.po_number].weeks.push(pw.week_number);
+                });
+
+                const poList = Object.values(poMap).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                // Haal namen op voor weergave
+                const userMap = {};
+                (window._adminUsers || []).forEach(u => { userMap[u.id] = u.name || u.email; });
+                const projMap = {};
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code + ' — ' + p.name; });
+                const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+                listEl.innerHTML = poList.map(po => {
+                    const userName = userMap[po.user_id] || 'Onbekend';
+                    const projLabel = projMap[po.project_id] || 'Onbekend';
+                    const wekenTekst = po.weeks.sort((a,b) => a-b).join(', ');
+                    const maandTekst = MONTHS_SHORT[po.month - 1] + ' ' + po.year;
+                    const datumTekst = new Date(po.created_at).toLocaleDateString('nl-NL');
+                    const projCode = (window._adminProjects || []).find(p => p.id === po.project_id)?.project_code || '';
+                    const storagePath = `${po.year}/${projCode}/${po.po_number.replace(/\\s+/g, '_')}.pdf`;
+
+                    return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.po_number}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${userName} · ${projLabel}</div>
+                            <div style="font-size:0.7rem;color:var(--muted)">Week ${wekenTekst} · ${maandTekst} · ${datumTekst}</div>
+                        </div>
+                        <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 12px">📄 Download</button>
+                    </div>`;
+                }).join('');
+
+            } catch (err) {
+                console.error('Inkooporders laden mislukt:', err);
+                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+            }
+        }
+
+        async function downloadInkooporder(path) {
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const { data, error } = await sb.storage.from('inkooporders').download(path);
+                if (error) throw error;
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = path.split('/').pop();
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('✓ PDF gedownload');
+            } catch (err) {
+                showToast('❌ Download mislukt: ' + err.message);
             }
         }
 
@@ -6131,10 +6227,32 @@
 
                 showToast('✓ Inkooporder opgeslagen');
 
-                // 3. Open mailto (optional)
+                // Lijst verversen
+                loadInkooporders();
+
+                // 3. Open mailto
                 if (poData.company && poData.company.email) {
-                    const subject = encodeURIComponent('Inkooporder ' + poData.project.project_code);
-                    const body = encodeURIComponent('Bijgevoegd ontvangt u de inkooporder van Kuijpers Technical Services.');
+                    const userName = poData.user ? (poData.user.full_name || poData.user.email) : '';
+                    const projCode = poData.project ? poData.project.project_code : '';
+                    const projName = poData.project ? poData.project.name : '';
+                    const wekenTekst = poData.includedWeeks.length > 1
+                        ? 'weken ' + poData.includedWeeks.join(', ')
+                        : 'week ' + poData.includedWeeks[0];
+                    const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+                    const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
+
+                    const subject = encodeURIComponent('Inkooporder ' + poNumber + ' - ' + userName + ' - ' + projCode);
+                    const body = encodeURIComponent(
+                        'Beste ' + (poData.company.contact_name || poData.company.name) + ',\n\n' +
+                        'Bijgevoegd ontvangt u de inkooporder voor de inzet van ' + userName + '.\n\n' +
+                        'Project: ' + projCode + ' — ' + projName + '\n' +
+                        'Periode: ' + maandTekst + ' (' + wekenTekst + ')\n' +
+                        'PO-nummer: ' + poNumber + '\n' +
+                        'Bestand: ' + poNumber.replace(/\s+/g, '_') + '.pdf\n\n' +
+                        'Met vriendelijke groet,\n' +
+                        'Mark Kuijpers\n' +
+                        'Kuijpers Technical Services'
+                    );
                     window.open(`mailto:${poData.company.email}?subject=${subject}&body=${body}`);
                 }
             } catch (e) {
