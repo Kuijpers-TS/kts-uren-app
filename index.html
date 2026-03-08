@@ -1271,6 +1271,15 @@
                 return { editable: false, reason: 'Project is afgerond', icon: '🏁' };
             }
 
+            // Max 2 weken in de toekomst
+            const now = new Date();
+            const thisMonday = getWeekMonday(now);
+            const maxMonday = new Date(thisMonday);
+            maxMonday.setDate(maxMonday.getDate() + 14); // 2 weken vooruit
+            if (currentWeekMonday > maxMonday) {
+                return { editable: false, reason: 'Week ligt te ver in de toekomst', icon: '🔮', detail: 'Je kunt maximaal 2 weken vooruit werken' };
+            }
+
             return { editable: true };
         }
 
@@ -3322,6 +3331,19 @@
         }
 
         async function changeWeek(dir) {
+            // Blokkeer navigatie als volgende week te ver in de toekomst is
+            if (dir > 0) {
+                const nextMonday = new Date(currentWeekMonday);
+                nextMonday.setDate(nextMonday.getDate() + 7);
+                const thisMonday = getWeekMonday(new Date());
+                const maxMonday = new Date(thisMonday);
+                maxMonday.setDate(maxMonday.getDate() + 14);
+                if (nextMonday > maxMonday) {
+                    showToast('🔮 Je kunt maximaal 2 weken vooruit werken');
+                    return;
+                }
+            }
+
             // Auto-save huidige week als er wijzigingen zijn
             if (weekDataDirty && getSupabase() && currentUser && currentUser.id) {
                 try {
@@ -3951,15 +3973,19 @@
             if (currentProject) {
                 if (currentProject.start_date) {
                     const sd = new Date(currentProject.start_date);
-                    // Maand vóór startmaand? Blokkeer
                     if (newYear < sd.getFullYear() || (newYear === sd.getFullYear() && newMonth < sd.getMonth())) return;
                 }
                 if (currentProject.end_date) {
                     const ed = new Date(currentProject.end_date);
-                    // Maand ná eindmaand? Blokkeer
                     if (newYear > ed.getFullYear() || (newYear === ed.getFullYear() && newMonth > ed.getMonth())) return;
                 }
             }
+            // Max 2 weken vooruit: blokkeer maand als die volledig na de grens valt
+            const thisMonday = getWeekMonday(new Date());
+            const maxDate = new Date(thisMonday);
+            maxDate.setDate(maxDate.getDate() + 20); // ruime marge voor maandweergave
+            const firstOfNewMonth = new Date(newYear, newMonth, 1);
+            if (firstOfNewMonth > maxDate) return;
 
             overviewMonth = newMonth;
             overviewYear = newYear;
@@ -4201,7 +4227,11 @@
             const sb = getSupabase();
             // Probeer bestaand profiel op te halen
             const { data: profile } = await sb.from('users').select('*').eq('id', userId).single();
-            if (profile) return profile;
+            if (profile) {
+                // Update laatste login tijdstip
+                sb.from('users').update({ updated_at: new Date().toISOString() }).eq('id', userId).then(() => {});
+                return profile;
+            }
 
             // Profiel bestaat niet — maak het automatisch aan
             console.log('Auto-provisioning nieuw gebruikersprofiel voor', email);
@@ -5215,6 +5245,23 @@
                     const priceInfo = [];
                     if (u.km_single_trip) priceInfo.push(u.km_single_trip + ' km');
                     if (u.hotel_rate) priceInfo.push('€' + u.hotel_rate + '/nacht');
+                    // Laatst actief berekenen
+                    let laatstActief = '';
+                    if (u.updated_at) {
+                        const d = new Date(u.updated_at);
+                        const nu = new Date();
+                        const diffMs = nu - d;
+                        const diffMin = Math.floor(diffMs / 60000);
+                        const diffUur = Math.floor(diffMs / 3600000);
+                        const diffDag = Math.floor(diffMs / 86400000);
+                        if (diffMin < 5) laatstActief = 'Nu actief';
+                        else if (diffMin < 60) laatstActief = diffMin + ' min geleden';
+                        else if (diffUur < 24) laatstActief = diffUur + ' uur geleden';
+                        else if (diffDag < 7) laatstActief = diffDag + ' dag' + (diffDag > 1 ? 'en' : '') + ' geleden';
+                        else laatstActief = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+                    }
+                    const activityColor = laatstActief === 'Nu actief' ? '#059669' : 'var(--muted)';
+                    const activityDot = laatstActief === 'Nu actief' ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#059669;margin-right:3px"></span>' : '';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('gebruiker', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -5222,6 +5269,7 @@
                                 <div style="font-weight:700;font-size:0.9rem">${u.name || u.email}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${u.email}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
                                 <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${flagsHtml}</div>
+                                ${laatstActief ? '<div style="font-size:0.7rem;color:' + activityColor + ';margin-top:3px">' + activityDot + laatstActief + '</div>' : ''}
                             </div>
                             <span class="status-badge ${u.role === 'admin' ? 'status-signed' : 'status-draft'}" style="text-transform:uppercase">${u.role}</span>
                         </div>
