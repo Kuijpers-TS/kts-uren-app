@@ -948,6 +948,10 @@
                     <div style="width:40px;height:40px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Inkooporders</div><div style="font-size:0.7rem;color:var(--muted)">PO's genereren</div></div>
                 </div>
+                <div onclick="switchAdminTab('facturen')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🧾</div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Facturen</div><div style="font-size:0.7rem;color:var(--muted)">Facturen genereren</div></div>
+                </div>
                 <div onclick="switchAdminTab('weekstaten')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📑</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Weekstaten</div><div style="font-size:0.7rem;color:var(--muted)">PDF backup & download</div></div>
@@ -1081,6 +1085,54 @@
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Gegenereerde inkooporders</div>
                     <div id="po-list" style="display:flex;flex-direction:column;gap:6px">
+                        <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== FACTUREN TAB ===== -->
+            <div id="admin-facturen" style="display:none">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Factuur Generator</div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Project</label>
+                            <select id="inv-filter-project" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer project --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Medewerker</label>
+                            <select id="inv-filter-user" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer medewerker --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Jaar</label>
+                            <select id="inv-filter-year" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer jaar --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Maand</label>
+                            <select id="inv-filter-month" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer maand --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="previewInvoice()" style="width:100%;margin-top:8px">👁 Preview Factuur</button>
+                </div>
+                <div id="inv-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
+                    <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
+                    <div id="inv-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
+                    <button class="btn btn-primary" onclick="generateInvoicePDF()" style="width:100%;margin-top:16px">🧾 Genereer Factuur PDF</button>
+                </div>
+
+                <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Gegenereerde facturen</div>
+                    <div id="inv-list" style="display:flex;flex-direction:column;gap:6px">
                         <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
                     </div>
                 </div>
@@ -5452,12 +5504,13 @@
             if (tiles) tiles.style.display = 'none';
             if (backBar) backBar.style.display = 'block';
 
-            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = t === tab ? 'block' : 'none';
             });
             if (tab === 'dashboard') loadDashboard();
             if (tab === 'inkooporders') { loadInkooporderFilters(); loadInkooporders(); }
+            if (tab === 'facturen') { loadInvoiceFilters(); loadInvoices(); }
             if (tab === 'weekstaten') loadWeekstaten();
         }
 
@@ -5466,7 +5519,7 @@
             const backBar = document.getElementById('admin-back-bar');
             if (tiles) tiles.style.display = 'grid';
             if (backBar) backBar.style.display = 'none';
-            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = 'none';
             });
@@ -6065,14 +6118,18 @@
 
                 if (poErr) throw poErr;
 
-                if (!poWeeks || poWeeks.length === 0) {
+                // Filter op test/productie modus
+                const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
+                const filteredPOWeeks = (poWeeks || []).filter(pw => filteredUserIds.has(pw.user_id));
+
+                if (!filteredPOWeeks || filteredPOWeeks.length === 0) {
                     listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen inkooporders gegenereerd</div>';
                     return;
                 }
 
                 // Groepeer per po_number
                 const poMap = {};
-                poWeeks.forEach(pw => {
+                filteredPOWeeks.forEach(pw => {
                     if (!poMap[pw.po_number]) {
                         poMap[pw.po_number] = {
                             po_number: pw.po_number,
@@ -6138,6 +6195,549 @@
                 showToast('❌ Download mislukt: ' + err.message);
             }
         }
+
+        // ===== FACTUUR GENERATOR =====
+        function loadInvoiceFilters() {
+            const projSel = document.getElementById('inv-filter-project');
+            const userSel = document.getElementById('inv-filter-user');
+            const yearSel = document.getElementById('inv-filter-year');
+            const monthSel = document.getElementById('inv-filter-month');
+            if (!projSel) return;
+
+            // Projecten
+            if (projSel.options.length <= 1 && window._adminProjects) {
+                (window._adminProjects || []).filter(p => p.status === 'active').forEach(p => {
+                    projSel.innerHTML += `<option value="${p.id}">${p.project_code} — ${p.name}</option>`;
+                });
+            }
+            // Users
+            userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
+                getFilteredUsers().map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+            // Jaar
+            if (yearSel.options.length <= 1) {
+                const y = new Date().getFullYear();
+                [y - 1, y, y + 1].forEach(yr => { yearSel.innerHTML += `<option value="${yr}" ${yr === y ? 'selected' : ''}>${yr}</option>`; });
+            }
+            // Maanden
+            if (monthSel.options.length <= 1) {
+                const MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+                MONTHS.forEach((m, i) => { monthSel.innerHTML += `<option value="${i + 1}" ${i === new Date().getMonth() ? 'selected' : ''}>${m}</option>`; });
+            }
+        }
+
+        async function previewInvoice() {
+            const userId = document.getElementById('inv-filter-user').value;
+            const projectId = document.getElementById('inv-filter-project').value;
+            const year = document.getElementById('inv-filter-year').value;
+            const month = document.getElementById('inv-filter-month').value;
+
+            if (!userId || !projectId || !year || !month) {
+                showToast('⚠️ Selecteer project, medewerker, jaar en maand');
+                return;
+            }
+
+            const sb = getSupabase();
+            if (!sb) return;
+
+            // Check of er PO's bestaan voor deze combinatie (factuur alleen na PO)
+            const { data: poWeeks } = await sb.from('purchase_order_weeks')
+                .select('po_number, week_number')
+                .eq('user_id', userId)
+                .eq('project_id', projectId)
+                .eq('year', parseInt(year))
+                .eq('month', parseInt(month));
+
+            if (!poWeeks || poWeeks.length === 0) {
+                const preview = document.getElementById('inv-preview');
+                const content = document.getElementById('inv-preview-content');
+                content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">
+                    ⚠️ Er is nog geen inkooporder verstuurd voor deze maand/medewerker/project combinatie.<br>
+                    <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst een PO voordat je een factuur kunt maken.</span>
+                </div>`;
+                preview.style.display = 'block';
+                return;
+            }
+
+            // Check of er al een factuur bestaat
+            const { data: existingInv } = await sb.from('invoices')
+                .select('invoice_number')
+                .eq('user_id', userId)
+                .eq('project_id', projectId)
+                .eq('year', parseInt(year))
+                .eq('month', parseInt(month));
+
+            // Aggregate data (hergebruik PO data, maar nu voor factuur)
+            const poData = await aggregatePOData(userId, projectId, year, month);
+            if (!poData || poData.includedWeeks.length === 0) {
+                // Gebruik alle weken die op een PO staan i.p.v. alleen goedgekeurde
+                // Factuur is gebaseerd op PO weken
+            }
+
+            // Haal klantbedrijf op via project
+            const project = (window._adminProjects || []).find(p => p.id === projectId);
+            let clientCompany = null;
+            if (project && project.client_company_id) {
+                const compId = typeof project.client_company_id === 'object' ? project.client_company_id.id || project.client_company_id : project.client_company_id;
+                if (typeof compId === 'string') {
+                    const { data: comp } = await sb.from('companies').select('*').eq('id', compId).single();
+                    clientCompany = comp;
+                } else if (typeof project.client_company_id === 'object') {
+                    clientCompany = project.client_company_id;
+                }
+            }
+
+            // Bereken factuurregels op basis van PO weken
+            const poWeekNums = new Set(poWeeks.map(pw => pw.week_number));
+            const yr = parseInt(year);
+            const mo = parseInt(month);
+            const firstDay = new Date(yr, mo - 1, 1);
+            const lastDay = new Date(yr, mo, 0);
+            const dateFrom = firstDay.toISOString().split('T')[0];
+            const dateTo = lastDay.toISOString().split('T')[0];
+
+            const { data: entries } = await sb.from('time_entries').select('*')
+                .eq('user_id', userId)
+                .eq('project_id', projectId)
+                .gte('entry_date', dateFrom)
+                .lte('entry_date', dateTo);
+
+            // Filter alleen entries die op PO-weken zitten
+            const invoiceEntries = (entries || []).filter(e => {
+                if (!e.entry_date) return false;
+                const isoWeek = getISOWeek(new Date(e.entry_date + 'T12:00:00'));
+                return poWeekNums.has(isoWeek);
+            });
+
+            // Rates ophalen
+            const { data: allRates } = await sb.from('rates').select('*')
+                .eq('project_id', projectId)
+                .order('valid_from', { ascending: false });
+            let rate = { hourly_rate: 85, km_rate: 0.50, saturday_multiplier: 1.50, sunday_holiday_multiplier: 2.00 };
+            if (allRates && allRates.length > 0) {
+                const userRate = allRates.find(r => r.user_id === userId);
+                const projRate = allRates.find(r => !r.user_id);
+                const found = userRate || projRate;
+                if (found) {
+                    rate.hourly_rate = parseFloat(found.hourly_rate) || 85;
+                    rate.km_rate = parseFloat(found.km_rate) || 0.50;
+                    rate.saturday_multiplier = parseFloat(found.saturday_multiplier) || 1.50;
+                    rate.sunday_holiday_multiplier = parseFloat(found.sunday_holiday_multiplier) || 2.00;
+                }
+            }
+
+            // Maar voor de factuur: KTS factureert aan de klant, dus we gebruiken KTS tarieven
+            // (dit zijn dezelfde tarieven die op de PO staan, want KTS factureert door)
+            // Eventueel met opslag — voor nu 1:1 doorberekenen
+
+            // User info
+            const { data: user } = await sb.from('users').select('*').eq('id', userId).single();
+            const hotelRate = (user && parseFloat(user.hotel_rate)) || 110;
+
+            // Groepeer per week
+            const weekData = {};
+            invoiceEntries.forEach(entry => {
+                const entryDate = new Date(entry.entry_date + 'T12:00:00');
+                const isoWeek = getISOWeek(entryDate);
+                const weekKey = `week_${isoWeek}`;
+                if (!weekData[weekKey]) {
+                    weekData[weekKey] = { weekNum: isoWeek, year: yr, regHours: 0, satHours: 0, sunHours: 0, totalKm: 0, hotelNights: 0 };
+                }
+                const hours = parseFloat(entry.total_hours) || 0;
+                const day = entryDate.getDay();
+                if (day === 6) weekData[weekKey].satHours += hours;
+                else if (day === 0) weekData[weekKey].sunHours += hours;
+                else weekData[weekKey].regHours += hours;
+                weekData[weekKey].totalKm += parseFloat(entry.km) || 0;
+                if (entry.hotel) weekData[weekKey].hotelNights++;
+            });
+
+            // Sla data op voor PDF generatie
+            window._currentInvoiceData = {
+                userId, projectId, year: yr, month: mo,
+                user, project, clientCompany, rate, hotelRate, weekData,
+                entries: invoiceEntries, poWeeks, existingInvoice: existingInv && existingInv.length > 0 ? existingInv[0] : null
+            };
+
+            // Render preview
+            const preview = document.getElementById('inv-preview');
+            const content = document.getElementById('inv-preview-content');
+            let html = '';
+
+            if (existingInv && existingInv.length > 0) {
+                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
+                    ⚠️ Er bestaat al een factuur (<strong>${existingInv[0].invoice_number}</strong>) voor deze combinatie. Een nieuwe factuur zal een nieuw nummer krijgen.
+                </div>`;
+            }
+
+            html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? clientCompany.name : '(Geen klant ingesteld op project)'}</div>`;
+            html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Medewerker: ${user?.name || 'Onbekend'} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
+
+            html += '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
+            html += '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px;font-weight:600">Beschrijving</th><th style="text-align:right;padding:6px;font-weight:600">Aantal</th><th style="text-align:right;padding:6px;font-weight:600">Tarief</th><th style="text-align:right;padding:6px;font-weight:600">Bedrag</th></tr>';
+
+            let subtotal = 0;
+            Object.keys(weekData).sort().forEach(weekKey => {
+                const week = weekData[weekKey];
+                const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
+                if (week.regHours > 0) {
+                    const amount = week.regHours * rate.hourly_rate;
+                    html += `<tr><td style="padding:4px 6px">Uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${week.regHours.toFixed(2)}</td><td style="text-align:right;padding:4px 6px">€${rate.hourly_rate.toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${amount.toFixed(2)}</td></tr>`;
+                    subtotal += amount;
+                }
+                if (week.satHours > 0) {
+                    const amount = week.satHours * rate.hourly_rate * rate.saturday_multiplier;
+                    html += `<tr><td style="padding:4px 6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${week.satHours.toFixed(2)}</td><td style="text-align:right;padding:4px 6px">€${(rate.hourly_rate * rate.saturday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${amount.toFixed(2)}</td></tr>`;
+                    subtotal += amount;
+                }
+                if (week.sunHours > 0) {
+                    const amount = week.sunHours * rate.hourly_rate * rate.sunday_holiday_multiplier;
+                    html += `<tr><td style="padding:4px 6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${week.sunHours.toFixed(2)}</td><td style="text-align:right;padding:4px 6px">€${(rate.hourly_rate * rate.sunday_holiday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${amount.toFixed(2)}</td></tr>`;
+                    subtotal += amount;
+                }
+            });
+
+            let totalKm = 0, totalHotel = 0;
+            Object.values(weekData).forEach(w => { totalKm += w.totalKm; totalHotel += w.hotelNights; });
+            if (totalKm > 0) {
+                const kmAmount = totalKm * rate.km_rate;
+                html += `<tr><td style="padding:4px 6px">Kilometers</td><td style="text-align:right;padding:4px 6px">${totalKm.toFixed(0)}</td><td style="text-align:right;padding:4px 6px">€${rate.km_rate.toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${kmAmount.toFixed(2)}</td></tr>`;
+                subtotal += kmAmount;
+            }
+            if (totalHotel > 0) {
+                const hotelAmount = totalHotel * hotelRate;
+                html += `<tr><td style="padding:4px 6px">Hotelovernachtingen</td><td style="text-align:right;padding:4px 6px">${totalHotel}</td><td style="text-align:right;padding:4px 6px">€${hotelRate.toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${hotelAmount.toFixed(2)}</td></tr>`;
+                subtotal += hotelAmount;
+            }
+
+            const btw = subtotal * 0.21;
+            const total = subtotal + btw;
+            html += `<tr style="border-top:2px solid var(--kts-blue)"><td colspan="3" style="padding:6px;font-weight:600">Subtotaal</td><td style="text-align:right;padding:6px;font-weight:600">€${subtotal.toFixed(2)}</td></tr>`;
+            html += `<tr><td colspan="3" style="padding:4px 6px;color:var(--muted)">BTW 21%</td><td style="text-align:right;padding:4px 6px;color:var(--muted)">€${btw.toFixed(2)}</td></tr>`;
+            html += `<tr><td colspan="3" style="padding:6px;font-weight:700;color:var(--kts-blue);font-size:1rem">Totaal incl. BTW</td><td style="text-align:right;padding:6px;font-weight:700;color:var(--kts-blue);font-size:1rem">€${total.toFixed(2)}</td></tr>`;
+            html += '</table>';
+
+            content.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        async function generateInvoicePDF() {
+            const invData = window._currentInvoiceData;
+            if (!invData) { showToast('⚠️ Maak eerst een preview'); return; }
+            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return; }
+
+            const pdfImages = window.KTS_PDF_IMAGES || {};
+            const KTS_LOGO_B64 = pdfImages.logo || null;
+            const { jsPDF } = window.jspdf;
+
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
+            doc.setFont(pdfFont);
+
+            const pw = 210, ph = 297;
+            const ml = 15, mr = 15, uw = pw - ml - mr;
+            const ktsBlue = [7, 86, 127];
+
+            // Logo
+            if (KTS_LOGO_B64) {
+                try { doc.addImage(KTS_LOGO_B64, 'PNG', ml, 10, 30, 15); } catch(e) {}
+            }
+
+            // KTS company info
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.text(KTS_INFO.naam, ml, 28);
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(8);
+            doc.text(KTS_INFO.adres + ' · ' + KTS_INFO.postcode, ml, 33);
+            doc.text(KTS_INFO.land, ml, 37);
+
+            // Title "FACTUUR"
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(18);
+            doc.setTextColor(...ktsBlue);
+            doc.text('FACTUUR', pw - mr, 18, { align: 'right' });
+
+            // Invoice number + date
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            const today = new Date();
+            const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
+            const invoiceNumber = 'F-' + (invData.project?.project_code || '') + '-' + ddmmyyyy;
+            doc.text('Factuurnummer: ' + invoiceNumber, pw - mr, 28, { align: 'right' });
+            doc.text('Factuurdatum: ' + today.toLocaleDateString('nl-NL'), pw - mr, 32, { align: 'right' });
+            doc.text('Project: ' + (invData.project?.project_code || ''), pw - mr, 36, { align: 'right' });
+
+            // Klant (ontvanger) block
+            let y = 45;
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.text('FACTUURADRES', ml, y);
+            y += 6;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            if (invData.clientCompany) {
+                const c = invData.clientCompany;
+                doc.text(c.name || '', ml, y); y += 4;
+                if (c.contact_name) { doc.text('T.a.v. ' + c.contact_name, ml, y); y += 4; }
+                if (c.address) { doc.text(c.address, ml, y); y += 4; }
+                if (c.postcode || c.city) { doc.text((c.postcode || '') + ' ' + (c.city || ''), ml, y); y += 4; }
+                if (c.country && c.country !== 'Nederland') { doc.text(c.country, ml, y); y += 4; }
+                const kvkLabel = c.country === 'Duitsland' ? 'Handelsregister' : 'KVK';
+                const btwLabel = c.country === 'Duitsland' ? 'USt-IdNr.' : 'BTW';
+                if (c.kvk_number) { doc.text(kvkLabel + ': ' + c.kvk_number, ml, y); y += 4; }
+                if (c.btw_number) { doc.text(btwLabel + ': ' + c.btw_number, ml, y); y += 4; }
+            } else {
+                doc.text('(Geen klantbedrijf ingesteld op project)', ml, y);
+                y += 8;
+            }
+
+            // Betreft
+            y += 4;
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(9);
+            doc.text('Betreft:', ml, y);
+            doc.setFont(pdfFont, 'normal');
+            const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+            doc.text(` Inhuur ${invData.user?.name || ''} — ${MONTHS_NL[invData.month - 1]} ${invData.year}`, ml + 14, y);
+            y += 8;
+
+            // Line items table
+            const tableColumn = ['Beschrijving', 'Aantal', 'Tarief', 'Bedrag'];
+            const tableRows = [];
+            let subtotal = 0;
+
+            Object.keys(invData.weekData).sort().forEach(weekKey => {
+                const week = invData.weekData[weekKey];
+                const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
+                if (week.regHours > 0) {
+                    const amount = week.regHours * invData.rate.hourly_rate;
+                    tableRows.push([`Reguliere uren (ma-vr) — ${weekLabel}`, week.regHours.toFixed(2), '€ ' + invData.rate.hourly_rate.toFixed(2).replace('.', ','), fmtEuroPdf(amount)]);
+                    subtotal += amount;
+                }
+                if (week.satHours > 0) {
+                    const amount = week.satHours * invData.rate.hourly_rate * invData.rate.saturday_multiplier;
+                    tableRows.push([`Zaterdaguren — ${weekLabel}`, week.satHours.toFixed(2), '€ ' + (invData.rate.hourly_rate * invData.rate.saturday_multiplier).toFixed(2).replace('.', ','), fmtEuroPdf(amount)]);
+                    subtotal += amount;
+                }
+                if (week.sunHours > 0) {
+                    const amount = week.sunHours * invData.rate.hourly_rate * invData.rate.sunday_holiday_multiplier;
+                    tableRows.push([`Zondaguren — ${weekLabel}`, week.sunHours.toFixed(2), '€ ' + (invData.rate.hourly_rate * invData.rate.sunday_holiday_multiplier).toFixed(2).replace('.', ','), fmtEuroPdf(amount)]);
+                    subtotal += amount;
+                }
+            });
+
+            let totalKm = 0, totalHotel = 0;
+            Object.values(invData.weekData).forEach(w => { totalKm += w.totalKm; totalHotel += w.hotelNights; });
+            if (totalKm > 0) {
+                const kmAmount = totalKm * invData.rate.km_rate;
+                tableRows.push(['Kilometrages', totalKm.toFixed(0), '€ ' + invData.rate.km_rate.toFixed(2).replace('.', ','), fmtEuroPdf(kmAmount)]);
+                subtotal += kmAmount;
+            }
+            if (totalHotel > 0) {
+                const hotelAmount = totalHotel * invData.hotelRate;
+                tableRows.push(['Hotelovernachtingen', totalHotel.toFixed(0), '€ ' + invData.hotelRate.toFixed(2).replace('.', ','), fmtEuroPdf(hotelAmount)]);
+                subtotal += hotelAmount;
+            }
+
+            doc.autoTable({
+                startY: y,
+                head: [tableColumn],
+                body: tableRows,
+                margin: { left: ml, right: mr },
+                columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+                headStyles: { fillColor: ktsBlue, textColor: [255,255,255], fontStyle: 'bold', fontSize: 9 },
+                bodyStyles: { fontSize: 8 }
+            });
+
+            y = doc.lastAutoTable.finalY + 10;
+
+            // Totalen
+            const btw = subtotal * 0.21;
+            const total = subtotal + btw;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.text('Subtotaal:', pw - mr - 40, y, { align: 'right' });
+            doc.text(fmtEuroPdf(subtotal), pw - mr, y, { align: 'right' });
+            y += 5;
+            doc.text('BTW 21%:', pw - mr - 40, y, { align: 'right' });
+            doc.text(fmtEuroPdf(btw), pw - mr, y, { align: 'right' });
+            y += 5;
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(...ktsBlue);
+            doc.text('Totaal incl. BTW:', pw - mr - 40, y, { align: 'right' });
+            doc.text(fmtEuroPdf(total), pw - mr, y, { align: 'right' });
+
+            // Betalingsgegevens
+            y += 12;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Betalingstermijn: 30 dagen na factuurdatum', ml, y);
+            y += 5;
+            doc.text('Gelieve te betalen op:', ml, y);
+            y += 5;
+            doc.setFont(pdfFont, 'bold');
+            doc.text('IBAN: ' + KTS_INFO.iban, ml, y);
+            doc.setFont(pdfFont, 'normal');
+            y += 4;
+            doc.text('BIC: ' + KTS_INFO.bic, ml, y);
+            y += 4;
+            doc.text('t.n.v. ' + KTS_INFO.naam, ml, y);
+            y += 4;
+            doc.text('o.v.v. ' + invoiceNumber, ml, y);
+
+            // Footer
+            y = ph - 25;
+            doc.setFontSize(8);
+            doc.text(KTS_INFO.naam + ' · KVK: ' + KTS_INFO.kvk + ' · BTW: ' + KTS_INFO.btw, ml, y);
+            y += 4;
+            doc.text('IBAN: ' + KTS_INFO.iban + ' · BIC: ' + KTS_INFO.bic, ml, y);
+            y += 4;
+            doc.text('Tel: ' + KTS_INFO.tel2 + ' · E-mail: ' + KTS_INFO.email, ml, y);
+
+            // Download
+            const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
+            doc.save(fileName);
+
+            // Upload naar Supabase
+            await uploadInvoiceToSupabase(
+                `${invData.year}/${invData.project?.project_code || 'unknown'}/${fileName}`,
+                doc.output('arraybuffer'),
+                invData,
+                invoiceNumber
+            );
+        }
+
+        async function uploadInvoiceToSupabase(filePath, pdfBuffer, invData, invoiceNumber) {
+            const sb = getSupabase();
+            if (!sb) return;
+
+            try {
+                // Upload PDF naar Storage bucket 'facturen'
+                const { data, error } = await sb.storage.from('facturen').upload(filePath, new Blob([pdfBuffer], {type: 'application/pdf'}), {
+                    contentType: 'application/pdf',
+                    upsert: true
+                });
+                if (error) console.error('Factuur upload error:', error);
+                else console.log('Factuur geüpload:', filePath);
+
+                // Sla factuurrecord op in invoices tabel
+                await sb.from('invoices').insert({
+                    invoice_number: invoiceNumber,
+                    user_id: invData.userId,
+                    project_id: invData.projectId,
+                    year: invData.year,
+                    month: invData.month,
+                    storage_path: filePath,
+                    total_excl_btw: Object.keys(invData.weekData).reduce((sum, wk) => {
+                        const w = invData.weekData[wk];
+                        return sum + (w.regHours * invData.rate.hourly_rate)
+                            + (w.satHours * invData.rate.hourly_rate * invData.rate.saturday_multiplier)
+                            + (w.sunHours * invData.rate.hourly_rate * invData.rate.sunday_holiday_multiplier);
+                    }, 0)
+                });
+
+                showToast('✓ Factuur opgeslagen');
+                loadInvoices();
+
+                // Mailto naar klant
+                const clientEmail = invData.clientCompany?.email_po || invData.clientCompany?.email || '';
+                if (clientEmail) {
+                    const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+                    const subject = encodeURIComponent(`Factuur ${invoiceNumber} — ${KTS_INFO.naam}`);
+                    const body = encodeURIComponent(
+                        `Geachte ${invData.clientCompany.contact_name || 'heer/mevrouw'},\n\n` +
+                        `Hierbij ontvangt u de factuur voor de inhuur van ${invData.user?.name || ''} voor het project ${invData.project?.project_code || ''} — ${invData.project?.name || ''}.\n\n` +
+                        `Factuurnummer: ${invoiceNumber}\n` +
+                        `Periode: ${MONTHS_NL[invData.month - 1]} ${invData.year}\n` +
+                        `Bestand: ${invoiceNumber.replace(/\\s+/g, '_')}.pdf\n\n` +
+                        `Betalingstermijn: 30 dagen na factuurdatum\n` +
+                        `IBAN: ${KTS_INFO.iban}\n` +
+                        `t.n.v. ${KTS_INFO.naam}\n` +
+                        `o.v.v. ${invoiceNumber}\n\n` +
+                        `Met vriendelijke groet,\n${KTS_INFO.naam}`
+                    );
+                    const recipients = clientEmail.split(',').map(e => e.trim()).join(',');
+                    window.open(`mailto:${recipients}?subject=${subject}&body=${body}`, '_self');
+                }
+            } catch (err) {
+                console.error('Factuur opslaan mislukt:', err);
+                showToast('⚠️ PDF gedownload maar opslaan in database mislukt');
+            }
+        }
+
+        async function loadInvoices() {
+            const sb = getSupabase();
+            if (!sb) return;
+            const listEl = document.getElementById('inv-list');
+            if (!listEl) return;
+            listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            try {
+                const { data: invoices, error } = await sb.from('invoices')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Filter op test/productie modus
+                const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
+                const filteredInvoices = (invoices || []).filter(inv => filteredUserIds.has(inv.user_id));
+
+                if (!filteredInvoices || filteredInvoices.length === 0) {
+                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen facturen gegenereerd</div>';
+                    return;
+                }
+
+                const userMap = {};
+                (window._adminUsers || []).forEach(u => { userMap[u.id] = u.name || u.email; });
+                const projMap = {};
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code + ' — ' + p.name; });
+                const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+                listEl.innerHTML = filteredInvoices.map(inv => {
+                    const userName = userMap[inv.user_id] || 'Onbekend';
+                    const projLabel = projMap[inv.project_id] || 'Onbekend';
+                    const maandTekst = MONTHS_SHORT[(inv.month || 1) - 1] + ' ' + inv.year;
+                    const datumTekst = new Date(inv.created_at).toLocaleDateString('nl-NL');
+
+                    return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🧾 ${inv.invoice_number}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${userName} · ${projLabel}</div>
+                            <div style="font-size:0.7rem;color:var(--muted)">${maandTekst} · ${datumTekst}</div>
+                        </div>
+                        <button onclick="downloadInvoice('${inv.storage_path}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 12px">📄 Download</button>
+                    </div>`;
+                }).join('');
+
+            } catch (err) {
+                console.error('Facturen laden mislukt:', err);
+                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+            }
+        }
+
+        async function downloadInvoice(path) {
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const { data, error } = await sb.storage.from('facturen').download(path);
+                if (error) throw error;
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = path.split('/').pop();
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('✓ Factuur gedownload');
+            } catch (err) {
+                showToast('❌ Download mislukt: ' + err.message);
+            }
+        }
+
+        // ===== EINDE FACTUUR GENERATOR =====
 
         async function aggregatePOData(userId, projectId, year, month, weekNumber=null) {
             const sb = getSupabase();
@@ -6998,7 +7598,11 @@
                 const { data: weekRecords, error: wsErr } = await query;
                 if (wsErr) throw wsErr;
 
-                if (!weekRecords || weekRecords.length === 0) {
+                // Filter op test/productie modus
+                const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
+                const filteredRecords = (weekRecords || []).filter(ws => filteredUserIds.has(ws.user_id));
+
+                if (!filteredRecords || filteredRecords.length === 0) {
                     listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Geen verstuurde weekstaten gevonden</div>';
                     return;
                 }
@@ -7011,7 +7615,7 @@
                 const projFullMap = {};
                 (window._adminProjects || []).forEach(p => { projFullMap[p.id] = p; });
 
-                listEl.innerHTML = weekRecords.map(ws => {
+                listEl.innerHTML = filteredRecords.map(ws => {
                     const userName = userMap[ws.user_id] || 'Onbekend';
                     const projCode = projMap[ws.project_id] || '?';
                     const approvalStatus = ws.approval_status || 'geen';
