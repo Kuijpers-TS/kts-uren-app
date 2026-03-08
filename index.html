@@ -2367,7 +2367,7 @@
             const TANDWIEL_DATA_URL = imgToDataUrl(document.getElementById('pdf-tandwiel'), 128, 'png');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            // DaxlinePro als beschikbaar, anders fallback naar helvetica
+            // DaxlinePro als beschikbaar (TTF), anders fallback naar helvetica
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             const pw = 297, ph = 210, ml = 15, mr = 15, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127]; // #07567F
@@ -5049,7 +5049,7 @@
             loadScript(jspdfUrls, 0, 'jsPDF', function() {
                 loadScript(autoTableUrls, 0, 'AutoTable', function() {
                     console.log('jsPDF + AutoTable volledig geladen!');
-                    // DaxlinePro fonts laden voor PDF
+                    // DaxlinePro TTF fonts laden voor PDF
                     var fs = document.createElement('script');
                     fs.src = 'daxline-pdf-fonts.js';
                     fs.onload = function() { console.log('DaxlinePro PDF fonts geladen'); };
