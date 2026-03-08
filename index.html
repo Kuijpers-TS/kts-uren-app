@@ -4264,7 +4264,8 @@
             const { data: profile } = await sb.from('users').select('*').eq('id', userId).single();
             if (profile) {
                 // Update laatste login tijdstip
-                sb.from('users').update({ updated_at: new Date().toISOString() }).eq('id', userId).then(() => {});
+                sb.from('users').update({ updated_at: new Date().toISOString() }).eq('id', userId)
+                    .then(({ error }) => { if (error) console.warn('updated_at update mislukt:', error.message); });
                 return profile;
             }
 
