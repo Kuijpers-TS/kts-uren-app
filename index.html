@@ -5442,7 +5442,7 @@
                 const proj = existing ? existing.project_id : null;
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Project</label><select id="adm-tar-project" onchange="updateTariffKmVisibility()"><option value="">Laden...</option></select></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Medewerker</label><select id="adm-tar-user"><option value="">Projectbreed (alle medewerkers)</option></select></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Medewerker</label><select id="adm-tar-user" onchange="updateTariffKmVisibility()"><option value="">Projectbreed (alle medewerkers)</option></select></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Functie</label><input type="text" id="adm-tar-function" placeholder="Bijv. Maintenance Engineer A" value="${existing ? existing.function_title || '' : ''}"></div>
                     <div class="form-row">
                         <div class="form-group"><label>Uurtarief (€)</label><input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? existing.hourly_rate || '' : ''}"></div>
@@ -5539,7 +5539,7 @@
             }
             updateTariffKmVisibility();
             // Gebruikers dropdown vullen
-            const { data: users } = await sb.from('users').select('id, email, name').order('name');
+            const { data: users } = await sb.from('users').select('id, email, name, allow_km, allow_hotel').order('name');
             window._tariffUsers = users || [];
             const userSel = document.getElementById('adm-tar-user');
             if (userSel && users) {
@@ -5549,9 +5549,16 @@
         }
 
         function updateTariffKmVisibility() {
-            // Km-tarief altijd tonen in tarief modal (km_single_trip staat nu op user)
             const kmWrap = document.getElementById('adm-tar-km-wrap');
-            if (kmWrap) kmWrap.style.display = 'block';
+            if (!kmWrap) return;
+            const userId = document.getElementById('adm-tar-user')?.value;
+            if (!userId) {
+                // Projectbreed — toon km-tarief
+                kmWrap.style.display = 'block';
+                return;
+            }
+            const user = (window._tariffUsers || []).find(u => u.id === userId);
+            kmWrap.style.display = (user && user.allow_km !== false) ? 'block' : 'none';
         }
 
         // ===== PROJECTTOEWIJZING FUNCTIES =====
