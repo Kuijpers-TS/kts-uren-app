@@ -6008,23 +6008,33 @@
                 doc.text(poData.company.name, ml, y);
                 y += 4;
                 if (poData.company.contact_name) {
-                    doc.text('Contactpersoon: ' + poData.company.contact_name, ml, y);
+                    doc.text('T.a.v. ' + poData.company.contact_name, ml, y);
                     y += 4;
                 }
                 if (poData.company.address) {
                     doc.text(poData.company.address, ml, y);
                     y += 4;
                 }
-                if (poData.company.postcode && poData.company.city) {
-                    doc.text(poData.company.postcode + ' ' + poData.company.city, ml, y);
+                if (poData.company.postcode || poData.company.city) {
+                    doc.text((poData.company.postcode || '') + ' ' + (poData.company.city || ''), ml, y);
                     y += 4;
                 }
+                if (poData.company.country && poData.company.country !== 'Nederland') {
+                    doc.text(poData.company.country, ml, y);
+                    y += 4;
+                }
+                if (poData.company.phone) {
+                    doc.text('Tel: ' + poData.company.phone, ml, y);
+                    y += 4;
+                }
+                const kvkLabel = poData.company.country === 'Duitsland' ? 'Handelsregister' : 'KVK';
+                const btwLabel = poData.company.country === 'Duitsland' ? 'USt-IdNr.' : 'BTW';
                 if (poData.company.kvk_number) {
-                    doc.text('KVK: ' + poData.company.kvk_number, ml, y);
+                    doc.text(kvkLabel + ': ' + poData.company.kvk_number, ml, y);
                     y += 4;
                 }
                 if (poData.company.btw_number) {
-                    doc.text('BTW: ' + poData.company.btw_number, ml, y);
+                    doc.text(btwLabel + ': ' + poData.company.btw_number, ml, y);
                     y += 4;
                 }
                 if (poData.company.email) {
@@ -6231,7 +6241,7 @@
                 loadInkooporders();
 
                 // 3. Open mailto
-                if (poData.company && poData.company.email) {
+                if (poData.company && (poData.company.email_po || poData.company.email)) {
                     const userName = poData.user ? (poData.user.full_name || poData.user.email) : '';
                     const projCode = poData.project ? poData.project.project_code : '';
                     const projName = poData.project ? poData.project.name : '';
@@ -6240,6 +6250,10 @@
                         : 'week ' + poData.includedWeeks[0];
                     const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                     const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
+
+                    // Gebruik email_po als ingesteld, anders primair e-mailadres
+                    const recipients = (poData.company.email_po || poData.company.email)
+                        .split(',').map(e => e.trim()).filter(Boolean).join(',');
 
                     const subject = encodeURIComponent('Inkooporder ' + poNumber + ' - ' + userName + ' - ' + projCode);
                     const body = encodeURIComponent(
@@ -6253,7 +6267,7 @@
                         'Mark Kuijpers\n' +
                         'Kuijpers Technical Services'
                     );
-                    window.open(`mailto:${poData.company.email}?subject=${subject}&body=${body}`);
+                    window.open(`mailto:${recipients}?subject=${subject}&body=${body}`);
                 }
             } catch (e) {
                 showToast('⚠️ Fout bij opslaan: ' + e.message);
@@ -6310,16 +6324,29 @@
                             <option value="kts" ${existing && existing.type === 'kts' ? 'selected' : ''}>KTS medewerker</option>
                         </select>
                     </div>
-                    <div class="form-group" style="margin-bottom:12px"><label>KVK-nummer</label><input type="text" id="adm-pers-kvk" placeholder="Bijv. 89133315" value="${existing ? existing.kvk_number || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>BTW-nummer</label><input type="text" id="adm-pers-btw" placeholder="Bijv. NL004694925B15" value="${existing ? existing.btw_number || '' : ''}"></div>
                     <div class="form-row">
                         <div class="form-group"><label>Adres</label><input type="text" id="adm-pers-addr" placeholder="Straat + nr" value="${existing ? existing.address || '' : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB" value="${existing ? existing.postcode || '' : ''}"></div>
+                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB / 66280" value="${existing ? existing.postcode || '' : ''}"></div>
                         <div class="form-group"><label>Plaats</label><input type="text" id="adm-pers-city" placeholder="Zeewolde" value="${existing ? existing.city || '' : ''}"></div>
                     </div>
-                    <div class="form-group" style="margin-top:12px"><label>E-mail</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl" value="${existing ? existing.email || '' : ''}"></div>
+                    <div class="form-row" style="margin-top:12px">
+                        <div class="form-group"><label>Land</label>
+                            <select id="adm-pers-country">
+                                <option value="Nederland" ${!existing || existing.country === 'Nederland' || !existing.country ? 'selected' : ''}>Nederland</option>
+                                <option value="Duitsland" ${existing && existing.country === 'Duitsland' ? 'selected' : ''}>Duitsland</option>
+                                <option value="België" ${existing && existing.country === 'België' ? 'selected' : ''}>België</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Telefoon</label><input type="tel" id="adm-pers-phone" placeholder="+31 6 12345678" value="${existing ? existing.phone || '' : ''}"></div>
+                    </div>
+                    <div class="form-row" style="margin-top:12px">
+                        <div class="form-group"><label>KVK / Handelsregister</label><input type="text" id="adm-pers-kvk" placeholder="89133315 / HRB 101387" value="${existing ? existing.kvk_number || '' : ''}"></div>
+                        <div class="form-group"><label>BTW / USt-IdNr.</label><input type="text" id="adm-pers-btw" placeholder="NL... / DE..." value="${existing ? existing.btw_number || '' : ''}"></div>
+                    </div>
+                    <div class="form-group" style="margin-top:12px"><label>E-mail (primair)</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl" value="${existing ? existing.email || '' : ''}"></div>
+                    <div class="form-group" style="margin-top:12px"><label>E-mail ontvangers PO/factuur</label><input type="text" id="adm-pers-email-po" placeholder="inkoop@bedrijf.nl, finance@bedrijf.nl" value="${existing ? existing.email_po || '' : ''}"><div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Komma-gescheiden. Als leeg wordt het primaire e-mailadres gebruikt.</div></div>
                 `;
             } else if (type === 'tarief') {
                 existing = isEdit ? (window._adminRates || [])[editIdx] : null;
@@ -6709,7 +6736,10 @@
                     address: document.getElementById('adm-pers-addr').value.trim() || null,
                     postcode: document.getElementById('adm-pers-postcode').value.trim() || null,
                     city: document.getElementById('adm-pers-city').value.trim() || null,
+                    country: document.getElementById('adm-pers-country').value || 'Nederland',
+                    phone: document.getElementById('adm-pers-phone').value.trim() || null,
                     email: document.getElementById('adm-pers-email').value.trim() || null,
+                    email_po: document.getElementById('adm-pers-email-po').value.trim() || null,
                 };
                 result = _editingId
                     ? await sb.from('companies').update(data).eq('id', _editingId)
