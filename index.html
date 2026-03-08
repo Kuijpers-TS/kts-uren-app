@@ -853,12 +853,12 @@
         <!-- ===== OVERZICHT SCREEN ===== -->
         <div class="screen" id="screen-overzicht">
             <div class="week-nav" style="margin-bottom:16px">
-                <button onclick="changeMonth(-1)">◀</button>
+                <button id="month-prev-btn" onclick="changeMonth(-1)">◀</button>
                 <div style="text-align:center">
                     <div class="week-label" id="month-label">Laden...</div>
                     <div class="week-total" id="month-total"></div>
                 </div>
-                <button onclick="changeMonth(1)">▶</button>
+                <button id="month-next-btn" onclick="changeMonth(1)">▶</button>
             </div>
 
             <div class="stats-grid" id="overview-stats">
@@ -3503,6 +3503,9 @@
             expandedDay = -1;
             await loadWeekFromSupabase();
 
+            // Clamp overzichtmaand naar project periode
+            clampOverviewToProject();
+
             closeModal('project-modal');
             showToast('✓ ' + currentProject.name);
         }
@@ -3536,6 +3539,9 @@
         async function renderOverview() {
           try {
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+
+            // Zorg dat overzichtmaand binnen projectperiode valt
+            clampOverviewToProject();
 
             // Project feature flags
             const hasKm = userHasKm();
@@ -3769,10 +3775,27 @@
             const lastDay = new Date(overviewYear, overviewMonth + 1, 0);
             let weekStart = getWeekMonday(firstDay);
 
+            // Project start/einddatum voor week-filtering
+            const projStartDate = currentProject && currentProject.start_date ? currentProject.start_date : null;
+            const projEndDate = currentProject && currentProject.end_date ? currentProject.end_date : null;
+
             while (weekStart <= lastDay) {
                 const wn = getISOWeek(weekStart);
                 const endD = new Date(weekStart);
                 endD.setDate(endD.getDate() + 6);
+
+                // Week overslaan als deze volledig vóór project startdatum valt
+                const weekEndStr = endD.toISOString().split('T')[0];
+                const weekStartStr = weekStart.toISOString().split('T')[0];
+                if (projStartDate && weekEndStr < projStartDate) {
+                    weekStart.setDate(weekStart.getDate() + 7);
+                    continue;
+                }
+                // Week overslaan als deze volledig ná project einddatum valt
+                if (projEndDate && weekStartStr > projEndDate) {
+                    weekStart.setDate(weekStart.getDate() + 7);
+                    continue;
+                }
                 const label = `Week ${wn} (${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
 
                 // Check of dit de week is waar de gebruiker nu op staat (uren tab)
@@ -3822,15 +3845,71 @@
             // Actieknoppen verbergen bij historische weken
             const actionBtnsEnd = document.getElementById('week-action-btns');
             if (actionBtnsEnd && weekSummary) actionBtnsEnd.style.display = 'none';
+
+            // Navigatieknoppen disablen op project start/eind grens
+            const prevBtn = document.getElementById('month-prev-btn');
+            const nextBtn = document.getElementById('month-next-btn');
+            if (prevBtn && nextBtn && currentProject) {
+                let canGoPrev = true, canGoNext = true;
+                if (currentProject.start_date) {
+                    const sd = new Date(currentProject.start_date);
+                    canGoPrev = !(overviewYear < sd.getFullYear() || (overviewYear === sd.getFullYear() && overviewMonth <= sd.getMonth()));
+                }
+                if (currentProject.end_date) {
+                    const ed = new Date(currentProject.end_date);
+                    canGoNext = !(overviewYear > ed.getFullYear() || (overviewYear === ed.getFullYear() && overviewMonth >= ed.getMonth()));
+                }
+                prevBtn.disabled = !canGoPrev;
+                prevBtn.style.opacity = canGoPrev ? '1' : '0.3';
+                nextBtn.disabled = !canGoNext;
+                nextBtn.style.opacity = canGoNext ? '1' : '0.3';
+            }
           } catch (err) {
             console.error('renderOverview fout:', err);
           }
         }
 
+        // Clamp overzichtmaand zodat deze binnen project start/einddatum valt
+        function clampOverviewToProject() {
+            if (!currentProject) return;
+            if (currentProject.start_date) {
+                const sd = new Date(currentProject.start_date);
+                if (overviewYear < sd.getFullYear() || (overviewYear === sd.getFullYear() && overviewMonth < sd.getMonth())) {
+                    overviewMonth = sd.getMonth();
+                    overviewYear = sd.getFullYear();
+                }
+            }
+            if (currentProject.end_date) {
+                const ed = new Date(currentProject.end_date);
+                if (overviewYear > ed.getFullYear() || (overviewYear === ed.getFullYear() && overviewMonth > ed.getMonth())) {
+                    overviewMonth = ed.getMonth();
+                    overviewYear = ed.getFullYear();
+                }
+            }
+        }
+
         async function changeMonth(dir) {
-            overviewMonth += dir;
-            if (overviewMonth > 11) { overviewMonth = 0; overviewYear++; }
-            if (overviewMonth < 0) { overviewMonth = 11; overviewYear--; }
+            let newMonth = overviewMonth + dir;
+            let newYear = overviewYear;
+            if (newMonth > 11) { newMonth = 0; newYear++; }
+            if (newMonth < 0) { newMonth = 11; newYear--; }
+
+            // Blokkeer navigatie buiten project start/einddatum
+            if (currentProject) {
+                if (currentProject.start_date) {
+                    const sd = new Date(currentProject.start_date);
+                    // Maand vóór startmaand? Blokkeer
+                    if (newYear < sd.getFullYear() || (newYear === sd.getFullYear() && newMonth < sd.getMonth())) return;
+                }
+                if (currentProject.end_date) {
+                    const ed = new Date(currentProject.end_date);
+                    // Maand ná eindmaand? Blokkeer
+                    if (newYear > ed.getFullYear() || (newYear === ed.getFullYear() && newMonth > ed.getMonth())) return;
+                }
+            }
+
+            overviewMonth = newMonth;
+            overviewYear = newYear;
             showOverviewLoading();
             await renderOverview();
         }
