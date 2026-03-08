@@ -919,6 +919,7 @@
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Bedrijven</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('gebruikers')" id="admin-tab-gebruikers">Gebruikers</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('inkooporders')" id="admin-tab-inkooporders">Inkooporders</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('weekstaten')" id="admin-tab-weekstaten">Weekstaten</button>
             </div>
 
@@ -953,6 +954,59 @@
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+
+            <!-- ===== INKOOPORDERS TAB ===== -->
+            <div id="admin-inkooporders" style="display:none">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Inkooporder Generator</div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Project</label>
+                            <select id="po-filter-project" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer project --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Medewerker</label>
+                            <select id="po-filter-user" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer medewerker --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Jaar</label>
+                            <select id="po-filter-year" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer jaar --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Maand</label>
+                            <select id="po-filter-month" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer maand --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <input type="checkbox" id="po-use-week" style="width:16px;height:16px;accent-color:var(--kts-blue);cursor:pointer">
+                        <label for="po-use-week" style="font-size:0.85rem;cursor:pointer">Per week selecteren</label>
+                    </div>
+                    <div id="po-week-selector" style="display:none">
+                        <div class="form-group">
+                            <label>Week</label>
+                            <select id="po-filter-week" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                                <option value="">-- Selecteer week --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="previewPO()" style="width:100%;margin-top:8px">👁 Preview</button>
+                </div>
+                <div id="po-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
+                    <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
+                    <div id="po-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
+                    <button class="btn btn-primary" onclick="generatePOPDF()" style="width:100%;margin-top:16px">📄 Genereer PO PDF</button>
+                </div>
             </div>
 
             <!-- ===== WEEKSTATEN TAB ===== -->
@@ -5040,10 +5094,18 @@
                 return;
             }
 
-            // Niet tonen als de week niet de huidige actieve week is (bijv. navigatie naar andere week)
+            // Niet tonen als project niet actief of nog niet gestart
             if (!currentProject || currentProject.status === 'inactive') {
                 container.innerHTML = '';
                 return;
+            }
+            if (currentProject.start_date) {
+                const weekFriday = new Date(currentWeekMonday);
+                weekFriday.setDate(weekFriday.getDate() + 4);
+                if (weekFriday.toISOString().split('T')[0] < currentProject.start_date) {
+                    container.innerHTML = '';
+                    return;
+                }
             }
 
             // Check week status
@@ -5251,7 +5313,7 @@
         }
 
         function switchAdminTab(tab) {
-            ['projecten','personen','gebruikers','tarieven','weekstaten'].forEach(t => {
+            ['projecten','personen','gebruikers','tarieven','inkooporders','weekstaten'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = t === tab ? 'block' : 'none';
                 const btn = document.getElementById('admin-tab-' + t);
@@ -5260,6 +5322,7 @@
                     else { btn.className = 'btn btn-sm btn-secondary'; btn.style.flex = '1'; }
                 }
             });
+            if (tab === 'inkooporders') loadInkooporderFilters();
             if (tab === 'weekstaten') loadWeekstaten();
         }
 
@@ -5396,6 +5459,570 @@
             }
         }
 
+        // ===== INKOOPORDER FUNCTIONS =====
+        function loadInkooporderFilters() {
+            // Vul project dropdown
+            const projSel = document.getElementById('po-filter-project');
+            if (projSel && window._adminProjects) {
+                projSel.innerHTML = '<option value="">-- Selecteer project --</option>' +
+                    window._adminProjects.map(p => `<option value="${p.id}">${p.project_code} — ${p.name}</option>`).join('');
+            }
+
+            // Vul medewerker dropdown
+            const userSel = document.getElementById('po-filter-user');
+            if (userSel && window._adminUsers) {
+                userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
+                    window._adminUsers.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+            }
+
+            // Vul jaar dropdown
+            const yearSel = document.getElementById('po-filter-year');
+            if (yearSel) {
+                const currentYear = new Date().getFullYear();
+                const years = [];
+                for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+                    years.push(y);
+                }
+                yearSel.innerHTML = '<option value="">-- Selecteer jaar --</option>' +
+                    years.map(y => `<option value="${y}">${y}</option>`).join('');
+            }
+
+            // Vul maand dropdown
+            const monthSel = document.getElementById('po-filter-month');
+            if (monthSel) {
+                const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+                monthSel.innerHTML = '<option value="">-- Selecteer maand --</option>' +
+                    months.map((m, i) => `<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
+                monthSel.onchange = () => populateWeekDropdown();
+            }
+
+            // Week checkbox listener
+            const useWeekCb = document.getElementById('po-use-week');
+            if (useWeekCb) {
+                useWeekCb.onchange = () => {
+                    const weekSel = document.getElementById('po-week-selector');
+                    if (weekSel) weekSel.style.display = useWeekCb.checked ? 'block' : 'none';
+                    if (useWeekCb.checked) populateWeekDropdown();
+                };
+            }
+        }
+
+        function populateWeekDropdown() {
+            const yearVal = document.getElementById('po-filter-year').value;
+            const monthVal = document.getElementById('po-filter-month').value;
+            if (!yearVal || !monthVal) {
+                document.getElementById('po-filter-week').innerHTML = '<option value="">-- Selecteer week --</option>';
+                return;
+            }
+
+            const year = parseInt(yearVal);
+            const month = parseInt(monthVal);
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const weeks = new Set();
+
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                const weekNum = Math.ceil((d.getDate() + new Date(d.getFullYear(), d.getMonth(), 1).getDay()) / 7);
+                weeks.add(weekNum);
+            }
+
+            const weekSel = document.getElementById('po-filter-week');
+            if (weekSel) {
+                weekSel.innerHTML = '<option value="">-- Selecteer week --</option>' +
+                    Array.from(weeks).sort((a, b) => a - b).map(w => `<option value="${w}">Week ${String(w).padStart(2,'0')}</option>`).join('');
+            }
+        }
+
+        async function aggregatePOData(userId, projectId, year, month, weekNumber=null) {
+            const sb = getSupabase();
+            if (!sb) return null;
+
+            // Query time_entries
+            const { data: entries, error: entriesErr } = await sb
+                .from('time_entries')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('project_id', projectId);
+            if (entriesErr) {
+                console.error('Error loading time entries:', entriesErr);
+                return null;
+            }
+
+            // Filter by month/year and optional week
+            const filtered = (entries || []).filter(e => {
+                if (!e.entry_date) return false;
+                const d = new Date(e.entry_date);
+                if (d.getFullYear() !== parseInt(year) || String(d.getMonth()+1).padStart(2,'0') !== month) return false;
+                if (weekNumber) {
+                    const weekNum = Math.ceil((d.getDate() + new Date(d.getFullYear(), d.getMonth(), 1).getDay()) / 7);
+                    if (weekNum !== parseInt(weekNumber)) return false;
+                }
+                return true;
+            });
+
+            // Query rates (user-specific first, then project-wide, then defaults)
+            const { data: userRates } = await sb
+                .from('rates')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('project_id', projectId);
+            const { data: projRates } = await sb
+                .from('rates')
+                .select('*')
+                .eq('user_id', null)
+                .eq('project_id', projectId);
+
+            let rate = {
+                hourly_rate: 85,
+                km_rate: 0.50,
+                saturday_multiplier: 1.50,
+                sunday_holiday_multiplier: 2.00
+            };
+
+            if (userRates && userRates.length > 0) {
+                rate = userRates[0];
+            } else if (projRates && projRates.length > 0) {
+                rate = projRates[0];
+            }
+
+            // Get user's company
+            const { data: user } = await sb.from('users').select('id, name, company_id').eq('id', userId).single();
+            let company = null;
+            if (user && user.company_id) {
+                const { data: comp } = await sb.from('companies').select('*').eq('id', user.company_id).single();
+                company = comp;
+            }
+
+            // Get user's hotel_rate if not in the rate record
+            const hotelRate = user && user.hotel_rate ? user.hotel_rate : 110;
+
+            // Group by week
+            const weekData = {};
+            filtered.forEach(entry => {
+                const entryDate = new Date(entry.entry_date);
+                const weekNum = Math.ceil((entryDate.getDate() + new Date(entryDate.getFullYear(), entryDate.getMonth(), 1).getDay()) / 7);
+                const weekKey = `${entryDate.getFullYear()}_${String(weekNum).padStart(2,'0')}`;
+
+                if (!weekData[weekKey]) {
+                    weekData[weekKey] = {
+                        regHours: 0,
+                        satHours: 0,
+                        sunHours: 0,
+                        totalKm: 0,
+                        hotelNights: 0,
+                        weekNum: weekNum,
+                        year: entryDate.getFullYear()
+                    };
+                }
+
+                const dayOfWeek = entryDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    weekData[weekKey].regHours += (entry.hours || 0);
+                } else if (dayOfWeek === 6) {
+                    weekData[weekKey].satHours += (entry.hours || 0);
+                } else if (dayOfWeek === 0) {
+                    weekData[weekKey].sunHours += (entry.hours || 0);
+                }
+
+                if (entry.kilometers) {
+                    weekData[weekKey].totalKm += entry.kilometers;
+                }
+                if (entry.hotel_nights) {
+                    weekData[weekKey].hotelNights += entry.hotel_nights;
+                }
+            });
+
+            // Get project info
+            const { data: project } = await sb.from('projects').select('*').eq('id', projectId).single();
+
+            return {
+                userId: userId,
+                projectId: projectId,
+                year: parseInt(year),
+                month: parseInt(month),
+                weekNumber: weekNumber ? parseInt(weekNumber) : null,
+                user: user,
+                company: company,
+                project: project,
+                rate: rate,
+                hotelRate: hotelRate,
+                weekData: weekData,
+                entries: filtered
+            };
+        }
+
+        async function previewPO() {
+            const userId = document.getElementById('po-filter-user').value;
+            const projectId = document.getElementById('po-filter-project').value;
+            const year = document.getElementById('po-filter-year').value;
+            const month = document.getElementById('po-filter-month').value;
+            const useWeek = document.getElementById('po-use-week').checked;
+            const weekNumber = useWeek ? document.getElementById('po-filter-week').value : null;
+
+            if (!userId || !projectId || !year || !month) {
+                showToast('⚠️ Selecteer project, medewerker, jaar en maand');
+                return;
+            }
+
+            const poData = await aggregatePOData(userId, projectId, year, month, weekNumber);
+            if (!poData) {
+                showToast('⚠️ Geen data gevonden');
+                return;
+            }
+
+            // Render preview
+            const preview = document.getElementById('po-preview');
+            const content = document.getElementById('po-preview-content');
+
+            let html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
+            html += '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px;font-weight:600">Beschrijving</th><th style="text-align:right;padding:6px;font-weight:600">Uren</th><th style="text-align:right;padding:6px;font-weight:600">Tarief</th><th style="text-align:right;padding:6px;font-weight:600">Bedrag</th></tr>';
+
+            let subtotal = 0;
+
+            // Per week data
+            Object.keys(poData.weekData).sort().forEach(weekKey => {
+                const week = poData.weekData[weekKey];
+                const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
+
+                // Regular hours
+                if (week.regHours > 0) {
+                    const amount = week.regHours * poData.rate.hourly_rate;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Reguliere uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.regHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${poData.rate.hourly_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    subtotal += amount;
+                }
+
+                // Saturday hours
+                if (week.satHours > 0) {
+                    const amount = week.satHours * poData.rate.hourly_rate * poData.rate.saturday_multiplier;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.satHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(poData.rate.hourly_rate * poData.rate.saturday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    subtotal += amount;
+                }
+
+                // Sunday hours
+                if (week.sunHours > 0) {
+                    const amount = week.sunHours * poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.sunHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    subtotal += amount;
+                }
+            });
+
+            // Total km
+            let totalKm = 0;
+            Object.values(poData.weekData).forEach(w => totalKm += w.totalKm);
+            if (totalKm > 0) {
+                const kmAmount = totalKm * poData.rate.km_rate;
+                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${poData.rate.km_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(kmAmount)}</td></tr>`;
+                subtotal += kmAmount;
+            }
+
+            // Total hotel nights
+            let totalHotel = 0;
+            Object.values(poData.weekData).forEach(w => totalHotel += w.hotelNights);
+            if (totalHotel > 0) {
+                const hotelAmount = totalHotel * poData.hotelRate;
+                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${poData.hotelRate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(hotelAmount)}</td></tr>`;
+                subtotal += hotelAmount;
+            }
+
+            // Totals
+            const btw = subtotal * 0.21;
+            const total = subtotal + btw;
+
+            html += '<tr style="background:#f3f4f6"><td colspan="3" style="padding:8px;text-align:right;font-weight:600">Subtotaal</td><td style="text-align:right;padding:8px;font-weight:600">' + fmtEuroPdf(subtotal) + '</td></tr>';
+            html += '<tr style="background:#f3f4f6"><td colspan="3" style="padding:8px;text-align:right;font-weight:600">BTW 21%</td><td style="text-align:right;padding:8px;font-weight:600">' + fmtEuroPdf(btw) + '</td></tr>';
+            html += '<tr style="background:#dbeafe;font-weight:600"><td colspan="3" style="padding:8px;text-align:right">Totaal incl. BTW</td><td style="text-align:right;padding:8px;color:var(--kts-blue)">' + fmtEuroPdf(total) + '</td></tr>';
+            html += '</table>';
+
+            // Store poData globally for PDF generation
+            window._currentPOData = poData;
+
+            content.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        function generatePOPDF() {
+            if (!window._currentPOData) {
+                showToast('⚠️ Maak eerst een preview');
+                return;
+            }
+            generatePO_PDF(window._currentPOData);
+        }
+
+        async function generatePO_PDF(poData) {
+            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return; }
+
+            const pdfImages = window.KTS_PDF_IMAGES || {};
+            const KTS_LOGO_B64 = pdfImages.logo || null;
+            const { jsPDF } = window.jspdf;
+
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
+            doc.setFont(pdfFont);
+
+            const pw = 210, ph = 297;
+            const ml = 15, mr = 15, uw = pw - ml - mr;
+            const ktsBlue = [7, 86, 127];
+
+            // Logo at top left
+            if (KTS_LOGO_B64) {
+                try {
+                    doc.addImage(KTS_LOGO_B64, 'PNG', ml, 10, 30, 15);
+                } catch(e) {
+                    console.warn('Could not add logo:', e);
+                }
+            }
+
+            // KTS company info top left
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.text(KTS_INFO.naam, ml, 28);
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(8);
+            doc.text(KTS_INFO.adres + ' · ' + KTS_INFO.postcode, ml, 33);
+            doc.text(KTS_INFO.land, ml, 37);
+
+            // Title "INKOOPORDER" top right
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(18);
+            doc.setTextColor(...ktsBlue);
+            doc.text('INKOOPORDER', pw - mr, 18, { align: 'right' });
+
+            // PO number, date, project code
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            const today = new Date();
+            const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
+            const poNumber = poData.project.project_code + '-' + ddmmyyyy;
+            doc.text('PO-nummer: ' + poNumber, pw - mr, 28, { align: 'right' });
+            doc.text('Datum: ' + today.toLocaleDateString('nl-NL'), pw - mr, 32, { align: 'right' });
+            doc.text('Project: ' + poData.project.project_code, pw - mr, 36, { align: 'right' });
+
+            // Leverancier block
+            let y = 45;
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.text('LEVERANCIER', ml, y);
+            y += 6;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            if (poData.company) {
+                doc.text(poData.company.name, ml, y);
+                y += 4;
+                if (poData.company.contact_name) {
+                    doc.text('Contactpersoon: ' + poData.company.contact_name, ml, y);
+                    y += 4;
+                }
+                if (poData.company.address) {
+                    doc.text(poData.company.address, ml, y);
+                    y += 4;
+                }
+                if (poData.company.postcode && poData.company.city) {
+                    doc.text(poData.company.postcode + ' ' + poData.company.city, ml, y);
+                    y += 4;
+                }
+                if (poData.company.kvk_number) {
+                    doc.text('KVK: ' + poData.company.kvk_number, ml, y);
+                    y += 4;
+                }
+                if (poData.company.btw_number) {
+                    doc.text('BTW: ' + poData.company.btw_number, ml, y);
+                    y += 4;
+                }
+                if (poData.company.email) {
+                    doc.text('E-mail: ' + poData.company.email, ml, y);
+                    y += 4;
+                }
+            } else {
+                doc.text('(Geen bedrijf ingesteld)', ml, y);
+                y += 8;
+            }
+
+            // Leveradres block (KTS)
+            y += 4;
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.text('LEVERADRES', ml, y);
+            y += 6;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.text(KTS_INFO.naam, ml, y);
+            y += 4;
+            doc.text(KTS_INFO.adres, ml, y);
+            y += 4;
+            doc.text(KTS_INFO.postcode + ' ' + KTS_INFO.land, ml, y);
+            y += 8;
+
+            // Line items table
+            const tableColumn = ['Beschrijving', 'Uren/Aantal', 'Tarief', 'Bedrag'];
+            const tableRows = [];
+
+            let subtotal = 0;
+
+            // Per week data
+            Object.keys(poData.weekData).sort().forEach(weekKey => {
+                const week = poData.weekData[weekKey];
+                const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
+
+                // Regular hours
+                if (week.regHours > 0) {
+                    const amount = week.regHours * poData.rate.hourly_rate;
+                    tableRows.push([
+                        `Reguliere uren (ma-vr) — ${weekLabel}`,
+                        week.regHours.toFixed(2),
+                        '€ ' + poData.rate.hourly_rate.toFixed(2).replace('.', ','),
+                        fmtEuroPdf(amount)
+                    ]);
+                    subtotal += amount;
+                }
+
+                // Saturday hours
+                if (week.satHours > 0) {
+                    const amount = week.satHours * poData.rate.hourly_rate * poData.rate.saturday_multiplier;
+                    tableRows.push([
+                        `Zaterdaguren — ${weekLabel}`,
+                        week.satHours.toFixed(2),
+                        '€ ' + (poData.rate.hourly_rate * poData.rate.saturday_multiplier).toFixed(2).replace('.', ','),
+                        fmtEuroPdf(amount)
+                    ]);
+                    subtotal += amount;
+                }
+
+                // Sunday hours
+                if (week.sunHours > 0) {
+                    const amount = week.sunHours * poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier;
+                    tableRows.push([
+                        `Zondaguren — ${weekLabel}`,
+                        week.sunHours.toFixed(2),
+                        '€ ' + (poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier).toFixed(2).replace('.', ','),
+                        fmtEuroPdf(amount)
+                    ]);
+                    subtotal += amount;
+                }
+            });
+
+            // Total km
+            let totalKm = 0;
+            Object.values(poData.weekData).forEach(w => totalKm += w.totalKm);
+            if (totalKm > 0) {
+                const kmAmount = totalKm * poData.rate.km_rate;
+                tableRows.push([
+                    'Kilometrages',
+                    totalKm.toFixed(0),
+                    '€ ' + poData.rate.km_rate.toFixed(2).replace('.', ','),
+                    fmtEuroPdf(kmAmount)
+                ]);
+                subtotal += kmAmount;
+            }
+
+            // Total hotel nights
+            let totalHotel = 0;
+            Object.values(poData.weekData).forEach(w => totalHotel += w.hotelNights);
+            if (totalHotel > 0) {
+                const hotelAmount = totalHotel * poData.hotelRate;
+                tableRows.push([
+                    'Hotelovernachtingen',
+                    totalHotel.toFixed(0),
+                    '€ ' + poData.hotelRate.toFixed(2).replace('.', ','),
+                    fmtEuroPdf(hotelAmount)
+                ]);
+                subtotal += hotelAmount;
+            }
+
+            // Add autoTable
+            doc.autoTable({
+                startY: y,
+                head: [tableColumn],
+                body: tableRows,
+                margin: { left: ml, right: mr },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { halign: 'right' },
+                    2: { halign: 'right' },
+                    3: { halign: 'right' }
+                },
+                headStyles: {
+                    fillColor: ktsBlue,
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 9
+                },
+                bodyStyles: {
+                    fontSize: 8
+                }
+            });
+
+            y = doc.lastAutoTable.finalY + 10;
+
+            // Totals
+            const btw = subtotal * 0.21;
+            const total = subtotal + btw;
+
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.text('Subtotaal:', pw - mr - 40, y, { align: 'right' });
+            doc.text(fmtEuroPdf(subtotal), pw - mr, y, { align: 'right' });
+            y += 5;
+            doc.text('BTW 21%:', pw - mr - 40, y, { align: 'right' });
+            doc.text(fmtEuroPdf(btw), pw - mr, y, { align: 'right' });
+            y += 5;
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(...ktsBlue);
+            doc.text('Totaal incl. BTW:', pw - mr - 40, y, { align: 'right' });
+            doc.text(fmtEuroPdf(total), pw - mr, y, { align: 'right' });
+
+            // Payment terms
+            y += 12;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Betalingstermijn: Betaling binnen 30 dagen na factuurdatum', ml, y);
+
+            // Footer with bank info
+            y = ph - 25;
+            doc.setFontSize(8);
+            doc.text(KTS_INFO.naam + ' · KVK: ' + KTS_INFO.kvk + ' · BTW: ' + KTS_INFO.btw, ml, y);
+            y += 4;
+            doc.text('IBAN: ' + KTS_INFO.iban + ' · BIC: ' + KTS_INFO.bic, ml, y);
+            y += 4;
+            doc.text('Tel: ' + KTS_INFO.tel2 + ' · E-mail: ' + KTS_INFO.email, ml, y);
+
+            // Save to Supabase and open mailto
+            const pdfData = doc.output('datauristring');
+            const fileName = poNumber.replace(/\s+/g, '_') + '.pdf';
+            const filePath = `${poData.year}/${poData.project.project_code}/${fileName}`;
+
+            // Download the PDF
+            doc.save(fileName);
+
+            // Upload to Supabase
+            uploadPOToSupabase(filePath, doc.output('arraybuffer'), poData);
+        }
+
+        async function uploadPOToSupabase(filePath, pdfBuffer, poData) {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            try {
+                const { data, error } = await sb.storage.from('inkooporders').upload(filePath, new Blob([pdfBuffer], {type: 'application/pdf'}), {
+                    upsert: true
+                });
+                if (error) throw error;
+
+                showToast('✓ Inkooporder opgeslagen');
+
+                // Open mailto (optional)
+                if (poData.company && poData.company.email) {
+                    const subject = encodeURIComponent('Inkooporder ' + poData.project.project_code);
+                    const body = encodeURIComponent('Bijgevoegd ontvangt u de inkooporder van Kuijpers Technical Services.');
+                    window.open(`mailto:${poData.company.email}?subject=${subject}&body=${body}`);
+                }
+            } catch (e) {
+                showToast('⚠️ Fout bij opslaan: ' + e.message);
+            }
+        }
+
         // ===== ADMIN MODALS: Nieuw/bewerk project/persoon/tarief =====
         let _editingId = null; // ID van het record dat bewerkt wordt (null = nieuw)
 
@@ -5504,6 +6131,12 @@
                             <input type="checkbox" id="adm-user-rates" ${chk('show_rates')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Tarieven zichtbaar
                         </label>
                     </div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Bedrijf (leverancier)</div>
+                    <div class="form-group" style="margin-bottom:16px">
+                        <select id="adm-user-company">
+                            <option value="">-- Geen bedrijf --</option>
+                        </select>
+                    </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Tarieven</div>
                     <div class="form-row">
                         <div class="form-group" id="adm-user-km-wrap" style="${existing && existing.allow_km === false ? 'display:none' : ''}"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
@@ -5542,6 +6175,18 @@
                         if (userSel) userSel.value = userId;
                     }
                 });
+            }
+
+            // Vul bedrijf-dropdown bij gebruiker
+            if (type === 'gebruiker') {
+                const compSel = document.getElementById('adm-user-company');
+                if (compSel && window._adminCompanies) {
+                    compSel.innerHTML = '<option value="">-- Geen bedrijf --</option>' +
+                        window._adminCompanies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    if (existing && existing.company_id) {
+                        compSel.value = existing.company_id;
+                    }
+                }
             }
 
             // Laad projecttoewijzingen bij bestaand project
@@ -5863,6 +6508,7 @@
                     can_declare_expenses: document.getElementById('adm-user-expenses').checked,
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
+                    company_id: document.getElementById('adm-user-company').value || null,
                 };
                 result = await sb.from('users').update(data).eq('id', _editingId);
             }
