@@ -5931,7 +5931,7 @@
             if (!sb) { showToast('⚠️ Niet verbonden met database'); return; }
 
             // Projecten laden
-            const { data: projects } = await sb.from('projects').select('*, client_company_id(name, email, contact_name)').order('created_at', { ascending: false });
+            const { data: projects } = await sb.from('projects').select('*, client_company_id(id, name, email, contact_name), po_company_id').order('created_at', { ascending: false });
             window._adminProjects = projects || [];
             const filteredProjects = (projects || []).filter(p => _adminTestMode ? p.is_test === true : p.is_test !== true);
             const projList = document.getElementById('admin-project-list');
@@ -6893,12 +6893,30 @@
             // Gebruiker ophalen
             const { data: user } = await sb.from('users').select('*').eq('id', userId).single();
 
-            // Klantbedrijf ophalen via project (niet via user)
-            const { data: project_for_company } = await sb.from('projects').select('client_company_id').eq('id', projectId).single();
+            // Bedrijven ophalen via project
+            const { data: project_for_companies } = await sb.from('projects').select('client_company_id, po_company_id').eq('id', projectId).single();
+
+            // Factuur-ontvanger (opdrachtgever/eindklant)
             let company = null;
-            if (project_for_company && project_for_company.client_company_id) {
-                const { data: comp } = await sb.from('companies').select('*').eq('id', project_for_company.client_company_id).single();
+            if (project_for_companies && project_for_companies.client_company_id) {
+                const { data: comp } = await sb.from('companies').select('*').eq('id', project_for_companies.client_company_id).single();
                 company = comp;
+            }
+
+            // IO-ontvanger (opdrachtnemer/tussenpersoon) — als niet ingesteld: zelfde als factuur
+            let poCompany = null;
+            if (project_for_companies && project_for_companies.po_company_id) {
+                const { data: poComp } = await sb.from('companies').select('*').eq('id', project_for_companies.po_company_id).single();
+                poCompany = poComp;
+            } else {
+                poCompany = company; // fallback naar factuur-ontvanger
+            }
+
+            // ZZP-bedrijf ophalen via user (voor LEVERANCIER op IO)
+            let zzpCompany = null;
+            if (user && user.company_id) {
+                const { data: zzpComp } = await sb.from('companies').select('*').eq('id', user.company_id).single();
+                zzpCompany = zzpComp;
             }
             const hotelRate = (user && parseFloat(user.hotel_rate)) || 110;
 
@@ -6936,7 +6954,7 @@
             return {
                 userId, projectId, year: yr, month: mo,
                 weekNumber: weekNumber ? parseInt(weekNumber) : null,
-                user, company, project, rate, hotelRate, weekData, entries: filtered,
+                user, company, poCompany, zzpCompany, project, rate, hotelRate, weekData, entries: filtered,
                 includedWeeks, skippedWeeks, wachtOpGoedkeuring
             };
         }
@@ -7071,250 +7089,231 @@
 
             const pdfImages = window.KTS_PDF_IMAGES || {};
             const KTS_LOGO_B64 = pdfImages.logo || null;
+            const GEAR_B64 = pdfImages.gear || null;
             const { jsPDF } = window.jspdf;
 
-            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             doc.setFont(pdfFont);
 
-            const pw = 210, ph = 297;
-            const ml = 15, mr = 15, uw = pw - ml - mr;
+            const pw = 297, ph = 210;
+            const ml = 12, mr = 12, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
+            const headerBlue = '#07567F';
 
-            // Logo at top left
-            if (KTS_LOGO_B64) {
-                try {
-                    doc.addImage(KTS_LOGO_B64, 'PNG', ml, 10, 30, 15);
-                } catch(e) {
-                    console.warn('Could not add logo:', e);
-                }
-            }
-
-            // KTS company info top left
-            doc.setFont(pdfFont, 'bold');
-            doc.setFontSize(10);
-            doc.text(KTS_INFO.naam, ml, 28);
-            doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(8);
-            doc.text(KTS_INFO.adres + ' · ' + KTS_INFO.postcode, ml, 33);
-            doc.text(KTS_INFO.land, ml, 37);
-
-            // Title "INKOOPORDER" top right
-            doc.setFont(pdfFont, 'bold');
-            doc.setFontSize(18);
-            doc.setTextColor(...ktsBlue);
-            doc.text('INKOOPORDER', pw - mr, 18, { align: 'right' });
-
-            // PO number, date, project code
-            doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(9);
-            doc.setTextColor(0, 0, 0);
             const today = new Date();
             const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
             const poNumber = poData.project.project_code + '-' + ddmmyyyy;
-            doc.text('PO-nummer: ' + poNumber, pw - mr, 28, { align: 'right' });
-            doc.text('Datum: ' + today.toLocaleDateString('nl-NL'), pw - mr, 32, { align: 'right' });
-            doc.text('Project: ' + poData.project.project_code, pw - mr, 36, { align: 'right' });
+            const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+            const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
+            const userName = poData.user ? (poData.user.name || poData.user.email) : '';
+            const wekenTekst = poData.includedWeeks.length > 1
+                ? 'Weken ' + poData.includedWeeks.join(', ')
+                : 'Week ' + poData.includedWeeks[0];
 
-            // Leverancier block
-            let y = 45;
+            // ===== HEADER: Tandwiel + titel links, Logo + KTS info rechts (zoals weekstaat) =====
+            // Tandwiel icoon links
+            if (GEAR_B64) {
+                try { doc.addImage(GEAR_B64, 'PNG', ml, 8, 10, 10); } catch(e) {}
+            }
             doc.setFont(pdfFont, 'bold');
-            doc.setFontSize(10);
-            doc.text('LEVERANCIER', ml, y);
-            y += 6;
+            doc.setFontSize(20);
+            doc.setTextColor(...ktsBlue);
+            doc.text('INKOOPORDER', ml + (GEAR_B64 ? 13 : 0), 16);
+            doc.setTextColor(0, 0, 0);
+
+            // Logo rechtsboven
+            if (KTS_LOGO_B64) {
+                try { doc.addImage(KTS_LOGO_B64, 'PNG', pw - mr - 42, 6, 42, 18); } catch(e) {}
+            }
+            // KTS contactinfo rechts
+            const infoX = pw - mr;
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(80, 80, 80);
+            doc.text(KTS_INFO.adres, infoX, 28, { align: 'right' });
+            doc.text(KTS_INFO.postcode, infoX, 32, { align: 'right' });
+            doc.text(KTS_INFO.tel + '    ' + KTS_INFO.tel2, infoX, 36, { align: 'right' });
+            doc.setTextColor(...ktsBlue);
+            doc.text(KTS_INFO.email + '    ' + 'www.kuijpers-ts.nl', infoX, 40, { align: 'right' });
+            doc.setTextColor(0, 0, 0);
+
+            // ===== INFO BLOK: Medewerker, Periode, Project, Klant (zoals weekstaat) =====
+            let y = 48;
+            const col1 = ml, col2 = ml + 95, col3 = ml + 165;
+
+            // Labels
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(...ktsBlue);
+            doc.text('Medewerker:', col1, y);
+            doc.text('Periode:', col2, y);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(9);
-            if (poData.company) {
-                doc.text(poData.company.name, ml, y);
-                y += 4;
-                if (poData.company.contact_name) {
-                    doc.text('T.a.v. ' + poData.company.contact_name, ml, y);
-                    y += 4;
-                }
-                if (poData.company.address) {
-                    doc.text(poData.company.address, ml, y);
-                    y += 4;
-                }
-                if (poData.company.postcode || poData.company.city) {
-                    doc.text((poData.company.postcode || '') + ' ' + (poData.company.city || ''), ml, y);
-                    y += 4;
-                }
-                if (poData.company.country && poData.company.country !== 'Nederland') {
-                    doc.text(poData.company.country, ml, y);
-                    y += 4;
-                }
-                if (poData.company.phone) {
-                    doc.text('Tel: ' + poData.company.phone, ml, y);
-                    y += 4;
-                }
-                const kvkLabel = poData.company.country === 'Duitsland' ? 'Handelsregister' : 'KVK';
-                const btwLabel = poData.company.country === 'Duitsland' ? 'USt-IdNr.' : 'BTW';
-                if (poData.company.kvk_number) {
-                    doc.text(kvkLabel + ': ' + poData.company.kvk_number, ml, y);
-                    y += 4;
-                }
-                if (poData.company.btw_number) {
-                    doc.text(btwLabel + ': ' + poData.company.btw_number, ml, y);
-                    y += 4;
-                }
-                if (poData.company.email) {
-                    doc.text('E-mail: ' + poData.company.email, ml, y);
-                    y += 4;
-                }
+            doc.setTextColor(0, 0, 0);
+            doc.text(userName, col1, y + 5);
+            doc.text(maandTekst + ' (' + wekenTekst + ')', col2, y + 5);
+
+            y += 14;
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsBlue);
+            doc.text('Project:', col1, y);
+            doc.text('Klant:', col2, y);
+            doc.text('PO-nummer:', col3, y);
+            doc.setFont(pdfFont, 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text(poData.project.project_code + ' – ' + (poData.project.name || ''), col1, y + 5);
+            doc.text(poData.project.client_name || '', col2, y + 5);
+            doc.text(poNumber, col3, y + 5);
+
+            // ===== LEVERANCIER + LEVERADRES naast elkaar =====
+            y += 16;
+            const levCol1 = ml, levCol2 = pw / 2 + 5;
+
+            doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(...ktsBlue);
+            doc.text('LEVERANCIER', levCol1, y);
+            doc.text('LEVERADRES', levCol2, y);
+            y += 5;
+
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(0, 0, 0);
+
+            // Leverancier (ZZP bedrijf van de medewerker)
+            let levY = y;
+            if (poData.zzpCompany) {
+                doc.text(poData.zzpCompany.name, levCol1, levY); levY += 4;
+                if (poData.zzpCompany.contact_name) { doc.text(poData.zzpCompany.contact_name, levCol1, levY); levY += 4; }
+                if (poData.zzpCompany.address) { doc.text(poData.zzpCompany.address, levCol1, levY); levY += 4; }
+                if (poData.zzpCompany.postcode || poData.zzpCompany.city) { doc.text((poData.zzpCompany.postcode || '') + ' ' + (poData.zzpCompany.city || ''), levCol1, levY); levY += 4; }
+                if (poData.zzpCompany.country && poData.zzpCompany.country !== 'Nederland') { doc.text(poData.zzpCompany.country, levCol1, levY); levY += 4; }
+                const kvkLabel = poData.zzpCompany.country === 'Duitsland' ? 'Handelsregister' : 'KVK';
+                const btwLabel = poData.zzpCompany.country === 'Duitsland' ? 'USt-IdNr.' : 'BTW';
+                if (poData.zzpCompany.kvk_number) { doc.text(kvkLabel + ': ' + poData.zzpCompany.kvk_number, levCol1, levY); levY += 4; }
+                if (poData.zzpCompany.btw_number) { doc.text(btwLabel + ': ' + poData.zzpCompany.btw_number, levCol1, levY); levY += 4; }
+                if (poData.zzpCompany.email) { doc.text(poData.zzpCompany.email, levCol1, levY); levY += 4; }
             } else {
-                doc.text('(Geen bedrijf ingesteld)', ml, y);
-                y += 8;
+                doc.text('(Geen bedrijf gekoppeld aan medewerker)', levCol1, levY); levY += 4;
             }
 
-            // Leveradres block (KTS)
-            y += 4;
-            doc.setFont(pdfFont, 'bold');
-            doc.setFontSize(10);
-            doc.text('LEVERADRES', ml, y);
-            y += 6;
-            doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(9);
-            doc.text(KTS_INFO.naam, ml, y);
-            y += 4;
-            doc.text(KTS_INFO.adres, ml, y);
-            y += 4;
-            doc.text(KTS_INFO.postcode + ' ' + KTS_INFO.land, ml, y);
-            y += 8;
+            // Leveradres (KTS)
+            let levY2 = y;
+            doc.text(userName, levCol2, levY2); levY2 += 4;
+            doc.text(KTS_INFO.naam, levCol2, levY2); levY2 += 4;
+            doc.text(KTS_INFO.adres, levCol2, levY2); levY2 += 4;
+            doc.text(KTS_INFO.postcode, levCol2, levY2); levY2 += 4;
+            doc.text('Tel: ' + KTS_INFO.tel2, levCol2, levY2); levY2 += 4;
+            doc.text(KTS_INFO.email, levCol2, levY2); levY2 += 4;
 
-            // Line items table
-            const tableColumn = ['Beschrijving', 'Uren/Aantal', 'Tarief', 'Bedrag'];
+            y = Math.max(levY, levY2) + 6;
+
+            // ===== LINE ITEMS TABLE =====
+            const tableColumn = ['#', 'Omschrijving', 'Aantal', 'Tarief', 'Bedrag'];
             const tableRows = [];
-
             let subtotal = 0;
+            let itemNum = 1;
 
-            // Per week data
             Object.keys(poData.weekData).sort().forEach(weekKey => {
                 const week = poData.weekData[weekKey];
                 const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
 
-                // Regular hours
                 if (week.regHours > 0) {
                     const amount = week.regHours * poData.rate.hourly_rate;
-                    tableRows.push([
-                        `Reguliere uren (ma-vr) — ${weekLabel}`,
-                        week.regHours.toFixed(2),
-                        '€ ' + poData.rate.hourly_rate.toFixed(2).replace('.', ','),
-                        fmtEuroPdf(amount)
-                    ]);
+                    tableRows.push([String(itemNum++), `Reguliere uren (ma-vr) — ${weekLabel}`, week.regHours.toFixed(2).replace('.', ','), fmtEuroPdf(poData.rate.hourly_rate), fmtEuroPdf(amount)]);
                     subtotal += amount;
                 }
-
-                // Saturday hours
                 if (week.satHours > 0) {
-                    const amount = week.satHours * poData.rate.hourly_rate * poData.rate.saturday_multiplier;
-                    tableRows.push([
-                        `Zaterdaguren — ${weekLabel}`,
-                        week.satHours.toFixed(2),
-                        '€ ' + (poData.rate.hourly_rate * poData.rate.saturday_multiplier).toFixed(2).replace('.', ','),
-                        fmtEuroPdf(amount)
-                    ]);
+                    const satRate = poData.rate.hourly_rate * poData.rate.saturday_multiplier;
+                    const amount = week.satHours * satRate;
+                    tableRows.push([String(itemNum++), `Zaterdaguren (${Math.round(poData.rate.saturday_multiplier*100)}%) — ${weekLabel}`, week.satHours.toFixed(2).replace('.', ','), fmtEuroPdf(satRate), fmtEuroPdf(amount)]);
                     subtotal += amount;
                 }
-
-                // Sunday hours
                 if (week.sunHours > 0) {
-                    const amount = week.sunHours * poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier;
-                    tableRows.push([
-                        `Zondaguren — ${weekLabel}`,
-                        week.sunHours.toFixed(2),
-                        '€ ' + (poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier).toFixed(2).replace('.', ','),
-                        fmtEuroPdf(amount)
-                    ]);
+                    const sunRate = poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier;
+                    const amount = week.sunHours * sunRate;
+                    tableRows.push([String(itemNum++), `Zondag-/feestdaguren (${Math.round(poData.rate.sunday_holiday_multiplier*100)}%) — ${weekLabel}`, week.sunHours.toFixed(2).replace('.', ','), fmtEuroPdf(sunRate), fmtEuroPdf(amount)]);
                     subtotal += amount;
                 }
             });
 
-            // Total km
             let totalKm = 0;
             Object.values(poData.weekData).forEach(w => totalKm += w.totalKm);
             if (totalKm > 0) {
                 const kmAmount = totalKm * poData.rate.km_rate;
-                tableRows.push([
-                    'Kilometrages',
-                    totalKm.toFixed(0),
-                    '€ ' + poData.rate.km_rate.toFixed(2).replace('.', ','),
-                    fmtEuroPdf(kmAmount)
-                ]);
+                tableRows.push([String(itemNum++), 'Reiskilometers', totalKm.toFixed(0), fmtEuroPdf(poData.rate.km_rate), fmtEuroPdf(kmAmount)]);
                 subtotal += kmAmount;
             }
 
-            // Total hotel nights
             let totalHotel = 0;
             Object.values(poData.weekData).forEach(w => totalHotel += w.hotelNights);
             if (totalHotel > 0) {
                 const hotelAmount = totalHotel * poData.hotelRate;
-                tableRows.push([
-                    'Hotelovernachtingen',
-                    totalHotel.toFixed(0),
-                    '€ ' + poData.hotelRate.toFixed(2).replace('.', ','),
-                    fmtEuroPdf(hotelAmount)
-                ]);
+                tableRows.push([String(itemNum++), 'Hotelovernachtingen', totalHotel.toFixed(0), fmtEuroPdf(poData.hotelRate), fmtEuroPdf(hotelAmount)]);
                 subtotal += hotelAmount;
             }
 
-            // Add autoTable
             doc.autoTable({
                 startY: y,
                 head: [tableColumn],
                 body: tableRows,
                 margin: { left: ml, right: mr },
                 columnStyles: {
-                    0: { cellWidth: 'auto' },
-                    1: { halign: 'right' },
-                    2: { halign: 'right' },
-                    3: { halign: 'right' }
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 28, halign: 'right' },
+                    3: { cellWidth: 30, halign: 'right' },
+                    4: { cellWidth: 32, halign: 'right' }
                 },
                 headStyles: {
                     fillColor: ktsBlue,
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
-                    fontSize: 9
+                    fontSize: 8
                 },
                 bodyStyles: {
-                    fontSize: 8
+                    fontSize: 7.5
+                },
+                alternateRowStyles: {
+                    fillColor: [245, 247, 250]
                 }
             });
 
-            y = doc.lastAutoTable.finalY + 10;
+            y = doc.lastAutoTable.finalY + 6;
 
-            // Totals
-            const btw = subtotal * 0.21;
-            const total = subtotal + btw;
-
+            // ===== TOTALEN =====
+            const totX1 = pw - mr - 68;
+            const totX2 = pw - mr;
             doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(9);
-            doc.text('Subtotaal:', pw - mr - 40, y, { align: 'right' });
-            doc.text(fmtEuroPdf(subtotal), pw - mr, y, { align: 'right' });
-            y += 5;
-            doc.text('BTW 21%:', pw - mr - 40, y, { align: 'right' });
-            doc.text(fmtEuroPdf(btw), pw - mr, y, { align: 'right' });
-            y += 5;
+            doc.setFontSize(8.5);
+            doc.text('TOTAAL', totX1, y); doc.text(fmtEuroPdf(subtotal), totX2, y, { align: 'right' }); y += 5;
+            const btw = subtotal * 0.21;
+            doc.text('BTW 21%', totX1, y); doc.text(fmtEuroPdf(btw), totX2, y, { align: 'right' }); y += 5;
+            // Lijn boven totaal
+            doc.setDrawColor(...ktsBlue);
+            doc.setLineWidth(0.5);
+            doc.line(totX1, y - 1, totX2, y - 1);
+            const total = subtotal + btw;
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(10);
             doc.setTextColor(...ktsBlue);
-            doc.text('Totaal incl. BTW:', pw - mr - 40, y, { align: 'right' });
-            doc.text(fmtEuroPdf(total), pw - mr, y, { align: 'right' });
-
-            // Payment terms
-            y += 12;
-            doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(9);
+            doc.text('TOTAAL INCL. BTW', totX1, y + 3);
+            doc.text(fmtEuroPdf(total), totX2, y + 3, { align: 'right' });
             doc.setTextColor(0, 0, 0);
-            doc.text('Betalingstermijn: Betaling binnen 30 dagen na factuurdatum', ml, y);
 
-            // Footer with bank info
-            y = ph - 25;
+            // Betalingstermijn links naast totalen
+            doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
-            doc.text(KTS_INFO.naam + ' · KVK: ' + KTS_INFO.kvk + ' · BTW: ' + KTS_INFO.btw, ml, y);
-            y += 4;
-            doc.text('IBAN: ' + KTS_INFO.iban + ' · BIC: ' + KTS_INFO.bic, ml, y);
-            y += 4;
-            doc.text('Tel: ' + KTS_INFO.tel2 + ' · E-mail: ' + KTS_INFO.email, ml, y);
+            doc.text('BETALINGSTERMIJN  30 dagen na factuurdatum', ml, y + 3);
+
+            // ===== FOOTER =====
+            const fy = ph - 12;
+            doc.setFontSize(7);
+            doc.setTextColor(100, 100, 100);
+            doc.text(KTS_INFO.naam + ' · KVK: ' + KTS_INFO.kvk + ' · BTW: ' + KTS_INFO.btw + ' · IBAN: ' + KTS_INFO.iban + ' · BIC: ' + KTS_INFO.bic, ml, fy);
+            doc.text('Tel: ' + KTS_INFO.tel2 + ' · E-mail: ' + KTS_INFO.email + ' · www.kuijpers-ts.nl', ml, fy + 4);
+            doc.setTextColor(0, 0, 0);
 
             // Save to Supabase and open mailto
             const pdfData = doc.output('datauristring');
@@ -7360,8 +7359,9 @@
                 // Lijst verversen
                 loadInkooporders();
 
-                // 3. Open mailto
-                if (poData.company && (poData.company.email_po || poData.company.email)) {
+                // 3. Open mailto naar IO-ontvanger (poCompany)
+                const mailTarget = poData.poCompany;
+                if (mailTarget && (mailTarget.email_po || mailTarget.email)) {
                     const userName = poData.user ? (poData.user.name || poData.user.email) : '';
                     const projCode = poData.project ? poData.project.project_code : '';
                     const projName = poData.project ? poData.project.name : '';
@@ -7371,13 +7371,12 @@
                     const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                     const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
 
-                    // Gebruik email_po als ingesteld, anders primair e-mailadres
-                    const recipients = (poData.company.email_po || poData.company.email)
+                    const recipients = (mailTarget.email_po || mailTarget.email)
                         .split(',').map(e => e.trim()).filter(Boolean).join(',');
 
                     const subject = encodeURIComponent('Inkooporder ' + poNumber + ' - ' + userName + ' - ' + projCode);
                     const body = encodeURIComponent(
-                        'Beste ' + (poData.company.contact_name || poData.company.name) + ',\n\n' +
+                        'Beste ' + (mailTarget.contact_name || mailTarget.name) + ',\n\n' +
                         'Bijgevoegd ontvangt u de inkooporder voor de inzet van ' + userName + '.\n\n' +
                         'Project: ' + projCode + ' — ' + projName + '\n' +
                         'Periode: ' + maandTekst + ' (' + wekenTekst + ')\n' +
@@ -7416,7 +7415,19 @@
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026_02" value="${existing ? existing.project_code || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Kraftblock | Volt 11800" value="${existing ? existing.name || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam (weergave)</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>📩 Factuur-ontvanger <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(opdrachtgever / eindklant)</span></label>
+                        <select id="adm-proj-factuur-company" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <option value="">— Geen bedrijf gekoppeld —</option>
+                        </select>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">Facturen worden naar dit bedrijf gestuurd</div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px"><label>📋 IO-ontvanger <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(opdrachtnemer / tussenpersoon)</span></label>
+                        <select id="adm-proj-po-company" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <option value="">— Zelfde als factuur-ontvanger —</option>
+                        </select>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">Inkooporders worden naar dit bedrijf gestuurd (als leeg: zelfde als factuur)</div>
+                    </div>
                     <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? existing.default_description || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.default_location || '' : ''}"></div>
@@ -7591,6 +7602,26 @@
                     if (existing && existing.company_id) {
                         compSel.value = existing.company_id;
                     }
+                }
+            }
+
+            // Vul bedrijf-dropdowns bij project
+            if (type === 'project') {
+                const companies = window._adminCompanies || [];
+                const companyOpts = companies.map(c => `<option value="${c.id}">${c.name}${c.contact_name ? ' (' + c.contact_name + ')' : ''}</option>`).join('');
+
+                const factuurSel = document.getElementById('adm-proj-factuur-company');
+                if (factuurSel) {
+                    factuurSel.innerHTML = '<option value="">— Geen bedrijf gekoppeld —</option>' + companyOpts;
+                    // Bestaande waarde: client_company_id (kan object zijn door join)
+                    const existingClientId = existing ? (typeof existing.client_company_id === 'object' ? existing.client_company_id?.id : existing.client_company_id) : null;
+                    if (existingClientId) factuurSel.value = existingClientId;
+                }
+
+                const poSel = document.getElementById('adm-proj-po-company');
+                if (poSel) {
+                    poSel.innerHTML = '<option value="">— Zelfde als factuur-ontvanger —</option>' + companyOpts;
+                    if (existing && existing.po_company_id) poSel.value = existing.po_company_id;
                 }
             }
 
@@ -8108,6 +8139,8 @@
                     project_code: code,
                     name: name,
                     client_name: document.getElementById('adm-proj-client').value.trim() || null,
+                    client_company_id: document.getElementById('adm-proj-factuur-company').value || null,
+                    po_company_id: document.getElementById('adm-proj-po-company').value || null,
                     location: document.getElementById('adm-proj-location').value.trim() || null,
                     default_description: document.getElementById('adm-proj-desc').value.trim() || null,
                     default_location: document.getElementById('adm-proj-deflocation').value.trim() || null,
