@@ -911,7 +911,16 @@
 
         <!-- ===== ADMIN SCREEN (alleen voor admin) ===== -->
         <div class="screen" id="screen-admin">
-            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">⚙️ Instellingen</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 style="font-size:1.1rem;font-weight:700;margin:0">⚙️ Instellingen</h2>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span id="env-label" style="font-size:0.7rem;font-weight:700;padding:3px 8px;border-radius:6px;background:#dcfce7;color:#16a34a">PRODUCTIE</span>
+                    <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+                        <input type="checkbox" id="admin-test-toggle" onchange="toggleTestMode()" style="opacity:0;width:0;height:0">
+                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:22px;transition:.3s" id="env-slider"><span style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s"></span></span>
+                    </label>
+                </div>
+            </div>
 
             <!-- Tegels grid -->
             <div id="admin-tiles" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
@@ -1464,7 +1473,7 @@
                             <input type="checkbox" ${d.active ? 'checked' : ''} onchange="document.querySelectorAll('.wd-row-${i} select,.wd-row-${i} input').forEach(el=>{if(el.type!=='checkbox')el.disabled=!this.checked})">
                             ${DAYS_FULL[i].substring(0,2)}
                         </label>
-                        <div class="wd-row-${i}" style="display:flex;gap:5px;align-items:center;flex:1;flex-wrap:wrap">
+                        <div class="wd-row-${i}" style="display:flex;gap:5px;align-items:center;flex:1">
                             <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;width:76px" data-field="start" data-day="${i}">
                                 <option value="">—</option>
                                 ${generateTimeOptions(d.start)}
@@ -1482,10 +1491,12 @@
                                 <option value="60" ${d.breakMin===60?'selected':''}>1:00</option>
                                 <option value="90" ${d.breakMin===90?'selected':''}>1:30</option>
                             </select>
-                            ${userHasThuiswerk() ? `<label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.thuiswerk?'#059669':'var(--muted)'};white-space:nowrap;font-weight:${d.thuiswerk?'600':'400'}"><input type="checkbox" ${d.thuiswerk?'checked':''} ${dis} data-field="thuiswerk" data-day="${i}"> 🏠 Thuis</label>` : ''}
-                            ${userHasHotel() ? `<label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.hotel?'var(--kts-blue)':'var(--muted)'};white-space:nowrap;font-weight:${d.hotel?'600':'400'}"><input type="checkbox" ${d.hotel?'checked':''} ${dis} data-field="hotel" data-day="${i}"> 🏨 Hotel</label>` : ''}
                         </div>
                     </div>
+                    ${(userHasThuiswerk() || userHasHotel()) ? `<div class="wd-row-${i}" style="display:flex;gap:12px;margin-left:44px;margin-top:4px">
+                        ${userHasThuiswerk() ? `<label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.thuiswerk?'#059669':'var(--muted)'};white-space:nowrap;font-weight:${d.thuiswerk?'600':'400'}"><input type="checkbox" ${d.thuiswerk?'checked':''} ${dis} data-field="thuiswerk" data-day="${i}"> 🏠 Thuis</label>` : ''}
+                        ${userHasHotel() ? `<label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.hotel?'var(--kts-blue)':'var(--muted)'};white-space:nowrap;font-weight:${d.hotel?'600':'400'}"><input type="checkbox" ${d.hotel?'checked':''} ${dis} data-field="hotel" data-day="${i}"> 🏨 Hotel</label>` : ''}
+                    </div>` : ''}
                 </div>`;
             }).join('');
             document.getElementById('weekdefaults-modal').classList.add('active');
@@ -5393,6 +5404,34 @@
         })();
 
         // ===== ADMIN FUNCTIES =====
+        let _adminTestMode = false; // false = productie, true = test
+
+        function toggleTestMode() {
+            _adminTestMode = document.getElementById('admin-test-toggle').checked;
+            const label = document.getElementById('env-label');
+            const slider = document.getElementById('env-slider');
+            if (_adminTestMode) {
+                label.textContent = 'TEST';
+                label.style.background = '#fef3c7';
+                label.style.color = '#b45309';
+                slider.style.background = '#f59e0b';
+            } else {
+                label.textContent = 'PRODUCTIE';
+                label.style.background = '#dcfce7';
+                label.style.color = '#16a34a';
+                slider.style.background = '#ccc';
+            }
+            // Slider bullet positie
+            slider.innerHTML = `<span style="position:absolute;height:16px;width:16px;left:${_adminTestMode ? '20px' : '3px'};bottom:3px;background:white;border-radius:50%;transition:.3s"></span>`;
+            // Herlaad admin data met nieuwe filter
+            loadAdminData();
+        }
+
+        // Helper: filter users op test/productie modus
+        function getFilteredUsers() {
+            return (window._adminUsers || []).filter(u => _adminTestMode ? u.is_test === true : u.is_test !== true);
+        }
+
         function goToAdmin() {
             if (!currentUser || currentUser.role !== 'admin') {
                 showToast('⚠️ Alleen voor beheerders');
@@ -5476,7 +5515,7 @@
             const weekStatuses = weekStatusRes.data || [];
             const poWeeks = poWeeksRes.data || [];
             const allRates = ratesRes.data || [];
-            const users = window._adminUsers || [];
+            const users = getFilteredUsers();
             const projects = (window._adminProjects || []).filter(p => p.status === 'active');
 
             // Rate lookup helper: user+project → rate, project → rate, default
@@ -5809,8 +5848,10 @@
             const { data: appUsers } = await sb.from('users').select('*').order('name');
             window._adminUsers = appUsers || [];
             const userList = document.getElementById('admin-user-list');
-            if (appUsers && appUsers.length > 0) {
-                userList.innerHTML = appUsers.map((u, idx) => {
+            const filteredUsers = getFilteredUsers();
+            if (filteredUsers && filteredUsers.length > 0) {
+                userList.innerHTML = filteredUsers.map((u) => {
+                    const idx = (window._adminUsers || []).indexOf(u);
                     const flags = [];
                     if (u.allow_km !== false) flags.push('Km');
                     if (u.allow_thuiswerk !== false) flags.push('Thuis');
@@ -5844,7 +5885,7 @@
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('gebruiker', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${u.name || u.email}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${u.name || u.email}${u.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${u.email}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
                                 <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${flagsHtml}</div>
                                 ${laatstActief ? '<div style="font-size:0.7rem;color:' + activityColor + ';margin-top:3px">' + activityDot + laatstActief + '</div>' : ''}
@@ -5931,7 +5972,7 @@
             const userSel = document.getElementById('po-filter-user');
             if (userSel && window._adminUsers) {
                 userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
-                    window._adminUsers.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+                    getFilteredUsers().map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
                 userSel.onchange = () => autoFillCompanyForUser();
             }
 
@@ -6806,6 +6847,13 @@
                             <input type="checkbox" id="adm-user-rates" ${chk('show_rates')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Tarieven zichtbaar
                         </label>
                     </div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Omgeving</div>
+                    <div style="margin-bottom:16px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testgebruiker
+                        </label>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testgebruikers worden verborgen in productie-modus</div>
+                    </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Bedrijf (leverancier)</div>
                     <div class="form-group" style="margin-bottom:16px">
                         <select id="adm-user-company">
@@ -6923,13 +6971,16 @@
                 });
             }
             const userSel = document.getElementById('ws-filter-user');
-            if (userSel.options.length <= 1 && window._adminUsers) {
-                window._adminUsers.forEach(u => {
+            if (window._adminUsers) {
+                const curVal = userSel.value;
+                userSel.innerHTML = '<option value="">Alle medewerkers</option>';
+                getFilteredUsers().forEach(u => {
                     const opt = document.createElement('option');
                     opt.value = u.id;
                     opt.textContent = u.name || u.email;
                     userSel.appendChild(opt);
                 });
+                if (curVal) userSel.value = curVal;
             }
 
             try {
@@ -7356,6 +7407,7 @@
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
                     company_id: document.getElementById('adm-user-company').value || null,
+                    is_test: document.getElementById('adm-user-test').checked,
                 };
                 result = await sb.from('users').update(data).eq('id', _editingId);
             }
