@@ -2378,10 +2378,11 @@
             }
             doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? iconSize + 2 : 0), titleY);
 
-            // --- KTS Logo rechtsboven ---
+            // --- KTS Logo rechtsboven (gecentreerd boven adresblok) ---
             const rightX = pw - mr - 65;
-            const logoW = 27, logoH = logoW; // vierkant logo (27mm past netjes)
-            const logoX = pw - mr - logoW - 3; // rechts uitgelijnd, 3mm marge van rand
+            const adresBlockW = pw - mr - rightX; // 65mm breed
+            const logoW = 27, logoH = logoW;
+            const logoX = rightX + (adresBlockW - logoW) / 2; // horizontaal gecentreerd
             if (KTS_LOGO_B64) {
                 try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
             }
@@ -4917,6 +4918,22 @@
         async function saveWeek(tab) {
             if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
             if (currentWeekDbStatus === 'verstuurd') { showToast('🔒 Verstuurde week kan niet meer worden aangepast'); return; }
+
+            // Validatie: werkzaamheden verplicht voor dagen met uren
+            if (tab === 'uren') {
+                const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+                const missend = [];
+                weekData.forEach((dag, i) => {
+                    if (dag.hours > 0 && !(dag.desc || '').trim()) {
+                        missend.push(dagNamen[i]);
+                    }
+                });
+                if (missend.length > 0) {
+                    showToast('⚠️ Vul werkzaamheden in voor: ' + missend.join(', '));
+                    return;
+                }
+            }
+
             const labels = { uren: 'Uren', kosten: 'Declaraties' };
             const btn = document.querySelector('#save-uren-btn-wrap .btn') || document.querySelector('#save-kosten-btn-wrap .btn');
 
