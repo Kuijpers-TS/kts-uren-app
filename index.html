@@ -530,7 +530,9 @@
             opacity: 0;
             transition: opacity 0.3s;
             pointer-events: none;
-            white-space: nowrap;
+            white-space: normal;
+            max-width: calc(100vw - 40px);
+            text-align: center;
         }
         .toast.show { opacity: 1; }
 
@@ -1329,8 +1331,8 @@
                                 <option value="60" ${d.breakMin===60?'selected':''}>1:00</option>
                                 <option value="90" ${d.breakMin===90?'selected':''}>1:30</option>
                             </select>
-                            <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.thuiswerk?'#059669':'var(--muted)'};white-space:nowrap;font-weight:${d.thuiswerk?'600':'400'}"><input type="checkbox" ${d.thuiswerk?'checked':''} ${dis} data-field="thuiswerk" data-day="${i}"> 🏠 Thuis</label>
-                            <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.hotel?'var(--kts-blue)':'var(--muted)'};white-space:nowrap;font-weight:${d.hotel?'600':'400'}"><input type="checkbox" ${d.hotel?'checked':''} ${dis} data-field="hotel" data-day="${i}"> 🏨 Hotel</label>
+                            ${userHasThuiswerk() ? `<label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.thuiswerk?'#059669':'var(--muted)'};white-space:nowrap;font-weight:${d.thuiswerk?'600':'400'}"><input type="checkbox" ${d.thuiswerk?'checked':''} ${dis} data-field="thuiswerk" data-day="${i}"> 🏠 Thuis</label>` : ''}
+                            ${userHasHotel() ? `<label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:${d.hotel?'var(--kts-blue)':'var(--muted)'};white-space:nowrap;font-weight:${d.hotel?'600':'400'}"><input type="checkbox" ${d.hotel?'checked':''} ${dis} data-field="hotel" data-day="${i}"> 🏨 Hotel</label>` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -1559,9 +1561,15 @@
                     loc = currentProject.default_location;
                 }
 
+                // Auto-invul werkzaamheden beschrijving
+                let desc = '';
+                if (currentProject && currentProject.default_description) {
+                    desc = currentProject.default_description;
+                }
+
                 return {
                     start: d.start, end: d.end, breakMin: effectiveBreak,
-                    desc: '', location: loc, km: km, kmHeen: kmH, kmTerug: kmT,
+                    desc: desc, location: loc, km: km, kmHeen: kmH, kmTerug: kmT,
                     hotel: isHotel, thuiswerk: isThuiswerk, hours: hours
                 };
             });
@@ -1636,11 +1644,11 @@
         const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', parkeren: 'Parkeren', materiaal: 'Materiaal', other: 'Overig' };
 
         function fmt(n) {
-            // Toon als uren:minuten (bijv. 7:30)
-            const totalMin = Math.round(n * 60);
-            const h = Math.floor(totalMin / 60);
-            const m = totalMin % 60;
-            return h + ':' + m.toString().padStart(2, '0');
+            // Toon als decimaal met komma (bijv. 47,5 of 8,0)
+            if (n === 0) return '0';
+            // Rond af op 1 decimaal, verwijder trailing 0 alleen als het een heel getal is
+            const rounded = Math.round(n * 10) / 10;
+            return rounded.toFixed(1).replace('.', ',');
         }
         function fmtDecimal(n) { return n.toFixed(2).replace('.', ','); }
         function fmtEuro(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
@@ -1972,6 +1980,16 @@
         function saveDayEntry(i) {
             const dag = weekData[i];
             const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+            // Validatie: starttijd moet vóór eindtijd liggen
+            if (dag.start && dag.end) {
+                const [sh,sm] = dag.start.split(':').map(Number);
+                const [eh,em] = dag.end.split(':').map(Number);
+                if ((eh * 60 + em) <= (sh * 60 + sm)) {
+                    showToast('⚠️ Eindtijd moet na starttijd liggen voor ' + dagNamen[i]);
+                    return;
+                }
+            }
+            // Validatie: werkzaamheden beschrijving verplicht
             if (dag.hours > 0 && !(dag.desc || '').trim()) {
                 showToast('⚠️ Vul werkzaamheden beschrijving in voor ' + dagNamen[i]);
                 return;
@@ -3441,7 +3459,7 @@
                     border:2px solid ${isActive ? 'var(--kts-blue)' : 'var(--border)'};
                     border-radius:12px;cursor:pointer;transition:all 0.15s
                 " onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='${isActive ? '#f0f9ff' : 'white'}'">
-                    <div style="width:40px;height:40px;border-radius:10px;background:${isActive ? 'var(--kts-blue)' : '#e2e8f0'};color:${isActive ? 'white' : 'var(--muted)'};display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">${(p.project_code || '?').slice(0,5)}</div>
+                    <div style="width:40px;height:40px;border-radius:10px;background:${isActive ? 'var(--kts-blue)' : '#e2e8f0'};display:flex;align-items:center;justify-content:center;flex-shrink:0"><img src="tandwiel-wit.png" alt="" style="width:22px;height:22px;opacity:${isActive ? '1' : '0.5'}"></div>
                     <div style="flex:1;min-width:0">
                         <div style="font-weight:700;font-size:0.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
                         <div style="font-size:0.75rem;color:var(--muted)">${p.client_name || ''} · ${p.location || ''}</div>
@@ -4945,15 +4963,27 @@
             if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
             if (currentWeekDbStatus === 'verstuurd') { showToast('🔒 Verstuurde week kan niet meer worden aangepast'); return; }
 
-            // Validatie: werkzaamheden verplicht voor dagen met uren
+            // Validatie: starttijd moet vóór eindtijd + werkzaamheden verplicht
             if (tab === 'uren') {
                 const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+                const tijdFout = [];
                 const missend = [];
                 weekData.forEach((dag, i) => {
+                    if (dag.start && dag.end) {
+                        const [sh,sm] = dag.start.split(':').map(Number);
+                        const [eh,em] = dag.end.split(':').map(Number);
+                        if ((eh * 60 + em) <= (sh * 60 + sm)) {
+                            tijdFout.push(dagNamen[i]);
+                        }
+                    }
                     if (dag.hours > 0 && !(dag.desc || '').trim()) {
                         missend.push(dagNamen[i]);
                     }
                 });
+                if (tijdFout.length > 0) {
+                    showToast('⚠️ Eindtijd moet na starttijd voor: ' + tijdFout.join(', '));
+                    return;
+                }
                 if (missend.length > 0) {
                     showToast('⚠️ Vul werkzaamheden beschrijving in voor: ' + missend.join(', '));
                     return;
