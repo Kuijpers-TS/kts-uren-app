@@ -919,6 +919,7 @@
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('personen')" id="admin-tab-personen">Bedrijven</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('gebruikers')" id="admin-tab-gebruikers">Gebruikers</button>
                 <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('tarieven')" id="admin-tab-tarieven">Tarieven</button>
+                <button class="btn btn-sm btn-secondary" style="flex:1" onclick="switchAdminTab('weekstaten')" id="admin-tab-weekstaten">Weekstaten</button>
             </div>
 
             <!-- ===== PROJECTEN TAB ===== -->
@@ -952,6 +953,20 @@
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
+            </div>
+
+            <!-- ===== WEEKSTATEN TAB ===== -->
+            <div id="admin-weekstaten" style="display:none">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Verstuurde weekstaten (PDF backup)</div>
+                <div style="display:flex;gap:6px;margin-bottom:12px">
+                    <select id="ws-filter-project" onchange="loadWeekstaten()" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                        <option value="">Alle projecten</option>
+                    </select>
+                    <select id="ws-filter-user" onchange="loadWeekstaten()" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                        <option value="">Alle medewerkers</option>
+                    </select>
+                </div>
+                <div id="admin-weekstaten-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Selecteer filters of klik op Weekstaten tab...</div></div>
             </div>
 
         </div>
@@ -3098,12 +3113,24 @@
                 // 5. Download PDF lokaal
                 weekstaat.save(fileName);
 
-                // 6. Probeer upload naar OneDrive (optioneel)
+                // 6. Upload naar Supabase Storage (backup) + OneDrive
                 const sb = getSupabase();
                 if (sb) {
+                    const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
+
+                    // 6a. Supabase Storage backup
+                    try {
+                        const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+                        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        const storagePath = `${currentYear}/week-${currentWeekNumber}/${fileName}`;
+                        await sb.storage.from('weekstaten').upload(storagePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
+                    } catch (storageErr) {
+                        console.warn('Supabase Storage upload overgeslagen:', storageErr.message);
+                    }
+
+                    // 6b. OneDrive upload (optioneel)
                     try {
                         btn.innerHTML = '☁️ Uploaden naar OneDrive...';
-                        const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
                         const { data, error } = await sb.functions.invoke('submit-weekstaat', {
                             body: {
                                 pdfBase64: pdfBase64,
@@ -5218,12 +5245,16 @@
         }
 
         function switchAdminTab(tab) {
-            ['projecten','personen','gebruikers','tarieven'].forEach(t => {
-                document.getElementById('admin-' + t).style.display = t === tab ? 'block' : 'none';
+            ['projecten','personen','gebruikers','tarieven','weekstaten'].forEach(t => {
+                const el = document.getElementById('admin-' + t);
+                if (el) el.style.display = t === tab ? 'block' : 'none';
                 const btn = document.getElementById('admin-tab-' + t);
-                if (t === tab) { btn.className = 'btn btn-sm btn-primary'; btn.style.flex = '1'; }
-                else { btn.className = 'btn btn-sm btn-secondary'; btn.style.flex = '1'; }
+                if (btn) {
+                    if (t === tab) { btn.className = 'btn btn-sm btn-primary'; btn.style.flex = '1'; }
+                    else { btn.className = 'btn btn-sm btn-secondary'; btn.style.flex = '1'; }
+                }
             });
+            if (tab === 'weekstaten') loadWeekstaten();
         }
 
         async function loadAdminData() {
@@ -5544,6 +5575,103 @@
             }
             const user = (window._tariffUsers || []).find(u => u.id === userId);
             kmWrap.style.display = (user && user.allow_km !== false) ? 'block' : 'none';
+        }
+
+        // ===== WEEKSTATEN ADMIN =====
+        async function loadWeekstaten() {
+            const sb = getSupabase();
+            if (!sb) return;
+            const listEl = document.getElementById('admin-weekstaten-list');
+            listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            // Vul filters als dat nog niet is gedaan
+            const projSel = document.getElementById('ws-filter-project');
+            if (projSel.options.length <= 1 && window._adminProjects) {
+                window._adminProjects.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.project_code || p.name;
+                    opt.textContent = p.project_code + ' — ' + p.name;
+                    projSel.appendChild(opt);
+                });
+            }
+            const userSel = document.getElementById('ws-filter-user');
+            if (userSel.options.length <= 1 && window._adminUsers) {
+                window._adminUsers.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.name ? u.name.replace(/\s+/g, '_') : u.email;
+                    opt.textContent = u.name || u.email;
+                    userSel.appendChild(opt);
+                });
+            }
+
+            try {
+                // Lijst alle bestanden in de weekstaten bucket
+                const filterProj = projSel.value;
+                const filterUser = userSel.value;
+
+                // Haal jaren/weken op uit de bucket
+                const { data: years, error: yearErr } = await sb.storage.from('weekstaten').list('', { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+                if (yearErr) throw yearErr;
+
+                let allFiles = [];
+                for (const yearFolder of (years || []).filter(y => y.name && !y.name.startsWith('.'))) {
+                    const { data: weeks } = await sb.storage.from('weekstaten').list(yearFolder.name, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+                    for (const weekFolder of (weeks || []).filter(w => w.name && !w.name.startsWith('.'))) {
+                        const { data: files } = await sb.storage.from('weekstaten').list(`${yearFolder.name}/${weekFolder.name}`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+                        for (const f of (files || []).filter(f => f.name.endsWith('.pdf'))) {
+                            allFiles.push({
+                                name: f.name,
+                                path: `${yearFolder.name}/${weekFolder.name}/${f.name}`,
+                                year: yearFolder.name,
+                                week: weekFolder.name.replace('week-', ''),
+                                created: f.created_at
+                            });
+                        }
+                    }
+                }
+
+                // Filter toepassen
+                if (filterProj) allFiles = allFiles.filter(f => f.name.includes(filterProj));
+                if (filterUser) allFiles = allFiles.filter(f => f.name.includes(filterUser));
+
+                if (allFiles.length === 0) {
+                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Geen weekstaten gevonden' + (filterProj || filterUser ? ' met deze filters' : '') + '</div>';
+                    return;
+                }
+
+                listEl.innerHTML = allFiles.map(f => {
+                    const parts = f.name.replace('.pdf', '').split('_');
+                    const displayName = parts.slice(4).join(' ').replace(/_/g, ' ') || 'Onbekend';
+                    return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${displayName}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">Week ${f.week} · ${f.year} · ${f.name.split('_')[1] || ''}</div>
+                        </div>
+                        <button onclick="downloadWeekstaatFromStorage('${f.path}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 12px">📄 Download</button>
+                    </div>`;
+                }).join('');
+            } catch (err) {
+                console.error('Weekstaten laden mislukt:', err);
+                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+            }
+        }
+
+        async function downloadWeekstaatFromStorage(path) {
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const { data, error } = await sb.storage.from('weekstaten').download(path);
+                if (error) throw error;
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = path.split('/').pop();
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('✓ PDF gedownload');
+            } catch (err) {
+                showToast('❌ Download mislukt: ' + err.message);
+            }
         }
 
         // ===== PROJECTTOEWIJZING FUNCTIES =====
