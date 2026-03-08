@@ -1,11 +1,12 @@
-const CACHE_NAME = 'kts-uren-v12';
+const CACHE_NAME = 'kts-uren-v13';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './tandwiel-wit.png',
   './tandwiel-blauw.png',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './approve-weekstaat.html'
 ];
 
 // Installatie: cache statische bestanden

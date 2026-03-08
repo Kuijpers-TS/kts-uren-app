@@ -5534,6 +5534,9 @@
             const poWeekSet = new Set(poWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
             const openWeeks = verstuurdeWeken.filter(w => !poWeekSet.has(`${w.user_id}_${w.project_id}_${w.week_number}`));
 
+            // Wachtend op goedkeuring
+            const pendingApprovals = weekStatuses.filter(w => w.approval_status === 'ter_goedkeuring');
+
             const el = document.getElementById('dashboard-stats');
             el.innerHTML = `
                 <div class="stat-card highlight" style="grid-column:1/-1">
@@ -5551,6 +5554,10 @@
                 <div class="stat-card">
                     <div class="stat-value">${fmt(totalUrenMaand)}</div>
                     <div class="stat-label">Uren deze maand</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="${pendingApprovals.length > 0 ? 'color:#f59e0b' : 'color:#10b981'}">${pendingApprovals.length}</div>
+                    <div class="stat-label">Wachtend op goedkeuring</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" style="${openWeeks.length > 0 ? 'color:#f59e0b' : 'color:#10b981'}">${openWeeks.length}</div>
@@ -5779,7 +5786,7 @@
             if (!sb) { showToast('⚠️ Niet verbonden met database'); return; }
 
             // Projecten laden
-            const { data: projects } = await sb.from('projects').select('*, client_company_id(name)').order('created_at', { ascending: false });
+            const { data: projects } = await sb.from('projects').select('*, client_company_id(name, email, contact_name)').order('created_at', { ascending: false });
             window._adminProjects = projects || [];
             const projList = document.getElementById('admin-project-list');
             if (projects && projects.length > 0) {
@@ -6116,14 +6123,16 @@
                 return null;
             }
 
-            // Haal week_status op om alleen 'verstuurd' weken mee te nemen
-            const { data: weekStatuses } = await sb.from('week_status').select('week_number, status')
+            // Haal week_status op — alleen 'verstuurd' + 'goedgekeurd' weken mee te nemen
+            const { data: weekStatuses } = await sb.from('week_status').select('week_number, status, approval_status')
                 .eq('user_id', userId)
                 .eq('project_id', projectId)
                 .eq('year', yr)
                 .eq('status', 'verstuurd');
-            const verstuurdeWeken = new Set((weekStatuses || []).map(ws => ws.week_number));
-            console.log('PO: verstuurde weken:', [...verstuurdeWeken]);
+            const goedgekeurdeWeken = new Set((weekStatuses || []).filter(ws => ws.approval_status === 'goedgekeurd').map(ws => ws.week_number));
+            const wachtOpGoedkeuring = (weekStatuses || []).filter(ws => ws.approval_status !== 'goedgekeurd');
+            console.log('PO: goedgekeurde weken:', [...goedgekeurdeWeken]);
+            if (wachtOpGoedkeuring.length > 0) console.log('PO: weken wachtend op goedkeuring:', wachtOpGoedkeuring.map(ws => `W${ws.week_number} (${ws.approval_status || 'geen'})`));
 
             // Check welke weken al op een eerdere PO staan (dubbel-beveiliging)
             const { data: existingPOWeeks } = await sb.from('purchase_order_weeks').select('week_number, po_number')
@@ -6139,8 +6148,8 @@
             const filtered = (entries || []).filter(e => {
                 if (!e.entry_date) return false;
                 const isoWeek = getISOWeek(new Date(e.entry_date + 'T12:00:00'));
-                // Alleen verstuurde weken meenemen
-                if (!verstuurdeWeken.has(isoWeek)) return false;
+                // Alleen goedgekeurde weken meenemen (klant moet eerst goedkeuren)
+                if (!goedgekeurdeWeken.has(isoWeek)) return false;
                 // Week al op eerdere PO? Overslaan
                 if (alOpPO.has(isoWeek)) {
                     if (!skippedWeeks.includes(isoWeek)) skippedWeeks.push(isoWeek);
@@ -6219,7 +6228,7 @@
                 userId, projectId, year: yr, month: mo,
                 weekNumber: weekNumber ? parseInt(weekNumber) : null,
                 user, company, project, rate, hotelRate, weekData, entries: filtered,
-                includedWeeks, skippedWeeks
+                includedWeeks, skippedWeeks, wachtOpGoedkeuring
             };
         }
 
@@ -6255,9 +6264,20 @@
                 </div>`;
             }
 
+            // Waarschuwing bij weken die wachten op goedkeuring
+            if (poData.wachtOpGoedkeuring && poData.wachtOpGoedkeuring.length > 0) {
+                const waitWeeks = poData.wachtOpGoedkeuring.map(ws => `Week ${ws.week_number}`).join(', ');
+                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
+                    ⏳ <strong>${waitWeeks}</strong> wacht${poData.wachtOpGoedkeuring.length === 1 ? '' : 'en'} nog op goedkeuring door de opdrachtgever. Alleen goedgekeurde weken worden meegenomen.
+                </div>`;
+            }
+
             // Check of er data is
             if (poData.includedWeeks.length === 0) {
-                html += `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.9rem">Geen nieuwe weken beschikbaar voor inkooporder. Alle verstuurde weken staan al op een eerdere inkooporder.</div>`;
+                const reason = (poData.wachtOpGoedkeuring && poData.wachtOpGoedkeuring.length > 0)
+                    ? 'Er zijn geen goedgekeurde weken beschikbaar. Wacht tot de opdrachtgever de weekstaten heeft goedgekeurd.'
+                    : 'Geen nieuwe weken beschikbaar voor inkooporder. Alle verstuurde weken staan al op een eerdere inkooporder.';
+                html += `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.9rem">${reason}</div>`;
                 content.innerHTML = html;
                 preview.style.display = 'block';
                 return;
@@ -6805,7 +6825,9 @@
             const modal = document.getElementById('admin-modal');
             document.getElementById('admin-modal-title').textContent = title;
             document.getElementById('admin-modal-fields').innerHTML = fields;
-            document.getElementById('admin-modal-save').onclick = () => saveAdminItem(type);
+            const saveBtn = document.getElementById('admin-modal-save');
+            saveBtn.style.display = '';
+            saveBtn.onclick = () => saveAdminItem(type);
             // Verwijder-knop tonen bij bewerken van tarieven
             const delBtn = document.getElementById('admin-modal-delete');
             if (delBtn) {
@@ -6895,7 +6917,7 @@
             if (projSel.options.length <= 1 && window._adminProjects) {
                 window._adminProjects.forEach(p => {
                     const opt = document.createElement('option');
-                    opt.value = p.project_code || p.name;
+                    opt.value = p.id;
                     opt.textContent = p.project_code + ' — ' + p.name;
                     projSel.appendChild(opt);
                 });
@@ -6904,61 +6926,228 @@
             if (userSel.options.length <= 1 && window._adminUsers) {
                 window._adminUsers.forEach(u => {
                     const opt = document.createElement('option');
-                    opt.value = u.name ? u.name.replace(/\s+/g, '_') : u.email;
+                    opt.value = u.id;
                     opt.textContent = u.name || u.email;
                     userSel.appendChild(opt);
                 });
             }
 
             try {
-                // Lijst alle bestanden in de weekstaten bucket
                 const filterProj = projSel.value;
                 const filterUser = userSel.value;
 
-                // Haal jaren/weken op uit de bucket
-                const { data: years, error: yearErr } = await sb.storage.from('weekstaten').list('', { limit: 100, sortBy: { column: 'name', order: 'desc' } });
-                if (yearErr) throw yearErr;
+                // Haal week_status records op (verstuurd = weekstaat beschikbaar)
+                let query = sb.from('week_status').select('*')
+                    .eq('status', 'verstuurd')
+                    .order('year', { ascending: false })
+                    .order('week_number', { ascending: false });
+                if (filterProj) query = query.eq('project_id', filterProj);
+                if (filterUser) query = query.eq('user_id', filterUser);
 
-                let allFiles = [];
-                for (const yearFolder of (years || []).filter(y => y.name && !y.name.startsWith('.'))) {
-                    const { data: weeks } = await sb.storage.from('weekstaten').list(yearFolder.name, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
-                    for (const weekFolder of (weeks || []).filter(w => w.name && !w.name.startsWith('.'))) {
-                        const { data: files } = await sb.storage.from('weekstaten').list(`${yearFolder.name}/${weekFolder.name}`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
-                        for (const f of (files || []).filter(f => f.name.endsWith('.pdf'))) {
-                            allFiles.push({
-                                name: f.name,
-                                path: `${yearFolder.name}/${weekFolder.name}/${f.name}`,
-                                year: yearFolder.name,
-                                week: weekFolder.name.replace('week-', ''),
-                                created: f.created_at
-                            });
-                        }
-                    }
-                }
+                const { data: weekRecords, error: wsErr } = await query;
+                if (wsErr) throw wsErr;
 
-                // Filter toepassen
-                if (filterProj) allFiles = allFiles.filter(f => f.name.includes(filterProj));
-                if (filterUser) allFiles = allFiles.filter(f => f.name.includes(filterUser));
-
-                if (allFiles.length === 0) {
-                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Geen weekstaten gevonden' + (filterProj || filterUser ? ' met deze filters' : '') + '</div>';
+                if (!weekRecords || weekRecords.length === 0) {
+                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Geen verstuurde weekstaten gevonden</div>';
                     return;
                 }
 
-                listEl.innerHTML = allFiles.map(f => {
-                    const parts = f.name.replace('.pdf', '').split('_');
-                    const displayName = parts.slice(4).join(' ').replace(/_/g, ' ') || 'Onbekend';
-                    return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                // User/project lookup
+                const userMap = {};
+                (window._adminUsers || []).forEach(u => { userMap[u.id] = u.name || u.email; });
+                const projMap = {};
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code; });
+                const projFullMap = {};
+                (window._adminProjects || []).forEach(p => { projFullMap[p.id] = p; });
+
+                listEl.innerHTML = weekRecords.map(ws => {
+                    const userName = userMap[ws.user_id] || 'Onbekend';
+                    const projCode = projMap[ws.project_id] || '?';
+                    const approvalStatus = ws.approval_status || 'geen';
+
+                    // Storage pad reconstrueren
+                    const userSlug = userName.replace(/\s+/g, '_');
+                    const storagePath = `${ws.year}/week-${ws.week_number}`;
+
+                    // Goedkeuring badge
+                    let approvalBadge = '';
+                    let approvalAction = '';
+                    if (approvalStatus === 'goedgekeurd') {
+                        approvalBadge = '<span style="font-size:0.65rem;background:#d1fae5;color:#059669;padding:2px 6px;border-radius:4px;font-weight:600">✅ Goedgekeurd</span>';
+                    } else if (approvalStatus === 'ter_goedkeuring') {
+                        approvalBadge = '<span style="font-size:0.65rem;background:#fef3c7;color:#d97706;padding:2px 6px;border-radius:4px;font-weight:600">⏳ Ter goedkeuring</span>';
+                        approvalAction = `<button onclick="event.stopPropagation();copyApprovalLink('${ws.approval_token}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a" title="Link kopiëren">🔗</button>`;
+                    } else if (approvalStatus === 'afgewezen') {
+                        approvalBadge = '<span style="font-size:0.65rem;background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-weight:600">❌ Afgewezen</span>';
+                        approvalAction = `<button onclick="event.stopPropagation();openApprovalModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem" title="Opnieuw versturen">📩</button>`;
+                    } else {
+                        approvalAction = `<button onclick="event.stopPropagation();openApprovalModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="Ter goedkeuring versturen">📩</button>`;
+                    }
+
+                    return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:6px">
                         <div style="flex:1;min-width:0">
-                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${displayName}</div>
-                            <div style="font-size:0.75rem;color:var(--muted)">Week ${f.week} · ${f.year} · ${f.name.split('_')[1] || ''}</div>
+                            <div style="font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                                ${userName} ${approvalBadge}
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year} · ${projCode}</div>
                         </div>
-                        <button onclick="downloadWeekstaatFromStorage('${f.path}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 12px">📄 Download</button>
+                        <div style="display:flex;gap:4px;flex-shrink:0">
+                            ${approvalAction}
+                            <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem">📄</button>
+                        </div>
                     </div>`;
                 }).join('');
             } catch (err) {
                 console.error('Weekstaten laden mislukt:', err);
                 listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+            }
+        }
+
+        function copyApprovalLink(token) {
+            const url = window.location.origin + '/approve-weekstaat.html?token=' + token;
+            navigator.clipboard.writeText(url).then(() => showToast('✓ Link gekopieerd'));
+        }
+
+        async function downloadWeekstaatBySearch(year, week, projCode, userSlug) {
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const folderPath = `${year}/week-${week}`;
+                const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
+                const match = (files || []).find(f => f.name.includes(projCode) || f.name.includes(userSlug));
+                if (match) {
+                    downloadWeekstaatFromStorage(`${folderPath}/${match.name}`);
+                } else {
+                    showToast('⚠️ PDF niet gevonden in storage');
+                }
+            } catch (err) {
+                showToast('❌ Download mislukt: ' + err.message);
+            }
+        }
+
+        function openApprovalModal(userId, projectId, weekNumber, year) {
+            // Zoek project + klant info
+            const project = (window._adminProjects || []).find(p => p.id === projectId);
+            const user = (window._adminUsers || []).find(u => u.id === userId);
+            const userName = user ? (user.name || user.email) : 'Onbekend';
+            const projCode = project ? project.project_code : '?';
+            const projName = project ? project.name : '';
+
+            // Client info uit project → company
+            let clientEmail = '';
+            let clientName = '';
+            if (project && project.client_company_id) {
+                const company = typeof project.client_company_id === 'object' ? project.client_company_id : null;
+                if (company) {
+                    clientEmail = company.email || '';
+                    clientName = company.contact_name || company.name || '';
+                }
+            }
+
+            const content = `
+                <div style="margin-bottom:16px;padding:12px;background:#f0f9ff;border-radius:8px;font-size:0.85rem">
+                    <div><strong>Medewerker:</strong> ${userName}</div>
+                    <div><strong>Project:</strong> ${projCode} — ${projName}</div>
+                    <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>E-mail opdrachtgever</label>
+                    <input type="email" id="approval-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>Naam opdrachtgever</label>
+                    <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                </div>
+                <button onclick="sendApprovalRequest('${userId}','${projectId}',${weekNumber},${year})" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem">📩 Verstuur ter goedkeuring</button>
+            `;
+
+            // Hergebruik de admin modal
+            const modal = document.getElementById('admin-modal');
+            const titleEl = document.getElementById('admin-modal-title');
+            const fieldsEl = document.getElementById('admin-modal-fields');
+            const saveBtn = document.getElementById('admin-modal-save');
+            if (modal && titleEl && fieldsEl) {
+                titleEl.textContent = 'Weekstaat ter goedkeuring';
+                fieldsEl.innerHTML = content;
+                if (saveBtn) saveBtn.style.display = 'none';
+                const delBtn = document.getElementById('admin-modal-delete');
+                if (delBtn) delBtn.style.display = 'none';
+                modal.classList.add('active');
+            }
+        }
+
+        async function sendApprovalRequest(userId, projectId, weekNumber, year) {
+            const email = document.getElementById('approval-email').value.trim();
+            const name = document.getElementById('approval-name').value.trim();
+            if (!email) { showToast('⚠️ Vul een e-mailadres in'); return; }
+
+            const sb = getSupabase();
+            if (!sb) return;
+
+            try {
+                // Genereer uniek token
+                const token = crypto.randomUUID();
+
+                // Update week_status met approval info
+                const { error: updateErr } = await sb.from('week_status')
+                    .update({
+                        approval_token: token,
+                        approval_status: 'ter_goedkeuring',
+                        approval_requested_at: new Date().toISOString(),
+                        approver_email: email,
+                        approver_name: name
+                    })
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', parseInt(weekNumber))
+                    .eq('year', parseInt(year));
+
+                if (updateErr) throw updateErr;
+
+                // Weekstaat details ophalen voor e-mail
+                const user = (window._adminUsers || []).find(u => u.id === userId);
+                const project = (window._adminProjects || []).find(p => p.id === projectId);
+                const userName = user ? (user.name || user.email) : 'Medewerker';
+                const projCode = project ? project.project_code : '';
+                const projName = project ? project.name : '';
+
+                // Verstuur e-mail via Edge Function
+                const approvalUrl = window.location.origin + '/approve-weekstaat.html?token=' + token;
+
+                try {
+                    const { data: fnData, error: fnErr } = await sb.functions.invoke('send-approval-request', {
+                        body: {
+                            token, email, name,
+                            userName, projCode, projName,
+                            weekNumber: parseInt(weekNumber),
+                            year: parseInt(year),
+                            approvalUrl
+                        }
+                    });
+                    if (fnErr) console.warn('Edge Function fout:', fnErr.message);
+                } catch (fnErr) {
+                    console.warn('Edge Function niet beschikbaar, open mailto:', fnErr);
+                    // Fallback: mailto link
+                    const subject = encodeURIComponent(`Weekstaat ter goedkeuring — ${userName} — Week ${weekNumber}/${year}`);
+                    const body = encodeURIComponent(
+                        `Beste ${name || 'opdrachtgever'},\n\n` +
+                        `Graag ontvangen wij uw goedkeuring voor de weekstaat van ${userName}.\n\n` +
+                        `Project: ${projCode} — ${projName}\n` +
+                        `Week: ${weekNumber} / ${year}\n\n` +
+                        `U kunt de weekstaat bekijken en digitaal ondertekenen via onderstaande link:\n` +
+                        `${approvalUrl}\n\n` +
+                        `Met vriendelijke groet,\n` +
+                        `Mark Kuijpers\nKuijpers Technical Services`
+                    );
+                    window.open(`mailto:${email}?subject=${subject}&body=${body}`);
+                }
+
+                // Modal sluiten
+                document.getElementById('admin-modal').style.display = 'none';
+                showToast('✓ Goedkeuringsverzoek verstuurd naar ' + email);
+                loadWeekstaten(); // Lijst verversen
+            } catch (err) {
+                showToast('❌ Fout: ' + err.message);
             }
         }
 
