@@ -934,7 +934,7 @@
                 </div>
                 <div onclick="switchAdminTab('personen')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏢</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Bedrijven</div><div style="font-size:0.7rem;color:var(--muted)">ZZP, klanten, KTS</div></div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Personen & Bedrijven</div><div style="font-size:0.7rem;color:var(--muted)">ZZP, klanten, KTS</div></div>
                 </div>
                 <div onclick="switchAdminTab('gebruikers')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">👥</div>
@@ -1009,8 +1009,8 @@
             <!-- ===== BEDRIJVEN TAB ===== -->
             <div id="admin-personen" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Bedrijven</div>
-                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw bedrijf</button>
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & Bedrijven</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw</button>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
@@ -6233,7 +6233,10 @@
                             <div style="font-size:0.75rem;color:var(--muted)">${userName} · ${projLabel}</div>
                             <div style="font-size:0.7rem;color:var(--muted)">Week ${wekenTekst} · ${maandTekst} · ${datumTekst}</div>
                         </div>
-                        <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 12px">📄 Download</button>
+                        <div style="display:flex;gap:4px;align-items:center">
+                            <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
+                            <button onclick="adminDeletePO('${po.po_number.replace(/'/g, "\\'")}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
+                        </div>
                     </div>`;
                 }).join('');
 
@@ -6258,6 +6261,40 @@
                 showToast('✓ PDF gedownload');
             } catch (err) {
                 showToast('❌ Download mislukt: ' + err.message);
+            }
+        }
+
+        async function adminDeletePO(poNumber) {
+            if (!confirm(`Inkooporder "${poNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een IO gezet worden.`)) return;
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                // Haal PO-info op voor storage path
+                const { data: poWeeks } = await sb.from('purchase_order_weeks')
+                    .select('project_id, year')
+                    .eq('po_number', poNumber)
+                    .limit(1);
+
+                // Verwijder purchase_order_weeks records
+                const { error: delErr } = await sb.from('purchase_order_weeks')
+                    .delete().eq('po_number', poNumber);
+                if (delErr) throw delErr;
+
+                // Probeer PDF uit storage te verwijderen
+                if (poWeeks && poWeeks.length > 0) {
+                    const pw = poWeeks[0];
+                    const projCode = (window._adminProjects || []).find(p => p.id === pw.project_id)?.project_code || '';
+                    if (projCode) {
+                        const storagePath = `${pw.year}/${projCode}/${poNumber.replace(/\s+/g, '_')}.pdf`;
+                        await sb.storage.from('inkooporders').remove([storagePath]);
+                    }
+                }
+
+                showToast('✓ Inkooporder verwijderd — weken zijn weer beschikbaar');
+                loadInkooporders();
+            } catch (err) {
+                console.error('PO verwijderen mislukt:', err);
+                showToast('❌ Verwijderen mislukt: ' + err.message);
             }
         }
 
@@ -7453,7 +7490,14 @@
                 title = existing ? 'Bedrijf bewerken' : 'Nieuw bedrijf';
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq" value="${existing ? existing.name || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Contactpersoon / ZZP'er naam</label><input type="text" id="adm-pers-contact" placeholder="Bijv. Jan de Vries" value="${existing ? existing.contact_name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Primair contactpersoon</label><input type="text" id="adm-pers-contact" placeholder="Bijv. Jan de Vries" value="${existing ? existing.contact_name || '' : ''}"></div>
+                    <div style="margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--border)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                            <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue)">Extra contactpersonen</label>
+                            <button type="button" class="btn btn-sm" style="padding:3px 10px;font-size:0.7rem" onclick="addExtraContact()">+ Toevoegen</button>
+                        </div>
+                        <div id="adm-pers-contacts-list"></div>
+                    </div>
                     <div class="form-group" style="margin-bottom:12px"><label>Type</label>
                         <select id="adm-pers-type">
                             <option value="zzp" ${existing && existing.type === 'zzp' ? 'selected' : ''}>ZZP'er</option>
@@ -7629,6 +7673,17 @@
             if (type === 'project' && _editingId) {
                 loadProjectAssignments(_editingId);
             }
+
+            // Laad extra contactpersonen bij bedrijf
+            if (type === 'persoon' && existing && existing.contacts) {
+                const list = document.getElementById('adm-pers-contacts-list');
+                if (list) {
+                    try {
+                        const contacts = typeof existing.contacts === 'string' ? JSON.parse(existing.contacts) : existing.contacts;
+                        (contacts || []).forEach(c => addExtraContact(c));
+                    } catch(e) { console.warn('Contacts parse error', e); }
+                }
+            }
         }
 
         async function loadProjectDropdown() {
@@ -7775,6 +7830,35 @@
                 console.error('Weekstaten laden mislukt:', err);
                 listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
             }
+        }
+
+        function addExtraContact(data) {
+            const list = document.getElementById('adm-pers-contacts-list');
+            if (!list) return;
+            const row = document.createElement('div');
+            row.className = 'extra-contact-row';
+            row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center';
+            row.innerHTML = `
+                <input type="text" class="ec-name" placeholder="Naam" value="${data ? (data.name||'') : ''}" style="flex:2;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="email" class="ec-email" placeholder="E-mail" value="${data ? (data.email||'') : ''}" style="flex:2;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="text" class="ec-role" placeholder="Functie" value="${data ? (data.role||'') : ''}" style="flex:1.5;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:2px 6px" title="Verwijderen">✕</button>
+            `;
+            list.appendChild(row);
+        }
+
+        function getExtraContacts() {
+            const rows = document.querySelectorAll('#adm-pers-contacts-list .extra-contact-row');
+            const contacts = [];
+            rows.forEach(row => {
+                const name = row.querySelector('.ec-name').value.trim();
+                const email = row.querySelector('.ec-email').value.trim();
+                const role = row.querySelector('.ec-role').value.trim();
+                if (name || email) {
+                    contacts.push({ name, email, role });
+                }
+            });
+            return contacts;
         }
 
         async function adminApproveWeekstaat(userId, projectId, weekNumber, year) {
@@ -8169,7 +8253,8 @@
                     phone: document.getElementById('adm-pers-phone').value.trim() || null,
                     email: document.getElementById('adm-pers-email').value.trim() || null,
                     email_po: document.getElementById('adm-pers-email-po').value.trim() || null,
-                    is_test: document.getElementById('adm-pers-test').checked
+                    is_test: document.getElementById('adm-pers-test').checked,
+                    contacts: getExtraContacts()
                 };
                 result = _editingId
                     ? await sb.from('companies').update(data).eq('id', _editingId)
