@@ -1805,7 +1805,7 @@
             // Check of week bewerkbaar is (project start/einddatum en status)
             const weekStatus = getWeekStatus();
             if (!weekStatus.editable) {
-                const showDownload = currentWeekDbStatus && currentWeekDbStatus !== 'concept';
+                const showDownload = currentWeekDbStatus === 'verstuurd';
                 container.innerHTML = `
                     <div style="text-align:center;padding:48px 24px;color:var(--muted)">
                         <div style="font-size:2.5rem;margin-bottom:12px">${weekStatus.icon}</div>
@@ -2400,7 +2400,7 @@
 
             // --- Rij 1: Tandwiel + WEEKSTAAT (links, verticaal gecentreerd) ---
             const titleFontSize = 19; // 1.2x groter (was 16)
-            const titleY = 20;
+            const titleY = 15;
             doc.setFontSize(titleFontSize);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
@@ -2536,8 +2536,11 @@
             cellRect(ml + 42, y, 22, rh);
             doc.text('Aantal uren', ml + 44, y + 4);
 
-            hLine(sumRightX, pw - mr, y); hLine(sumRightX, pw - mr, y + rh);
-            doc.text('Extra kosten', sumRightX + 1, y + 4);
+            const showExtraKosten = userCanDeclareExpenses();
+            if (showExtraKosten) {
+                hLine(sumRightX, pw - mr, y); hLine(sumRightX, pw - mr, y + rh);
+                doc.text('Extra kosten', sumRightX + 1, y + 4);
+            }
 
             // Data rijen
             doc.setFont(pdfFont, 'normal');
@@ -2551,16 +2554,18 @@
                 sumRows.push(['Reis kilometers', totalKm > 0 ? totalKm.toString() : '']);
             }
 
-            // Verzamel extra kosten teksten
+            // Verzamel extra kosten teksten (alleen als gebruiker rechten heeft)
             const extraKostenLines = [];
-            if (hotelNights > 0) {
-                extraKostenLines.push(`Hotelovernachting ${hotelNights}x á €${HOTEL_RATE.toFixed(0)},- per nacht`);
-            }
-            // Extra kosten uit declaraties toevoegen
-            if (expEntries && expEntries.length > 0) {
-                expEntries.forEach(exp => {
-                    extraKostenLines.push(`${exp.catLabel || exp.cat}: ${exp.desc} — ${fmtEuroPdf(exp.amount)}`);
-                });
+            if (showExtraKosten) {
+                if (hotelNights > 0) {
+                    extraKostenLines.push(`Hotelovernachting ${hotelNights}x á €${HOTEL_RATE.toFixed(0)},- per nacht`);
+                }
+                // Extra kosten uit declaraties toevoegen
+                if (expEntries && expEntries.length > 0) {
+                    expEntries.forEach(exp => {
+                        extraKostenLines.push(`${exp.catLabel || exp.cat}: ${exp.desc} — ${fmtEuroPdf(exp.amount)}`);
+                    });
+                }
             }
 
             for (let i = 0; i < sumRows.length; i++) {
@@ -2569,9 +2574,11 @@
                 cellRect(ml + 42, ry, 22, rh);
                 doc.text(sumRows[i][1], ml + 53, ry + 4, { align: 'center' });
 
-                // Extra kosten rij (borders rechts)
-                hLine(sumRightX, pw - mr, ry); hLine(sumRightX, pw - mr, ry + rh);
-                if (i < extraKostenLines.length) doc.text(extraKostenLines[i], sumRightX + 1, ry + 4);
+                // Extra kosten rij (borders rechts) — alleen als rechten
+                if (showExtraKosten) {
+                    hLine(sumRightX, pw - mr, ry); hLine(sumRightX, pw - mr, ry + rh);
+                    if (i < extraKostenLines.length) doc.text(extraKostenLines[i], sumRightX + 1, ry + 4);
+                }
             }
 
             // Totaal rij
@@ -2586,7 +2593,7 @@
             // --- Rij 26+: Handtekeningen ---
             y = totY + rh + 8;
             const sigW = (uw - 10) / 3;
-            const sigH = 20;
+            const sigH = 30; // 1.5x groter (was 20)
 
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(8);
@@ -2623,6 +2630,12 @@
             if (signatureData.zzp) {
                 try { doc.addImage(signatureData.zzp, 'PNG', sig2x + 2, y + rh + 1, sigW - 4, sigH - 2); } catch(e) {}
             }
+            // Datum onder handtekening opdrachtnemer
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(7);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), sig2x + 1, y + rh + sigH + 4);
+            doc.setTextColor(0, 0, 0);
 
             // Handtekening opdrachtgever — KTS blauwe strepen
             const sig3x = sig2x + sigW + 5;
@@ -2639,6 +2652,12 @@
             if (signatureData.client) {
                 try { doc.addImage(signatureData.client, 'PNG', sig3x + 2, y + rh + 1, sig3w - 4, sigH - 2); } catch(e) {}
             }
+            // Datum onder handtekening opdrachtgever
+            doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(7);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Datum: ' + (signatureData.client ? new Date().toLocaleDateString('nl-NL') : '_______________'), sig3x + 1, y + rh + sigH + 4);
+            doc.setTextColor(0, 0, 0);
 
             return doc;
         }
@@ -3336,6 +3355,7 @@
             }
 
             renderDays();
+            renderOverview();
             updateClockUI();
             checkWeekReminder();
         }
@@ -3748,9 +3768,8 @@
                 submitBtn2.style.background = '';
             }
 
-            // Download-knop tonen zodra week is opgeslagen (ongeacht status)
-            const heeftOpgeslagenData = localWeekDbStatus && localWeekDbStatus !== 'concept';
-            if (downloadBtn) downloadBtn.style.display = heeftOpgeslagenData ? 'block' : 'none';
+            // Download-knop alleen tonen bij verstuurd
+            if (downloadBtn) downloadBtn.style.display = isVerstuurd ? 'block' : 'none';
 
             if (isVerstuurd) {
                 // Al verstuurd: verberg onderteken/verstuur
