@@ -2319,21 +2319,35 @@
         let KTS_LOGO_B64 = null;
         let TANDWIEL_DATA_URL = null;
 
+        // Afbeelding laden via fetch, verkleinen via canvas voor kleine PDF
+        function fetchAndResizeImage(url, maxSize) {
+            return fetch(url)
+                .then(r => r.blob())
+                .then(blob => new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = function() {
+                        const natW = img.naturalWidth || img.width;
+                        const natH = img.naturalHeight || img.height;
+                        const scale = Math.min(1, maxSize / Math.max(natW, natH));
+                        const w = Math.round(natW * scale);
+                        const h = Math.round(natH * scale);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        URL.revokeObjectURL(img.src); // geheugen vrijgeven
+                        // JPEG met 0.85 kwaliteit → veel kleinere PDF dan PNG
+                        resolve(canvas.toDataURL('image/jpeg', 0.85));
+                    };
+                    img.onerror = () => { console.warn('Afbeelding laden mislukt:', url); resolve(null); };
+                    img.src = URL.createObjectURL(blob);
+                }))
+                .catch(() => { console.warn('Fetch mislukt:', url); return null; });
+        }
+
         const pdfImagesReady = Promise.all([
-            // Logo laden via fetch (origineel PNG, hoge kwaliteit)
-            fetch('KTS BV logo2.png').then(r => r.blob()).then(blob => new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => { KTS_LOGO_B64 = reader.result; resolve(); };
-                reader.onerror = () => { console.warn('Logo laden mislukt'); resolve(); };
-                reader.readAsDataURL(blob);
-            })).catch(() => { console.warn('Logo fetch mislukt'); }),
-            // Tandwiel laden via fetch
-            fetch('tandwiel-blauw.png').then(r => r.blob()).then(blob => new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => { TANDWIEL_DATA_URL = reader.result; resolve(); };
-                reader.onerror = () => { console.warn('Tandwiel laden mislukt'); resolve(); };
-                reader.readAsDataURL(blob);
-            })).catch(() => { console.warn('Tandwiel fetch mislukt'); })
+            fetchAndResizeImage('KTS BV logo2.png', 300).then(d => { KTS_LOGO_B64 = d; }),
+            fetchAndResizeImage('tandwiel-blauw.png', 128).then(d => { TANDWIEL_DATA_URL = d; })
         ]);
 
         function getWeekDates() {
@@ -2387,18 +2401,16 @@
             const textCapHeightMm = titleFontSize * 0.3528 * 0.72; // pt->mm * cap height ratio
             const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
             if (TANDWIEL_DATA_URL) {
-                try { doc.addImage(TANDWIEL_DATA_URL, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
+                try { doc.addImage(TANDWIEL_DATA_URL, 'JPEG', ml, iconY, iconSize, iconSize); } catch(e) {}
             }
             doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? iconSize + 2 : 0), titleY);
 
             // --- KTS Logo rechtsboven ---
             const rightX = pw - mr - 65;
-            const logoW = 30, logoH = logoW; // vierkant logo
-            const logoX = pw - mr - logoW - 1; // rechts uitgelijnd, 1mm marge
+            const logoW = 27, logoH = logoW; // vierkant logo (27mm past netjes)
+            const logoX = pw - mr - logoW - 3; // rechts uitgelijnd, 3mm marge van rand
             if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'PNG', logoX, 3, logoW, logoH); } catch(e) {
-                    try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 3, logoW, logoH); } catch(e2) {}
-                }
+                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
             }
 
             // --- KTS adresgegevens (onder logo) ---
