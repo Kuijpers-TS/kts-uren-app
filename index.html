@@ -2315,41 +2315,48 @@
             email: 'info@kuijpers-ts.nl'
         };
 
-        // KTS Logo dynamisch laden (niet als base64 in de HTML)
+        // KTS Logo en Tandwiel dynamisch laden als Promises
         let KTS_LOGO_B64 = null;
-        (function preloadKTSLogo() {
-            const img = new Image();
-            img.onload = function() {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.naturalWidth || img.width;
-                    canvas.height = img.naturalHeight || img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    KTS_LOGO_B64 = canvas.toDataURL('image/png');
-                } catch(e) { console.warn('KTS logo canvas error:', e); }
-            };
-            img.onerror = function() { console.warn('KTS logo kon niet geladen worden'); };
-            img.src = 'KTS BV logo2.png';
-        })();
-
-        // Tandwiel icoon dynamisch laden (niet als base64 in de HTML)
         let TANDWIEL_DATA_URL = null;
-        (function preloadTandwiel() {
-            const img = new Image();
-            img.onload = function() {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 32;
-                    canvas.height = 32;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, 32, 32);
-                    TANDWIEL_DATA_URL = canvas.toDataURL('image/png');
-                } catch(e) { console.warn('Tandwiel canvas error:', e); }
-            };
-            img.onerror = function() { console.warn('Tandwiel kon niet geladen worden'); };
-            img.src = 'tandwiel-blauw.png';
-        })();
+
+        function loadImageAsDataURL(src, maxSize) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = function() {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        let w = img.naturalWidth || img.width;
+                        let h = img.naturalHeight || img.height;
+                        // Schaal grote images terug voor betere PDF prestaties
+                        if (maxSize && (w > maxSize || h > maxSize)) {
+                            const scale = maxSize / Math.max(w, h);
+                            w = Math.round(w * scale);
+                            h = Math.round(h * scale);
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const dataUrl = canvas.toDataURL('image/png');
+                        console.log('Image geladen:', src, w + 'x' + h, '(' + Math.round(dataUrl.length/1024) + 'KB)');
+                        resolve(dataUrl);
+                    } catch(e) {
+                        console.warn('Canvas error voor', src, e);
+                        resolve(null);
+                    }
+                };
+                img.onerror = function() {
+                    console.warn('Image kon niet geladen worden:', src);
+                    resolve(null);
+                };
+                img.src = src;
+            });
+        }
+
+        // Start preloading direct (logo max 300px, tandwiel max 200px — voldoende voor PDF)
+        const _logoReady = loadImageAsDataURL('KTS BV logo2.png', 300).then(d => { KTS_LOGO_B64 = d; });
+        const _tandwielReady = loadImageAsDataURL('tandwiel-blauw.png', 200).then(d => { TANDWIEL_DATA_URL = d; });
+        const pdfImagesReady = Promise.all([_logoReady, _tandwielReady]);
 
         function getWeekDates() {
             return Array.from({length: 7}, (_, i) => {
@@ -2368,8 +2375,10 @@
         }
 
         // ===== URENSTAAT PDF =====
-        function generateUrenstaat() {
+        async function generateUrenstaat() {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
+            // Wacht tot logo en tandwiel geladen zijn (max 3 sec)
+            await Promise.race([pdfImagesReady, new Promise(r => setTimeout(r, 3000))]);
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             const pw = 297, ph = 210, ml = 15, mr = 15, uw = pw - ml - mr;
@@ -2826,8 +2835,8 @@
             }
         }
 
-        function downloadUrenstaat() {
-            const doc = generateUrenstaat();
+        async function downloadUrenstaat() {
+            const doc = await generateUrenstaat();
             if (doc) {
                 const fileName = `Urenstaat_${currentProject ? currentProject.project_code : 'KTS'}_Week${currentWeekNumber}_${currentYear}.pdf`;
                 doc.save(fileName);
@@ -3027,7 +3036,7 @@
 
                 // 4. Genereer PDF met handtekeningen
                 btn.innerHTML = '📄 PDF genereren...';
-                const urenstaat = generateUrenstaat();
+                const urenstaat = await generateUrenstaat();
                 if (!urenstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
                 const fileName = `Urenstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
