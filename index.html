@@ -1090,15 +1090,15 @@
     <!-- BOTTOM NAV -->
     <div class="bottom-nav">
         <div class="bottom-nav-inner">
-            <div class="nav-item active" onclick="switchScreen('uren')">
+            <div class="nav-item active" onclick="switchScreen('uren', event)">
                 <div class="nav-icon">⏱️</div>
                 Uren
             </div>
-            <div class="nav-item" id="nav-kosten" onclick="switchScreen('kosten')">
+            <div class="nav-item" id="nav-kosten" onclick="switchScreen('kosten', event)">
                 <div class="nav-icon">🧾</div>
                 Extra
             </div>
-            <div class="nav-item" onclick="switchScreen('overzicht')">
+            <div class="nav-item" onclick="switchScreen('overzicht', event)">
                 <div class="nav-icon">📊</div>
                 Overzicht
             </div>
@@ -2320,9 +2320,14 @@
         let TANDWIEL_DATA_URL = null;
 
         // Afbeelding laden via fetch, verkleinen via canvas voor kleine PDF
-        function fetchAndResizeImage(url, maxSize) {
+        // format: 'jpeg' (geen transparantie, kleiner) of 'png' (met transparantie)
+        function fetchAndResizeImage(url, maxSize, format) {
+            format = format || 'jpeg';
             return fetch(url)
-                .then(r => r.blob())
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.blob();
+                })
                 .then(blob => new Promise((resolve) => {
                     const img = new Image();
                     img.onload = function() {
@@ -2334,20 +2339,28 @@
                         const canvas = document.createElement('canvas');
                         canvas.width = w; canvas.height = h;
                         const ctx = canvas.getContext('2d');
+                        if (format === 'jpeg') {
+                            // JPEG: witte achtergrond (geen transparantie)
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, w, h);
+                        }
                         ctx.drawImage(img, 0, 0, w, h);
-                        URL.revokeObjectURL(img.src); // geheugen vrijgeven
-                        // JPEG met 0.85 kwaliteit → veel kleinere PDF dan PNG
-                        resolve(canvas.toDataURL('image/jpeg', 0.85));
+                        URL.revokeObjectURL(img.src);
+                        if (format === 'jpeg') {
+                            resolve(canvas.toDataURL('image/jpeg', 0.85));
+                        } else {
+                            resolve(canvas.toDataURL('image/png'));
+                        }
                     };
                     img.onerror = () => { console.warn('Afbeelding laden mislukt:', url); resolve(null); };
                     img.src = URL.createObjectURL(blob);
                 }))
-                .catch(() => { console.warn('Fetch mislukt:', url); return null; });
+                .catch(err => { console.warn('Fetch mislukt:', url, err); return null; });
         }
 
         const pdfImagesReady = Promise.all([
-            fetchAndResizeImage('KTS BV logo2.png', 300).then(d => { KTS_LOGO_B64 = d; }),
-            fetchAndResizeImage('tandwiel-blauw.png', 128).then(d => { TANDWIEL_DATA_URL = d; })
+            fetchAndResizeImage('KTS%20BV%20logo2.png', 300, 'jpeg').then(d => { KTS_LOGO_B64 = d; }),
+            fetchAndResizeImage('tandwiel-blauw.png', 128, 'png').then(d => { TANDWIEL_DATA_URL = d; })
         ]);
 
         function getWeekDates() {
@@ -2401,7 +2414,7 @@
             const textCapHeightMm = titleFontSize * 0.3528 * 0.72; // pt->mm * cap height ratio
             const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
             if (TANDWIEL_DATA_URL) {
-                try { doc.addImage(TANDWIEL_DATA_URL, 'JPEG', ml, iconY, iconSize, iconSize); } catch(e) {}
+                try { doc.addImage(TANDWIEL_DATA_URL, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
             }
             doc.text('URENSTAAT', ml + (TANDWIEL_DATA_URL ? iconSize + 2 : 0), titleY);
 
@@ -3365,7 +3378,7 @@
         }
 
         // ===== NAV =====
-        function switchScreen(name) {
+        function switchScreen(name, event) {
             // Blokkeer admin scherm voor niet-admins
             if (name === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
                 showToast('⚠️ Alleen voor beheerders');
@@ -3379,7 +3392,17 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(`screen-${name}`).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            // Highlight juiste nav-item: via event (klik) of programmatisch zoeken
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                // Programmatisch: zoek nav-item die switchScreen('name') aanroept
+                document.querySelectorAll('.nav-item').forEach(n => {
+                    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")) {
+                        n.classList.add('active');
+                    }
+                });
+            }
 
             // Ververs overzicht bij openen (haalt verse data uit Supabase)
             if (name === 'overzicht') renderOverview();
@@ -4860,7 +4883,8 @@
                     notifyOtherTabs();
                     logAudit('week_opgeslagen', { week: currentWeekNumber, tab: tab });
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
-                    await renderOverview();
+                    // Na opslaan automatisch naar overzicht scherm
+                    switchScreen('overzicht');
                 } catch (err) {
                     // Offline: sla lokaal op
                     saveWeekLocal();
