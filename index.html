@@ -3407,19 +3407,9 @@
                 if (btn) {
                     btn.disabled = !canGoNext;
                     btn.style.opacity = canGoNext ? '1' : '0.3';
+                    btn.style.background = canGoNext ? 'var(--kts-blue)' : '#b0bec5';
                 }
             });
-
-            // Maand-knoppen
-            const maxDate = new Date(thisMonday);
-            maxDate.setDate(maxDate.getDate() + 20);
-            const nextMonthFirst = new Date(overviewYear, overviewMonth + 1, 1);
-            const canGoNextMonth = nextMonthFirst <= maxDate;
-            const monthNextBtn = document.getElementById('month-next-btn');
-            if (monthNextBtn) {
-                monthNextBtn.disabled = !canGoNextMonth;
-                monthNextBtn.style.opacity = canGoNextMonth ? '1' : '0.3';
-            }
         }
 
         // ===== EXPENSE ACTIONS =====
@@ -3952,23 +3942,34 @@
             const actionBtnsEnd = document.getElementById('week-action-btns');
             if (actionBtnsEnd && weekSummary) actionBtnsEnd.style.display = 'none';
 
-            // Navigatieknoppen disablen op project start/eind grens
+            // Navigatieknoppen disablen op project start/eind grens + max 2 weken vooruit
             const prevBtn = document.getElementById('month-prev-btn');
             const nextBtn = document.getElementById('month-next-btn');
-            if (prevBtn && nextBtn && currentProject) {
+            if (prevBtn && nextBtn) {
                 let canGoPrev = true, canGoNext = true;
-                if (currentProject.start_date) {
-                    const sd = new Date(currentProject.start_date);
-                    canGoPrev = !(overviewYear < sd.getFullYear() || (overviewYear === sd.getFullYear() && overviewMonth <= sd.getMonth()));
+                if (currentProject) {
+                    if (currentProject.start_date) {
+                        const sd = new Date(currentProject.start_date);
+                        canGoPrev = !(overviewYear < sd.getFullYear() || (overviewYear === sd.getFullYear() && overviewMonth <= sd.getMonth()));
+                    }
+                    if (currentProject.end_date) {
+                        const ed = new Date(currentProject.end_date);
+                        canGoNext = !(overviewYear > ed.getFullYear() || (overviewYear === ed.getFullYear() && overviewMonth >= ed.getMonth()));
+                    }
                 }
-                if (currentProject.end_date) {
-                    const ed = new Date(currentProject.end_date);
-                    canGoNext = !(overviewYear > ed.getFullYear() || (overviewYear === ed.getFullYear() && overviewMonth >= ed.getMonth()));
-                }
+                // Max 2 weken vooruit check
+                const thisMonday = getWeekMonday(new Date());
+                const maxDate = new Date(thisMonday);
+                maxDate.setDate(maxDate.getDate() + 20);
+                const nextMonthFirst = new Date(overviewYear, overviewMonth + 1, 1);
+                if (nextMonthFirst > maxDate) canGoNext = false;
+
                 prevBtn.disabled = !canGoPrev;
                 prevBtn.style.opacity = canGoPrev ? '1' : '0.3';
+                prevBtn.style.background = canGoPrev ? 'var(--kts-blue)' : '#b0bec5';
                 nextBtn.disabled = !canGoNext;
                 nextBtn.style.opacity = canGoNext ? '1' : '0.3';
+                nextBtn.style.background = canGoNext ? 'var(--kts-blue)' : '#b0bec5';
             }
           } catch (err) {
             console.error('renderOverview fout:', err);
