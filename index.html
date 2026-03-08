@@ -4917,25 +4917,10 @@
             }
         }
 
-        // ===== PUNT 16: AUDIT LOG =====
+        // ===== PUNT 16: AUDIT LOG (uitgeschakeld) =====
         async function logAudit(action, details) {
-            try {
-                const sb = getSupabase();
-                if (!sb || !currentUser) return;
-                await sb.from('audit_log').insert({
-                    user_id: currentUser.id,
-                    user_name: currentUser.name || '',
-                    action: action,
-                    details: typeof details === 'string' ? details : JSON.stringify(details),
-                    week_number: currentWeekNumber,
-                    year: currentYear,
-                    project_id: currentProject ? currentProject.id : null,
-                    created_at: new Date().toISOString()
-                });
-            } catch (e) {
-                // Audit log mag nooit de app breken
-                console.warn('Audit log fout (niet kritiek):', e.message);
-            }
+            // Uitgeschakeld — kan later weer geactiveerd worden als audit_log tabel wordt aangemaakt
+            return;
         }
 
         // ===== PUNT 19: ERROR MONITORING =====
