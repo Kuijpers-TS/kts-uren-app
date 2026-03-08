@@ -5596,13 +5596,18 @@
                 sb.from('rates').select('*').order('valid_from', { ascending: false })
             ]);
 
-            const monthEntries = entriesRes.data || [];
-            const yearEntries = yearEntriesRes.data || [];
-            const weekStatuses = weekStatusRes.data || [];
-            const poWeeks = poWeeksRes.data || [];
             const allRates = ratesRes.data || [];
             const users = getFilteredUsers();
-            const projects = (window._adminProjects || []).filter(p => p.status === 'active');
+            const filteredUserIds = new Set(users.map(u => u.id));
+            const filteredProjects = (window._adminProjects || []).filter(p => _adminTestMode ? p.is_test === true : p.is_test !== true);
+            const filteredProjIds = new Set(filteredProjects.map(p => p.id));
+
+            // Filter alle data op test/productie gebruikers EN projecten
+            const monthEntries = (entriesRes.data || []).filter(e => filteredUserIds.has(e.user_id) && (!e.project_id || filteredProjIds.has(e.project_id)));
+            const yearEntries = (yearEntriesRes.data || []).filter(e => filteredUserIds.has(e.user_id) && (!e.project_id || filteredProjIds.has(e.project_id)));
+            const weekStatuses = (weekStatusRes.data || []).filter(w => filteredUserIds.has(w.user_id) && (!w.project_id || filteredProjIds.has(w.project_id)));
+            const poWeeks = (poWeeksRes.data || []).filter(p => filteredUserIds.has(p.user_id) && (!p.project_id || filteredProjIds.has(p.project_id)));
+            const projects = filteredProjects.filter(p => p.status === 'active');
 
             // Rate lookup helper: user+project → rate, project → rate, default
             function getRate(userId, projectId) {
