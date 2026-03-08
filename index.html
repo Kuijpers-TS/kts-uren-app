@@ -806,12 +806,12 @@
                 </button>
             </div>
             <div class="week-nav">
-                <button onclick="changeWeek(-1)">◀</button>
+                <button id="week-prev-btn" onclick="changeWeek(-1)">◀</button>
                 <div style="text-align:center">
                     <div class="week-label" id="week-label">Laden...</div>
                     <div class="week-total" id="week-total">Totaal: 0,0 uur</div>
                 </div>
-                <button onclick="changeWeek(1)">▶</button>
+                <button id="week-next-btn" onclick="changeWeek(1)">▶</button>
             </div>
 
 
@@ -828,12 +828,12 @@
         <!-- ===== EXTRA KOSTEN SCREEN ===== -->
         <div class="screen" id="screen-kosten">
             <div class="week-nav">
-                <button onclick="changeWeek(-1)">◀</button>
+                <button id="kosten-prev-btn" onclick="changeWeek(-1)">◀</button>
                 <div style="text-align:center">
                     <div class="week-label" id="kosten-week-label">Laden...</div>
                     <div class="week-total" id="kosten-week-total"></div>
                 </div>
-                <button onclick="changeWeek(1)">▶</button>
+                <button id="kosten-next-btn" onclick="changeWeek(1)">▶</button>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                 <h2 style="font-size:1.1rem;font-weight:700">Extra kosten</h2>
@@ -3389,6 +3389,37 @@
             document.getElementById('week-label').textContent = label;
             const kostenLabel = document.getElementById('kosten-week-label');
             if (kostenLabel) kostenLabel.textContent = label;
+            updateNavButtonStates();
+        }
+
+        function updateNavButtonStates() {
+            // Max 2 weken vooruit
+            const thisMonday = getWeekMonday(new Date());
+            const maxMonday = new Date(thisMonday);
+            maxMonday.setDate(maxMonday.getDate() + 14);
+            const nextMonday = new Date(currentWeekMonday);
+            nextMonday.setDate(nextMonday.getDate() + 7);
+            const canGoNext = nextMonday <= maxMonday;
+
+            // Week-knoppen
+            ['week-next-btn', 'kosten-next-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.disabled = !canGoNext;
+                    btn.style.opacity = canGoNext ? '1' : '0.3';
+                }
+            });
+
+            // Maand-knoppen
+            const maxDate = new Date(thisMonday);
+            maxDate.setDate(maxDate.getDate() + 20);
+            const nextMonthFirst = new Date(overviewYear, overviewMonth + 1, 1);
+            const canGoNextMonth = nextMonthFirst <= maxDate;
+            const monthNextBtn = document.getElementById('month-next-btn');
+            if (monthNextBtn) {
+                monthNextBtn.disabled = !canGoNextMonth;
+                monthNextBtn.style.opacity = canGoNextMonth ? '1' : '0.3';
+            }
         }
 
         // ===== EXPENSE ACTIONS =====
@@ -3985,7 +4016,10 @@
             const maxDate = new Date(thisMonday);
             maxDate.setDate(maxDate.getDate() + 20); // ruime marge voor maandweergave
             const firstOfNewMonth = new Date(newYear, newMonth, 1);
-            if (firstOfNewMonth > maxDate) return;
+            if (firstOfNewMonth > maxDate) {
+                showToast('🔮 Je kunt maximaal 2 weken vooruit werken');
+                return;
+            }
 
             overviewMonth = newMonth;
             overviewYear = newYear;
@@ -5246,9 +5280,10 @@
                     if (u.km_single_trip) priceInfo.push(u.km_single_trip + ' km');
                     if (u.hotel_rate) priceInfo.push('€' + u.hotel_rate + '/nacht');
                     // Laatst actief berekenen
-                    let laatstActief = '';
-                    if (u.updated_at) {
-                        const d = new Date(u.updated_at);
+                    let laatstActief = 'Nog niet ingelogd';
+                    const loginTs = u.updated_at || u.created_at;
+                    if (loginTs) {
+                        const d = new Date(loginTs);
                         const nu = new Date();
                         const diffMs = nu - d;
                         const diffMin = Math.floor(diffMs / 60000);
@@ -5260,8 +5295,9 @@
                         else if (diffDag < 7) laatstActief = diffDag + ' dag' + (diffDag > 1 ? 'en' : '') + ' geleden';
                         else laatstActief = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
                     }
-                    const activityColor = laatstActief === 'Nu actief' ? '#059669' : 'var(--muted)';
-                    const activityDot = laatstActief === 'Nu actief' ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#059669;margin-right:3px"></span>' : '';
+                    const isNuActief = laatstActief === 'Nu actief';
+                    const activityColor = isNuActief ? '#059669' : 'var(--muted)';
+                    const activityDot = isNuActief ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#059669;margin-right:3px"></span>' : '';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('gebruiker', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
