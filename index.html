@@ -516,7 +516,7 @@
         /* ===== TOAST ===== */
         .toast {
             position: fixed;
-            bottom: 90px;
+            top: 36px;
             left: 50%;
             transform: translateX(-50%);
             background: var(--kts-blue);
@@ -1805,7 +1805,7 @@
             // Check of week bewerkbaar is (project start/einddatum en status)
             const weekStatus = getWeekStatus();
             if (!weekStatus.editable) {
-                const showDownload = currentWeekDbStatus === 'verstuurd' || currentWeekDbStatus === 'ondertekend' || currentWeekDbStatus === 'opgeslagen';
+                const showDownload = currentWeekDbStatus && currentWeekDbStatus !== 'concept';
                 container.innerHTML = `
                     <div style="text-align:center;padding:48px 24px;color:var(--muted)">
                         <div style="font-size:2.5rem;margin-bottom:12px">${weekStatus.icon}</div>
@@ -2632,7 +2632,7 @@
             doc.line(sig3x, y + rh, pw - mr, y + rh);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
-            doc.text('Handtekening Opdrachtgever', sig3x + 1, y + 4);
+            doc.text('Handtekening Opdrachtgever' + (clientName ? ' / ' + clientName : ''), sig3x + 1, y + 4);
             doc.setTextColor(0, 0, 0);
             doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
             doc.rect(sig3x, y + rh, sig3w, sigH);
@@ -2850,7 +2850,9 @@
         async function downloadWeekstaat() {
             const doc = await generateWeekstaat();
             if (doc) {
-                const fileName = `Weekstaat_${currentProject ? currentProject.project_code : 'KTS'}_Week${currentWeekNumber}_${currentYear}.pdf`;
+                const projCode = currentProject ? currentProject.project_code : 'KTS';
+                const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
+                const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userName ? '_' + userName : ''}.pdf`;
                 doc.save(fileName);
                 showToast('✓ Weekstaat gedownload');
             }
