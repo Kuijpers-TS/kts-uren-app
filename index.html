@@ -4603,8 +4603,31 @@
                     redirectTo: window.location.origin + '/index.html'
                 });
                 if (error) throw error;
-                showToast('✓ Herstel-link verstuurd naar ' + email);
+                // Toon duidelijke melding in het loginscherm
+                const errorEl = document.getElementById('login-error');
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.style.background = '#ecfdf5';
+                    errorEl.style.color = '#065f46';
+                    errorEl.style.border = '1px solid #a7f3d0';
+                    errorEl.style.padding = '10px 14px';
+                    errorEl.style.borderRadius = '8px';
+                    errorEl.style.fontSize = '0.85rem';
+                    errorEl.innerHTML = '📧 Er is een e-mail verstuurd naar <b>' + email + '</b> met een link om je wachtwoord te resetten. Check ook je spam folder.';
+                }
+                showToast('✓ Herstel-mail verstuurd');
             } catch(e) {
+                const errorEl = document.getElementById('login-error');
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.style.background = '#fef2f2';
+                    errorEl.style.color = '#991b1b';
+                    errorEl.style.border = '1px solid #fecaca';
+                    errorEl.style.padding = '10px 14px';
+                    errorEl.style.borderRadius = '8px';
+                    errorEl.style.fontSize = '0.85rem';
+                    errorEl.textContent = '❌ Kon geen herstel-mail versturen: ' + (e.message || 'Onbekende fout');
+                }
                 showToast('❌ ' + (e.message || 'Fout bij versturen'));
             }
         }
