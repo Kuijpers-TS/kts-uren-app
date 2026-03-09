@@ -980,6 +980,18 @@
                     <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🧾</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Facturen</div><div style="font-size:0.7rem;color:var(--muted)">Facturen genereren</div></div>
                 </div>
+                <!-- Scheiding: Inspecties -->
+                <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
+                    <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Inspecties</div>
+                </div>
+                <div onclick="switchAdminTab('insp-templates')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📝</div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Formulieren</div><div style="font-size:0.7rem;color:var(--muted)">Inspectie-templates beheren</div></div>
+                </div>
+                <div onclick="switchAdminTab('insp-overzicht')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🔍</div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Inspecties</div><div style="font-size:0.7rem;color:var(--muted)">Overzicht & rapporten</div></div>
+                </div>
             </div>
             <!-- Terugknop (verborgen totdat een sectie geopend is) -->
             <div id="admin-back-bar" style="display:none;margin-bottom:12px">
@@ -1197,6 +1209,53 @@
                 </div>
                 <div id="admin-weekstaten-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Selecteer filters of klik op Weekstaten tab...</div></div>
             </div>
+
+            <!-- ========================================================= -->
+            <!-- ===== INSPECTIE MODULE (apart blok, later te splitsen) === -->
+            <!-- ========================================================= -->
+
+            <!-- ===== INSPECTIE TEMPLATES TAB ===== -->
+            <div id="admin-insp-templates" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Inspectie-formulieren</div>
+                    <button class="btn btn-primary btn-sm" onclick="inspOpenTemplateEditor()">+ Nieuw formulier</button>
+                </div>
+                <div id="insp-template-list" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Laden...</div>
+                </div>
+            </div>
+
+            <!-- ===== INSPECTIE OVERZICHT TAB ===== -->
+            <div id="admin-insp-overzicht" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Uitgevoerde inspecties</div>
+                    <button class="btn btn-primary btn-sm" onclick="inspStartNew()">+ Nieuwe inspectie</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+                    <select id="insp-filter-template" onchange="inspLoadInspections()" style="flex:1;min-width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                        <option value="">Alle formulieren</option>
+                    </select>
+                    <select id="insp-filter-user" onchange="inspLoadInspections()" style="flex:1;min-width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                        <option value="">Alle medewerkers</option>
+                    </select>
+                    <select id="insp-filter-status" onchange="inspLoadInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                        <option value="">Alle statussen</option>
+                        <option value="concept">Concept</option>
+                        <option value="afgerond">Afgerond</option>
+                        <option value="goedgekeurd">Goedgekeurd</option>
+                    </select>
+                </div>
+                <div id="insp-list" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Laden...</div>
+                </div>
+            </div>
+
+            <!-- ===== INSPECTIE TEMPLATE EDITOR (in admin-modal) ===== -->
+            <!-- De template-editor opent in de bestaande admin-modal -->
+
+            <!-- ========================================================= -->
+            <!-- ===== EINDE INSPECTIE MODULE ============================= -->
+            <!-- ========================================================= -->
 
         </div>
     </div>
@@ -5810,7 +5869,7 @@
             if (tiles) tiles.style.display = 'none';
             if (backBar) backBar.style.display = 'block';
 
-            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten','insp-templates','insp-overzicht'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = t === tab ? 'block' : 'none';
             });
@@ -5818,6 +5877,8 @@
             if (tab === 'inkooporders') { loadInkooporderFilters(); loadInkooporders(); }
             if (tab === 'facturen') { loadInvoiceFilters(); loadInvoices(); }
             if (tab === 'weekstaten') loadWeekstaten();
+            if (tab === 'insp-templates') inspLoadTemplates();
+            if (tab === 'insp-overzicht') inspLoadInspections();
         }
 
         function showAdminTiles() {
@@ -5825,7 +5886,7 @@
             const backBar = document.getElementById('admin-back-bar');
             if (tiles) tiles.style.display = 'grid';
             if (backBar) backBar.style.display = 'none';
-            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten','insp-templates','insp-overzicht'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = 'none';
             });
@@ -9018,6 +9079,8 @@
                 // Verstuur e-mail via Edge Function
                 const approvalUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + 'approve-weekstaat.html?token=' + token;
 
+                // Probeer Edge Function, altijd fallback naar mailto
+                let edgeFunctionOk = false;
                 try {
                     const { data: fnData, error: fnErr } = await sb.functions.invoke('send-approval-request', {
                         body: {
@@ -9028,12 +9091,16 @@
                             approvalUrl
                         }
                     });
-                    if (fnErr) console.warn('Edge Function fout:', fnErr.message);
+                    if (!fnErr) edgeFunctionOk = true;
+                    else console.warn('Edge Function fout:', fnErr.message);
                 } catch (fnErr) {
-                    console.warn('Edge Function niet beschikbaar, open mailto:', fnErr);
-                    // Fallback: mailto link
+                    console.warn('Edge Function niet beschikbaar:', fnErr);
+                }
+
+                // Fallback: altijd mailto openen als Edge Function faalt
+                if (!edgeFunctionOk) {
                     const subject = encodeURIComponent(`Weekstaat ter goedkeuring — ${userName} — Week ${weekNumber}/${year}`);
-                    const body = encodeURIComponent(
+                    const mailBody = encodeURIComponent(
                         `Beste ${name || 'opdrachtgever'},\n\n` +
                         `Graag ontvangen wij uw goedkeuring voor de weekstaat van ${userName}.\n\n` +
                         `Project: ${projCode} — ${projName}\n` +
@@ -9043,7 +9110,7 @@
                         `Met vriendelijke groet,\n` +
                         `Mark Kuijpers\nKuijpers Technical Services`
                     );
-                    window.open(`mailto:${email}?subject=${subject}&body=${body}`);
+                    window.open(`mailto:${email}?subject=${subject}&body=${mailBody}`);
                 }
 
                 // Modal sluiten
@@ -9315,6 +9382,483 @@
             document.getElementById('user-badge-name').innerHTML = '👤 Demo';
             showToast('Demo modus — data wordt niet opgeslagen');
         }
+
+        // =========================================================
+        // ===== INSPECTIE MODULE (apart blok, later te splitsen) =
+        // =========================================================
+
+        // ----- Inspectie Templates laden & tonen -----
+        let _inspTemplates = [];
+
+        async function inspLoadTemplates() {
+            const sb = getSupabase();
+            if (!sb) return;
+            const container = document.getElementById('insp-template-list');
+            if (!container) return;
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            try {
+                let query = sb.from('inspection_templates').select('*').order('created_at', { ascending: false });
+                if (_adminTestMode) {
+                    query = query.eq('is_test', true);
+                } else {
+                    query = query.or('is_test.eq.false,is_test.is.null');
+                }
+                const { data, error } = await query;
+                if (error) throw error;
+                _inspTemplates = data || [];
+
+                if (_inspTemplates.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center;padding:40px 20px">
+                            <div style="font-size:2rem;margin-bottom:8px">📝</div>
+                            <div style="color:var(--muted);font-size:0.85rem">Nog geen inspectie-formulieren</div>
+                            <div style="color:var(--muted);font-size:0.75rem;margin-top:4px">Klik op '+ Nieuw formulier' om te beginnen</div>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = _inspTemplates.map(t => {
+                    const sections = t.sections || [];
+                    const totalQuestions = sections.reduce((sum, s) => sum + (s.questions || []).length, 0);
+                    const catColors = {
+                        'commissioning': '#e0f2fe', 'onderhoud': '#d1fae5',
+                        'keuring': '#fef3c7', 'veiligheid': '#fee2e2', 'algemeen': '#f3f4f6'
+                    };
+                    const catBg = catColors[t.category] || '#f3f4f6';
+                    return `
+                        <div class="entry-card" onclick="inspOpenTemplateEditor('${t.id}')" style="cursor:pointer">
+                            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:700;font-size:0.85rem">${t.name || 'Naamloos'}</div>
+                                    <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
+                                        ${t.location ? t.location + ' · ' : ''}${t.installation || ''}
+                                    </div>
+                                    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                                        <span style="font-size:0.65rem;background:${catBg};padding:2px 8px;border-radius:4px;font-weight:600">${t.category || 'algemeen'}</span>
+                                        <span style="font-size:0.65rem;background:#f3f4f6;padding:2px 8px;border-radius:4px">${sections.length} secties · ${totalQuestions} vragen</span>
+                                        ${t.frequency ? `<span style="font-size:0.65rem;background:#ede9fe;padding:2px 8px;border-radius:4px">${t.frequency}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div style="font-size:0.7rem;color:var(--muted);white-space:nowrap">${t.is_active ? '✅ Actief' : '⏸ Inactief'}</div>
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;font-size:0.85rem">Fout: ${err.message}</div>`;
+            }
+        }
+
+        // ----- Inspectie Template Editor -----
+        function inspOpenTemplateEditor(templateId) {
+            const existing = templateId ? _inspTemplates.find(t => t.id === templateId) : null;
+            const sections = existing ? (existing.sections || []) : [];
+
+            const categorieOptions = ['algemeen','commissioning','onderhoud','keuring','veiligheid']
+                .map(c => `<option value="${c}" ${existing && existing.category === c ? 'selected' : ''}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`).join('');
+
+            const frequencyOptions = ['','6 maandelijks','1 jaarlijks','2 jaarlijks','4 jaarlijks','5 jaarlijks','10 jaarlijks','25 jaarlijks']
+                .map(f => `<option value="${f}" ${existing && existing.frequency === f ? 'selected' : ''}>${f || '-- Geen --'}</option>`).join('');
+
+            const content = `
+                <div class="form-group" style="margin-bottom:10px">
+                    <label>Naam formulier *</label>
+                    <input type="text" id="insp-tpl-name" value="${existing ? existing.name : ''}" placeholder="bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                </div>
+                <div class="form-group" style="margin-bottom:10px">
+                    <label>Beschrijving</label>
+                    <textarea id="insp-tpl-desc" placeholder="Uitgebreide beschrijving van het taakplan..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;min-height:60px">${existing ? existing.description || '' : ''}</textarea>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:10px">
+                    <div class="form-group" style="flex:1">
+                        <label>Categorie</label>
+                        <select id="insp-tpl-cat" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">${categorieOptions}</select>
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label>Frequentie</label>
+                        <select id="insp-tpl-freq" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">${frequencyOptions}</select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:10px">
+                    <div class="form-group" style="flex:1">
+                        <label>Locatie</label>
+                        <input type="text" id="insp-tpl-location" value="${existing ? existing.location || '' : ''}" placeholder="bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label>Installatie</label>
+                        <input type="text" id="insp-tpl-install" value="${existing ? existing.installation || '' : ''}" placeholder="bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:14px">
+                    <label>Asset</label>
+                    <input type="text" id="insp-tpl-asset" value="${existing ? existing.asset || '' : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                </div>
+
+                <div style="border-top:2px solid var(--border);padding-top:12px;margin-top:4px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-weight:700;font-size:0.85rem">Secties & Vragen</div>
+                        <button class="btn btn-sm" onclick="inspAddSection()" style="font-size:0.75rem">+ Sectie</button>
+                    </div>
+                    <div id="insp-tpl-sections" style="display:flex;flex-direction:column;gap:12px">
+                        ${sections.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.8rem">Voeg een sectie toe om te beginnen</div>' : ''}
+                    </div>
+                </div>
+            `;
+
+            const modal = document.getElementById('admin-modal');
+            const titleEl = document.getElementById('admin-modal-title');
+            const fieldsEl = document.getElementById('admin-modal-fields');
+            const saveBtn = document.getElementById('admin-modal-save');
+            const delBtn = document.getElementById('admin-modal-delete');
+
+            if (modal && titleEl && fieldsEl) {
+                titleEl.textContent = existing ? 'Formulier bewerken' : 'Nieuw inspectie-formulier';
+                fieldsEl.innerHTML = content;
+                if (saveBtn) {
+                    saveBtn.style.display = 'inline-flex';
+                    saveBtn.textContent = 'Opslaan';
+                    saveBtn.onclick = () => inspSaveTemplate(templateId);
+                }
+                if (delBtn) {
+                    delBtn.style.display = existing ? 'inline-flex' : 'none';
+                    delBtn.onclick = () => inspDeleteTemplate(templateId);
+                }
+                modal.classList.add('active');
+
+                // Render bestaande secties
+                if (sections.length > 0) {
+                    window._inspTplSections = JSON.parse(JSON.stringify(sections));
+                    inspRenderSections();
+                } else {
+                    window._inspTplSections = [];
+                }
+            }
+        }
+
+        // Secties renderen in de editor
+        function inspRenderSections() {
+            const container = document.getElementById('insp-tpl-sections');
+            if (!container) return;
+            const sections = window._inspTplSections || [];
+
+            if (sections.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.8rem">Voeg een sectie toe om te beginnen</div>';
+                return;
+            }
+
+            container.innerHTML = sections.map((sec, si) => {
+                const questions = (sec.questions || []).map((q, qi) => {
+                    const typeLabel = { 'ja_nee': 'Ja/Nee', 'goed_matig_slecht': 'Goed/Matig/Slecht', 'numeriek': 'Numeriek', 'tekst': 'Tekst', 'foto': 'Foto', 'handtekening': 'Handtekening', 'selectie': 'Selectie', 'datum': 'Datum' };
+                    return `
+                        <div style="display:flex;align-items:start;gap:6px;padding:8px;background:#f9fafb;border-radius:6px;margin-bottom:4px">
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:0.8rem;font-weight:500">${q.text || 'Nieuwe vraag'}</div>
+                                <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+                                    <span style="font-size:0.6rem;background:#e0f2fe;padding:1px 6px;border-radius:3px">${typeLabel[q.type] || q.type}</span>
+                                    ${q.required ? '<span style="font-size:0.6rem;background:#fee2e2;padding:1px 6px;border-radius:3px">Verplicht</span>' : ''}
+                                    ${q.unit ? `<span style="font-size:0.6rem;background:#f3f4f6;padding:1px 6px;border-radius:3px">${q.unit}</span>` : ''}
+                                    ${q.component ? `<span style="font-size:0.6rem;background:#ede9fe;padding:1px 6px;border-radius:3px">${q.component}</span>` : ''}
+                                    ${q.manufacturer ? `<span style="font-size:0.6rem;background:#fef3c7;padding:1px 6px;border-radius:3px">${q.manufacturer}</span>` : ''}
+                                    ${q.tools ? `<span style="font-size:0.6rem;background:#d1fae5;padding:1px 6px;border-radius:3px">🔧 ${q.tools}</span>` : ''}
+                                </div>
+                            </div>
+                            <button onclick="inspEditQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Bewerken">✏️</button>
+                            <button onclick="inspRemoveQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Verwijderen">🗑</button>
+                        </div>`;
+                }).join('');
+
+                return `
+                    <div style="border:2px solid var(--border);border-radius:10px;padding:12px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                            <input type="text" value="${sec.title || ''}" onchange="window._inspTplSections[${si}].title=this.value" placeholder="Sectienaam (bijv. Bekabeling)" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-weight:600">
+                            <button onclick="inspRemoveSection(${si})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:4px;margin-left:8px" title="Sectie verwijderen">🗑</button>
+                        </div>
+                        <div>${questions}</div>
+                        <button onclick="inspAddQuestion(${si})" class="btn btn-sm" style="width:100%;margin-top:6px;font-size:0.75rem;background:#f0f9ff;color:var(--kts-blue);border:1px dashed var(--kts-blue)">+ Vraag toevoegen</button>
+                    </div>`;
+            }).join('');
+        }
+
+        function inspAddSection() {
+            if (!window._inspTplSections) window._inspTplSections = [];
+            window._inspTplSections.push({ id: 's' + Date.now(), title: '', questions: [] });
+            inspRenderSections();
+        }
+
+        function inspRemoveSection(si) {
+            window._inspTplSections.splice(si, 1);
+            inspRenderSections();
+        }
+
+        function inspAddQuestion(si) {
+            const q = {
+                id: 'q' + Date.now(),
+                text: '',
+                type: 'ja_nee',
+                required: true,
+                unit: null,
+                component: '',
+                asset_tag: '',
+                manufacturer: '',
+                discipline: '',
+                permit_required: false,
+                norm_reference: '',
+                materials: '',
+                tools: '',
+                remarks_template: ''
+            };
+            window._inspTplSections[si].questions.push(q);
+            inspEditQuestion(si, window._inspTplSections[si].questions.length - 1);
+        }
+
+        function inspRemoveQuestion(si, qi) {
+            window._inspTplSections[si].questions.splice(qi, 1);
+            inspRenderSections();
+        }
+
+        function inspEditQuestion(si, qi) {
+            const q = window._inspTplSections[si].questions[qi];
+            const typeOptions = [
+                ['ja_nee', 'Ja / Nee / NVT'],
+                ['goed_matig_slecht', 'Goed / Matig / Slecht'],
+                ['numeriek', 'Numeriek (meetwaarde)'],
+                ['tekst', 'Tekst (vrij veld)'],
+                ['foto', 'Foto'],
+                ['selectie', 'Selectie (dropdown)'],
+                ['datum', 'Datum']
+            ].map(([v, l]) => `<option value="${v}" ${q.type === v ? 'selected' : ''}>${l}</option>`).join('');
+
+            const html = `
+                <div style="padding:12px;background:#f0f9ff;border-radius:8px;margin-bottom:10px">
+                    <div style="font-weight:600;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px">Vraag bewerken</div>
+                    <div class="form-group" style="margin-bottom:8px">
+                        <label style="font-size:0.75rem">Vraagtekst *</label>
+                        <textarea id="insp-q-text" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;min-height:50px">${q.text || ''}</textarea>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-bottom:8px">
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Type</label>
+                            <select id="insp-q-type" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">${typeOptions}</select>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Eenheid (numeriek)</label>
+                            <input type="text" id="insp-q-unit" value="${q.unit || ''}" placeholder="°C, bar, mm/s, MΩ" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-bottom:8px">
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Component</label>
+                            <input type="text" id="insp-q-component" value="${q.component || ''}" placeholder="bijv. Aandrijving: Bekabeling" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Asset tag / FMECA</label>
+                            <input type="text" id="insp-q-asset-tag" value="${q.asset_tag || ''}" placeholder="1.05.1.1.AR-01.186-.1062-" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-bottom:8px">
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Fabrikant</label>
+                            <input type="text" id="insp-q-manufacturer" value="${q.manufacturer || ''}" placeholder="bijv. ABB, Flowserve" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Discipline</label>
+                            <select id="insp-q-discipline" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                                <option value="" ${!q.discipline ? 'selected' : ''}>--</option>
+                                <option value="WTB" ${q.discipline === 'WTB' ? 'selected' : ''}>WTB</option>
+                                <option value="IA&E" ${q.discipline === 'IA&E' ? 'selected' : ''}>IA&E</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-bottom:8px">
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Norm / referentie</label>
+                            <input type="text" id="insp-q-norm" value="${q.norm_reference || ''}" placeholder="ISO 2954, MTR-4227" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Gereedschap</label>
+                            <input type="text" id="insp-q-tools" value="${q.tools || ''}" placeholder="Momentsleutel, Multimeter" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-bottom:8px">
+                        <div class="form-group" style="flex:1">
+                            <label style="font-size:0.75rem">Materialen</label>
+                            <input type="text" id="insp-q-materials" value="${q.materials || ''}" placeholder="Vet, Filter, Olie" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                        </div>
+                        <label style="display:flex;align-items:center;gap:6px;padding-top:18px;font-size:0.8rem;cursor:pointer">
+                            <input type="checkbox" id="insp-q-required" ${q.required ? 'checked' : ''} style="width:16px;height:16px">
+                            Verplicht
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;padding-top:18px;font-size:0.8rem;cursor:pointer">
+                            <input type="checkbox" id="insp-q-permit" ${q.permit_required ? 'checked' : ''} style="width:16px;height:16px">
+                            Vergunning
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px">
+                        <label style="font-size:0.75rem">Standaard opmerking / instructie</label>
+                        <textarea id="insp-q-remarks" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;min-height:40px">${q.remarks_template || ''}</textarea>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:flex-end">
+                        <button class="btn btn-sm" onclick="inspRenderSections()" style="font-size:0.75rem">Annuleren</button>
+                        <button class="btn btn-primary btn-sm" onclick="inspSaveQuestion(${si},${qi})" style="font-size:0.75rem">✓ Opslaan</button>
+                    </div>
+                </div>`;
+
+            // Vervang de vraag-weergave door het bewerkformulier
+            const container = document.getElementById('insp-tpl-sections');
+            const sectionDivs = container.children;
+            if (sectionDivs[si]) {
+                const questionContainer = sectionDivs[si].querySelector('div:nth-child(2)');
+                if (questionContainer && questionContainer.children[qi]) {
+                    questionContainer.children[qi].outerHTML = html;
+                }
+            }
+        }
+
+        function inspSaveQuestion(si, qi) {
+            const q = window._inspTplSections[si].questions[qi];
+            q.text = document.getElementById('insp-q-text')?.value?.trim() || '';
+            q.type = document.getElementById('insp-q-type')?.value || 'ja_nee';
+            q.unit = document.getElementById('insp-q-unit')?.value?.trim() || null;
+            q.component = document.getElementById('insp-q-component')?.value?.trim() || '';
+            q.asset_tag = document.getElementById('insp-q-asset-tag')?.value?.trim() || '';
+            q.manufacturer = document.getElementById('insp-q-manufacturer')?.value?.trim() || '';
+            q.discipline = document.getElementById('insp-q-discipline')?.value || '';
+            q.norm_reference = document.getElementById('insp-q-norm')?.value?.trim() || '';
+            q.tools = document.getElementById('insp-q-tools')?.value?.trim() || '';
+            q.materials = document.getElementById('insp-q-materials')?.value?.trim() || '';
+            q.required = document.getElementById('insp-q-required')?.checked || false;
+            q.permit_required = document.getElementById('insp-q-permit')?.checked || false;
+            q.remarks_template = document.getElementById('insp-q-remarks')?.value?.trim() || '';
+            inspRenderSections();
+        }
+
+        // ----- Template opslaan -----
+        async function inspSaveTemplate(templateId) {
+            const name = document.getElementById('insp-tpl-name')?.value?.trim();
+            if (!name) { showToast('⚠️ Vul een naam in'); return; }
+
+            const sb = getSupabase();
+            if (!sb) return;
+
+            const payload = {
+                name,
+                description: document.getElementById('insp-tpl-desc')?.value?.trim() || null,
+                category: document.getElementById('insp-tpl-cat')?.value || 'algemeen',
+                frequency: document.getElementById('insp-tpl-freq')?.value || null,
+                location: document.getElementById('insp-tpl-location')?.value?.trim() || null,
+                installation: document.getElementById('insp-tpl-install')?.value?.trim() || null,
+                asset: document.getElementById('insp-tpl-asset')?.value?.trim() || null,
+                sections: window._inspTplSections || [],
+                is_test: _adminTestMode,
+                updated_at: new Date().toISOString()
+            };
+
+            try {
+                if (templateId) {
+                    const { error } = await sb.from('inspection_templates').update(payload).eq('id', templateId);
+                    if (error) throw error;
+                    showToast('✓ Formulier bijgewerkt');
+                } else {
+                    payload.created_by = (await sb.auth.getUser()).data.user?.id;
+                    const { error } = await sb.from('inspection_templates').insert(payload);
+                    if (error) throw error;
+                    showToast('✓ Formulier aangemaakt');
+                }
+                document.getElementById('admin-modal').classList.remove('active');
+                inspLoadTemplates();
+            } catch (err) {
+                showToast('❌ Fout: ' + err.message);
+            }
+        }
+
+        // ----- Template verwijderen -----
+        async function inspDeleteTemplate(templateId) {
+            if (!templateId) return;
+            if (!await confirmAsync('Weet je zeker dat je dit formulier wilt verwijderen?', true)) return;
+
+            const sb = getSupabase();
+            if (!sb) return;
+
+            try {
+                const { error } = await sb.from('inspection_templates').delete().eq('id', templateId);
+                if (error) throw error;
+                showToast('✓ Formulier verwijderd');
+                document.getElementById('admin-modal').classList.remove('active');
+                inspLoadTemplates();
+            } catch (err) {
+                showToast('❌ Fout: ' + err.message);
+            }
+        }
+
+        // ----- Inspecties laden -----
+        async function inspLoadInspections() {
+            const sb = getSupabase();
+            if (!sb) return;
+            const container = document.getElementById('insp-list');
+            if (!container) return;
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            try {
+                let query = sb.from('inspections').select('*, inspection_templates(name, category)').order('inspection_date', { ascending: false });
+
+                const templateFilter = document.getElementById('insp-filter-template')?.value;
+                const userFilter = document.getElementById('insp-filter-user')?.value;
+                const statusFilter = document.getElementById('insp-filter-status')?.value;
+                if (templateFilter) query = query.eq('template_id', templateFilter);
+                if (userFilter) query = query.eq('user_id', userFilter);
+                if (statusFilter) query = query.eq('status', statusFilter);
+
+                const { data, error } = await query.limit(50);
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center;padding:40px 20px">
+                            <div style="font-size:2rem;margin-bottom:8px">🔍</div>
+                            <div style="color:var(--muted);font-size:0.85rem">Nog geen inspecties uitgevoerd</div>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = data.map(insp => {
+                    const tplName = insp.inspection_templates?.name || 'Onbekend formulier';
+                    const user = (window._adminUsers || []).find(u => u.id === insp.user_id);
+                    const userName = user ? user.name : 'Onbekend';
+                    const statusColors = { 'concept': '#fef3c7', 'afgerond': '#d1fae5', 'goedgekeurd': '#d1fae5', 'afgekeurd': '#fee2e2' };
+                    const statusLabels = { 'concept': '📝 Concept', 'afgerond': '✅ Afgerond', 'goedgekeurd': '✅ Goedgekeurd', 'afgekeurd': '❌ Afgekeurd' };
+                    const pct = insp.total_questions > 0 ? Math.round(insp.answered_questions / insp.total_questions * 100) : 0;
+
+                    return `
+                        <div class="entry-card" style="cursor:pointer">
+                            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:700;font-size:0.85rem">${tplName}</div>
+                                    <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
+                                        ${userName} · ${new Date(insp.inspection_date).toLocaleDateString('nl-NL')}
+                                        ${insp.location ? ' · ' + insp.location : ''}
+                                    </div>
+                                    <div style="display:flex;gap:6px;margin-top:6px">
+                                        <span style="font-size:0.65rem;background:${statusColors[insp.status] || '#f3f4f6'};padding:2px 8px;border-radius:4px;font-weight:600">${statusLabels[insp.status] || insp.status}</span>
+                                        ${insp.total_questions > 0 ? `<span style="font-size:0.65rem;background:#f3f4f6;padding:2px 8px;border-radius:4px">${pct}% ingevuld</span>` : ''}
+                                    </div>
+                                </div>
+                                ${insp.inspection_number ? `<div style="font-size:0.7rem;color:var(--kts-blue);font-weight:600;white-space:nowrap">${insp.inspection_number}</div>` : ''}
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;font-size:0.85rem">Fout: ${err.message}</div>`;
+            }
+        }
+
+        // Placeholder: nieuwe inspectie starten
+        function inspStartNew() {
+            showToast('ℹ️ Nieuwe inspectie starten — komt in fase 2');
+        }
+
+        // =========================================================
+        // ===== EINDE INSPECTIE MODULE ============================
+        // =========================================================
 
         // ===== PWA SERVICE WORKER =====
         if ('serviceWorker' in navigator) {
