@@ -4262,12 +4262,14 @@
                         canGoNext = !(overviewYear > ed.getFullYear() || (overviewYear === ed.getFullYear() && overviewMonth >= ed.getMonth()));
                     }
                 }
-                // Max 2 weken vooruit check
-                const thisMonday = getWeekMonday(new Date());
-                const maxDate = new Date(thisMonday);
-                maxDate.setDate(maxDate.getDate() + 20);
-                const nextMonthFirst = new Date(overviewYear, overviewMonth + 1, 1);
-                if (nextMonthFirst > maxDate) canGoNext = false;
+                // Max 2 weken vooruit check (niet voor admins)
+                if (!(currentUser && currentUser.role === 'admin')) {
+                    const thisMonday = getWeekMonday(new Date());
+                    const maxDate = new Date(thisMonday);
+                    maxDate.setDate(maxDate.getDate() + 20);
+                    const nextMonthFirst = new Date(overviewYear, overviewMonth + 1, 1);
+                    if (nextMonthFirst > maxDate) canGoNext = false;
+                }
 
                 prevBtn.disabled = !canGoPrev;
                 prevBtn.style.opacity = canGoPrev ? '1' : '0.3';
