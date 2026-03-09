@@ -6892,12 +6892,12 @@
             const GEAR_B64 = pdfImages.tandwiel || null;
             const { jsPDF } = window.jspdf;
 
-            // Landscape A4, consistent met IO en weekstaat
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            // Portrait A4
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             doc.setFont(pdfFont);
 
-            const pw = 297, ph = 210;
+            const pw = 210, ph = 297;
             const ml = 15, mr = 15, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
 
@@ -6919,7 +6919,7 @@
             const wekenTekst = Object.values(invData.weekData).map(w => w.weekNum).sort((a,b) => a-b);
             const wekenLabel = wekenTekst.length > 1 ? 'Weken ' + wekenTekst.join(', ') : 'Week ' + (wekenTekst[0] || '');
 
-            // ===== HEADER (identiek aan weekstaat) =====
+            // ===== HEADER =====
             const titleFontSize = 19;
             const titleY = 15;
             doc.setFontSize(titleFontSize);
@@ -6933,31 +6933,31 @@
             }
             doc.text('FACTUUR', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
 
-            // KTS Logo rechtsboven (gecentreerd boven adresblok, zoals weekstaat)
-            const rightX = pw - mr - 65;
+            // KTS Logo rechtsboven
+            const rightX = pw - mr - 55;
             const adresBlockW = pw - mr - rightX;
-            const logoW = 32, logoH = 32;
+            const logoW = 28, logoH = 28;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
                 try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
             }
 
-            // KTS adresgegevens (onder logo, zoals weekstaat)
-            doc.setFontSize(8);
+            // KTS adresgegevens (onder logo)
+            doc.setFontSize(7);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 38);
-            doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 43);
-            doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 35);
+            doc.text(KTS_INFO.postcode, pw - mr, 35, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 39);
+            doc.text(KTS_INFO.tel2, pw - mr, 39, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 48);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 43);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 43, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // ===== INFO BLOK =====
-            let y = 55;
-            const col1 = ml, col2 = ml + 95, col3 = ml + 165;
+            let y = 52;
+            const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(9);
@@ -6966,7 +6966,7 @@
             doc.text('Periode:', col2, y);
             doc.text('Factuurnummer:', col3, y);
             doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
             doc.text(userName, col1, y + 5);
             doc.text(maandTekst + ' (' + wekenLabel + ')', col2, y + 5);
@@ -6974,10 +6974,12 @@
 
             y += 14;
             doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(9);
             doc.setTextColor(...ktsBlue);
             doc.text('Project:', col1, y);
             doc.text('Factuurdatum:', col2, y);
             doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
             doc.text((invData.project?.project_code || '') + ' – ' + (invData.project?.name || ''), col1, y + 5);
             doc.text(today.toLocaleDateString('nl-NL'), col2, y + 5);
@@ -7606,11 +7608,12 @@
             const GEAR_B64 = pdfImages.tandwiel || null;
             const { jsPDF } = window.jspdf;
 
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            // Portrait A4
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             doc.setFont(pdfFont);
 
-            const pw = 297, ph = 210;
+            const pw = 210, ph = 297;
             const ml = 15, mr = 15, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
 
@@ -7624,8 +7627,7 @@
                 ? 'Weken ' + poData.includedWeeks.join(', ')
                 : 'Week ' + poData.includedWeeks[0];
 
-            // ===== HEADER (identiek aan weekstaat) =====
-            // Tandwiel + INKOOPORDER links, verticaal gecentreerd
+            // ===== HEADER =====
             const titleFontSize = 19;
             const titleY = 15;
             doc.setFontSize(titleFontSize);
@@ -7639,31 +7641,31 @@
             }
             doc.text('INKOOPORDER', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
 
-            // KTS Logo rechtsboven (gecentreerd boven adresblok, zoals weekstaat)
-            const rightX = pw - mr - 65;
+            // KTS Logo rechtsboven
+            const rightX = pw - mr - 55;
             const adresBlockW = pw - mr - rightX;
-            const logoW = 32, logoH = 32;
+            const logoW = 28, logoH = 28;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
                 try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
             }
 
-            // KTS adresgegevens (onder logo, zoals weekstaat)
-            doc.setFontSize(8);
+            // KTS adresgegevens (onder logo)
+            doc.setFontSize(7);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 38);
-            doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 43);
-            doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 35);
+            doc.text(KTS_INFO.postcode, pw - mr, 35, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 39);
+            doc.text(KTS_INFO.tel2, pw - mr, 39, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 48);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 43);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 43, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // ===== INFO BLOK =====
-            let y = 55;
-            const col1 = ml, col2 = ml + 95, col3 = ml + 165;
+            let y = 52;
+            const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
             // Labels
             doc.setFont(pdfFont, 'bold');
@@ -7672,18 +7674,20 @@
             doc.text('Medewerker:', col1, y);
             doc.text('Periode:', col2, y);
             doc.setFont(pdfFont, 'normal');
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
             doc.text(userName, col1, y + 5);
             doc.text(maandTekst + ' (' + wekenTekst + ')', col2, y + 5);
 
             y += 14;
             doc.setFont(pdfFont, 'bold');
+            doc.setFontSize(9);
             doc.setTextColor(...ktsBlue);
             doc.text('Project:', col1, y);
             doc.text('Klant:', col2, y);
             doc.text('PO-nummer:', col3, y);
             doc.setFont(pdfFont, 'normal');
+            doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
             doc.text(poData.project.project_code + ' – ' + (poData.project.name || ''), col1, y + 5);
             doc.text(poData.project.client_name || '', col2, y + 5);
