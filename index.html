@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KTS BV | Uren App</title>
-    <link rel="icon" type="image/png" href="tandwiel-blauw.png">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png">
@@ -979,7 +978,10 @@
             <div id="admin-dashboard" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Dashboard</div>
-                    <select id="dashboard-month-filter" onchange="loadDashboard()" style="padding:6px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem"></select>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem" onclick="exportDashboardExcel()">📥 Excel</button>
+                        <select id="dashboard-month-filter" onchange="loadDashboard()" style="padding:6px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem"></select>
+                    </div>
                 </div>
 
                 <!-- Sectie A: Omzet stat cards -->
@@ -1020,6 +1022,7 @@
                     </div>
                     <input type="file" id="import-file-project" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('project', this)">
                 </div>
+                <input type="text" id="admin-search-project" placeholder="Zoek project..." oninput="filterAdminList('project')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -1032,6 +1035,10 @@
                         <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw</button>
                     </div>
                     <input type="file" id="import-file-persoon" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('persoon', this)">
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." oninput="filterAdminList('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer"><input type="checkbox" id="admin-show-archived" onchange="loadAdminData('personen')" style="width:14px;height:14px"> Archief</label>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
@@ -1048,6 +1055,7 @@
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project / medewerker</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
+                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." oninput="filterAdminList('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -1215,7 +1223,7 @@
             <div class="modal-title">🧾 Declaratie toevoegen</div>
             <div class="form-group" style="margin-bottom:12px">
                 <label>Datum</label>
-                <input type="date" id="exp-date" value="2026-02-26">
+                <input type="date" id="exp-date">
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -3321,7 +3329,7 @@
             }
             const total = weekData.reduce((s,e) => s + e.hours, 0);
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
-            if (!confirm(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen?`)) return;
+            if (!await confirmAsync(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen?`)) return;
 
             const btn = document.getElementById('submit-week-btn');
             btn.innerHTML = '⏳ Versturen...';
@@ -3772,7 +3780,10 @@
         }
 
         // ===== MODALS =====
-        function openExpenseModal() { document.getElementById('expense-modal').classList.add('active'); }
+        function openExpenseModal() {
+            document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('expense-modal').classList.add('active');
+        }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
         // ===== PROJECT SWITCHER =====
@@ -5348,6 +5359,52 @@
             }
         }
 
+        // ===== CUSTOM CONFIRM DIALOG =====
+        function confirmAsync(message, destructive) {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:white;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+                const btnColor = destructive ? '#dc2626' : 'var(--kts-blue)';
+                const btnText = destructive ? 'Verwijderen' : 'Bevestigen';
+                box.innerHTML = `
+                    <div style="font-size:0.9rem;line-height:1.5;color:#1e293b;white-space:pre-line;margin-bottom:20px">${message}</div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end">
+                        <button id="cd-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
+                        <button id="cd-ok" style="padding:10px 20px;border-radius:10px;border:none;background:${btnColor};color:white;font-size:0.85rem;cursor:pointer;font-weight:600">${btnText}</button>
+                    </div>
+                `;
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                function close(result) { overlay.remove(); resolve(result); }
+                box.querySelector('#cd-cancel').onclick = function() { close(false); };
+                box.querySelector('#cd-ok').onclick = function() { close(true); };
+                overlay.onclick = function(e) { if (e.target === overlay) close(false); };
+            });
+        }
+
+        // ===== OFFLINE INDICATOR =====
+        (function() {
+            const banner = document.createElement('div');
+            banner.id = 'offline-banner';
+            banner.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:#fef3c7;color:#92400e;text-align:center;padding:6px 12px;font-size:0.8rem;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.1)';
+            banner.textContent = '⚠️ Geen internetverbinding — wijzigingen worden niet opgeslagen';
+            document.body.appendChild(banner);
+
+            function updateStatus() {
+                banner.style.display = navigator.onLine ? 'none' : 'block';
+            }
+            window.addEventListener('online', function() {
+                banner.style.display = 'none';
+                showToast('✓ Weer online');
+            });
+            window.addEventListener('offline', function() {
+                banner.style.display = 'block';
+            });
+            updateStatus();
+        })();
+
         // ===== PUNT 17: HERINNERING BANNER =====
         function checkWeekReminder() {
             const container = document.getElementById('reminder-container');
@@ -5613,6 +5670,19 @@
             });
         })();
 
+        // ===== ADMIN ZOEKFILTER =====
+        function filterAdminList(type) {
+            const searchEl = document.getElementById('admin-search-' + type);
+            if (!searchEl) return;
+            const q = searchEl.value.toLowerCase().trim();
+            const listId = type === 'persoon' ? 'admin-persoon-list' : type === 'project' ? 'admin-project-list' : 'admin-tarief-list';
+            const cards = document.querySelectorAll('#' + listId + ' .entry-card');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+        }
+
         // ===== CONTACT EMAIL HELPERS =====
         function getContactEmailsByRole(company, role) {
             // role: 'receives_weekstaat', 'receives_factuur', 'receives_io'
@@ -5804,6 +5874,9 @@
                 });
                 return total;
             }
+
+            // Bewaar data voor Excel export
+            window._dashboardExportData = { monthEntries, yearEntries, users, projects, calcRevenue, currentYear, selectedMonth, isFullYear };
 
             // Render alle secties
             renderDashboardStats(monthEntries, yearEntries, weekStatuses, poWeeks, selectedMonth, currentYear, calcRevenue);
@@ -6090,6 +6163,93 @@
             el.innerHTML = html;
         }
 
+        function exportDashboardExcel() {
+            if (typeof XLSX === 'undefined') { showToast('⚠️ SheetJS wordt nog geladen'); return; }
+            const d = window._dashboardExportData;
+            if (!d) { showToast('⚠️ Laad eerst het dashboard'); return; }
+
+            const wb = XLSX.utils.book_new();
+            const MONTHS_NL = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            const periodLabel = d.isFullYear ? ('Heel ' + d.currentYear) : (MONTHS_NL[d.selectedMonth] + ' ' + d.currentYear);
+
+            // Sheet 1: Uren per medewerker per project
+            const urenRows = [];
+            d.users.forEach(u => {
+                const userEntries = d.monthEntries.filter(e => e.user_id === u.id);
+                if (userEntries.length === 0) return;
+                // Groepeer per project
+                const projGroups = {};
+                userEntries.forEach(e => {
+                    const pid = e.project_id || 'geen';
+                    if (!projGroups[pid]) projGroups[pid] = { hours: 0, km: 0, hotel: 0, omzet: 0 };
+                    projGroups[pid].hours += parseFloat(e.total_hours) || 0;
+                    projGroups[pid].km += parseFloat(e.km) || 0;
+                    projGroups[pid].hotel += parseFloat(e.hotel) || 0;
+                });
+                Object.entries(projGroups).forEach(([pid, g]) => {
+                    const proj = d.projects.find(p => p.id === pid);
+                    const projEntries = userEntries.filter(e => (e.project_id || 'geen') === pid);
+                    urenRows.push({
+                        'Medewerker': u.name || u.email,
+                        'Project': proj ? proj.project_code : '-',
+                        'Projectnaam': proj ? proj.name : '-',
+                        'Uren': Math.round(g.hours * 100) / 100,
+                        'Km': Math.round(g.km),
+                        'Hotel': Math.round(g.hotel),
+                        'Omzet': Math.round(d.calcRevenue(projEntries) * 100) / 100
+                    });
+                });
+            });
+            if (urenRows.length > 0) {
+                const ws1 = XLSX.utils.json_to_sheet(urenRows);
+                ws1['!cols'] = [{wch:20},{wch:14},{wch:25},{wch:8},{wch:6},{wch:6},{wch:12}];
+                XLSX.utils.book_append_sheet(wb, ws1, 'Uren ' + periodLabel);
+            }
+
+            // Sheet 2: Omzet per maand (jaarcijfers)
+            const maandRows = [];
+            for (let m = 0; m < 12; m++) {
+                const mStart = new Date(d.currentYear, m, 1).toISOString().split('T')[0];
+                const mEnd = new Date(d.currentYear, m + 1, 0).toISOString().split('T')[0];
+                const mEntries = d.yearEntries.filter(e => e.entry_date >= mStart && e.entry_date <= mEnd);
+                const mHours = mEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
+                maandRows.push({
+                    'Maand': MONTHS_NL[m],
+                    'Uren': Math.round(mHours * 100) / 100,
+                    'Omzet': Math.round(d.calcRevenue(mEntries) * 100) / 100
+                });
+            }
+            const ws2 = XLSX.utils.json_to_sheet(maandRows);
+            ws2['!cols'] = [{wch:12},{wch:8},{wch:12}];
+            XLSX.utils.book_append_sheet(wb, ws2, 'Omzet ' + d.currentYear);
+
+            // Sheet 3: Detail entries
+            const detailRows = d.monthEntries.map(e => {
+                const u = d.users.find(u => u.id === e.user_id);
+                const p = d.projects.find(p => p.id === e.project_id);
+                return {
+                    'Datum': e.entry_date,
+                    'Medewerker': u ? (u.name || u.email) : '-',
+                    'Project': p ? p.project_code : '-',
+                    'Omschrijving': e.description || '',
+                    'Start': e.start_time || '',
+                    'Eind': e.end_time || '',
+                    'Uren': parseFloat(e.total_hours) || 0,
+                    'Km': parseFloat(e.km) || 0,
+                    'Hotel': parseFloat(e.hotel) || 0
+                };
+            }).sort((a, b) => a.Datum.localeCompare(b.Datum));
+            if (detailRows.length > 0) {
+                const ws3 = XLSX.utils.json_to_sheet(detailRows);
+                ws3['!cols'] = [{wch:12},{wch:20},{wch:14},{wch:30},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6}];
+                XLSX.utils.book_append_sheet(wb, ws3, 'Detail ' + periodLabel);
+            }
+
+            const fileName = 'KTS_Dashboard_' + periodLabel.replace(/\s+/g, '_') + '.xlsx';
+            XLSX.writeFile(wb, fileName);
+            showToast('✓ ' + fileName + ' gedownload');
+        }
+
         async function loadAdminData() {
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden met database'); return; }
@@ -6174,7 +6334,12 @@
             // Bedrijven laden (ZZP, klant, KTS)
             const { data: companies } = await sb.from('companies').select('*').order('name');
             window._adminCompanies = companies || [];
-            const filteredCompanies = (companies || []).filter(c => _adminTestMode ? c.is_test === true : c.is_test !== true);
+            const showArchived = document.getElementById('admin-show-archived')?.checked || false;
+            const filteredCompanies = (companies || []).filter(c => {
+                if (_adminTestMode ? c.is_test !== true : c.is_test === true) return false;
+                if (!showArchived && c.archived) return false;
+                return true;
+            });
             const persList = document.getElementById('admin-persoon-list');
             if (filteredCompanies && filteredCompanies.length > 0) {
                 persList.innerHTML = filteredCompanies.map((c) => {
@@ -6199,7 +6364,7 @@
                         <div style="display:flex;justify-content:space-between;align-items:flex-start">
                             <div>
                                 ${contactHtml}
-                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
                             </div>
                             <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
                         </div>
@@ -6442,7 +6607,7 @@
         }
 
         async function adminDeletePO(poNumber) {
-            if (!confirm(`Inkooporder "${poNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een IO gezet worden.`)) return;
+            if (!await confirmAsync(`Inkooporder "${poNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een IO gezet worden.`, true)) return;
             const sb = getSupabase();
             if (!sb) return;
             try {
@@ -6740,6 +6905,14 @@
             const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
             const customNum = document.getElementById('inv-custom-number')?.value?.trim();
             const invoiceNumber = customNum || ('F-' + (invData.project?.project_code || '') + '-' + ddmmyyyy);
+
+            // Duplicaat-check
+            try {
+                const { data: dupCheck } = await sb.from('invoices').select('id').eq('invoice_number', invoiceNumber).limit(1);
+                if (dupCheck && dupCheck.length > 0) {
+                    if (!await confirmAsync('Factuurnummer "' + invoiceNumber + '" bestaat al! Toch doorgaan?')) return;
+                }
+            } catch(e) { console.warn('Duplicaat check mislukt:', e); }
             const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
             const maandTekst = MONTHS_NL[invData.month - 1] + ' ' + invData.year;
             const userName = invData.user ? (invData.user.name || invData.user.email) : '';
@@ -7119,7 +7292,7 @@
         }
 
         async function adminDeleteInvoice(invoiceId, invoiceNumber) {
-            if (!confirm(`Factuur "${invoiceNumber}" verwijderen?`)) return;
+            if (!await confirmAsync(`Factuur "${invoiceNumber}" verwijderen?`, true)) return;
             const sb = getSupabase();
             if (!sb) return;
             try {
@@ -7810,6 +7983,10 @@
                             <option value="inactive" ${existing && existing.status === 'inactive' ? 'selected' : ''}>Inactive</option>
                         </select>
                     </div>
+                    <div class="form-group" style="margin-bottom:12px">
+                        <label>Notities</label>
+                        <textarea id="adm-proj-notes" rows="3" placeholder="Afspraken, contactmomenten, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
+                    </div>
                     <div style="margin-bottom:12px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-proj-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testproject
@@ -7859,11 +8036,19 @@
                         <div class="form-group"><label>KVK / Handelsregister</label><input type="text" id="adm-pers-kvk" placeholder="89133315 / HRB 101387" value="${existing ? existing.kvk_number || '' : ''}"></div>
                         <div class="form-group"><label>BTW / USt-IdNr.</label><input type="text" id="adm-pers-btw" placeholder="NL... / DE..." value="${existing ? existing.btw_number || '' : ''}"></div>
                     </div>
-                    <div style="margin-top:12px">
+                    <div class="form-group" style="margin-top:12px">
+                        <label>Notities</label>
+                        <textarea id="adm-pers-notes" rows="3" placeholder="Afspraken, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
+                    </div>
+                    <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-pers-archived" ${existing && existing.archived ? 'checked' : ''} style="width:16px;height:16px;accent-color:#6b7280"> Gearchiveerd
+                        </label>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-left:24px;margin-top:-4px">Gearchiveerde bedrijven worden niet getoond in lijsten en dropdowns</div>
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-pers-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testbedrijf
                         </label>
-                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testbedrijven worden verborgen in productie-modus</div>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-left:24px;margin-top:-4px">Testbedrijven worden verborgen in productie-modus</div>
                     </div>
                 `;
             } else if (type === 'tarief') {
@@ -8463,7 +8648,7 @@
         }
 
         async function adminApproveWeekstaat(userId, projectId, weekNumber, year) {
-            if (!confirm(`Week ${weekNumber} (${year}) goedkeuren als admin?`)) return;
+            if (!await confirmAsync(`Week ${weekNumber} (${year}) goedkeuren als admin?`)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             try {
@@ -8485,7 +8670,7 @@
         }
 
         async function adminDeleteWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
-            if (!confirm(`Weekstaat verwijderen?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDit verwijdert de weekstatus, time entries en eventuele IO-koppelingen voor deze week.`)) return;
+            if (!await confirmAsync(`Weekstaat verwijderen?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDit verwijdert de weekstatus, time entries en eventuele IO-koppelingen voor deze week.`, true)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             try {
@@ -8654,14 +8839,14 @@
             const projCode = project ? project.project_code : '?';
             const projName = project ? project.name : '';
 
-            // Client info uit project → company
+            // Client info uit project → company (gebruik contacten met receives_weekstaat)
             let clientEmail = '';
             let clientName = '';
             if (project && project.client_company_id) {
                 const company = typeof project.client_company_id === 'object' ? project.client_company_id : null;
                 if (company) {
-                    clientEmail = company.email || '';
-                    clientName = company.contact_name || company.name || '';
+                    clientEmail = getContactEmailsByRole(company, 'receives_weekstaat');
+                    clientName = getContactNameByRole(company, 'receives_weekstaat') || company.name || '';
                 }
             }
 
@@ -8842,7 +9027,7 @@
         // toggleAssignmentSetting verwijderd — feature flags staan nu op users tabel
 
         async function resetWelcomeGuide(userId, userName) {
-            if (!confirm('Welkomstgids opnieuw tonen voor ' + userName + ' bij volgende login?')) return;
+            if (!await confirmAsync('Welkomstgids opnieuw tonen voor ' + userName + ' bij volgende login?')) return;
             const { error } = await getSupabase().from('users').update({ reset_welcome: true }).eq('id', userId);
             if (error) {
                 showToast('❌ Fout: ' + error.message);
@@ -8883,7 +9068,7 @@
             if (!_editingId) return;
             const delBtn = document.getElementById('admin-modal-delete');
             const type = delBtn ? delBtn.dataset.type : '';
-            if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
+            if (!await confirmAsync('Weet je zeker dat je dit item wilt verwijderen?', true)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             let table = '';
@@ -8922,6 +9107,7 @@
                     // km_single_trip en hotel_rate staan nu op users tabel
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active',
+                    notes: document.getElementById('adm-proj-notes').value.trim() || null,
                     is_test: document.getElementById('adm-proj-test').checked
                 };
                 result = _editingId
@@ -8951,6 +9137,8 @@
                     email: primary.email || null,
                     email_po: ioEmails || null,
                     is_test: document.getElementById('adm-pers-test').checked,
+                    archived: document.getElementById('adm-pers-archived').checked,
+                    notes: document.getElementById('adm-pers-notes').value.trim() || null,
                     contacts: allContacts
                 };
                 result = _editingId
