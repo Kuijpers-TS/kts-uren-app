@@ -7832,7 +7832,7 @@
                         <div id="adm-pers-contacts-list"></div>
                     </div>
                     <div class="form-group" style="margin-bottom:12px"><label>Type</label>
-                        <select id="adm-pers-type">
+                        <select id="adm-pers-type" onchange="updateContactCheckboxVisibility()">
                             <option value="zzp" ${existing && existing.type === 'zzp' ? 'selected' : ''}>ZZP'er</option>
                             <option value="client" ${existing && existing.type === 'client' ? 'selected' : ''}>Klant</option>
                             <option value="kts" ${existing && existing.type === 'kts' ? 'selected' : ''}>KTS medewerker</option>
@@ -8390,23 +8390,59 @@
             row.className = 'extra-contact-row';
             row.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:10px;padding:10px;background:white;border:1px solid var(--border);border-radius:8px;position:relative';
             row.innerHTML = `
-                <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.9rem;padding:0" title="Verwijderen">✕</button>
+                <span class="ec-hoofdcontact-label" style="display:none;font-size:0.65rem;font-weight:700;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.5px">Hoofdcontact</span>
+                <button type="button" onclick="this.parentElement.remove();updateHoofdcontactLabel()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.9rem;padding:0" title="Verwijderen">✕</button>
                 <input type="text" class="ec-name" placeholder="Naam" value="${data ? (data.name||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
                 <input type="email" class="ec-email" placeholder="E-mail" value="${data ? (data.email||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
                 <input type="text" class="ec-role" placeholder="Functie" value="${data ? (data.role||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
                 <div style="display:flex;gap:12px;margin-top:2px;font-size:0.75rem">
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                    <label class="cb-weekstaat" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
                         <input type="checkbox" class="ec-recv-weekstaat" ${data && data.receives_weekstaat ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Weekstaten
                     </label>
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                    <label class="cb-factuur" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
                         <input type="checkbox" class="ec-recv-factuur" ${data && data.receives_factuur ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Facturen
                     </label>
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                    <label class="cb-io" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
                         <input type="checkbox" class="ec-recv-io" ${data && data.receives_io ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Inkooporders
                     </label>
                 </div>
             `;
             list.appendChild(row);
+            updateContactCheckboxVisibility();
+            updateHoofdcontactLabel();
+        }
+
+        function updateContactCheckboxVisibility() {
+            const typeEl = document.getElementById('adm-pers-type');
+            if (!typeEl) return;
+            const ptype = typeEl.value;
+            // Klant: Weekstaten + Facturen zichtbaar, IO verborgen
+            // ZZP: alleen IO zichtbaar
+            // KTS: alles zichtbaar (intern)
+            const showWeekstaat = (ptype === 'client' || ptype === 'kts');
+            const showFactuur = (ptype === 'client' || ptype === 'kts');
+            const showIO = (ptype === 'zzp' || ptype === 'kts');
+
+            document.querySelectorAll('#adm-pers-contacts-list .cb-weekstaat').forEach(el => {
+                el.style.display = showWeekstaat ? 'flex' : 'none';
+                if (!showWeekstaat) el.querySelector('input').checked = false;
+            });
+            document.querySelectorAll('#adm-pers-contacts-list .cb-factuur').forEach(el => {
+                el.style.display = showFactuur ? 'flex' : 'none';
+                if (!showFactuur) el.querySelector('input').checked = false;
+            });
+            document.querySelectorAll('#adm-pers-contacts-list .cb-io').forEach(el => {
+                el.style.display = showIO ? 'flex' : 'none';
+                if (!showIO) el.querySelector('input').checked = false;
+            });
+        }
+
+        function updateHoofdcontactLabel() {
+            const rows = document.querySelectorAll('#adm-pers-contacts-list .extra-contact-row');
+            rows.forEach((row, i) => {
+                const label = row.querySelector('.ec-hoofdcontact-label');
+                if (label) label.style.display = i === 0 ? 'block' : 'none';
+            });
         }
 
         function getExtraContacts() {
