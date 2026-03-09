@@ -929,6 +929,37 @@
             -->
         </div>
 
+        <!-- ===== INSPECTIES SCREEN (voor alle gebruikers) ===== -->
+        <div class="screen" id="screen-inspecties">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 style="font-size:1.1rem;font-weight:700;margin:0">🔍 Inspecties</h2>
+            </div>
+
+            <!-- Actieve templates om nieuwe inspectie te starten -->
+            <div id="insp-user-templates" style="margin-bottom:20px">
+                <div style="font-weight:600;font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Nieuwe inspectie starten</div>
+                <div id="insp-user-template-list" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
+                </div>
+            </div>
+
+            <!-- Mijn inspecties -->
+            <div id="insp-user-own">
+                <div style="font-weight:600;font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Mijn inspecties</div>
+                <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+                    <select id="insp-user-filter-status" onchange="inspLoadUserInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                        <option value="">Alle statussen</option>
+                        <option value="concept">Concept</option>
+                        <option value="afgerond">Afgerond</option>
+                        <option value="goedgekeurd">Goedgekeurd</option>
+                    </select>
+                </div>
+                <div id="insp-user-list" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen inspecties gevonden</div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== ADMIN SCREEN (alleen voor admin) ===== -->
         <div class="screen" id="screen-admin">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -1415,6 +1446,10 @@
             <div class="nav-item" onclick="switchScreen('overzicht', event)">
                 <div class="nav-icon">📊</div>
                 Overzicht
+            </div>
+            <div class="nav-item" id="nav-inspecties" onclick="switchScreen('inspecties', event)">
+                <div class="nav-icon">🔍</div>
+                Inspecties
             </div>
         </div>
     </div>
@@ -3874,6 +3909,7 @@
 
             // Ververs overzicht bij openen (haalt verse data uit Supabase)
             if (name === 'overzicht') renderOverview();
+            if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
         }
 
         // ===== MODALS =====
@@ -3962,6 +3998,9 @@
             // Extra kosten tab tonen/verbergen (flags staan nu op users tabel)
             const navKosten = document.getElementById('nav-kosten');
             if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
+            // Inspecties tab tonen/verbergen
+            const navInsp = document.getElementById('nav-inspecties');
+            if (navInsp) navInsp.style.display = (currentUser.role === 'admin' || currentUser.allow_inspecties) ? '' : 'none';
 
             // Laad tarieven voor nieuw project
             await loadProjectRates();
@@ -5214,6 +5253,9 @@
                 if (navKosten) {
                     navKosten.style.display = (isAdmin || userCanDeclareExpenses()) ? '' : 'none';
                 }
+                // Inspecties tab tonen/verbergen
+                const navInsp2 = document.getElementById('nav-inspecties');
+                if (navInsp2) navInsp2.style.display = (isAdmin || currentUser.allow_inspecties) ? '' : 'none';
 
                 // Laad uren voor huidige week
                 await loadWeekFromSupabase();
@@ -6395,6 +6437,7 @@
                     if (u.allow_hotel !== false) flags.push('Hotel');
                     if (u.show_rates !== false) flags.push('Tarieven');
                     if (u.can_declare_expenses !== false) flags.push('Declaraties');
+                    if (u.allow_inspecties) flags.push('Inspecties');
                     const flagsHtml = flags.map(f => '<span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-size:0.65rem">' + f + '</span>').join(' ');
                     const priceInfo = [];
                     if (u.km_single_trip) priceInfo.push(u.km_single_trip + ' km');
@@ -8205,6 +8248,9 @@
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-user-rates" ${chk('show_rates')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Tarieven zichtbaar
                         </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-inspecties" ${chk('allow_inspecties')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Inspecties
+                        </label>
                     </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Omgeving</div>
                     <div style="margin-bottom:16px">
@@ -9338,6 +9384,7 @@
                     allow_hotel: document.getElementById('adm-user-hotel').checked,
                     show_rates: document.getElementById('adm-user-rates').checked,
                     can_declare_expenses: document.getElementById('adm-user-expenses').checked,
+                    allow_inspecties: document.getElementById('adm-user-inspecties').checked,
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
                     company_id: document.getElementById('adm-user-company').value || null,
@@ -9363,6 +9410,8 @@
                         // Tabs/features direct bijwerken
                         const navKosten = document.getElementById('nav-kosten');
                         if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
+                        const navInsp3 = document.getElementById('nav-inspecties');
+                        if (navInsp3) navInsp3.style.display = (currentUser.role === 'admin' || currentUser.allow_inspecties) ? '' : 'none';
                         // Overzicht + dagkaarten herladen met nieuwe flags
                         renderDays();
                         renderSummary();
@@ -9854,6 +9903,308 @@
         // Placeholder: nieuwe inspectie starten
         function inspStartNew() {
             showToast('ℹ️ Nieuwe inspectie starten — komt in fase 2');
+        }
+
+        // ===== INSPECTIE — MONTEUR SCHERM =====
+
+        // Laad beschikbare templates voor de monteur
+        async function inspLoadUserTemplates() {
+            const sb = getSupabase();
+            const list = document.getElementById('insp-user-template-list');
+            if (!list) return;
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            const { data: templates, error } = await sb.from('inspection_templates')
+                .select('id, name, description, category, frequency, location, installation, asset')
+                .eq('is_active', true)
+                .order('name');
+
+            if (error || !templates || templates.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen formulieren beschikbaar</div>';
+                return;
+            }
+
+            list.innerHTML = templates.map(t => `
+                <div onclick="inspStartFromTemplate('${t.id}')" style="background:white;border-radius:12px;padding:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:700;font-size:0.85rem">${t.name}</div>
+                        <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description || ''}</div>
+                        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+                            ${t.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${t.category}</span>` : ''}
+                            ${t.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${t.frequency}</span>` : ''}
+                            ${t.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${t.location}</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="color:var(--kts-blue);font-size:1.2rem;flex-shrink:0">▶</div>
+                </div>
+            `).join('');
+        }
+
+        // Laad eigen inspecties van de monteur
+        async function inspLoadUserInspections() {
+            const sb = getSupabase();
+            const list = document.getElementById('insp-user-list');
+            if (!list || !currentUser) return;
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
+
+            const statusFilter = document.getElementById('insp-user-filter-status')?.value;
+
+            let query = sb.from('inspections')
+                .select('*, inspection_templates(name)')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            if (statusFilter) query = query.eq('status', statusFilter);
+
+            const { data: inspections, error } = await query;
+
+            if (error || !inspections || inspections.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen inspecties gevonden</div>';
+                return;
+            }
+
+            const statusColors = {
+                concept: { bg: '#fef3c7', color: '#92400e', label: 'Concept' },
+                afgerond: { bg: '#dcfce7', color: '#166534', label: 'Afgerond' },
+                goedgekeurd: { bg: '#dbeafe', color: '#1e40af', label: 'Goedgekeurd' }
+            };
+
+            list.innerHTML = inspections.map(ins => {
+                const sc = statusColors[ins.status] || statusColors.concept;
+                const templateName = ins.inspection_templates?.name || 'Onbekend';
+                const date = ins.inspection_date ? new Date(ins.inspection_date).toLocaleDateString('nl-NL') : '';
+                const progress = ins.total_questions > 0 ? Math.round((ins.answered_questions / ins.total_questions) * 100) : 0;
+                return `
+                    <div onclick="inspOpenInspection('${ins.id}')" style="background:white;border-radius:12px;padding:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+                            <div style="font-weight:700;font-size:0.85rem">${templateName}</div>
+                            <span style="font-size:0.7rem;padding:2px 8px;border-radius:6px;background:${sc.bg};color:${sc.color};font-weight:600">${sc.label}</span>
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">${date}${ins.location ? ' — ' + ins.location : ''}${ins.inspection_number ? ' — ' + ins.inspection_number : ''}</div>
+                        ${ins.total_questions > 0 ? `
+                        <div style="background:#f1f5f9;border-radius:4px;height:6px;overflow:hidden;margin-top:6px">
+                            <div style="background:var(--kts-blue);height:100%;width:${progress}%;border-radius:4px;transition:width 0.3s"></div>
+                        </div>
+                        <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${ins.answered_questions}/${ins.total_questions} vragen (${progress}%)</div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Start nieuwe inspectie vanuit een template
+        async function inspStartFromTemplate(templateId) {
+            const sb = getSupabase();
+            if (!currentUser || !currentProject) {
+                showToast('⚠️ Selecteer eerst een project');
+                return;
+            }
+
+            // Haal template op
+            const { data: tpl, error: tplErr } = await sb.from('inspection_templates')
+                .select('*')
+                .eq('id', templateId)
+                .single();
+
+            if (tplErr || !tpl) {
+                showToast('⚠️ Formulier niet gevonden');
+                return;
+            }
+
+            // Genereer inspectienummer
+            const year = new Date().getFullYear();
+            const { data: lastInsp } = await sb.from('inspections')
+                .select('inspection_number')
+                .ilike('inspection_number', `INS-${year}-%`)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            let nextSeq = 1;
+            if (lastInsp && lastInsp.length > 0) {
+                const parts = lastInsp[0].inspection_number.split('-');
+                nextSeq = (parseInt(parts[2]) || 0) + 1;
+            }
+            const inspNumber = `INS-${year}-${String(nextSeq).padStart(4, '0')}`;
+
+            // Tel vragen
+            const sections = tpl.sections || [];
+            let totalQ = 0;
+            sections.forEach(s => { totalQ += (s.questions || []).length; });
+
+            // Maak inspectie aan
+            const { data: newInsp, error: insErr } = await sb.from('inspections').insert({
+                template_id: templateId,
+                project_id: currentProject.id,
+                user_id: currentUser.id,
+                inspection_number: inspNumber,
+                inspection_date: new Date().toISOString().split('T')[0],
+                location: tpl.location || '',
+                installation: tpl.installation || '',
+                asset: tpl.asset || '',
+                description: tpl.name,
+                answers: {},
+                status: 'concept',
+                total_questions: totalQ,
+                answered_questions: 0,
+                passed_questions: 0,
+                failed_questions: 0
+            }).select().single();
+
+            if (insErr) {
+                showToast('⚠️ Fout: ' + insErr.message);
+                return;
+            }
+
+            showToast('✓ Inspectie ' + inspNumber + ' aangemaakt');
+            inspLoadUserInspections();
+            // TODO: fase 2 — open het invulformulier
+            inspOpenInspection(newInsp.id);
+        }
+
+        // Open een inspectie (voorlopig: detail-view)
+        async function inspOpenInspection(inspectionId) {
+            const sb = getSupabase();
+            const { data: insp, error } = await sb.from('inspections')
+                .select('*, inspection_templates(name, sections)')
+                .eq('id', inspectionId)
+                .single();
+
+            if (error || !insp) {
+                showToast('⚠️ Inspectie niet gevonden');
+                return;
+            }
+
+            const tpl = insp.inspection_templates || {};
+            const sections = tpl.sections || [];
+            const answers = insp.answers || {};
+
+            let html = `
+                <div style="margin-bottom:16px">
+                    <div style="font-size:0.75rem;color:var(--muted)">${insp.inspection_number || ''}</div>
+                    <div style="font-weight:700;font-size:1rem;margin-bottom:4px">${tpl.name || 'Inspectie'}</div>
+                    <div style="font-size:0.8rem;color:var(--muted)">${insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}${insp.location ? ' — ' + insp.location : ''}</div>
+                </div>
+            `;
+
+            sections.forEach((sec, si) => {
+                html += `<div style="margin-bottom:16px">
+                    <div style="font-weight:700;font-size:0.9rem;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--border)">${sec.title || 'Sectie ' + (si + 1)}</div>`;
+
+                (sec.questions || []).forEach((q, qi) => {
+                    const key = `s${si}_q${qi}`;
+                    const val = answers[key] || {};
+                    const answered = val.value !== undefined && val.value !== '';
+
+                    let inputHtml = '';
+                    if (q.type === 'goed_fout') {
+                        inputHtml = `
+                            <div style="display:flex;gap:6px;margin-top:6px">
+                                <button onclick="inspAnswer('${inspectionId}','${key}','goed',this)" style="flex:1;padding:8px;border:2px solid ${val.value === 'goed' ? '#16a34a' : 'var(--border)'};border-radius:8px;background:${val.value === 'goed' ? '#dcfce7' : 'white'};color:${val.value === 'goed' ? '#16a34a' : 'var(--text)'};font-weight:600;font-size:0.85rem;cursor:pointer">✓ Goed</button>
+                                <button onclick="inspAnswer('${inspectionId}','${key}','fout',this)" style="flex:1;padding:8px;border:2px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:8px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.85rem;cursor:pointer">✗ Fout</button>
+                                <button onclick="inspAnswer('${inspectionId}','${key}','nvt',this)" style="flex:1;padding:8px;border:2px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:8px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.85rem;cursor:pointer">N.v.t.</button>
+                            </div>`;
+                    } else if (q.type === 'meting') {
+                        inputHtml = `
+                            <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+                                <input type="number" step="any" value="${val.value || ''}" onchange="inspAnswer('${inspectionId}','${key}',this.value)" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem" placeholder="Meetwaarde">
+                                ${q.unit ? `<span style="font-size:0.8rem;color:var(--muted)">${q.unit}</span>` : ''}
+                            </div>`;
+                    } else {
+                        inputHtml = `
+                            <textarea onchange="inspAnswer('${inspectionId}','${key}',this.value)" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-top:6px;min-height:40px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
+                    }
+
+                    html += `
+                        <div style="background:${answered ? '#f0fdf4' : 'white'};border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid ${answered ? '#bbf7d0' : 'var(--border)'}">
+                            <div style="font-size:0.85rem;font-weight:600">${q.text || 'Vraag ' + (qi + 1)}</div>
+                            ${q.component ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">📎 ${q.component}</div>` : ''}
+                            ${inputHtml}
+                            <textarea placeholder="Opmerkingen..." onchange="inspAnswerRemark('${inspectionId}','${key}',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem;margin-top:6px;min-height:30px;resize:vertical">${val.remark || ''}</textarea>
+                        </div>`;
+                });
+
+                html += `</div>`;
+            });
+
+            // Afrond-knop
+            if (insp.status === 'concept') {
+                html += `<button onclick="inspFinish('${inspectionId}')" class="btn btn-primary btn-block" style="margin-top:12px;padding:12px">✓ Inspectie afronden</button>`;
+            }
+
+            const modal = document.getElementById('admin-modal');
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;position:sticky;top:0;background:white;padding-bottom:8px;border-bottom:2px solid var(--border);z-index:1">
+                        <h3 style="margin:0;font-size:1rem">🔍 Inspectie invullen</h3>
+                        <button onclick="closeModal('admin-modal')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button>
+                    </div>
+                    ${html}
+                </div>`;
+            modal.classList.add('active');
+        }
+
+        // Antwoord opslaan (auto-save)
+        async function inspAnswer(inspectionId, key, value, btnEl) {
+            const sb = getSupabase();
+
+            // Haal huidige answers op
+            const { data: insp } = await sb.from('inspections')
+                .select('answers, total_questions')
+                .eq('id', inspectionId)
+                .single();
+
+            if (!insp) return;
+            const answers = insp.answers || {};
+            if (!answers[key]) answers[key] = {};
+            answers[key].value = value;
+
+            // Tel beantwoorde vragen
+            const answeredCount = Object.values(answers).filter(a => a.value !== undefined && a.value !== '').length;
+            const passedCount = Object.values(answers).filter(a => a.value === 'goed').length;
+            const failedCount = Object.values(answers).filter(a => a.value === 'fout').length;
+
+            await sb.from('inspections').update({
+                answers,
+                answered_questions: answeredCount,
+                passed_questions: passedCount,
+                failed_questions: failedCount
+            }).eq('id', inspectionId);
+
+            // Herlaad het formulier om de UI bij te werken
+            inspOpenInspection(inspectionId);
+        }
+
+        // Opmerking opslaan
+        async function inspAnswerRemark(inspectionId, key, remark) {
+            const sb = getSupabase();
+            const { data: insp } = await sb.from('inspections')
+                .select('answers')
+                .eq('id', inspectionId)
+                .single();
+
+            if (!insp) return;
+            const answers = insp.answers || {};
+            if (!answers[key]) answers[key] = {};
+            answers[key].remark = remark;
+
+            await sb.from('inspections').update({ answers }).eq('id', inspectionId);
+        }
+
+        // Inspectie afronden
+        async function inspFinish(inspectionId) {
+            const ok = await confirmAsync('Weet je zeker dat je deze inspectie wilt afronden?');
+            if (!ok) return;
+
+            const sb = getSupabase();
+            await sb.from('inspections').update({
+                status: 'afgerond',
+                completed_at: new Date().toISOString()
+            }).eq('id', inspectionId);
+
+            closeModal('admin-modal');
+            showToast('✓ Inspectie afgerond');
+            inspLoadUserInspections();
         }
 
         // =========================================================
