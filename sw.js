@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v34';
+const CACHE_NAME = 'kts-uren-v36';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,6 +6,12 @@ const ASSETS_TO_CACHE = [
   './tandwiel-blauw.png',
   './icon-192.png',
   './icon-512.png',
+  './favicon.ico',
+  './favicon-32.png',
+  './favicon-48.png',
+  './favicon-64.png',
+  './favicon-128.png',
+  './apple-touch-icon.png',
   './approve-weekstaat.html'
 ];
 

@@ -6,8 +6,12 @@
     <title>KTS BV | Uren App</title>
     <link rel="icon" type="image/png" href="tandwiel-blauw.png">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <meta name="theme-color" content="#07567F">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -740,6 +744,9 @@
                        onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(7,86,127,0.3)'">
                         Inloggen
                     </button>
+                    <div style="text-align:center;margin-top:14px">
+                        <a href="#" onclick="event.preventDefault();forgotPassword()" style="font-size:0.8rem;color:var(--kts-blue);text-decoration:none">Wachtwoord vergeten?</a>
+                    </div>
                     </form>
 
                 </div>
@@ -779,6 +786,7 @@
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
                         <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Instellingen</div>
                         <div onclick="openWeekDefaults()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🕐 Mijn werkweek</div>
+                        <div onclick="openChangePassword()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🔑 Wachtwoord wijzigen</div>
                         <div onclick="doLogout()" style="padding:12px 16px;font-size:0.85rem;color:#ef4444;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">🚪 Uitloggen</div>
                     </div>
                 </div>
@@ -945,17 +953,21 @@
                     <div style="width:40px;height:40px;border-radius:10px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">💰</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Tarieven</div><div style="font-size:0.7rem;color:var(--muted)">Uurtarieven & toeslagen</div></div>
                 </div>
+                <!-- Scheiding: Documentatie -->
+                <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
+                    <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Documentatie</div>
+                </div>
+                <div onclick="switchAdminTab('weekstaten')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                    <div style="width:40px;height:40px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📑</div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Weekstaten</div><div style="font-size:0.7rem;color:var(--muted)">Overzicht & goedkeuring</div></div>
+                </div>
                 <div onclick="switchAdminTab('inkooporders')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Inkooporders</div><div style="font-size:0.7rem;color:var(--muted)">PO's genereren</div></div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Inkooporders</div><div style="font-size:0.7rem;color:var(--muted)">IO's genereren</div></div>
                 </div>
                 <div onclick="switchAdminTab('facturen')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🧾</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Facturen</div><div style="font-size:0.7rem;color:var(--muted)">Facturen genereren</div></div>
-                </div>
-                <div onclick="switchAdminTab('weekstaten')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📑</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Weekstaten</div><div style="font-size:0.7rem;color:var(--muted)">PDF backup & download</div></div>
                 </div>
             </div>
             <!-- Terugknop (verborgen totdat een sectie geopend is) -->
@@ -1002,7 +1014,11 @@
             <div id="admin-projecten" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Projecten</div>
-                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('project')">+ Nieuw project</button>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem" onclick="document.getElementById('import-file-project').click()">📥 Excel Import</button>
+                        <button class="btn btn-primary btn-sm" onclick="openAdminModal('project')">+ Nieuw project</button>
+                    </div>
+                    <input type="file" id="import-file-project" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('project', this)">
                 </div>
                 <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
@@ -1011,7 +1027,11 @@
             <div id="admin-personen" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & Bedrijven</div>
-                    <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw</button>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem" onclick="document.getElementById('import-file-persoon').click()">📥 Excel Import</button>
+                        <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw</button>
+                    </div>
+                    <input type="file" id="import-file-persoon" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('persoon', this)">
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
@@ -2243,8 +2263,14 @@
                 showToast('⚠️ Vul werkzaamheden beschrijving in voor ' + dagNamen[i]);
                 return;
             }
-            toggleDay(-1);
-            showToast('✓ Opgeslagen');
+            // Ga door naar volgende dag, of sluit bij zondag
+            if (i < 6) {
+                toggleDay(i + 1);
+                showToast('✓ ' + dagNamen[i] + ' opgeslagen');
+            } else {
+                toggleDay(-1);
+                showToast('✓ Opgeslagen');
+            }
         }
 
         function toggleThuiswerk(i) {
@@ -4563,6 +4589,26 @@
         }
 
         // ===== AUTH =====
+        async function forgotPassword() {
+            const email = document.getElementById('login-email').value.trim();
+            if (!email) {
+                showToast('⚠️ Vul eerst je e-mailadres in');
+                document.getElementById('login-email').focus();
+                return;
+            }
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const { error } = await sb.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/index.html'
+                });
+                if (error) throw error;
+                showToast('✓ Herstel-link verstuurd naar ' + email);
+            } catch(e) {
+                showToast('❌ ' + (e.message || 'Fout bij versturen'));
+            }
+        }
+
         async function doLogin() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
@@ -4616,6 +4662,7 @@
             logAudit('ingelogd', { device: /Mobi/i.test(navigator.userAgent) ? 'mobiel' : 'desktop' });
             updateClockUI();
             checkWeekReminder();
+            checkForcePasswordChange();
 
             // Eerste keer? Toon welkomst (of admin heeft reset aangevraagd)
             const firstLoginKey = 'kts-welcomed-' + currentUser.id;
@@ -4664,6 +4711,47 @@
                         }
                     });
                 }, 10);
+            }
+        }
+
+        function openChangePassword() {
+            document.getElementById('user-menu').style.display = 'none';
+            const modal = document.getElementById('admin-modal');
+            document.getElementById('admin-modal-title').textContent = 'Wachtwoord wijzigen';
+            document.getElementById('admin-modal-fields').innerHTML = `
+                <div class="form-group" style="margin-bottom:12px"><label>Nieuw wachtwoord</label><input type="password" id="pw-new" placeholder="Minimaal 8 tekens" style="font-size:0.95rem"></div>
+                <div class="form-group" style="margin-bottom:12px"><label>Bevestig nieuw wachtwoord</label><input type="password" id="pw-confirm" placeholder="Herhaal wachtwoord" style="font-size:0.95rem"></div>
+            `;
+            const saveBtn = document.getElementById('admin-modal-save');
+            saveBtn.style.display = '';
+            saveBtn.textContent = 'Wachtwoord wijzigen';
+            saveBtn.onclick = async () => {
+                const pw = document.getElementById('pw-new').value;
+                const confirm = document.getElementById('pw-confirm').value;
+                if (!pw || pw.length < 8) { showToast('⚠️ Wachtwoord moet minimaal 8 tekens zijn'); return; }
+                if (pw !== confirm) { showToast('⚠️ Wachtwoorden komen niet overeen'); return; }
+                const sb = getSupabase();
+                if (!sb) return;
+                const { error } = await sb.auth.updateUser({ password: pw });
+                if (error) { showToast('❌ ' + error.message); return; }
+                // Markeer dat wachtwoord is gewijzigd
+                if (currentUser) {
+                    await sb.from('users').update({ password_changed: true }).eq('id', currentUser.id);
+                    currentUser.password_changed = true;
+                }
+                showToast('✓ Wachtwoord gewijzigd');
+                modal.classList.remove('active');
+                saveBtn.textContent = 'Opslaan';
+            };
+            const delBtn = document.getElementById('admin-modal-delete');
+            if (delBtn) delBtn.style.display = 'none';
+            modal.classList.add('active');
+        }
+
+        function checkForcePasswordChange() {
+            if (currentUser && currentUser.password_changed !== true) {
+                showToast('🔑 Wijzig je standaard wachtwoord');
+                setTimeout(() => openChangePassword(), 500);
             }
         }
 
@@ -5490,6 +5578,16 @@
             loadScript(chartUrls, 0, 'Chart.js', function() {
                 console.log('Chart.js geladen!');
             });
+
+            // SheetJS (xlsx) laden voor Excel import
+            const xlsxUrls = [
+                'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+                'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+            ];
+            loadScript(xlsxUrls, 0, 'SheetJS', function() {
+                console.log('SheetJS geladen!');
+            });
         })();
 
         // ===== ADMIN FUNCTIES =====
@@ -5584,6 +5682,11 @@
             // Maand filter opzetten
             const monthFilter = document.getElementById('dashboard-month-filter');
             if (monthFilter && monthFilter.options.length === 0) {
+                // "Heel 2026" optie bovenaan
+                const allOpt = document.createElement('option');
+                allOpt.value = 'all';
+                allOpt.textContent = 'Heel ' + currentYear;
+                monthFilter.appendChild(allOpt);
                 const MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
                 MONTHS.forEach((m, i) => {
                     const opt = document.createElement('option');
@@ -5594,9 +5697,15 @@
                 });
             }
 
-            const selectedMonth = parseInt(monthFilter?.value ?? now.getMonth());
-            const monthStart = new Date(currentYear, selectedMonth, 1).toISOString().split('T')[0];
-            const monthEnd = new Date(currentYear, selectedMonth + 1, 0).toISOString().split('T')[0];
+            const filterVal = monthFilter?.value ?? String(now.getMonth());
+            const isFullYear = filterVal === 'all';
+            const selectedMonth = isFullYear ? -1 : parseInt(filterVal);
+            const monthStart = isFullYear
+                ? (currentYear + '-01-01')
+                : new Date(currentYear, selectedMonth, 1).toISOString().split('T')[0];
+            const monthEnd = isFullYear
+                ? (currentYear + '-12-31')
+                : new Date(currentYear, selectedMonth + 1, 0).toISOString().split('T')[0];
             const yearStart = currentYear + '-01-01';
             const yearEnd = currentYear + '-12-31';
 
@@ -6831,15 +6940,25 @@
                 if (clientEmail) {
                     const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 
-                    // Genereer signed download URL (7 dagen geldig)
+                    // Genereer signed download URL (7 dagen geldig), fallback naar public URL
                     let downloadLink = '';
                     try {
                         const { data: signedData, error: signErr } = await sb.storage.from('facturen')
                             .createSignedUrl(filePath, 60 * 60 * 24 * 7);
                         if (!signErr && signedData?.signedUrl) {
                             downloadLink = signedData.signedUrl;
+                        } else {
+                            // Fallback: public URL
+                            const { data: pubData } = sb.storage.from('facturen').getPublicUrl(filePath);
+                            if (pubData?.publicUrl) downloadLink = pubData.publicUrl;
                         }
-                    } catch(e) { console.warn('Signed URL error:', e); }
+                    } catch(e) {
+                        console.warn('Signed URL error:', e);
+                        try {
+                            const { data: pubData } = sb.storage.from('facturen').getPublicUrl(filePath);
+                            if (pubData?.publicUrl) downloadLink = pubData.publicUrl;
+                        } catch(e2) {}
+                    }
 
                     const subject = encodeURIComponent(`Factuur ${invoiceNumber} — ${KTS_INFO.naam}`);
                     const body = encodeURIComponent(
@@ -7540,15 +7659,24 @@
                     const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                     const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
 
-                    // Genereer signed download URL (7 dagen geldig)
+                    // Genereer signed download URL (7 dagen geldig), fallback naar public URL
                     let downloadLink = '';
                     try {
                         const { data: signedData, error: signErr } = await sb.storage.from('inkooporders')
-                            .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 dagen
+                            .createSignedUrl(filePath, 60 * 60 * 24 * 7);
                         if (!signErr && signedData?.signedUrl) {
                             downloadLink = signedData.signedUrl;
+                        } else {
+                            const { data: pubData } = sb.storage.from('inkooporders').getPublicUrl(filePath);
+                            if (pubData?.publicUrl) downloadLink = pubData.publicUrl;
                         }
-                    } catch(e) { console.warn('Signed URL error:', e); }
+                    } catch(e) {
+                        console.warn('Signed URL error:', e);
+                        try {
+                            const { data: pubData } = sb.storage.from('inkooporders').getPublicUrl(filePath);
+                            if (pubData?.publicUrl) downloadLink = pubData.publicUrl;
+                        } catch(e2) {}
+                    }
 
                     const recipients = (mailTarget.email_po || mailTarget.email)
                         .split(',').map(e => e.trim()).filter(Boolean).join(',');
@@ -7965,6 +8093,7 @@
                         <div style="display:flex;gap:4px;flex-shrink:0">
                             ${adminApproveBtn}
                             ${approvalAction}
+                            <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd" title="Uren bewerken">✏️</button>
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
                             <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Weekstaat verwijderen">🗑️</button>
                         </div>
@@ -7973,6 +8102,210 @@
             } catch (err) {
                 console.error('Weekstaten laden mislukt:', err);
                 listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+            }
+        }
+
+        // ===== EXCEL IMPORT =====
+        async function importExcel(type, fileInput) {
+            if (!fileInput.files || !fileInput.files[0]) return;
+            if (typeof XLSX === 'undefined') {
+                showToast('⚠️ SheetJS wordt nog geladen, probeer opnieuw');
+                fileInput.value = '';
+                return;
+            }
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); fileInput.value = ''; return; }
+
+            const file = fileInput.files[0];
+            fileInput.value = ''; // reset zodat hetzelfde bestand opnieuw gekozen kan worden
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                if (!rows || rows.length === 0) {
+                    showToast('⚠️ Geen rijen gevonden in Excel bestand');
+                    return;
+                }
+
+                // Kolom mapping per type
+                const columnMaps = {
+                    persoon: {
+                        'naam': 'name', 'name': 'name', 'bedrijfsnaam': 'name', 'bedrijf': 'name', 'company': 'name',
+                        'contactpersoon': 'contact_name', 'contact': 'contact_name', 'contact_name': 'contact_name',
+                        'type': 'type',
+                        'kvk': 'kvk_number', 'kvk_number': 'kvk_number', 'kvknummer': 'kvk_number',
+                        'btw': 'btw_number', 'btw_number': 'btw_number', 'btwnummer': 'btw_number',
+                        'adres': 'address', 'address': 'address', 'straat': 'address',
+                        'postcode': 'postcode', 'zip': 'postcode',
+                        'stad': 'city', 'city': 'city', 'plaats': 'city', 'woonplaats': 'city',
+                        'land': 'country', 'country': 'country',
+                        'telefoon': 'phone', 'phone': 'phone', 'tel': 'phone',
+                        'email': 'email', 'e-mail': 'email', 'mail': 'email',
+                        'email_po': 'email_po', 'email po': 'email_po', 'inkooporder email': 'email_po'
+                    },
+                    project: {
+                        'code': 'project_code', 'project_code': 'project_code', 'projectcode': 'project_code',
+                        'naam': 'name', 'name': 'name', 'projectnaam': 'name', 'project': 'name',
+                        'klant': 'client_name', 'client': 'client_name', 'client_name': 'client_name', 'opdrachtgever': 'client_name',
+                        'locatie': 'location', 'location': 'location',
+                        'omschrijving': 'default_description', 'description': 'default_description', 'default_description': 'default_description',
+                        'standaard locatie': 'default_location', 'default_location': 'default_location',
+                        'startdatum': 'start_date', 'start_date': 'start_date', 'start': 'start_date',
+                        'status': 'status'
+                    }
+                };
+
+                const colMap = columnMaps[type] || {};
+                const excelCols = Object.keys(rows[0]);
+
+                // Auto-map kolommen
+                const mapping = {};
+                excelCols.forEach(col => {
+                    const normalized = col.toLowerCase().trim();
+                    if (colMap[normalized]) {
+                        mapping[col] = colMap[normalized];
+                    }
+                });
+
+                // Preview modal tonen
+                const modal = document.getElementById('admin-modal');
+                const modalTitle = document.getElementById('admin-modal-title');
+                const modalBody = document.getElementById('admin-modal-body');
+
+                modalTitle.textContent = '📥 Excel Import — ' + (type === 'persoon' ? 'Personen & Bedrijven' : 'Projecten');
+
+                // Mapping UI + preview tabel
+                const dbFields = type === 'persoon'
+                    ? ['name','contact_name','type','kvk_number','btw_number','address','postcode','city','country','phone','email','email_po']
+                    : ['project_code','name','client_name','location','default_description','default_location','start_date','status'];
+                const dbLabels = type === 'persoon'
+                    ? ['Naam*','Contactpersoon','Type','KvK','BTW','Adres','Postcode','Stad','Land','Telefoon','E-mail','E-mail IO']
+                    : ['Code*','Naam*','Klant','Locatie','Omschrijving','Standaard locatie','Startdatum','Status'];
+
+                let html = '<div style="font-size:0.8rem;margin-bottom:10px;color:#666">Gevonden: <b>' + rows.length + '</b> rijen in "' + sheetName + '"</div>';
+
+                // Kolomkoppeling
+                html += '<div style="margin-bottom:12px"><div style="font-weight:600;font-size:0.85rem;margin-bottom:6px">Kolomkoppeling</div>';
+                html += '<div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:4px;align-items:center;font-size:0.8rem">';
+                dbFields.forEach((field, i) => {
+                    html += '<div style="font-weight:500">' + dbLabels[i] + '</div>';
+                    html += '<div style="text-align:center;color:#999">←</div>';
+                    html += '<select id="imp-map-' + field + '" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem">';
+                    html += '<option value="">— overslaan —</option>';
+                    excelCols.forEach(col => {
+                        const selected = mapping[col] === field ? ' selected' : '';
+                        html += '<option value="' + col.replace(/"/g, '&quot;') + '"' + selected + '>' + col + '</option>';
+                    });
+                    html += '</select>';
+                });
+                html += '</div></div>';
+
+                // Preview (eerste 5 rijen)
+                const previewRows = rows.slice(0, 5);
+                html += '<div style="font-weight:600;font-size:0.85rem;margin-bottom:6px">Preview (eerste ' + Math.min(5, rows.length) + ' rijen)</div>';
+                html += '<div style="overflow-x:auto;max-height:200px;border:1px solid #e5e7eb;border-radius:8px">';
+                html += '<table style="width:100%;font-size:0.75rem;border-collapse:collapse">';
+                html += '<thead><tr style="background:#f3f4f6">';
+                excelCols.forEach(col => {
+                    html += '<th style="padding:4px 6px;text-align:left;white-space:nowrap;border-bottom:1px solid #e5e7eb">' + col + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+                previewRows.forEach(row => {
+                    html += '<tr>';
+                    excelCols.forEach(col => {
+                        html += '<td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;white-space:nowrap">' + (row[col] != null ? String(row[col]).substring(0, 40) : '') + '</td>';
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+
+                // Test mode checkbox
+                html += '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:0.8rem"><input type="checkbox" id="imp-test-mode"' + (_adminTestMode ? ' checked' : '') + '> Markeer als test-data</label>';
+
+                html += '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">';
+                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">Annuleren</button>';
+                html += '<button class="btn btn-primary btn-sm" id="imp-confirm-btn">✓ Importeer ' + rows.length + ' rijen</button>';
+                html += '</div>';
+
+                modalBody.innerHTML = html;
+                modal.classList.add('active');
+
+                // Importeer knop click handler
+                document.getElementById('imp-confirm-btn').onclick = async function() {
+                    this.disabled = true;
+                    this.textContent = 'Importeren...';
+
+                    // Lees actuele mapping vanuit dropdowns
+                    const finalMapping = {};
+                    dbFields.forEach(field => {
+                        const sel = document.getElementById('imp-map-' + field);
+                        if (sel && sel.value) finalMapping[field] = sel.value;
+                    });
+
+                    const isTest = document.getElementById('imp-test-mode').checked;
+                    const table = type === 'persoon' ? 'companies' : 'projects';
+                    const insertRows = [];
+                    let skipped = 0;
+
+                    rows.forEach(row => {
+                        const obj = {};
+                        Object.entries(finalMapping).forEach(([dbField, excelCol]) => {
+                            let val = row[excelCol];
+                            if (val !== undefined && val !== null && String(val).trim() !== '') {
+                                obj[dbField] = String(val).trim();
+                            }
+                        });
+
+                        // Verplichte velden check
+                        if (type === 'persoon' && !obj.name) { skipped++; return; }
+                        if (type === 'project' && (!obj.project_code || !obj.name)) { skipped++; return; }
+
+                        // Defaults
+                        if (type === 'persoon') {
+                            if (!obj.type) obj.type = 'opdrachtgever';
+                            if (!obj.country) obj.country = 'Nederland';
+                        }
+                        if (type === 'project') {
+                            if (!obj.status) obj.status = 'active';
+                        }
+                        obj.is_test = isTest;
+
+                        insertRows.push(obj);
+                    });
+
+                    if (insertRows.length === 0) {
+                        showToast('⚠️ Geen geldige rijen om te importeren');
+                        document.getElementById('imp-confirm-btn').disabled = false;
+                        document.getElementById('imp-confirm-btn').textContent = '✓ Importeer ' + rows.length + ' rijen';
+                        return;
+                    }
+
+                    try {
+                        const { data: insertedData, error } = await sb.from(table).insert(insertRows).select();
+                        if (error) throw error;
+
+                        modal.classList.remove('active');
+                        const msg = '✓ ' + insertRows.length + ' rij' + (insertRows.length > 1 ? 'en' : '') + ' geïmporteerd' +
+                            (skipped > 0 ? ' (' + skipped + ' overgeslagen)' : '');
+                        showToast(msg);
+
+                        // Herlaad de lijst
+                        if (type === 'persoon') loadAdminData('personen');
+                        else if (type === 'project') loadAdminData('projecten');
+                    } catch(err) {
+                        console.error('Import error:', err);
+                        showToast('❌ Import fout: ' + (err.message || err));
+                        document.getElementById('imp-confirm-btn').disabled = false;
+                        document.getElementById('imp-confirm-btn').textContent = '✓ Importeer ' + rows.length + ' rijen';
+                    }
+                };
+            } catch(err) {
+                console.error('Excel parse error:', err);
+                showToast('❌ Kan bestand niet lezen: ' + (err.message || err));
             }
         }
 
@@ -8066,6 +8399,96 @@
             } catch (e) {
                 showToast('❌ Fout: ' + e.message);
             }
+        }
+
+        async function adminEditWeekEntries(userId, projectId, weekNumber, year, userName) {
+            const sb = getSupabase();
+            if (!sb) return;
+            const monday = getWeekMondayFromWeekNumber(year, weekNumber);
+            const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+            const weekStart = monday.toISOString().split('T')[0];
+            const weekEnd = sunday.toISOString().split('T')[0];
+
+            const { data: entries } = await sb.from('time_entries').select('*')
+                .eq('user_id', userId).eq('project_id', projectId)
+                .gte('entry_date', weekStart).lte('entry_date', weekEnd)
+                .order('entry_date');
+
+            const dagNamen = ['ma','di','wo','do','vr','za','zo'];
+            const modal = document.getElementById('admin-modal');
+            document.getElementById('admin-modal-title').textContent = `✏️ ${userName} — Week ${weekNumber}/${year}`;
+
+            let rows = '';
+            for (let d = 0; d < 7; d++) {
+                const date = new Date(monday);
+                date.setDate(date.getDate() + d);
+                const dateStr = date.toISOString().split('T')[0];
+                const entry = (entries || []).find(e => e.entry_date === dateStr) || {};
+                const id = entry.id || '';
+                rows += `<div style="display:grid;grid-template-columns:40px 55px 55px 50px auto;gap:4px;align-items:center;margin-bottom:4px;font-size:0.8rem" data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}">
+                    <span style="font-weight:600;color:${d>=5?'var(--kts-blue)':'inherit'}">${dagNamen[d]} ${date.getDate()}</span>
+                    <input type="time" class="aew-start" value="${entry.start_time || ''}" style="padding:4px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem">
+                    <input type="time" class="aew-end" value="${entry.end_time || ''}" style="padding:4px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem">
+                    <input type="number" step="0.25" class="aew-hours" value="${entry.total_hours || ''}" placeholder="0" style="padding:4px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem;text-align:center">
+                    <input type="text" class="aew-desc" value="${entry.description || ''}" placeholder="Werkzaamheden" style="padding:4px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem">
+                </div>`;
+            }
+            document.getElementById('admin-modal-fields').innerHTML = `
+                <div style="display:grid;grid-template-columns:40px 55px 55px 50px auto;gap:4px;margin-bottom:8px;font-size:0.7rem;color:var(--muted);font-weight:600">
+                    <span>Dag</span><span>Start</span><span>Eind</span><span>Uren</span><span>Werkzaamheden</span>
+                </div>
+                ${rows}
+            `;
+            const saveBtn = document.getElementById('admin-modal-save');
+            saveBtn.style.display = '';
+            saveBtn.textContent = 'Wijzigingen opslaan';
+            saveBtn.onclick = () => adminSaveWeekEntries(userId, projectId, weekNumber, year);
+            const delBtn = document.getElementById('admin-modal-delete');
+            if (delBtn) delBtn.style.display = 'none';
+            modal.classList.add('active');
+        }
+
+        async function adminSaveWeekEntries(userId, projectId, weekNumber, year) {
+            const sb = getSupabase();
+            if (!sb) return;
+            const rows = document.querySelectorAll('#admin-modal-fields [data-date]');
+            let saved = 0, errors = 0;
+            for (const row of rows) {
+                const entryId = row.dataset.entryId;
+                const dateStr = row.dataset.date;
+                const start = row.querySelector('.aew-start').value || null;
+                const end = row.querySelector('.aew-end').value || null;
+                const hours = parseFloat(row.querySelector('.aew-hours').value) || 0;
+                const desc = row.querySelector('.aew-desc').value.trim();
+
+                if (hours > 0 || desc) {
+                    const data = {
+                        user_id: userId,
+                        project_id: projectId,
+                        entry_date: dateStr,
+                        start_time: start,
+                        end_time: end,
+                        total_hours: hours,
+                        description: desc
+                    };
+                    let result;
+                    if (entryId) {
+                        result = await sb.from('time_entries').update(data).eq('id', entryId);
+                    } else {
+                        result = await sb.from('time_entries').insert(data);
+                    }
+                    if (result.error) { errors++; console.error(result.error); }
+                    else saved++;
+                } else if (entryId && hours === 0 && !desc) {
+                    // Verwijder lege entry
+                    await sb.from('time_entries').delete().eq('id', entryId);
+                    saved++;
+                }
+            }
+            if (errors) showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
+            else showToast(`✓ ${saved} dagen bijgewerkt`);
+            document.getElementById('admin-modal').classList.remove('active');
+            document.getElementById('admin-modal-save').textContent = 'Opslaan';
         }
 
         // Helper: maandag berekenen vanuit jaar + weeknummer (ISO)
