@@ -48,6 +48,10 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: var(--zoom, 16px); }
+        html.zoom-klein { --zoom: 14px; }
+        html.zoom-normaal { --zoom: 16px; }
+        html.zoom-groot { --zoom: 19px; }
         :root {
             --kts-blue: #07567F;
             --kts-dark: #043B56;
@@ -783,6 +787,14 @@
                 <div class="user-badge" onclick="toggleUserMenu()" style="position:relative"><span id="user-badge-name">👤 M. Kuijpers</span>
                     <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;overflow:hidden;z-index:200">
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
+                        <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                            <span style="font-size:0.75rem;color:var(--muted);font-weight:600">Tekstgrootte</span>
+                            <div style="display:flex;gap:4px">
+                                <button onclick="event.stopPropagation();setZoom('klein')" id="zoom-btn-klein" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--border);background:white;cursor:pointer;font-size:0.65rem;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center" title="Klein">A</button>
+                                <button onclick="event.stopPropagation();setZoom('normaal')" id="zoom-btn-normaal" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--kts-blue);background:#e0f2fe;cursor:pointer;font-size:0.8rem;font-weight:700;color:var(--kts-blue);display:flex;align-items:center;justify-content:center" title="Normaal">A</button>
+                                <button onclick="event.stopPropagation();setZoom('groot')" id="zoom-btn-groot" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--border);background:white;cursor:pointer;font-size:1rem;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center" title="Groot">A</button>
+                            </div>
+                        </div>
                         <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Instellingen</div>
                         <div onclick="openWeekDefaults()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🕐 Mijn werkweek</div>
                         <div onclick="openChangePassword()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🔑 Wachtwoord wijzigen</div>
@@ -1547,6 +1559,32 @@
                 { start: '', end: '', breakMin: 0, active: false, thuiswerk: false, hotel: false }
             ];
         }
+
+        // ===== ZOOM / TEKSTGROOTTE =====
+        function setZoom(level) {
+            document.documentElement.classList.remove('zoom-klein', 'zoom-normaal', 'zoom-groot');
+            document.documentElement.classList.add('zoom-' + level);
+            localStorage.setItem('kts-zoom', level);
+            // Update button styles
+            ['klein', 'normaal', 'groot'].forEach(z => {
+                const btn = document.getElementById('zoom-btn-' + z);
+                if (!btn) return;
+                if (z === level) {
+                    btn.style.borderColor = 'var(--kts-blue)';
+                    btn.style.background = '#e0f2fe';
+                    btn.style.color = 'var(--kts-blue)';
+                } else {
+                    btn.style.borderColor = 'var(--border)';
+                    btn.style.background = 'white';
+                    btn.style.color = 'var(--text)';
+                }
+            });
+        }
+        // Zoom herstellen bij laden
+        (function initZoom() {
+            const saved = localStorage.getItem('kts-zoom') || 'normaal';
+            document.documentElement.classList.add('zoom-' + saved);
+        })();
 
         function openWeekDefaults() {
             document.getElementById('user-menu').style.display = 'none';
@@ -4731,6 +4769,9 @@
             menu.style.display = isOpen ? 'none' : 'block';
             if (!isOpen) {
                 document.getElementById('user-menu-name').textContent = currentUser ? currentUser.name : '';
+                // Zoom knoppen bijwerken
+                const savedZoom = localStorage.getItem('kts-zoom') || 'normaal';
+                setZoom(savedZoom);
                 // Toon admin-knop alleen voor admins
                 const adminItem = document.getElementById('admin-menu-item');
                 const isAdmin = currentUser && currentUser.role === 'admin';
@@ -8876,6 +8917,8 @@
                 }
             }
 
+            const companyId = (project && project.client_company_id) ? (typeof project.client_company_id === 'object' ? project.client_company_id.id : project.client_company_id) : '';
+
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:#f0f9ff;border-radius:8px;font-size:0.85rem">
                     <div><strong>Medewerker:</strong> ${userName}</div>
@@ -8890,7 +8933,11 @@
                     <label>Naam opdrachtgever</label>
                     <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                 </div>
-                <button onclick="sendApprovalRequest('${userId}','${projectId}',${weekNumber},${year})" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem">📩 Verstuur ter goedkeuring</button>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:0.8rem;color:var(--muted);cursor:pointer">
+                    <input type="checkbox" id="approval-save-default" checked style="width:16px;height:16px;accent-color:var(--kts-blue)">
+                    Wijzigingen opslaan als standaard contactgegevens
+                </label>
+                <button onclick="sendApprovalRequest('${userId}','${projectId}',${weekNumber},${year},'${companyId}')" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem">📩 Verstuur ter goedkeuring</button>
             `;
 
             // Hergebruik de admin modal
@@ -8908,31 +8955,56 @@
             }
         }
 
-        async function sendApprovalRequest(userId, projectId, weekNumber, year) {
+        async function sendApprovalRequest(userId, projectId, weekNumber, year, companyId) {
             const email = document.getElementById('approval-email').value.trim();
             const name = document.getElementById('approval-name').value.trim();
+            const saveDefault = document.getElementById('approval-save-default')?.checked;
             if (!email) { showToast('⚠️ Vul een e-mailadres in'); return; }
 
             const sb = getSupabase();
             if (!sb) return;
 
             try {
+                // Contactgegevens opslaan als standaard indien gewenst
+                if (saveDefault && companyId) {
+                    try {
+                        const { data: compData } = await sb.from('companies').select('contacts').eq('id', companyId).single();
+                        let contacts = compData?.contacts || [];
+                        if (typeof contacts === 'string') { try { contacts = JSON.parse(contacts); } catch(e) { contacts = []; } }
+
+                        // Zoek bestaand contact met receives_weekstaat
+                        const existingIdx = contacts.findIndex(c => c.receives_weekstaat);
+                        if (existingIdx >= 0) {
+                            contacts[existingIdx].email = email;
+                            contacts[existingIdx].name = name;
+                        } else {
+                            // Voeg nieuw contact toe
+                            contacts.push({ name, email, role: 'Opdrachtgever', receives_weekstaat: true, receives_factuur: false, receives_io: false });
+                        }
+
+                        await sb.from('companies').update({ contacts }).eq('id', companyId);
+                    } catch (saveErr) {
+                        console.warn('Contactgegevens opslaan mislukt:', saveErr);
+                    }
+                }
+
                 // Genereer uniek token
                 const token = crypto.randomUUID();
 
-                // Update week_status met approval info
+                // Upsert week_status met approval info (maakt record aan als het niet bestaat)
                 const { error: updateErr } = await sb.from('week_status')
-                    .update({
+                    .upsert({
+                        user_id: userId,
+                        project_id: projectId,
+                        week_number: parseInt(weekNumber),
+                        year: parseInt(year),
+                        status: 'ingediend',
                         approval_token: token,
                         approval_status: 'ter_goedkeuring',
                         approval_requested_at: new Date().toISOString(),
                         approver_email: email,
                         approver_name: name
-                    })
-                    .eq('user_id', userId)
-                    .eq('project_id', projectId)
-                    .eq('week_number', parseInt(weekNumber))
-                    .eq('year', parseInt(year));
+                    }, { onConflict: 'user_id,project_id,week_number,year' });
 
                 if (updateErr) throw updateErr;
 
@@ -8975,7 +9047,7 @@
                 }
 
                 // Modal sluiten
-                document.getElementById('admin-modal').style.display = 'none';
+                document.getElementById('admin-modal').classList.remove('active');
                 showToast('✓ Goedkeuringsverzoek verstuurd naar ' + email);
                 loadWeekstaten(); // Lijst verversen
             } catch (err) {
