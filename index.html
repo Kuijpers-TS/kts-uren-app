@@ -5613,6 +5613,32 @@
             });
         })();
 
+        // ===== CONTACT EMAIL HELPERS =====
+        function getContactEmailsByRole(company, role) {
+            // role: 'receives_weekstaat', 'receives_factuur', 'receives_io'
+            if (!company) return '';
+            let contacts = company.contacts;
+            if (typeof contacts === 'string') { try { contacts = JSON.parse(contacts); } catch(e) { contacts = []; } }
+            if (contacts && contacts.length > 0) {
+                const emails = contacts.filter(c => c[role] && c.email).map(c => c.email);
+                if (emails.length > 0) return emails.join(', ');
+            }
+            // Fallback: oude velden
+            if (role === 'receives_io' && company.email_po) return company.email_po;
+            return company.email || '';
+        }
+
+        function getContactNameByRole(company, role) {
+            if (!company) return '';
+            let contacts = company.contacts;
+            if (typeof contacts === 'string') { try { contacts = JSON.parse(contacts); } catch(e) { contacts = []; } }
+            if (contacts && contacts.length > 0) {
+                const c = contacts.find(c => c[role]);
+                if (c) return c.name || '';
+            }
+            return company.contact_name || '';
+        }
+
         // ===== ADMIN FUNCTIES =====
         let _adminTestMode = false; // false = productie, true = test
 
@@ -6153,14 +6179,27 @@
             if (filteredCompanies && filteredCompanies.length > 0) {
                 persList.innerHTML = filteredCompanies.map((c) => {
                     const idx = (window._adminCompanies || []).indexOf(c);
-                    const displayName = c.contact_name || c.name;
-                    const subtitle = c.contact_name ? c.name : '';
+                    // Contactpersonen namen ophalen
+                    let contactNames = [];
+                    try {
+                        let contacts = c.contacts;
+                        if (typeof contacts === 'string') contacts = JSON.parse(contacts);
+                        if (contacts && contacts.length > 0) {
+                            contactNames = contacts.filter(ct => ct.name).map(ct => ct.name);
+                        }
+                    } catch(e) {}
+                    // Fallback: oude contact_name
+                    if (contactNames.length === 0 && c.contact_name) contactNames = [c.contact_name];
+                    const contactHtml = contactNames.length > 0
+                        ? contactNames.map(n => `<div style="font-weight:700;font-size:0.9rem">${n}</div>`).join('')
+                        : `<div style="font-weight:700;font-size:0.9rem">${c.name}</div>`;
+                    const showCompanyLine = contactNames.length > 0;
                     return `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('persoon', ${idx})">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:2px;cursor:pointer" onclick="openAdminModal('persoon', ${idx})">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${displayName}${c.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${subtitle ? subtitle + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}</div>
+                                ${contactHtml}
+                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
                             </div>
                             <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
                         </div>
@@ -6959,7 +6998,7 @@
                 loadInvoices();
 
                 // Mailto naar klant met download-link
-                const clientEmail = invData.clientCompany?.email_po || invData.clientCompany?.email || '';
+                const clientEmail = getContactEmailsByRole(invData.clientCompany, 'receives_factuur');
                 if (clientEmail) {
                     const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 
@@ -6985,7 +7024,7 @@
 
                     const subject = encodeURIComponent(`Factuur ${invoiceNumber} — ${KTS_INFO.naam}`);
                     const body = encodeURIComponent(
-                        `Geachte ${invData.clientCompany.contact_name || 'heer/mevrouw'},\n\n` +
+                        `Geachte ${getContactNameByRole(invData.clientCompany, 'receives_factuur') || 'heer/mevrouw'},\n\n` +
                         `Hierbij ontvangt u de factuur voor de inhuur van ${invData.user?.name || ''} voor het project ${invData.project?.project_code || ''} — ${invData.project?.name || ''}.\n\n` +
                         `Factuurnummer: ${invoiceNumber}\n` +
                         `Periode: ${MONTHS_NL[invData.month - 1]} ${invData.year}\n\n` +
@@ -7672,7 +7711,8 @@
 
                 // 3. Open mailto naar IO-ontvanger (poCompany) met download-link
                 const mailTarget = poData.poCompany;
-                if (mailTarget && (mailTarget.email_po || mailTarget.email)) {
+                const ioRecipientEmail = getContactEmailsByRole(mailTarget, 'receives_io');
+                if (mailTarget && ioRecipientEmail) {
                     const userName = poData.user ? (poData.user.name || poData.user.email) : '';
                     const projCode = poData.project ? poData.project.project_code : '';
                     const projName = poData.project ? poData.project.name : '';
@@ -7701,12 +7741,11 @@
                         } catch(e2) {}
                     }
 
-                    const recipients = (mailTarget.email_po || mailTarget.email)
-                        .split(',').map(e => e.trim()).filter(Boolean).join(',');
+                    const recipients = ioRecipientEmail.split(',').map(e => e.trim()).filter(Boolean).join(',');
 
                     const subject = encodeURIComponent('Inkooporder ' + poNumber + ' - ' + userName + ' - ' + projCode);
                     const body = encodeURIComponent(
-                        'Beste ' + (mailTarget.contact_name || mailTarget.name) + ',\n\n' +
+                        'Beste ' + (getContactNameByRole(mailTarget, 'receives_io') || mailTarget.name) + ',\n\n' +
                         'Hierbij ontvangt u de inkooporder voor de inzet van ' + userName + '.\n\n' +
                         'Project: ' + projCode + ' — ' + projName + '\n' +
                         'Periode: ' + maandTekst + ' (' + wekenTekst + ')\n' +
@@ -7785,10 +7824,9 @@
                 title = existing ? 'Bedrijf bewerken' : 'Nieuw bedrijf';
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Artecq" value="${existing ? existing.name || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Primair contactpersoon</label><input type="text" id="adm-pers-contact" placeholder="Bijv. Jan de Vries" value="${existing ? existing.contact_name || '' : ''}"></div>
                     <div style="margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--border)">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                            <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue)">Extra contactpersonen</label>
+                            <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue)">Contactpersonen</label>
                             <button type="button" class="btn btn-sm" style="padding:3px 10px;font-size:0.7rem" onclick="addExtraContact()">+ Toevoegen</button>
                         </div>
                         <div id="adm-pers-contacts-list"></div>
@@ -7821,8 +7859,6 @@
                         <div class="form-group"><label>KVK / Handelsregister</label><input type="text" id="adm-pers-kvk" placeholder="89133315 / HRB 101387" value="${existing ? existing.kvk_number || '' : ''}"></div>
                         <div class="form-group"><label>BTW / USt-IdNr.</label><input type="text" id="adm-pers-btw" placeholder="NL... / DE..." value="${existing ? existing.btw_number || '' : ''}"></div>
                     </div>
-                    <div class="form-group" style="margin-top:12px"><label>E-mail (primair)</label><input type="email" id="adm-pers-email" placeholder="info@bedrijf.nl" value="${existing ? existing.email || '' : ''}"></div>
-                    <div class="form-group" style="margin-top:12px"><label>E-mail ontvangers PO/factuur</label><input type="text" id="adm-pers-email-po" placeholder="inkoop@bedrijf.nl, finance@bedrijf.nl" value="${existing ? existing.email_po || '' : ''}"><div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Komma-gescheiden. Als leeg wordt het primaire e-mailadres gebruikt.</div></div>
                     <div style="margin-top:12px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-pers-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testbedrijf
@@ -7905,6 +7941,7 @@
             document.getElementById('admin-modal-fields').innerHTML = fields;
             const saveBtn = document.getElementById('admin-modal-save');
             saveBtn.style.display = '';
+            saveBtn.textContent = 'Opslaan';
             saveBtn.onclick = () => saveAdminItem(type);
             // Verwijder-knop tonen bij bewerken van tarieven
             const delBtn = document.getElementById('admin-modal-delete');
@@ -7969,13 +8006,27 @@
                 loadProjectAssignments(_editingId);
             }
 
-            // Laad extra contactpersonen bij bedrijf
-            if (type === 'persoon' && existing && existing.contacts) {
+            // Laad contactpersonen bij bedrijf
+            if (type === 'persoon' && existing) {
                 const list = document.getElementById('adm-pers-contacts-list');
                 if (list) {
                     try {
-                        const contacts = typeof existing.contacts === 'string' ? JSON.parse(existing.contacts) : existing.contacts;
-                        (contacts || []).forEach(c => addExtraContact(c));
+                        let contacts = existing.contacts;
+                        if (typeof contacts === 'string') contacts = JSON.parse(contacts);
+                        if (contacts && contacts.length > 0) {
+                            // Nieuwe structuur: laad alle contacten
+                            contacts.forEach(c => addExtraContact(c));
+                        } else if (existing.contact_name || existing.email) {
+                            // Migratie: oude velden → eerste contact
+                            addExtraContact({
+                                name: existing.contact_name || '',
+                                email: existing.email || '',
+                                role: existing.contact_function || '',
+                                receives_weekstaat: true,
+                                receives_factuur: true,
+                                receives_io: !!(existing.email_po)
+                            });
+                        }
                     } catch(e) { console.warn('Contacts parse error', e); }
                 }
             }
@@ -8337,12 +8388,23 @@
             if (!list) return;
             const row = document.createElement('div');
             row.className = 'extra-contact-row';
-            row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:10px;padding:10px;background:white;border:1px solid var(--border);border-radius:8px;position:relative';
             row.innerHTML = `
-                <input type="text" class="ec-name" placeholder="Naam" value="${data ? (data.name||'') : ''}" style="flex:2;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                <input type="email" class="ec-email" placeholder="E-mail" value="${data ? (data.email||'') : ''}" style="flex:2;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                <input type="text" class="ec-role" placeholder="Functie" value="${data ? (data.role||'') : ''}" style="flex:1.5;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                <button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:2px 6px" title="Verwijderen">✕</button>
+                <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.9rem;padding:0" title="Verwijderen">✕</button>
+                <input type="text" class="ec-name" placeholder="Naam" value="${data ? (data.name||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="email" class="ec-email" placeholder="E-mail" value="${data ? (data.email||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="text" class="ec-role" placeholder="Functie" value="${data ? (data.role||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <div style="display:flex;gap:12px;margin-top:2px;font-size:0.75rem">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                        <input type="checkbox" class="ec-recv-weekstaat" ${data && data.receives_weekstaat ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Weekstaten
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                        <input type="checkbox" class="ec-recv-factuur" ${data && data.receives_factuur ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Facturen
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                        <input type="checkbox" class="ec-recv-io" ${data && data.receives_io ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Inkooporders
+                    </label>
+                </div>
             `;
             list.appendChild(row);
         }
@@ -8354,8 +8416,11 @@
                 const name = row.querySelector('.ec-name').value.trim();
                 const email = row.querySelector('.ec-email').value.trim();
                 const role = row.querySelector('.ec-role').value.trim();
+                const receives_weekstaat = row.querySelector('.ec-recv-weekstaat').checked;
+                const receives_factuur = row.querySelector('.ec-recv-factuur').checked;
+                const receives_io = row.querySelector('.ec-recv-io').checked;
                 if (name || email) {
-                    contacts.push({ name, email, role });
+                    contacts.push({ name, email, role, receives_weekstaat, receives_factuur, receives_io });
                 }
             });
             return contacts;
@@ -8830,9 +8895,15 @@
                 const name = document.getElementById('adm-pers-name').value.trim();
                 const ptype = document.getElementById('adm-pers-type').value;
                 if (!name) { showToast('⚠️ Vul minimaal een naam in'); return; }
+                const allContacts = getExtraContacts();
+                // Backward compat: eerste contact → primaire velden
+                const primary = allContacts[0] || {};
+                // E-mail ontvangers IO: alle contacten met receives_io aangevinkt
+                const ioEmails = allContacts.filter(c => c.receives_io && c.email).map(c => c.email).join(', ');
                 const data = {
                     name: name,
-                    contact_name: document.getElementById('adm-pers-contact').value.trim() || null,
+                    contact_name: primary.name || null,
+                    contact_function: primary.role || null,
                     type: ptype,
                     kvk_number: document.getElementById('adm-pers-kvk').value.trim() || null,
                     btw_number: document.getElementById('adm-pers-btw').value.trim() || null,
@@ -8841,10 +8912,10 @@
                     city: document.getElementById('adm-pers-city').value.trim() || null,
                     country: document.getElementById('adm-pers-country').value || 'Nederland',
                     phone: document.getElementById('adm-pers-phone').value.trim() || null,
-                    email: document.getElementById('adm-pers-email').value.trim() || null,
-                    email_po: document.getElementById('adm-pers-email-po').value.trim() || null,
+                    email: primary.email || null,
+                    email_po: ioEmails || null,
                     is_test: document.getElementById('adm-pers-test').checked,
-                    contacts: getExtraContacts()
+                    contacts: allContacts
                 };
                 result = _editingId
                     ? await sb.from('companies').update(data).eq('id', _editingId)
