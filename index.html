@@ -793,7 +793,7 @@
             <div class="project-selector" onclick="openProjectSwitcher()">
                 <div>
                     <div class="project-name">Commissioning Platform X</div>
-                    <div class="project-meta">Shell · Rotterdam · PO-2026-0042</div>
+                    <div class="project-meta">Shell · Rotterdam · IO-2026-0042</div>
                 </div>
                 <span style="opacity:0.5">▾</span>
             </div>
@@ -1008,7 +1008,7 @@
                 <!-- Sectie D: PO Status -->
                 <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Inkooporder status</div>
-                    <div id="dashboard-po-status"></div>
+                    <div id="dashboard-io-status"></div>
                 </div>
             </div>
 
@@ -1066,13 +1066,13 @@
                     <div class="form-row">
                         <div class="form-group" style="flex:1">
                             <label>Project</label>
-                            <select id="po-filter-project" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-project" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer project --</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label>Medewerker</label>
-                            <select id="po-filter-user" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-user" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer medewerker --</option>
                             </select>
                         </div>
@@ -1080,40 +1080,40 @@
                     <div class="form-row">
                         <div class="form-group" style="flex:1">
                             <label>Jaar</label>
-                            <select id="po-filter-year" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-year" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer jaar --</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label>Maand</label>
-                            <select id="po-filter-month" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-month" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer maand --</option>
                             </select>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
-                        <input type="checkbox" id="po-use-week" style="width:16px;height:16px;accent-color:var(--kts-blue);cursor:pointer">
-                        <label for="po-use-week" style="font-size:0.85rem;cursor:pointer">Per week selecteren</label>
+                        <input type="checkbox" id="io-use-week" style="width:16px;height:16px;accent-color:var(--kts-blue);cursor:pointer">
+                        <label for="io-use-week" style="font-size:0.85rem;cursor:pointer">Per week selecteren</label>
                     </div>
-                    <div id="po-week-selector" style="display:none">
+                    <div id="io-week-selector" style="display:none">
                         <div class="form-group">
                             <label>Week</label>
-                            <select id="po-filter-week" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-week" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer week --</option>
                             </select>
                         </div>
                     </div>
                     <button class="btn btn-primary" onclick="previewPO()" style="width:100%;margin-top:8px">👁 Preview</button>
                 </div>
-                <div id="po-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
+                <div id="io-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
-                    <div id="po-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
-                    <button class="btn btn-primary" onclick="generatePOPDF()" style="width:100%;margin-top:16px">📄 Genereer PO PDF</button>
+                    <div id="io-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
+                    <button class="btn btn-primary" onclick="generateIOPDF()" style="width:100%;margin-top:16px">📄 Genereer IO PDF</button>
                 </div>
 
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Gegenereerde inkooporders</div>
-                    <div id="po-list" style="display:flex;flex-direction:column;gap:6px">
+                    <div id="io-list" style="display:flex;flex-direction:column;gap:6px">
                         <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
                     </div>
                 </div>
@@ -2471,10 +2471,10 @@
         // ===== DOCUMENT NUMMERING =====
         async function getNextDocumentNumber(docType) {
             const sb = getSupabase();
-            if (!sb) return docType === 'factuur' ? '2026-??' : 'PO-2026-???';
+            if (!sb) return docType === 'factuur' ? '2026-??' : 'IO-2026-???';
             const year = new Date().getFullYear();
             const { data } = await sb.rpc('next_document_number', { doc_type: docType, doc_year: year });
-            return data || (docType === 'factuur' ? `${year}-??` : `PO-${year}-???`);
+            return data || (docType === 'factuur' ? `${year}-??` : `IO-${year}-???`);
         }
 
         async function saveDocumentNumber(docType, number, details) {
@@ -2547,7 +2547,7 @@
                 .eq('type', 'inkooporder')
                 .order('sequence', { ascending: false });
 
-            const pList = document.getElementById('admin-po-list');
+            const pList = document.getElementById('admin-io-list');
             if (pos && pos.length > 0) {
                 pList.innerHTML = pos.map(p => `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px">
@@ -2597,7 +2597,7 @@
             });
 
             csv += '\n\nINKOOPORDERS (KTS → ZZP)\n';
-            csv += 'PO Nummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
+            csv += 'IO Nummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
             pos.forEach(p => {
                 csv += `${p.number};${p.description || ''};${p.client_name || ''};${p.weeks || ''};${(p.amount_excl_btw||0).toFixed(2).replace('.',',')};${p.document_date || ''};${p.status || ''}\n`;
             });
@@ -2941,7 +2941,7 @@
         }
 
         // ===== INKOOPORDER PDF =====
-        function generateInkooporder(poNumber) {
+        function generateInkooporder(ioNumber) {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -2969,20 +2969,20 @@
             // Project + PO-nummer + datum
             const projCode = currentProject ? (currentProject.project_code || '') : '';
             const today = new Date();
-            const poDate = fmtDate(today);
-            const poNum = poNumber || 'PO-????';
+            const ioDate = fmtDate(today);
+            const ioNum = ioNumber || 'IO-????';
 
             doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             const rx = pw/2;
             doc.text('PROJECT', rx, 26);
             doc.text('DATUM', rx, 33);
-            doc.text('PO-NUMMER', rx, 40);
+            doc.text('IO-NUMMER', rx, 40);
 
             doc.setFont('helvetica', 'normal');
             doc.text(projCode, rx + 35, 26);
-            doc.text(poDate, rx + 35, 33);
-            doc.text(poNum, rx + 35, 40);
+            doc.text(ioDate, rx + 35, 33);
+            doc.text(ioNum, rx + 35, 40);
 
             // --- Leverancier + Leveradres ---
             let y = 52;
@@ -3156,10 +3156,10 @@
         }
 
         async function downloadInkooporder() {
-            const poNum = await getNextDocumentNumber('inkooporder');
-            const doc = generateInkooporder(poNum);
+            const ioNum = await getNextDocumentNumber('inkooporder');
+            const doc = generateInkooporder(ioNum);
             if (doc) {
-                const fileName = `Inkooporder_${poNum}_Week${currentWeekNumber}_${currentYear}.pdf`;
+                const fileName = `Inkooporder_${ioNum}_Week${currentWeekNumber}_${currentYear}.pdf`;
                 doc.save(fileName);
                 showToast('✓ Inkooporder gedownload (concept — nog niet opgeslagen)');
             }
@@ -3457,7 +3457,7 @@
             const monthStart = `${year}-${String(month+1).padStart(2,'0')}-01`;
             const monthEnd = `${year}-${String(month+1).padStart(2,'0')}-${new Date(year, month+1, 0).getDate()}`;
 
-            const { data: poRecords } = await sb
+            const { data: ioRecords } = await sb
                 .from('document_numbers')
                 .select('*')
                 .eq('type', 'inkooporder')
@@ -3466,7 +3466,7 @@
                 .lte('document_date', monthEnd)
                 .order('document_date');
 
-            if (!poRecords || poRecords.length === 0) {
+            if (!ioRecords || ioRecords.length === 0) {
                 showToast('⚠️ Geen inkooporders gevonden voor deze maand');
                 return;
             }
@@ -3476,7 +3476,7 @@
 
             // Totalen berekenen
             let totalExcl = 0;
-            poRecords.forEach(po => { totalExcl += parseFloat(po.amount_excl_btw) || 0; });
+            ioRecords.forEach(io => { totalExcl += parseFloat(io.amount_excl_btw) || 0; });
             const btwAmount = totalExcl * 0.21;
             const totalIncl = totalExcl + btwAmount;
 
@@ -3539,11 +3539,11 @@
 
             // Regeltabel
             y += 8;
-            const tableBody = poRecords.map(po => [
-                po.document_date,
-                po.description || '',
-                po.weeks || '',
-                fmtEuroPdf(parseFloat(po.amount_excl_btw) || 0),
+            const tableBody = ioRecords.map(io => [
+                io.document_date,
+                io.description || '',
+                io.weeks || '',
+                fmtEuroPdf(parseFloat(io.amount_excl_btw) || 0),
             ]);
 
             doc.autoTable({
@@ -4156,7 +4156,7 @@
             // Check welke weken al op een inkooporder staan
             let inkooporderWeken = new Set();
             if (sb && currentUser && currentProject) {
-                const { data: ioWeeks } = await sb.from('purchase_order_weeks').select('week_number')
+                const { data: ioWeeks } = await sb.from('inkooporder_weeks').select('week_number')
                     .eq('user_id', currentUser.id)
                     .eq('project_id', currentProject.id)
                     .eq('year', overviewYear);
@@ -4388,7 +4388,7 @@
             await downloadWeekstaat();
         }
 
-        // ===== INKOOPORDER (PO) =====
+        // ===== INKOOPORDER (IO) =====
         // KTS bedrijfsgegevens
         const KTS = {
             naam: 'Kuijpers Technical Services BV',
@@ -4402,7 +4402,7 @@
             betalingstermijn: 30
         };
 
-        let poEntries = [
+        let ioEntries = [
         ];
 
         function renderPOList() {
@@ -4412,16 +4412,16 @@
                 goedgekeurd: { bg: '#d1fae5', color: '#059669', label: 'Goedgekeurd' }
             };
 
-            document.getElementById('po-list').innerHTML = poEntries.map(po => {
-                const total = po.lines.filter(l => l.qty > 0).reduce((s, l) => s + (l.qty * l.rate), 0);
-                const st = statusColors[po.status];
+            document.getElementById('io-list').innerHTML = ioEntries.map(io => {
+                const total = io.lines.filter(l => l.qty > 0).reduce((s, l) => s + (l.qty * l.rate), 0);
+                const st = statusColors[io.status];
                 return `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;cursor:pointer" onclick="showPODetail('${po.id}')">
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;cursor:pointer" onclick="showIODetail('${io.id}')">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.95rem">${po.id}</div>
-                                <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">${po.period} · ${po.leverancier.naam}, ${po.leverancier.bedrijf}</div>
-                                <div style="font-size:0.7rem;color:var(--muted)">${po.project}</div>
+                                <div style="font-weight:700;font-size:0.95rem">${io.id}</div>
+                                <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">${io.period} · ${io.leverancier.naam}, ${io.leverancier.bedrijf}</div>
+                                <div style="font-size:0.7rem;color:var(--muted)">${io.project}</div>
                             </div>
                             <div style="text-align:right">
                                 <span class="status-badge" style="background:${st.bg};color:${st.color}">${st.label}</span>
@@ -4432,17 +4432,17 @@
             }).join('');
         }
 
-        function showPODetail(poId) {
-            const po = poEntries.find(p => p.id === poId);
-            if (!po) return;
+        function showIODetail(ioId) {
+            const io = ioEntries.find(p => p.id === ioId);
+            if (!io) return;
 
-            const activeLines = po.lines.filter(l => l.qty > 0);
+            const activeLines = io.lines.filter(l => l.qty > 0);
             const total = activeLines.reduce((s, l) => s + (l.qty * l.rate), 0);
             const btw = total * 0.21;
 
-            document.getElementById('po-list').style.display = 'none';
-            document.getElementById('po-detail').style.display = 'block';
-            document.getElementById('po-detail').innerHTML = `
+            document.getElementById('io-list').style.display = 'none';
+            document.getElementById('io-detail').style.display = 'block';
+            document.getElementById('io-detail').innerHTML = `
                 <button class="btn btn-secondary btn-sm" onclick="closePODetail()" style="margin-bottom:16px">← Terug naar overzicht</button>
 
                 <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:16px">
@@ -4462,9 +4462,9 @@
 
                     <!-- META: Project, Datum, PO-nummer -->
                     <div style="display:flex;justify-content:flex-end;gap:24px;font-size:0.8rem;margin:12px 0;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
-                        <div><span style="font-weight:700">PROJECT</span> ${po.projectCode}</div>
-                        <div><span style="font-weight:700">DATUM</span> ${po.date}</div>
-                        <div><span style="font-weight:700">PO-NR</span> ${po.id}</div>
+                        <div><span style="font-weight:700">PROJECT</span> ${io.projectCode}</div>
+                        <div><span style="font-weight:700">DATUM</span> ${io.date}</div>
+                        <div><span style="font-weight:700">IO-NR</span> ${io.id}</div>
                     </div>
 
                     <!-- LEVERANCIER + LEVERADRES -->
@@ -4472,12 +4472,12 @@
                         <div>
                             <div style="font-weight:700;font-size:0.75rem;color:white;background:var(--kts-blue);padding:4px 8px;border-radius:4px;margin-bottom:8px">LEVERANCIER (ZZP)</div>
                             <div style="font-size:0.8rem">
-                                <div style="font-weight:600">${po.leverancier.naam}</div>
-                                <div>${po.leverancier.bedrijf}</div>
-                                <div style="color:var(--muted)">${po.leverancier.adres}</div>
-                                <div style="color:var(--muted)">${po.leverancier.postcode}</div>
-                                <div style="color:var(--muted);margin-top:2px">Tel: ${po.leverancier.tel}</div>
-                                <div style="color:var(--muted)">${po.leverancier.email}</div>
+                                <div style="font-weight:600">${io.leverancier.naam}</div>
+                                <div>${io.leverancier.bedrijf}</div>
+                                <div style="color:var(--muted)">${io.leverancier.adres}</div>
+                                <div style="color:var(--muted)">${io.leverancier.postcode}</div>
+                                <div style="color:var(--muted);margin-top:2px">Tel: ${io.leverancier.tel}</div>
+                                <div style="color:var(--muted)">${io.leverancier.email}</div>
                             </div>
                         </div>
                         <div>
@@ -4495,8 +4495,8 @@
 
                     <!-- PROJECT INFO -->
                     <div style="font-size:0.8rem;margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:8px">
-                        <span style="font-weight:700">Project:</span> ${po.project}<br>
-                        <span style="font-weight:700">Klant:</span> ${po.client} · <span style="font-weight:700">Periode:</span> ${po.period}
+                        <span style="font-weight:700">Project:</span> ${io.project}<br>
+                        <span style="font-weight:700">Klant:</span> ${io.client} · <span style="font-weight:700">Periode:</span> ${io.period}
                     </div>
 
                     <!-- ITEMS TABEL -->
@@ -4511,7 +4511,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${po.lines.map(l => `
+                            ${io.lines.map(l => `
                                 <tr style="border-bottom:1px solid var(--border)${l.qty === 0 ? ';color:#cbd5e1' : ''}">
                                     <td style="padding:6px 8px">${l.nr}</td>
                                     <td style="padding:6px 8px">${l.desc}</td>
@@ -4545,7 +4545,7 @@
 
                     <!-- OPMERKINGEN + BETALINGSTERMIJN -->
                     <div style="margin-top:12px;font-size:0.8rem">
-                        <div style="color:var(--muted);margin-bottom:4px"><strong>Opmerkingen:</strong> ${po.opmerkingen || '-'}</div>
+                        <div style="color:var(--muted);margin-bottom:4px"><strong>Opmerkingen:</strong> ${io.opmerkingen || '-'}</div>
                         <div style="color:var(--muted)"><strong>Betalingstermijn:</strong> ${KTS.betalingstermijn} dagen na levering</div>
                     </div>
                 </div>
@@ -4558,11 +4558,11 @@
         }
 
         function closePODetail() {
-            document.getElementById('po-list').style.display = 'block';
-            document.getElementById('po-detail').style.display = 'none';
+            document.getElementById('io-list').style.display = 'block';
+            document.getElementById('io-detail').style.display = 'none';
         }
 
-        function generatePO() {
+        function generateIO() {
             showToast('Inkooporder genereren op basis van goedgekeurde uren — komt in volgende versie');
         }
 
@@ -5831,11 +5831,11 @@
             const yearEnd = currentYear + '-12-31';
 
             // Parallel data ophalen
-            const [entriesRes, yearEntriesRes, weekStatusRes, poWeeksRes, ratesRes] = await Promise.all([
+            const [entriesRes, yearEntriesRes, weekStatusRes, ioWeeksRes, ratesRes] = await Promise.all([
                 sb.from('time_entries').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd),
                 sb.from('time_entries').select('entry_date, total_hours, km, hotel, project_id, user_id').gte('entry_date', yearStart).lte('entry_date', yearEnd),
                 sb.from('week_status').select('*').eq('year', currentYear),
-                sb.from('purchase_order_weeks').select('*').eq('year', currentYear),
+                sb.from('inkooporder_weeks').select('*').eq('year', currentYear),
                 sb.from('rates').select('*').order('valid_from', { ascending: false })
             ]);
 
@@ -5849,7 +5849,7 @@
             const monthEntries = (entriesRes.data || []).filter(e => filteredUserIds.has(e.user_id) && (!e.project_id || filteredProjIds.has(e.project_id)));
             const yearEntries = (yearEntriesRes.data || []).filter(e => filteredUserIds.has(e.user_id) && (!e.project_id || filteredProjIds.has(e.project_id)));
             const weekStatuses = (weekStatusRes.data || []).filter(w => filteredUserIds.has(w.user_id) && (!w.project_id || filteredProjIds.has(w.project_id)));
-            const poWeeks = (poWeeksRes.data || []).filter(p => filteredUserIds.has(p.user_id) && (!p.project_id || filteredProjIds.has(p.project_id)));
+            const ioWeeks = (ioWeeksRes.data || []).filter(p => filteredUserIds.has(p.user_id) && (!p.project_id || filteredProjIds.has(p.project_id)));
             const projects = filteredProjects.filter(p => p.status === 'active');
 
             // Rate lookup helper: user+project → rate, project → rate, default
@@ -5881,14 +5881,14 @@
             window._dashboardExportData = { monthEntries, yearEntries, users, projects, calcRevenue, currentYear, selectedMonth, isFullYear };
 
             // Render alle secties
-            renderDashboardStats(monthEntries, yearEntries, weekStatuses, poWeeks, selectedMonth, currentYear, calcRevenue);
+            renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, currentYear, calcRevenue);
             renderDashboardChart(yearEntries, currentYear, calcRevenue);
             renderMedewerkerOverzicht(monthEntries, weekStatuses, users, selectedMonth, currentYear);
             renderProjectCards(monthEntries, projects, users, selectedMonth, currentYear, calcRevenue);
-            renderPOStatus(weekStatuses, poWeeks, users, projects, currentYear);
+            renderPOStatus(weekStatuses, ioWeeks, users, projects, currentYear);
         }
 
-        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, poWeeks, selectedMonth, year, calcRevenue) {
+        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, year, calcRevenue) {
             const omzetMaand = calcRevenue(monthEntries);
 
             // Vorige maand
@@ -5905,10 +5905,10 @@
             // Totaal uren deze maand
             const totalUrenMaand = monthEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
 
-            // Openstaande weken (verstuurd maar nog niet op PO)
+            // Openstaande weken (verstuurd maar nog niet op IO)
             const verstuurdeWeken = weekStatuses.filter(w => w.status === 'verstuurd');
-            const poWeekSet = new Set(poWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
-            const openWeeks = verstuurdeWeken.filter(w => !poWeekSet.has(`${w.user_id}_${w.project_id}_${w.week_number}`));
+            const ioWeekSet = new Set(ioWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
+            const openWeeks = verstuurdeWeken.filter(w => !ioWeekSet.has(`${w.user_id}_${w.project_id}_${w.week_number}`));
 
             // Wachtend op goedkeuring
             const pendingApprovals = weekStatuses.filter(w => w.approval_status === 'ter_goedkeuring');
@@ -6104,8 +6104,8 @@
             el.innerHTML = html || '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">Geen uren deze maand</div>';
         }
 
-        function renderPOStatus(weekStatuses, poWeeks, users, projects, year) {
-            const el = document.getElementById('dashboard-po-status');
+        function renderPOStatus(weekStatuses, ioWeeks, users, projects, year) {
+            const el = document.getElementById('dashboard-io-status');
 
             // Groepeer per user + project
             const groups = {};
@@ -6116,10 +6116,10 @@
             });
 
             // PO status markeren
-            const poSet = new Set(poWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
+            const ioSet = new Set(ioWeeks.map(p => `${p.user_id}_${p.project_id}_${p.week_number}`));
             Object.values(groups).forEach(g => {
                 Object.keys(g.weeks).forEach(wn => {
-                    if (poSet.has(`${g.userId}_${g.projectId}_${wn}`)) {
+                    if (ioSet.has(`${g.userId}_${g.projectId}_${wn}`)) {
                         g.weeks[wn].opPO = true;
                     }
                 });
@@ -6257,7 +6257,7 @@
             if (!sb) { showToast('⚠️ Niet verbonden met database'); return; }
 
             // Projecten laden
-            const { data: projects } = await sb.from('projects').select('*, client_company_id(id, name, email, contact_name), po_company_id').order('created_at', { ascending: false });
+            const { data: projects } = await sb.from('projects').select('*, client_company_id(id, name, email, contact_name), io_company_id').order('created_at', { ascending: false });
             window._adminProjects = projects || [];
             const filteredProjects = (projects || []).filter(p => _adminTestMode ? p.is_test === true : p.is_test !== true);
             const projList = document.getElementById('admin-project-list');
@@ -6424,14 +6424,14 @@
             const curMonth = now.getMonth(); // 0-indexed
 
             // Vul project dropdown
-            const projSel = document.getElementById('po-filter-project');
+            const projSel = document.getElementById('io-filter-project');
             if (projSel && window._adminProjects) {
                 projSel.innerHTML = '<option value="">-- Selecteer project --</option>' +
                     window._adminProjects.map(p => `<option value="${p.id}">${p.project_code} — ${p.name}</option>`).join('');
             }
 
             // Vul medewerker dropdown
-            const userSel = document.getElementById('po-filter-user');
+            const userSel = document.getElementById('io-filter-user');
             if (userSel && window._adminUsers) {
                 userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
                     getFilteredUsers().map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
@@ -6439,7 +6439,7 @@
             }
 
             // Vul jaar dropdown — alleen huidig jaar + volgend jaar
-            const yearSel = document.getElementById('po-filter-year');
+            const yearSel = document.getElementById('io-filter-year');
             if (yearSel) {
                 yearSel.innerHTML = [curYear, curYear + 1].map(y =>
                     `<option value="${y}" ${y === curYear ? 'selected' : ''}>${y}</option>`
@@ -6447,7 +6447,7 @@
             }
 
             // Vul maand dropdown — voorinvullen op huidige maand
-            const monthSel = document.getElementById('po-filter-month');
+            const monthSel = document.getElementById('io-filter-month');
             if (monthSel) {
                 const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
                 monthSel.innerHTML = months.map((m, i) =>
@@ -6457,10 +6457,10 @@
             }
 
             // Week checkbox listener
-            const useWeekCb = document.getElementById('po-use-week');
+            const useWeekCb = document.getElementById('io-use-week');
             if (useWeekCb) {
                 useWeekCb.onchange = () => {
-                    const weekSel = document.getElementById('po-week-selector');
+                    const weekSel = document.getElementById('io-week-selector');
                     if (weekSel) weekSel.style.display = useWeekCb.checked ? 'block' : 'none';
                     if (useWeekCb.checked) populateWeekDropdown();
                 };
@@ -6475,10 +6475,10 @@
         }
 
         function populateWeekDropdown() {
-            const yearVal = document.getElementById('po-filter-year').value;
-            const monthVal = document.getElementById('po-filter-month').value;
+            const yearVal = document.getElementById('io-filter-year').value;
+            const monthVal = document.getElementById('io-filter-month').value;
             if (!yearVal || !monthVal) {
-                document.getElementById('po-filter-week').innerHTML = '<option value="">-- Selecteer week --</option>';
+                document.getElementById('io-filter-week').innerHTML = '<option value="">-- Selecteer week --</option>';
                 return;
             }
 
@@ -6493,7 +6493,7 @@
                 weeks.add(getISOWeek(d));
             }
 
-            const weekSel = document.getElementById('po-filter-week');
+            const weekSel = document.getElementById('io-filter-week');
             if (weekSel) {
                 const sortedWeeks = Array.from(weeks).sort((a, b) => a - b);
                 weekSel.innerHTML = '<option value="">-- Selecteer week --</option>' +
@@ -6515,33 +6515,33 @@
         async function loadInkooporders() {
             const sb = getSupabase();
             if (!sb) return;
-            const listEl = document.getElementById('po-list');
+            const listEl = document.getElementById('io-list');
             if (!listEl) return;
             listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
 
             try {
-                // Haal inkooporder records op uit purchase_order_weeks (gegroepeerd per po_number)
-                const { data: poWeeks, error: poErr } = await sb.from('purchase_order_weeks')
-                    .select('po_number, user_id, project_id, year, month, week_number, created_at')
+                // Haal inkooporder records op uit inkooporder_weeks (gegroepeerd per io_number)
+                const { data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
+                    .select('io_number, user_id, project_id, year, month, week_number, created_at')
                     .order('created_at', { ascending: false });
 
-                if (poErr) throw poErr;
+                if (ioErr) throw ioErr;
 
                 // Filter op test/productie modus
                 const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
-                const filteredPOWeeks = (poWeeks || []).filter(pw => filteredUserIds.has(pw.user_id));
+                const filteredPOWeeks = (ioWeeks || []).filter(pw => filteredUserIds.has(pw.user_id));
 
                 if (!filteredPOWeeks || filteredPOWeeks.length === 0) {
                     listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen inkooporders gegenereerd</div>';
                     return;
                 }
 
-                // Groepeer per po_number
-                const poMap = {};
+                // Groepeer per io_number
+                const ioMap = {};
                 filteredPOWeeks.forEach(pw => {
-                    if (!poMap[pw.po_number]) {
-                        poMap[pw.po_number] = {
-                            po_number: pw.po_number,
+                    if (!ioMap[pw.io_number]) {
+                        ioMap[pw.io_number] = {
+                            io_number: pw.io_number,
                             user_id: pw.user_id,
                             project_id: pw.project_id,
                             year: pw.year,
@@ -6550,10 +6550,10 @@
                             created_at: pw.created_at
                         };
                     }
-                    poMap[pw.po_number].weeks.push(pw.week_number);
+                    ioMap[pw.io_number].weeks.push(pw.week_number);
                 });
 
-                const poList = Object.values(poMap).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const ioList = Object.values(ioMap).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
                 // Haal namen op voor weergave
                 const userMap = {};
@@ -6562,24 +6562,24 @@
                 (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code + ' — ' + p.name; });
                 const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
-                listEl.innerHTML = poList.map(po => {
-                    const userName = userMap[po.user_id] || 'Onbekend';
-                    const projLabel = projMap[po.project_id] || 'Onbekend';
-                    const wekenTekst = po.weeks.sort((a,b) => a-b).join(', ');
-                    const maandTekst = MONTHS_SHORT[po.month - 1] + ' ' + po.year;
-                    const datumTekst = new Date(po.created_at).toLocaleDateString('nl-NL');
-                    const projCode = (window._adminProjects || []).find(p => p.id === po.project_id)?.project_code || '';
-                    const storagePath = `${po.year}/${projCode}/${po.po_number.replace(/\\s+/g, '_')}.pdf`;
+                listEl.innerHTML = ioList.map(io => {
+                    const userName = userMap[io.user_id] || 'Onbekend';
+                    const projLabel = projMap[io.project_id] || 'Onbekend';
+                    const wekenTekst = io.weeks.sort((a,b) => a-b).join(', ');
+                    const maandTekst = MONTHS_SHORT[io.month - 1] + ' ' + io.year;
+                    const datumTekst = new Date(io.created_at).toLocaleDateString('nl-NL');
+                    const projCode = (window._adminProjects || []).find(p => p.id === io.project_id)?.project_code || '';
+                    const storagePath = `${io.year}/${projCode}/${io.io_number.replace(/\\s+/g, '_')}.pdf`;
 
                     return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                         <div style="flex:1;min-width:0">
-                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.po_number}</div>
+                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${io.io_number}</div>
                             <div style="font-size:0.75rem;color:var(--muted)">${userName} · ${projLabel}</div>
                             <div style="font-size:0.7rem;color:var(--muted)">Week ${wekenTekst} · ${maandTekst} · ${datumTekst}</div>
                         </div>
                         <div style="display:flex;gap:4px;align-items:center">
                             <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
-                            <button onclick="adminDeletePO('${po.po_number.replace(/'/g, "\\'")}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
+                            <button onclick="adminDeleteIO('${io.io_number.replace(/'/g, "\\'")}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -6608,28 +6608,28 @@
             }
         }
 
-        async function adminDeletePO(poNumber) {
-            if (!await confirmAsync(`Inkooporder "${poNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een IO gezet worden.`, true)) return;
+        async function adminDeleteIO(ioNumber) {
+            if (!await confirmAsync(`Inkooporder "${ioNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een IO gezet worden.`, true)) return;
             const sb = getSupabase();
             if (!sb) return;
             try {
                 // Haal PO-info op voor storage path
-                const { data: poWeeks } = await sb.from('purchase_order_weeks')
+                const { data: ioWeeks } = await sb.from('inkooporder_weeks')
                     .select('project_id, year')
-                    .eq('po_number', poNumber)
+                    .eq('io_number', ioNumber)
                     .limit(1);
 
-                // Verwijder purchase_order_weeks records
-                const { error: delErr } = await sb.from('purchase_order_weeks')
-                    .delete().eq('po_number', poNumber);
+                // Verwijder inkooporder_weeks records
+                const { error: delErr } = await sb.from('inkooporder_weeks')
+                    .delete().eq('io_number', ioNumber);
                 if (delErr) throw delErr;
 
                 // Probeer PDF uit storage te verwijderen
-                if (poWeeks && poWeeks.length > 0) {
-                    const pw = poWeeks[0];
+                if (ioWeeks && ioWeeks.length > 0) {
+                    const pw = ioWeeks[0];
                     const projCode = (window._adminProjects || []).find(p => p.id === pw.project_id)?.project_code || '';
                     if (projCode) {
-                        const storagePath = `${pw.year}/${projCode}/${poNumber.replace(/\s+/g, '_')}.pdf`;
+                        const storagePath = `${pw.year}/${projCode}/${ioNumber.replace(/\s+/g, '_')}.pdf`;
                         await sb.storage.from('inkooporders').remove([storagePath]);
                     }
                 }
@@ -6637,7 +6637,7 @@
                 showToast('✓ Inkooporder verwijderd — weken zijn weer beschikbaar');
                 loadInkooporders();
             } catch (err) {
-                console.error('PO verwijderen mislukt:', err);
+                console.error('IO verwijderen mislukt:', err);
                 showToast('❌ Verwijderen mislukt: ' + err.message);
             }
         }
@@ -6685,20 +6685,20 @@
             const sb = getSupabase();
             if (!sb) return;
 
-            // Check of er PO's bestaan voor deze combinatie (factuur alleen na PO)
-            const { data: poWeeks } = await sb.from('purchase_order_weeks')
-                .select('po_number, week_number')
+            // Check of er IO's bestaan voor deze combinatie (factuur alleen na IO)
+            const { data: ioWeeks } = await sb.from('inkooporder_weeks')
+                .select('io_number, week_number')
                 .eq('user_id', userId)
                 .eq('project_id', projectId)
                 .eq('year', parseInt(year))
                 .eq('month', parseInt(month));
 
-            if (!poWeeks || poWeeks.length === 0) {
+            if (!ioWeeks || ioWeeks.length === 0) {
                 const preview = document.getElementById('inv-preview');
                 const content = document.getElementById('inv-preview-content');
                 content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">
                     ⚠️ Er is nog geen inkooporder verstuurd voor deze maand/medewerker/project combinatie.<br>
-                    <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst een PO voordat je een factuur kunt maken.</span>
+                    <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst een IO voordat je een factuur kunt maken.</span>
                 </div>`;
                 preview.style.display = 'block';
                 return;
@@ -6713,8 +6713,8 @@
                 .eq('month', parseInt(month));
 
             // Aggregate data (hergebruik PO data, maar nu voor factuur)
-            const poData = await aggregatePOData(userId, projectId, year, month);
-            if (!poData || poData.includedWeeks.length === 0) {
+            const ioData = await aggregatePOData(userId, projectId, year, month);
+            if (!ioData || ioData.includedWeeks.length === 0) {
                 // Gebruik alle weken die op een PO staan i.p.v. alleen goedgekeurde
                 // Factuur is gebaseerd op PO weken
             }
@@ -6733,7 +6733,7 @@
             }
 
             // Bereken factuurregels op basis van PO weken
-            const poWeekNums = new Set(poWeeks.map(pw => pw.week_number));
+            const ioWeekNums = new Set(ioWeeks.map(pw => pw.week_number));
             const yr = parseInt(year);
             const mo = parseInt(month);
             const firstDay = new Date(yr, mo - 1, 1);
@@ -6751,7 +6751,7 @@
             const invoiceEntries = (entries || []).filter(e => {
                 if (!e.entry_date) return false;
                 const isoWeek = getISOWeek(new Date(e.entry_date + 'T12:00:00'));
-                return poWeekNums.has(isoWeek);
+                return ioWeekNums.has(isoWeek);
             });
 
             // Rates ophalen
@@ -6801,7 +6801,7 @@
             window._currentInvoiceData = {
                 userId, projectId, year: yr, month: mo,
                 user, project, clientCompany, rate, hotelRate, weekData,
-                entries: invoiceEntries, poWeeks, existingInvoice: existingInv && existingInv.length > 0 ? existingInv[0] : null
+                entries: invoiceEntries, ioWeeks, existingInvoice: existingInv && existingInv.length > 0 ? existingInv[0] : null
             };
 
             // Render preview
@@ -7359,13 +7359,13 @@
             if (wachtOpGoedkeuring.length > 0) console.log('PO: weken wachtend op goedkeuring:', wachtOpGoedkeuring.map(ws => `W${ws.week_number} (${ws.approval_status || 'geen'})`));
 
             // Check welke weken al op een eerdere PO staan (dubbel-beveiliging)
-            const { data: existingPOWeeks } = await sb.from('purchase_order_weeks').select('week_number, po_number')
+            const { data: existingPOWeeks } = await sb.from('inkooporder_weeks').select('week_number, io_number')
                 .eq('user_id', userId)
                 .eq('project_id', projectId)
                 .eq('year', yr);
-            const alOpPO = new Map();
-            (existingPOWeeks || []).forEach(pw => alOpPO.set(pw.week_number, pw.po_number));
-            if (alOpPO.size > 0) console.log('PO: weken al op eerdere PO:', Object.fromEntries(alOpPO));
+            const alOpIO = new Map();
+            (existingPOWeeks || []).forEach(pw => alOpIO.set(pw.week_number, pw.io_number));
+            if (alOpIO.size > 0) console.log('PO: weken al op eerdere PO:', Object.fromEntries(alOpIO));
 
             // Filter op verstuurd + specifiek weeknummer + NIET al op PO
             const skippedWeeks = [];
@@ -7375,7 +7375,7 @@
                 // Alleen goedgekeurde weken meenemen (klant moet eerst goedkeuren)
                 if (!goedgekeurdeWeken.has(isoWeek)) return false;
                 // Week al op eerdere PO? Overslaan
-                if (alOpPO.has(isoWeek)) {
+                if (alOpIO.has(isoWeek)) {
                     if (!skippedWeeks.includes(isoWeek)) skippedWeeks.push(isoWeek);
                     return false;
                 }
@@ -7412,7 +7412,7 @@
             const { data: user } = await sb.from('users').select('*').eq('id', userId).single();
 
             // Bedrijven ophalen via project
-            const { data: project_for_companies } = await sb.from('projects').select('client_company_id, po_company_id').eq('id', projectId).single();
+            const { data: project_for_companies } = await sb.from('projects').select('client_company_id, io_company_id').eq('id', projectId).single();
 
             // Factuur-ontvanger (opdrachtgever/eindklant)
             let company = null;
@@ -7422,12 +7422,12 @@
             }
 
             // IO-ontvanger (opdrachtnemer/tussenpersoon) — als niet ingesteld: zelfde als factuur
-            let poCompany = null;
-            if (project_for_companies && project_for_companies.po_company_id) {
-                const { data: poComp } = await sb.from('companies').select('*').eq('id', project_for_companies.po_company_id).single();
-                poCompany = poComp;
+            let ioCompany = null;
+            if (project_for_companies && project_for_companies.io_company_id) {
+                const { data: ioComp } = await sb.from('companies').select('*').eq('id', project_for_companies.io_company_id).single();
+                ioCompany = ioComp;
             } else {
-                poCompany = company; // fallback naar factuur-ontvanger
+                ioCompany = company; // fallback naar factuur-ontvanger
             }
 
             // ZZP-bedrijf ophalen via user (voor LEVERANCIER op IO)
@@ -7472,54 +7472,54 @@
             return {
                 userId, projectId, year: yr, month: mo,
                 weekNumber: weekNumber ? parseInt(weekNumber) : null,
-                user, company, poCompany, zzpCompany, project, rate, hotelRate, weekData, entries: filtered,
+                user, company, ioCompany, zzpCompany, project, rate, hotelRate, weekData, entries: filtered,
                 includedWeeks, skippedWeeks, wachtOpGoedkeuring
             };
         }
 
         async function previewPO() {
-            const userId = document.getElementById('po-filter-user').value;
-            const projectId = document.getElementById('po-filter-project').value;
-            const year = document.getElementById('po-filter-year').value;
-            const month = document.getElementById('po-filter-month').value;
-            const useWeek = document.getElementById('po-use-week').checked;
-            const weekNumber = useWeek ? document.getElementById('po-filter-week').value : null;
+            const userId = document.getElementById('io-filter-user').value;
+            const projectId = document.getElementById('io-filter-project').value;
+            const year = document.getElementById('io-filter-year').value;
+            const month = document.getElementById('io-filter-month').value;
+            const useWeek = document.getElementById('io-use-week').checked;
+            const weekNumber = useWeek ? document.getElementById('io-filter-week').value : null;
 
             if (!userId || !projectId || !year || !month) {
                 showToast('⚠️ Selecteer project, medewerker, jaar en maand');
                 return;
             }
 
-            const poData = await aggregatePOData(userId, projectId, year, month, weekNumber);
-            if (!poData) {
+            const ioData = await aggregatePOData(userId, projectId, year, month, weekNumber);
+            if (!ioData) {
                 showToast('⚠️ Geen data gevonden');
                 return;
             }
 
             // Render preview
-            const preview = document.getElementById('po-preview');
-            const content = document.getElementById('po-preview-content');
+            const preview = document.getElementById('io-preview');
+            const content = document.getElementById('io-preview-content');
 
             let html = '';
 
             // Waarschuwing bij overgeslagen weken (al op eerdere inkooporder)
-            if (poData.skippedWeeks && poData.skippedWeeks.length > 0) {
+            if (ioData.skippedWeeks && ioData.skippedWeeks.length > 0) {
                 html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
-                    ⚠️ <strong>Week ${poData.skippedWeeks.join(', ')}</strong> staat al op een eerdere inkooporder en is overgeslagen.
+                    ⚠️ <strong>Week ${ioData.skippedWeeks.join(', ')}</strong> staat al op een eerdere inkooporder en is overgeslagen.
                 </div>`;
             }
 
             // Waarschuwing bij weken die wachten op goedkeuring
-            if (poData.wachtOpGoedkeuring && poData.wachtOpGoedkeuring.length > 0) {
-                const waitWeeks = poData.wachtOpGoedkeuring.map(ws => `Week ${ws.week_number}`).join(', ');
+            if (ioData.wachtOpGoedkeuring && ioData.wachtOpGoedkeuring.length > 0) {
+                const waitWeeks = ioData.wachtOpGoedkeuring.map(ws => `Week ${ws.week_number}`).join(', ');
                 html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
-                    ⏳ <strong>${waitWeeks}</strong> wacht${poData.wachtOpGoedkeuring.length === 1 ? '' : 'en'} nog op goedkeuring door de opdrachtgever. Alleen goedgekeurde weken worden meegenomen.
+                    ⏳ <strong>${waitWeeks}</strong> wacht${ioData.wachtOpGoedkeuring.length === 1 ? '' : 'en'} nog op goedkeuring door de opdrachtgever. Alleen goedgekeurde weken worden meegenomen.
                 </div>`;
             }
 
             // Check of er data is
-            if (poData.includedWeeks.length === 0) {
-                const reason = (poData.wachtOpGoedkeuring && poData.wachtOpGoedkeuring.length > 0)
+            if (ioData.includedWeeks.length === 0) {
+                const reason = (ioData.wachtOpGoedkeuring && ioData.wachtOpGoedkeuring.length > 0)
                     ? 'Er zijn geen goedgekeurde weken beschikbaar. Wacht tot de opdrachtgever de weekstaten heeft goedgekeurd.'
                     : 'Geen nieuwe weken beschikbaar voor inkooporder. Alle verstuurde weken staan al op een eerdere inkooporder.';
                 html += `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.9rem">${reason}</div>`;
@@ -7534,47 +7534,47 @@
             let subtotal = 0;
 
             // Per week data
-            Object.keys(poData.weekData).sort().forEach(weekKey => {
-                const week = poData.weekData[weekKey];
+            Object.keys(ioData.weekData).sort().forEach(weekKey => {
+                const week = ioData.weekData[weekKey];
                 const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
 
                 // Regular hours
                 if (week.regHours > 0) {
-                    const amount = week.regHours * poData.rate.hourly_rate;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Reguliere uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.regHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${poData.rate.hourly_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    const amount = week.regHours * ioData.rate.hourly_rate;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Reguliere uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.regHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${ioData.rate.hourly_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
                     subtotal += amount;
                 }
 
                 // Saturday hours
                 if (week.satHours > 0) {
-                    const amount = week.satHours * poData.rate.hourly_rate * poData.rate.saturday_multiplier;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.satHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(poData.rate.hourly_rate * poData.rate.saturday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    const amount = week.satHours * ioData.rate.hourly_rate * ioData.rate.saturday_multiplier;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.satHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(ioData.rate.hourly_rate * ioData.rate.saturday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
                     subtotal += amount;
                 }
 
                 // Sunday hours
                 if (week.sunHours > 0) {
-                    const amount = week.sunHours * poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.sunHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    const amount = week.sunHours * ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.sunHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
                     subtotal += amount;
                 }
             });
 
             // Total km
             let totalKm = 0;
-            Object.values(poData.weekData).forEach(w => totalKm += w.totalKm);
+            Object.values(ioData.weekData).forEach(w => totalKm += w.totalKm);
             if (totalKm > 0) {
-                const kmAmount = totalKm * poData.rate.km_rate;
-                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${poData.rate.km_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(kmAmount)}</td></tr>`;
+                const kmAmount = totalKm * ioData.rate.km_rate;
+                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${ioData.rate.km_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(kmAmount)}</td></tr>`;
                 subtotal += kmAmount;
             }
 
             // Total hotel nights
             let totalHotel = 0;
-            Object.values(poData.weekData).forEach(w => totalHotel += w.hotelNights);
+            Object.values(ioData.weekData).forEach(w => totalHotel += w.hotelNights);
             if (totalHotel > 0) {
-                const hotelAmount = totalHotel * poData.hotelRate;
-                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${poData.hotelRate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(hotelAmount)}</td></tr>`;
+                const hotelAmount = totalHotel * ioData.hotelRate;
+                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${ioData.hotelRate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(hotelAmount)}</td></tr>`;
                 subtotal += hotelAmount;
             }
 
@@ -7587,22 +7587,22 @@
             html += '<tr style="background:#dbeafe;font-weight:600"><td colspan="3" style="padding:8px;text-align:right">Totaal incl. BTW</td><td style="text-align:right;padding:8px;color:var(--kts-blue)">' + fmtEuroPdf(total) + '</td></tr>';
             html += '</table>';
 
-            // Store poData globally for PDF generation
-            window._currentPOData = poData;
+            // Store ioData globally for PDF generation
+            window._currentPOData = ioData;
 
             content.innerHTML = html;
             preview.style.display = 'block';
         }
 
-        function generatePOPDF() {
+        function generateIOPDF() {
             if (!window._currentPOData) {
                 showToast('⚠️ Maak eerst een preview');
                 return;
             }
-            generatePO_PDF(window._currentPOData);
+            generateIO_PDF(window._currentPOData);
         }
 
-        async function generatePO_PDF(poData) {
+        async function generateIO_PDF(ioData) {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return; }
 
             const pdfImages = window.KTS_PDF_IMAGES || {};
@@ -7621,13 +7621,13 @@
 
             const today = new Date();
             const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
-            const poNumber = poData.project.project_code + '-' + ddmmyyyy;
+            const ioNumber = ioData.project.project_code + '-' + ddmmyyyy;
             const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
-            const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
-            const userName = poData.user ? (poData.user.name || poData.user.email) : '';
-            const wekenTekst = poData.includedWeeks.length > 1
-                ? 'Weken ' + poData.includedWeeks.join(', ')
-                : 'Week ' + poData.includedWeeks[0];
+            const maandTekst = MONTHS_NL[ioData.month - 1] + ' ' + ioData.year;
+            const userName = ioData.user ? (ioData.user.name || ioData.user.email) : '';
+            const wekenTekst = ioData.includedWeeks.length > 1
+                ? 'Weken ' + ioData.includedWeeks.join(', ')
+                : 'Week ' + ioData.includedWeeks[0];
 
             // ===== HEADER =====
             const titleFontSize = 19;
@@ -7687,13 +7687,13 @@
             doc.setTextColor(...ktsBlue);
             doc.text('Project:', col1, y);
             doc.text('Klant:', col2, y);
-            doc.text('PO-nummer:', col3, y);
+            doc.text('IO-nummer:', col3, y);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
-            doc.text(poData.project.project_code + ' – ' + (poData.project.name || ''), col1, y + 5);
-            doc.text(poData.project.client_name || '', col2, y + 5);
-            doc.text(poNumber, col3, y + 5);
+            doc.text(ioData.project.project_code + ' – ' + (ioData.project.name || ''), col1, y + 5);
+            doc.text(ioData.project.client_name || '', col2, y + 5);
+            doc.text(ioNumber, col3, y + 5);
 
             // ===== LEVERANCIER + LEVERADRES naast elkaar =====
             y += 16;
@@ -7712,17 +7712,17 @@
 
             // Leverancier (ZZP bedrijf van de medewerker)
             let levY = y;
-            if (poData.zzpCompany) {
-                doc.text(poData.zzpCompany.name, levCol1, levY); levY += 4;
-                if (poData.zzpCompany.contact_name) { doc.text(poData.zzpCompany.contact_name, levCol1, levY); levY += 4; }
-                if (poData.zzpCompany.address) { doc.text(poData.zzpCompany.address, levCol1, levY); levY += 4; }
-                if (poData.zzpCompany.postcode || poData.zzpCompany.city) { doc.text((poData.zzpCompany.postcode || '') + ' ' + (poData.zzpCompany.city || ''), levCol1, levY); levY += 4; }
-                if (poData.zzpCompany.country && poData.zzpCompany.country !== 'Nederland') { doc.text(poData.zzpCompany.country, levCol1, levY); levY += 4; }
-                const kvkLabel = poData.zzpCompany.country === 'Duitsland' ? 'Handelsregister' : 'KVK';
-                const btwLabel = poData.zzpCompany.country === 'Duitsland' ? 'USt-IdNr.' : 'BTW';
-                if (poData.zzpCompany.kvk_number) { doc.text(kvkLabel + ': ' + poData.zzpCompany.kvk_number, levCol1, levY); levY += 4; }
-                if (poData.zzpCompany.btw_number) { doc.text(btwLabel + ': ' + poData.zzpCompany.btw_number, levCol1, levY); levY += 4; }
-                if (poData.zzpCompany.email) { doc.text(poData.zzpCompany.email, levCol1, levY); levY += 4; }
+            if (ioData.zzpCompany) {
+                doc.text(ioData.zzpCompany.name, levCol1, levY); levY += 4;
+                if (ioData.zzpCompany.contact_name) { doc.text(ioData.zzpCompany.contact_name, levCol1, levY); levY += 4; }
+                if (ioData.zzpCompany.address) { doc.text(ioData.zzpCompany.address, levCol1, levY); levY += 4; }
+                if (ioData.zzpCompany.postcode || ioData.zzpCompany.city) { doc.text((ioData.zzpCompany.postcode || '') + ' ' + (ioData.zzpCompany.city || ''), levCol1, levY); levY += 4; }
+                if (ioData.zzpCompany.country && ioData.zzpCompany.country !== 'Nederland') { doc.text(ioData.zzpCompany.country, levCol1, levY); levY += 4; }
+                const kvkLabel = ioData.zzpCompany.country === 'Duitsland' ? 'Handelsregister' : 'KVK';
+                const btwLabel = ioData.zzpCompany.country === 'Duitsland' ? 'USt-IdNr.' : 'BTW';
+                if (ioData.zzpCompany.kvk_number) { doc.text(kvkLabel + ': ' + ioData.zzpCompany.kvk_number, levCol1, levY); levY += 4; }
+                if (ioData.zzpCompany.btw_number) { doc.text(btwLabel + ': ' + ioData.zzpCompany.btw_number, levCol1, levY); levY += 4; }
+                if (ioData.zzpCompany.email) { doc.text(ioData.zzpCompany.email, levCol1, levY); levY += 4; }
             } else {
                 doc.text('(Geen bedrijf gekoppeld aan medewerker)', levCol1, levY); levY += 4;
             }
@@ -7744,42 +7744,42 @@
             let subtotal = 0;
             let itemNum = 1;
 
-            Object.keys(poData.weekData).sort().forEach(weekKey => {
-                const week = poData.weekData[weekKey];
+            Object.keys(ioData.weekData).sort().forEach(weekKey => {
+                const week = ioData.weekData[weekKey];
                 const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
 
                 if (week.regHours > 0) {
-                    const amount = week.regHours * poData.rate.hourly_rate;
-                    tableRows.push([String(itemNum++), `Reguliere uren (ma-vr) — ${weekLabel}`, week.regHours.toFixed(2).replace('.', ','), fmtEuroPdf(poData.rate.hourly_rate), fmtEuroPdf(amount)]);
+                    const amount = week.regHours * ioData.rate.hourly_rate;
+                    tableRows.push([String(itemNum++), `Reguliere uren (ma-vr) — ${weekLabel}`, week.regHours.toFixed(2).replace('.', ','), fmtEuroPdf(ioData.rate.hourly_rate), fmtEuroPdf(amount)]);
                     subtotal += amount;
                 }
                 if (week.satHours > 0) {
-                    const satRate = poData.rate.hourly_rate * poData.rate.saturday_multiplier;
+                    const satRate = ioData.rate.hourly_rate * ioData.rate.saturday_multiplier;
                     const amount = week.satHours * satRate;
-                    tableRows.push([String(itemNum++), `Zaterdaguren (${Math.round(poData.rate.saturday_multiplier*100)}%) — ${weekLabel}`, week.satHours.toFixed(2).replace('.', ','), fmtEuroPdf(satRate), fmtEuroPdf(amount)]);
+                    tableRows.push([String(itemNum++), `Zaterdaguren (${Math.round(ioData.rate.saturday_multiplier*100)}%) — ${weekLabel}`, week.satHours.toFixed(2).replace('.', ','), fmtEuroPdf(satRate), fmtEuroPdf(amount)]);
                     subtotal += amount;
                 }
                 if (week.sunHours > 0) {
-                    const sunRate = poData.rate.hourly_rate * poData.rate.sunday_holiday_multiplier;
+                    const sunRate = ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier;
                     const amount = week.sunHours * sunRate;
-                    tableRows.push([String(itemNum++), `Zondag-/feestdaguren (${Math.round(poData.rate.sunday_holiday_multiplier*100)}%) — ${weekLabel}`, week.sunHours.toFixed(2).replace('.', ','), fmtEuroPdf(sunRate), fmtEuroPdf(amount)]);
+                    tableRows.push([String(itemNum++), `Zondag-/feestdaguren (${Math.round(ioData.rate.sunday_holiday_multiplier*100)}%) — ${weekLabel}`, week.sunHours.toFixed(2).replace('.', ','), fmtEuroPdf(sunRate), fmtEuroPdf(amount)]);
                     subtotal += amount;
                 }
             });
 
             let totalKm = 0;
-            Object.values(poData.weekData).forEach(w => totalKm += w.totalKm);
+            Object.values(ioData.weekData).forEach(w => totalKm += w.totalKm);
             if (totalKm > 0) {
-                const kmAmount = totalKm * poData.rate.km_rate;
-                tableRows.push([String(itemNum++), 'Reiskilometers', totalKm.toFixed(0), fmtEuroPdf(poData.rate.km_rate), fmtEuroPdf(kmAmount)]);
+                const kmAmount = totalKm * ioData.rate.km_rate;
+                tableRows.push([String(itemNum++), 'Reiskilometers', totalKm.toFixed(0), fmtEuroPdf(ioData.rate.km_rate), fmtEuroPdf(kmAmount)]);
                 subtotal += kmAmount;
             }
 
             let totalHotel = 0;
-            Object.values(poData.weekData).forEach(w => totalHotel += w.hotelNights);
+            Object.values(ioData.weekData).forEach(w => totalHotel += w.hotelNights);
             if (totalHotel > 0) {
-                const hotelAmount = totalHotel * poData.hotelRate;
-                tableRows.push([String(itemNum++), 'Hotelovernachtingen', totalHotel.toFixed(0), fmtEuroPdf(poData.hotelRate), fmtEuroPdf(hotelAmount)]);
+                const hotelAmount = totalHotel * ioData.hotelRate;
+                tableRows.push([String(itemNum++), 'Hotelovernachtingen', totalHotel.toFixed(0), fmtEuroPdf(ioData.hotelRate), fmtEuroPdf(hotelAmount)]);
                 subtotal += hotelAmount;
             }
 
@@ -7846,17 +7846,17 @@
 
             // Save to Supabase and open mailto
             const pdfData = doc.output('datauristring');
-            const fileName = poNumber.replace(/\s+/g, '_') + '.pdf';
-            const filePath = `${poData.year}/${poData.project.project_code}/${fileName}`;
+            const fileName = ioNumber.replace(/\s+/g, '_') + '.pdf';
+            const filePath = `${ioData.year}/${ioData.project.project_code}/${fileName}`;
 
             // Download the PDF
             doc.save(fileName);
 
             // Upload to Supabase
-            uploadPOToSupabase(filePath, doc.output('arraybuffer'), poData, poNumber);
+            uploadPOToSupabase(filePath, doc.output('arraybuffer'), ioData, ioNumber);
         }
 
-        async function uploadPOToSupabase(filePath, pdfBuffer, poData, poNumber) {
+        async function uploadPOToSupabase(filePath, pdfBuffer, ioData, ioNumber) {
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
 
@@ -7868,19 +7868,19 @@
                 if (error) throw error;
 
                 // 2. Sla op welke weken op deze inkooporder staan (dubbel-beveiliging)
-                if (poData.includedWeeks && poData.includedWeeks.length > 0) {
-                    const weekRecords = poData.includedWeeks.map(wn => ({
-                        user_id: poData.userId,
-                        project_id: poData.projectId,
-                        year: poData.year,
+                if (ioData.includedWeeks && ioData.includedWeeks.length > 0) {
+                    const weekRecords = ioData.includedWeeks.map(wn => ({
+                        user_id: ioData.userId,
+                        project_id: ioData.projectId,
+                        year: ioData.year,
                         week_number: wn,
-                        month: poData.month,
-                        po_number: poNumber,
+                        month: ioData.month,
+                        io_number: ioNumber,
                         created_at: new Date().toISOString()
                     }));
-                    const { error: weekErr } = await sb.from('purchase_order_weeks').insert(weekRecords);
+                    const { error: weekErr } = await sb.from('inkooporder_weeks').insert(weekRecords);
                     if (weekErr) console.warn('Inkooporder weken opslaan mislukt:', weekErr.message);
-                    else console.log('Inkooporder weken opgeslagen:', poData.includedWeeks);
+                    else console.log('Inkooporder weken opgeslagen:', ioData.includedWeeks);
                 }
 
                 showToast('✓ Inkooporder opgeslagen');
@@ -7888,18 +7888,18 @@
                 // Lijst verversen
                 loadInkooporders();
 
-                // 3. Open mailto naar IO-ontvanger (poCompany) met download-link
-                const mailTarget = poData.poCompany;
+                // 3. Open mailto naar IO-ontvanger (ioCompany) met download-link
+                const mailTarget = ioData.ioCompany;
                 const ioRecipientEmail = getContactEmailsByRole(mailTarget, 'receives_io');
                 if (mailTarget && ioRecipientEmail) {
-                    const userName = poData.user ? (poData.user.name || poData.user.email) : '';
-                    const projCode = poData.project ? poData.project.project_code : '';
-                    const projName = poData.project ? poData.project.name : '';
-                    const wekenTekst = poData.includedWeeks.length > 1
-                        ? 'weken ' + poData.includedWeeks.join(', ')
-                        : 'week ' + poData.includedWeeks[0];
+                    const userName = ioData.user ? (ioData.user.name || ioData.user.email) : '';
+                    const projCode = ioData.project ? ioData.project.project_code : '';
+                    const projName = ioData.project ? ioData.project.name : '';
+                    const wekenTekst = ioData.includedWeeks.length > 1
+                        ? 'weken ' + ioData.includedWeeks.join(', ')
+                        : 'week ' + ioData.includedWeeks[0];
                     const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
-                    const maandTekst = MONTHS_NL[poData.month - 1] + ' ' + poData.year;
+                    const maandTekst = MONTHS_NL[ioData.month - 1] + ' ' + ioData.year;
 
                     // Genereer signed download URL (7 dagen geldig), fallback naar public URL
                     let downloadLink = '';
@@ -7922,16 +7922,16 @@
 
                     const recipients = ioRecipientEmail.split(',').map(e => e.trim()).filter(Boolean).join(',');
 
-                    const subject = encodeURIComponent('Inkooporder ' + poNumber + ' - ' + userName + ' - ' + projCode);
+                    const subject = encodeURIComponent('Inkooporder ' + ioNumber + ' - ' + userName + ' - ' + projCode);
                     const body = encodeURIComponent(
                         'Beste ' + (getContactNameByRole(mailTarget, 'receives_io') || mailTarget.name) + ',\n\n' +
                         'Hierbij ontvangt u de inkooporder voor de inzet van ' + userName + '.\n\n' +
                         'Project: ' + projCode + ' — ' + projName + '\n' +
                         'Periode: ' + maandTekst + ' (' + wekenTekst + ')\n' +
-                        'PO-nummer: ' + poNumber + '\n\n' +
+                        'IO-nummer: ' + ioNumber + '\n\n' +
                         (downloadLink
                             ? '📎 Download de inkooporder (PDF):\n' + downloadLink + '\n(link is 7 dagen geldig)\n\n'
-                            : 'Bestand: ' + poNumber.replace(/\s+/g, '_') + '.pdf\n\n') +
+                            : 'Bestand: ' + ioNumber.replace(/\s+/g, '_') + '.pdf\n\n') +
                         'Met vriendelijke groet,\n' +
                         'Mark Kuijpers\n' +
                         'Kuijpers Technical Services'
@@ -7973,7 +7973,7 @@
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">Facturen worden naar dit bedrijf gestuurd</div>
                     </div>
                     <div class="form-group" style="margin-bottom:12px"><label>📋 IO-ontvanger <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(opdrachtnemer / tussenpersoon)</span></label>
-                        <select id="adm-proj-po-company" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem">
+                        <select id="adm-proj-io-company" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem">
                             <option value="">— Zelfde als factuur-ontvanger —</option>
                         </select>
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">Inkooporders worden naar dit bedrijf gestuurd (als leeg: zelfde als factuur)</div>
@@ -8205,10 +8205,10 @@
                     if (existingClientId) factuurSel.value = existingClientId;
                 }
 
-                const poSel = document.getElementById('adm-proj-po-company');
-                if (poSel) {
-                    poSel.innerHTML = '<option value="">— Zelfde als factuur-ontvanger —</option>' + companyOpts;
-                    if (existing && existing.po_company_id) poSel.value = existing.po_company_id;
+                const ioSel = document.getElementById('adm-proj-io-company');
+                if (ioSel) {
+                    ioSel.innerHTML = '<option value="">— Zelfde als factuur-ontvanger —</option>' + companyOpts;
+                    if (existing && existing.io_company_id) ioSel.value = existing.io_company_id;
                 }
             }
 
@@ -8721,8 +8721,8 @@
                     .gte('entry_date', weekStart)
                     .lte('entry_date', weekEnd);
 
-                // 3. Verwijder purchase_order_weeks voor deze week
-                await sb.from('purchase_order_weeks')
+                // 3. Verwijder inkooporder_weeks voor deze week
+                await sb.from('inkooporder_weeks')
                     .delete()
                     .eq('user_id', userId)
                     .eq('project_id', projectId)
@@ -9126,7 +9126,7 @@
                     name: name,
                     client_name: document.getElementById('adm-proj-client').value.trim() || null,
                     client_company_id: document.getElementById('adm-proj-factuur-company').value || null,
-                    po_company_id: document.getElementById('adm-proj-po-company').value || null,
+                    io_company_id: document.getElementById('adm-proj-io-company').value || null,
                     location: document.getElementById('adm-proj-location').value.trim() || null,
                     default_description: document.getElementById('adm-proj-desc').value.trim() || null,
                     default_location: document.getElementById('adm-proj-deflocation').value.trim() || null,
