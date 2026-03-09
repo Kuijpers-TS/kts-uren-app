@@ -8836,7 +8836,7 @@
         }
 
         function copyApprovalLink(token) {
-            const url = window.location.origin + '/approve-weekstaat.html?token=' + token;
+            const url = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + 'approve-weekstaat.html?token=' + token;
             navigator.clipboard.writeText(url).then(() => showToast('✓ Link gekopieerd'));
         }
 
@@ -8944,7 +8944,7 @@
                 const projName = project ? project.name : '';
 
                 // Verstuur e-mail via Edge Function
-                const approvalUrl = window.location.origin + '/approve-weekstaat.html?token=' + token;
+                const approvalUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + 'approve-weekstaat.html?token=' + token;
 
                 try {
                     const { data: fnData, error: fnErr } = await sb.functions.invoke('send-approval-request', {
