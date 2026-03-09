@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v68';
+const CACHE_NAME = 'kts-uren-v69';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -34,9 +34,10 @@ self.addEventListener('activate', event => {
 
 // Fetch: network-first strategie (altijd verse data, fallback naar cache)
 self.addEventListener('fetch', event => {
-  // Skip niet-GET requests en Supabase API calls
+  // Skip niet-GET requests, non-http(s) schemes, en externe API calls
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
   if (url.hostname.includes('supabase') || url.hostname.includes('cdn')) return;
 
   event.respondWith(

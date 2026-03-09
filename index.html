@@ -9099,13 +9099,18 @@
                 const token = crypto.randomUUID();
 
                 // Upsert week_status met approval info (maakt record aan als het niet bestaat)
-                const { error: updateErr } = await sb.from('week_status')
+                let upsertData = {
+                    user_id: userId,
+                    project_id: projectId,
+                    week_number: parseInt(weekNumber),
+                    year: parseInt(year),
+                    status: 'verstuurd',
+                };
+
+                // Probeer eerst met approval kolommen
+                let { error: updateErr } = await sb.from('week_status')
                     .upsert({
-                        user_id: userId,
-                        project_id: projectId,
-                        week_number: parseInt(weekNumber),
-                        year: parseInt(year),
-                        status: 'ingediend',
+                        ...upsertData,
                         approval_token: token,
                         approval_status: 'ter_goedkeuring',
                         approval_requested_at: new Date().toISOString(),
@@ -9113,7 +9118,17 @@
                         approver_name: name
                     }, { onConflict: 'user_id,project_id,week_number,year' });
 
-                if (updateErr) throw updateErr;
+                // Fallback: als approval kolommen niet bestaan, alleen status updaten
+                if (updateErr) {
+                    console.warn('Approval kolommen mogelijk niet aanwezig, fallback:', updateErr.message);
+                    ({ error: updateErr } = await sb.from('week_status')
+                        .upsert(upsertData, { onConflict: 'user_id,project_id,week_number,year' }));
+                }
+
+                if (updateErr) {
+                    console.warn('week_status upsert mislukt:', updateErr.message);
+                    // Niet fataal — ga door met e-mail versturen
+                }
 
                 // Weekstaat details ophalen voor e-mail
                 const user = (window._adminUsers || []).find(u => u.id === userId);
@@ -9988,6 +10003,7 @@
                         </div>
                         <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${ins.answered_questions}/${ins.total_questions} vragen (${progress}%)</div>
                         ` : ''}
+                        ${ins.status === 'afgerond' || ins.status === 'goedgekeurd' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="margin-top:8px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
                     </div>
                 `;
             }).join('');
@@ -10062,7 +10078,12 @@
             inspOpenInspection(newInsp.id);
         }
 
-        // Open een inspectie (voorlopig: detail-view)
+        // ===== INSPECTIE FORMULIER (v2 — snelle UI, sectie-navigatie) =====
+
+        // In-memory state voor het actieve formulier
+        window._inspActive = null; // { id, answers, sections, status, totalQ }
+
+        // Open een inspectie
         async function inspOpenInspection(inspectionId) {
             const sb = getSupabase();
             const { data: insp, error } = await sb.from('inspections')
@@ -10078,121 +10099,308 @@
             const tpl = insp.inspection_templates || {};
             const sections = tpl.sections || [];
             const answers = insp.answers || {};
+            let totalQ = 0;
+            sections.forEach(s => { totalQ += (s.questions || []).length; });
 
-            let html = `
-                <div style="margin-bottom:16px">
-                    <div style="font-size:0.75rem;color:var(--muted)">${insp.inspection_number || ''}</div>
-                    <div style="font-weight:700;font-size:1rem;margin-bottom:4px">${tpl.name || 'Inspectie'}</div>
-                    <div style="font-size:0.8rem;color:var(--muted)">${insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}${insp.location ? ' — ' + insp.location : ''}</div>
-                </div>
-            `;
+            // Sla state op in geheugen
+            window._inspActive = { id: inspectionId, answers: JSON.parse(JSON.stringify(answers)), sections, status: insp.status, totalQ, insp };
 
+            // Bereken sectie-voortgang
+            const sectionStats = sections.map((sec, si) => {
+                const qs = sec.questions || [];
+                let done = 0, good = 0, bad = 0;
+                qs.forEach((q, qi) => {
+                    const a = answers[`s${si}_q${qi}`];
+                    if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; }
+                });
+                return { total: qs.length, done, good, bad };
+            });
+
+            const totalDone = sectionStats.reduce((s, x) => s + x.done, 0);
+            const totalGood = sectionStats.reduce((s, x) => s + x.good, 0);
+            const totalBad = sectionStats.reduce((s, x) => s + x.bad, 0);
+            const pct = totalQ > 0 ? Math.round((totalDone / totalQ) * 100) : 0;
+
+            // Sectie-tabs bovenaan
+            let tabsHtml = `<div id="insp-section-tabs" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">`;
             sections.forEach((sec, si) => {
-                html += `<div style="margin-bottom:16px">
-                    <div style="font-weight:700;font-size:0.9rem;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--border)">${sec.title || 'Sectie ' + (si + 1)}</div>`;
+                const st = sectionStats[si];
+                const isDone = st.done === st.total;
+                const hasFail = st.bad > 0;
+                const bg = isDone ? (hasFail ? '#fee2e2' : '#dcfce7') : (st.done > 0 ? '#fef3c7' : '#f1f5f9');
+                const color = isDone ? (hasFail ? '#dc2626' : '#16a34a') : (st.done > 0 ? '#92400e' : 'var(--muted)');
+                const shortTitle = (sec.title || 'Sectie ' + (si + 1)).replace('PG1 — ', '1·').replace('PG2 — ', '2·').replace('Verdelerskid ', 'V').replace('Hoofdpomp skid', 'Hoofd').replace('Algemeen — ', '');
+                tabsHtml += `<button onclick="inspScrollToSection(${si})" style="padding:4px 8px;border-radius:6px;border:1px solid ${color};background:${bg};color:${color};font-size:0.65rem;font-weight:600;cursor:pointer;white-space:nowrap">${shortTitle} ${st.done}/${st.total}</button>`;
+            });
+            tabsHtml += `</div>`;
+
+            // Voortgangsbalk
+            let progressHtml = `
+                <div style="margin-bottom:12px">
+                    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:4px">
+                        <span>${totalDone}/${totalQ} vragen</span>
+                        <span style="display:flex;gap:8px">
+                            <span style="color:#16a34a">✓ ${totalGood}</span>
+                            <span style="color:#dc2626">✗ ${totalBad}</span>
+                            <span>${pct}%</span>
+                        </span>
+                    </div>
+                    <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden">
+                        <div style="height:100%;border-radius:4px;display:flex">
+                            <div style="background:#16a34a;width:${totalQ > 0 ? (totalGood / totalQ * 100) : 0}%;transition:width 0.3s"></div>
+                            <div style="background:#dc2626;width:${totalQ > 0 ? (totalBad / totalQ * 100) : 0}%;transition:width 0.3s"></div>
+                            <div style="background:#f59e0b;width:${totalQ > 0 ? ((totalDone - totalGood - totalBad) / totalQ * 100) : 0}%;transition:width 0.3s"></div>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Secties met vragen
+            let sectionsHtml = '';
+            sections.forEach((sec, si) => {
+                const st = sectionStats[si];
+                const isDone = st.done === st.total;
+                const hasFail = st.bad > 0;
+                const headerBg = isDone ? (hasFail ? '#fef2f2' : '#f0fdf4') : 'white';
+
+                sectionsHtml += `<div id="insp-sec-${si}" style="margin-bottom:16px">
+                    <div onclick="inspToggleSection(${si})" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:${headerBg};border-radius:10px;cursor:pointer;border:2px solid ${isDone ? (hasFail ? '#fecaca' : '#bbf7d0') : 'var(--border)'};margin-bottom:8px">
+                        <div style="font-weight:700;font-size:0.85rem">${sec.title || 'Sectie ' + (si + 1)}</div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span style="font-size:0.7rem;color:var(--muted)">${st.done}/${st.total}</span>
+                            ${isDone ? (hasFail ? '<span style="font-size:0.9rem">⚠️</span>' : '<span style="font-size:0.9rem">✅</span>') : ''}
+                            <span id="insp-sec-arrow-${si}" style="font-size:0.8rem;color:var(--muted);transition:transform 0.2s">▼</span>
+                        </div>
+                    </div>
+                    <div id="insp-sec-body-${si}" style="display:block">`;
 
                 (sec.questions || []).forEach((q, qi) => {
                     const key = `s${si}_q${qi}`;
                     const val = answers[key] || {};
                     const answered = val.value !== undefined && val.value !== '';
+                    const isFout = val.value === 'fout';
 
                     let inputHtml = '';
                     if (q.type === 'goed_fout') {
                         inputHtml = `
-                            <div style="display:flex;gap:6px;margin-top:6px">
-                                <button onclick="inspAnswer('${inspectionId}','${key}','goed',this)" style="flex:1;padding:8px;border:2px solid ${val.value === 'goed' ? '#16a34a' : 'var(--border)'};border-radius:8px;background:${val.value === 'goed' ? '#dcfce7' : 'white'};color:${val.value === 'goed' ? '#16a34a' : 'var(--text)'};font-weight:600;font-size:0.85rem;cursor:pointer">✓ Goed</button>
-                                <button onclick="inspAnswer('${inspectionId}','${key}','fout',this)" style="flex:1;padding:8px;border:2px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:8px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.85rem;cursor:pointer">✗ Fout</button>
-                                <button onclick="inspAnswer('${inspectionId}','${key}','nvt',this)" style="flex:1;padding:8px;border:2px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:8px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.85rem;cursor:pointer">N.v.t.</button>
+                            <div style="display:flex;gap:6px;margin-top:6px" id="insp-btns-${key}">
+                                <button onclick="inspAnswer('${key}','goed')" id="insp-btn-${key}-goed" style="flex:1;padding:10px 8px;border:2px solid ${val.value === 'goed' ? '#16a34a' : 'var(--border)'};border-radius:8px;background:${val.value === 'goed' ? '#dcfce7' : 'white'};color:${val.value === 'goed' ? '#16a34a' : 'var(--text)'};font-weight:600;font-size:0.9rem;cursor:pointer">✓ Goed</button>
+                                <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:10px 8px;border:2px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:8px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.9rem;cursor:pointer">✗ Fout</button>
+                                <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:10px 8px;border:2px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:8px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.9rem;cursor:pointer">N.v.t.</button>
                             </div>`;
                     } else if (q.type === 'meting') {
                         inputHtml = `
                             <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-                                <input type="number" step="any" value="${val.value || ''}" onchange="inspAnswer('${inspectionId}','${key}',this.value)" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem" placeholder="Meetwaarde">
-                                ${q.unit ? `<span style="font-size:0.8rem;color:var(--muted)">${q.unit}</span>` : ''}
+                                <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
+                                ${q.unit ? `<span style="font-size:0.85rem;color:var(--muted)">${q.unit}</span>` : ''}
                             </div>`;
                     } else {
                         inputHtml = `
-                            <textarea onchange="inspAnswer('${inspectionId}','${key}',this.value)" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-top:6px;min-height:40px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
+                            <textarea id="insp-input-${key}" onchange="inspAnswer('${key}',this.value)" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:6px;min-height:44px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
                     }
 
-                    html += `
-                        <div style="background:${answered ? '#f0fdf4' : 'white'};border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid ${answered ? '#bbf7d0' : 'var(--border)'}">
+                    sectionsHtml += `
+                        <div id="insp-q-${key}" style="background:${isFout ? '#fef2f2' : (answered ? '#f0fdf4' : 'white')};border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid ${isFout ? '#fecaca' : (answered ? '#bbf7d0' : 'var(--border)')};transition:all 0.2s">
                             <div style="font-size:0.85rem;font-weight:600">${q.text || 'Vraag ' + (qi + 1)}</div>
-                            ${q.component ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">📎 ${q.component}</div>` : ''}
+                            ${q.component ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">📎 ${q.component}${q.discipline ? ' · ' + q.discipline : ''}</div>` : ''}
                             ${inputHtml}
-                            <textarea placeholder="Opmerkingen..." onchange="inspAnswerRemark('${inspectionId}','${key}',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem;margin-top:6px;min-height:30px;resize:vertical">${val.remark || ''}</textarea>
+                            <div style="margin-top:6px">
+                                <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.nextElementSibling.style.display==='none'?'💬 Opmerking toevoegen':'💬 Opmerking verbergen'" style="font-size:0.7rem;color:var(--kts-blue);cursor:pointer">${val.remark ? '💬 Opmerking verbergen' : '💬 Opmerking toevoegen'}</div>
+                                <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="display:${val.remark ? 'block' : 'none'};width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
+                            </div>
                         </div>`;
                 });
 
-                html += `</div>`;
+                sectionsHtml += `</div></div>`;
             });
 
-            // Afrond-knop
+            // Afrond-knoppen
+            let footerHtml = '';
             if (insp.status === 'concept') {
-                html += `<button onclick="inspFinish('${inspectionId}')" class="btn btn-primary btn-block" style="margin-top:12px;padding:12px">✓ Inspectie afronden</button>`;
+                footerHtml = `
+                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
+                        ${totalDone < totalQ ? `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-align:center">⚠️ ${totalQ - totalDone} vragen nog niet beantwoord</div>` : ''}
+                        <button onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem" ${totalDone < totalQ ? 'disabled style="padding:14px;font-size:0.95rem;opacity:0.5;cursor:not-allowed"' : ''}>✓ Inspectie afronden</button>
+                    </div>`;
+            } else {
+                footerHtml = `
+                    <div style="text-align:center;padding:16px">
+                        <div style="color:#16a34a;font-weight:600;font-size:0.9rem;margin-bottom:12px">✅ Deze inspectie is afgerond</div>
+                        <button onclick="inspGeneratePDF('${inspectionId}')" class="btn btn-secondary" style="padding:10px 20px;font-size:0.85rem">📄 PDF Rapport downloaden</button>
+                    </div>`;
             }
 
             const modal = document.getElementById('admin-modal');
             modal.innerHTML = `
-                <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;position:sticky;top:0;background:white;padding-bottom:8px;border-bottom:2px solid var(--border);z-index:1">
-                        <h3 style="margin:0;font-size:1rem">🔍 Inspectie invullen</h3>
-                        <button onclick="closeModal('admin-modal')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button>
+                <div class="modal-content" style="max-width:600px;max-height:92vh;overflow-y:auto;padding:16px">
+                    <div style="position:sticky;top:-16px;background:white;padding:16px 0 8px 0;margin:-16px 0 0 0;z-index:2;border-bottom:1px solid var(--border)">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+                            <div>
+                                <div style="font-size:0.7rem;color:var(--muted)">${insp.inspection_number || ''}</div>
+                                <div style="font-weight:700;font-size:1rem">${tpl.name || 'Inspectie'}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}${insp.location ? ' — ' + insp.location : ''}</div>
+                            </div>
+                            <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1">×</button>
+                        </div>
+                        ${progressHtml}
+                        ${tabsHtml}
                     </div>
-                    ${html}
+                    ${sectionsHtml}
+                    ${footerHtml}
                 </div>`;
             modal.classList.add('active');
         }
 
-        // Antwoord opslaan (auto-save)
-        async function inspAnswer(inspectionId, key, value, btnEl) {
-            const sb = getSupabase();
+        // Scroll naar sectie
+        function inspScrollToSection(si) {
+            const el = document.getElementById('insp-sec-' + si);
+            const body = document.getElementById('insp-sec-body-' + si);
+            if (body && body.style.display === 'none') inspToggleSection(si);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
-            // Haal huidige answers op
-            const { data: insp } = await sb.from('inspections')
-                .select('answers, total_questions')
-                .eq('id', inspectionId)
-                .single();
+        // Sectie inklappen/uitklappen
+        function inspToggleSection(si) {
+            const body = document.getElementById('insp-sec-body-' + si);
+            const arrow = document.getElementById('insp-sec-arrow-' + si);
+            if (!body) return;
+            const isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : '';
+        }
 
-            if (!insp) return;
-            const answers = insp.answers || {};
-            if (!answers[key]) answers[key] = {};
-            answers[key].value = value;
+        // Sluiten + opslaan
+        function inspCloseForm() {
+            closeModal('admin-modal');
+            inspLoadUserInspections();
+            window._inspActive = null;
+        }
 
-            // Tel beantwoorde vragen
+        // Antwoord opslaan (lokale UI update + achtergrond-save)
+        async function inspAnswer(key, value) {
+            if (!window._inspActive) return;
+            const state = window._inspActive;
+            if (!state.answers[key]) state.answers[key] = {};
+            state.answers[key].value = value;
+
+            // UI lokaal bijwerken (geen full reload)
+            inspUpdateQuestionUI(key, value);
+            inspUpdateProgressUI();
+
+            // Achtergrond save naar Supabase
+            const answers = state.answers;
             const answeredCount = Object.values(answers).filter(a => a.value !== undefined && a.value !== '').length;
             const passedCount = Object.values(answers).filter(a => a.value === 'goed').length;
             const failedCount = Object.values(answers).filter(a => a.value === 'fout').length;
 
+            const sb = getSupabase();
             await sb.from('inspections').update({
                 answers,
                 answered_questions: answeredCount,
                 passed_questions: passedCount,
                 failed_questions: failedCount
-            }).eq('id', inspectionId);
-
-            // Herlaad het formulier om de UI bij te werken
-            inspOpenInspection(inspectionId);
+            }).eq('id', state.id);
         }
 
-        // Opmerking opslaan
-        async function inspAnswerRemark(inspectionId, key, remark) {
-            const sb = getSupabase();
-            const { data: insp } = await sb.from('inspections')
-                .select('answers')
-                .eq('id', inspectionId)
-                .single();
+        // Update knoppen-UI voor een vraag (zonder page reload)
+        function inspUpdateQuestionUI(key, value) {
+            const card = document.getElementById('insp-q-' + key);
+            if (card) {
+                const isFout = value === 'fout';
+                const answered = value !== undefined && value !== '';
+                card.style.background = isFout ? '#fef2f2' : (answered ? '#f0fdf4' : 'white');
+                card.style.borderColor = isFout ? '#fecaca' : (answered ? '#bbf7d0' : 'var(--border)');
+            }
 
-            if (!insp) return;
-            const answers = insp.answers || {};
-            if (!answers[key]) answers[key] = {};
-            answers[key].remark = remark;
+            // Goed/Fout/Nvt knoppen bijwerken
+            ['goed', 'fout', 'nvt'].forEach(v => {
+                const btn = document.getElementById(`insp-btn-${key}-${v}`);
+                if (!btn) return;
+                const active = value === v;
+                if (v === 'goed') {
+                    btn.style.borderColor = active ? '#16a34a' : 'var(--border)';
+                    btn.style.background = active ? '#dcfce7' : 'white';
+                    btn.style.color = active ? '#16a34a' : 'var(--text)';
+                } else if (v === 'fout') {
+                    btn.style.borderColor = active ? '#dc2626' : 'var(--border)';
+                    btn.style.background = active ? '#fee2e2' : 'white';
+                    btn.style.color = active ? '#dc2626' : 'var(--text)';
+                } else {
+                    btn.style.borderColor = active ? '#6b7280' : 'var(--border)';
+                    btn.style.background = active ? '#f3f4f6' : 'white';
+                    btn.style.color = active ? '#6b7280' : 'var(--text)';
+                }
+            });
+        }
 
-            await sb.from('inspections').update({ answers }).eq('id', inspectionId);
+        // Update voortgang-UI (progress bar + sectie-tabs + afrond-knop)
+        function inspUpdateProgressUI() {
+            if (!window._inspActive) return;
+            const state = window._inspActive;
+            const answers = state.answers;
+            const sections = state.sections;
+            const totalQ = state.totalQ;
+
+            let totalDone = 0, totalGood = 0, totalBad = 0;
+
+            sections.forEach((sec, si) => {
+                const qs = sec.questions || [];
+                let done = 0, good = 0, bad = 0;
+                qs.forEach((q, qi) => {
+                    const a = answers[`s${si}_q${qi}`];
+                    if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; }
+                });
+                totalDone += done; totalGood += good; totalBad += bad;
+
+                // Sectie-tab bijwerken
+                const tabContainer = document.getElementById('insp-section-tabs');
+                if (tabContainer && tabContainer.children[si]) {
+                    const tab = tabContainer.children[si];
+                    const isDone = done === qs.length;
+                    const hasFail = bad > 0;
+                    tab.style.background = isDone ? (hasFail ? '#fee2e2' : '#dcfce7') : (done > 0 ? '#fef3c7' : '#f1f5f9');
+                    tab.style.color = isDone ? (hasFail ? '#dc2626' : '#16a34a') : (done > 0 ? '#92400e' : 'var(--muted)');
+                    tab.style.borderColor = tab.style.color;
+                    const shortTitle = (sec.title || 'Sectie ' + (si + 1)).replace('PG1 — ', '1·').replace('PG2 — ', '2·').replace('Verdelerskid ', 'V').replace('Hoofdpomp skid', 'Hoofd').replace('Algemeen — ', '');
+                    tab.textContent = `${shortTitle} ${done}/${qs.length}`;
+                }
+
+                // Sectie-header bijwerken
+                const secHeader = document.getElementById('insp-sec-' + si);
+                if (secHeader) {
+                    const header = secHeader.firstElementChild;
+                    if (header) {
+                        const isDone = done === qs.length;
+                        const hasFail = bad > 0;
+                        header.style.background = isDone ? (hasFail ? '#fef2f2' : '#f0fdf4') : 'white';
+                        header.style.borderColor = isDone ? (hasFail ? '#fecaca' : '#bbf7d0') : 'var(--border)';
+                        // Update counter + icon
+                        const rightDiv = header.querySelector('div:last-child');
+                        if (rightDiv) {
+                            rightDiv.innerHTML = `<span style="font-size:0.7rem;color:var(--muted)">${done}/${qs.length}</span>${isDone ? (hasFail ? '<span style="font-size:0.9rem">⚠️</span>' : '<span style="font-size:0.9rem">✅</span>') : ''}<span id="insp-sec-arrow-${si}" style="font-size:0.8rem;color:var(--muted)">▼</span>`;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Opmerking opslaan (debounced)
+        let _inspRemarkTimer = null;
+        function inspAnswerRemark(key, remark) {
+            if (!window._inspActive) return;
+            const state = window._inspActive;
+            if (!state.answers[key]) state.answers[key] = {};
+            state.answers[key].remark = remark;
+
+            clearTimeout(_inspRemarkTimer);
+            _inspRemarkTimer = setTimeout(async () => {
+                const sb = getSupabase();
+                await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
+            }, 800);
         }
 
         // Inspectie afronden
-        async function inspFinish(inspectionId) {
+        async function inspFinish() {
+            if (!window._inspActive) return;
             const ok = await confirmAsync('Weet je zeker dat je deze inspectie wilt afronden?');
             if (!ok) return;
 
@@ -10200,11 +10408,219 @@
             await sb.from('inspections').update({
                 status: 'afgerond',
                 completed_at: new Date().toISOString()
-            }).eq('id', inspectionId);
+            }).eq('id', window._inspActive.id);
 
             closeModal('admin-modal');
             showToast('✓ Inspectie afgerond');
             inspLoadUserInspections();
+            window._inspActive = null;
+        }
+
+        // ===== INSPECTIE PDF RAPPORT =====
+        async function inspGeneratePDF(inspectionId) {
+            const sb = getSupabase();
+            const { data: insp, error } = await sb.from('inspections')
+                .select('*, inspection_templates(name, description, sections, location, installation, asset, frequency, category)')
+                .eq('id', inspectionId)
+                .single();
+
+            if (error || !insp) { showToast('⚠️ Inspectie niet gevonden'); return; }
+            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return; }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const pw = 210, ml = 15, mr = 15, uw = pw - ml - mr;
+            const tpl = insp.inspection_templates || {};
+            const sections = tpl.sections || [];
+            const answers = insp.answers || {};
+
+            let y = 15;
+            const lineH = 5;
+
+            function checkPage(needed) {
+                if (y + needed > 275) { doc.addPage(); y = 15; return true; }
+                return false;
+            }
+
+            // === HEADER ===
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('KUIJPERS TECHNICAL SERVICES BV', ml, y);
+            y += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text('KVK: 95498958 | BTW: NL867472888B01', ml, y);
+            y += 10;
+
+            // === TITEL ===
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Inspectierapport', ml, y);
+            y += 8;
+            doc.setFontSize(11);
+            doc.text(tpl.name || 'Inspectie', ml, y);
+            y += 8;
+
+            // === META INFO ===
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            const meta = [
+                ['Inspectienummer', insp.inspection_number || '-'],
+                ['Datum', insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : '-'],
+                ['Status', insp.status || '-'],
+                ['Locatie', insp.location || tpl.location || '-'],
+                ['Installatie', insp.installation || tpl.installation || '-'],
+                ['Asset', insp.asset || tpl.asset || '-'],
+                ['Categorie', tpl.category || '-'],
+                ['Frequentie', tpl.frequency || '-'],
+            ];
+
+            // Meta tabel
+            doc.setDrawColor(200);
+            meta.forEach(([label, value]) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(label, ml, y);
+                doc.setFont('helvetica', 'normal');
+                doc.text(String(value), ml + 35, y);
+                y += lineH;
+            });
+            y += 5;
+
+            // === SAMENVATTING ===
+            let totalQ = 0, totalDone = 0, totalGood = 0, totalBad = 0, totalNvt = 0;
+            sections.forEach((sec, si) => {
+                (sec.questions || []).forEach((q, qi) => {
+                    totalQ++;
+                    const a = answers[`s${si}_q${qi}`];
+                    if (a && a.value !== undefined && a.value !== '') {
+                        totalDone++;
+                        if (a.value === 'goed') totalGood++;
+                        if (a.value === 'fout') totalBad++;
+                        if (a.value === 'nvt') totalNvt++;
+                    }
+                });
+            });
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Samenvatting', ml, y);
+            y += 6;
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+
+            // Gekleurde samenvatting
+            const summaryItems = [
+                { label: 'Totaal vragen:', value: String(totalQ), color: [0, 0, 0] },
+                { label: 'Beantwoord:', value: String(totalDone), color: [0, 0, 0] },
+                { label: 'Goed:', value: String(totalGood), color: [22, 163, 74] },
+                { label: 'Fout:', value: String(totalBad), color: [220, 38, 38] },
+                { label: 'N.v.t.:', value: String(totalNvt), color: [107, 114, 128] },
+            ];
+
+            summaryItems.forEach(item => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(item.label, ml, y);
+                doc.setTextColor(...item.color);
+                doc.text(item.value, ml + 25, y);
+                doc.setTextColor(0, 0, 0);
+                y += lineH;
+            });
+            y += 5;
+
+            // === SECTIES MET RESULTATEN ===
+            sections.forEach((sec, si) => {
+                checkPage(20);
+                doc.setFillColor(240, 245, 249);
+                doc.rect(ml, y - 4, uw, 8, 'F');
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.text(sec.title || 'Sectie ' + (si + 1), ml + 2, y);
+                y += 8;
+
+                (sec.questions || []).forEach((q, qi) => {
+                    checkPage(14);
+                    const key = `s${si}_q${qi}`;
+                    const a = answers[key] || {};
+                    const val = a.value || '';
+                    const remark = a.remark || '';
+
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+
+                    // Vraag tekst (multi-line support)
+                    const qLines = doc.splitTextToSize(q.text || 'Vraag ' + (qi + 1), uw - 30);
+                    doc.text(qLines, ml + 2, y);
+
+                    // Resultaat rechts
+                    let resultText = val || '-';
+                    let resultColor = [0, 0, 0];
+                    if (val === 'goed') { resultText = '✓ GOED'; resultColor = [22, 163, 74]; }
+                    else if (val === 'fout') { resultText = '✗ FOUT'; resultColor = [220, 38, 38]; }
+                    else if (val === 'nvt') { resultText = 'N.v.t.'; resultColor = [107, 114, 128]; }
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...resultColor);
+                    doc.text(resultText, pw - mr - 2, y, { align: 'right' });
+                    doc.setTextColor(0, 0, 0);
+
+                    y += qLines.length * 4;
+
+                    // Component tag
+                    if (q.component) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(7);
+                        doc.setTextColor(107, 114, 128);
+                        doc.text(`[${q.component}${q.discipline ? ' · ' + q.discipline : ''}]`, ml + 2, y);
+                        doc.setTextColor(0, 0, 0);
+                        y += 4;
+                    }
+
+                    // Opmerking
+                    if (remark) {
+                        doc.setFontSize(7);
+                        doc.setFont('helvetica', 'italic');
+                        doc.setTextColor(100, 100, 100);
+                        const remarkLines = doc.splitTextToSize('💬 ' + remark, uw - 10);
+                        doc.text(remarkLines, ml + 4, y);
+                        doc.setTextColor(0, 0, 0);
+                        y += remarkLines.length * 3.5;
+                    }
+
+                    // Lijn onder vraag
+                    doc.setDrawColor(230);
+                    doc.line(ml, y, pw - mr, y);
+                    y += 3;
+                });
+
+                y += 4;
+            });
+
+            // === FOOTER ===
+            checkPage(25);
+            y += 5;
+            doc.setDrawColor(0);
+            doc.line(ml, y, pw - mr, y);
+            y += 8;
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Gegenereerd: ${new Date().toLocaleString('nl-NL')}`, ml, y);
+            doc.text('Kuijpers Technical Services BV — KTS Uren App', ml, y + 4);
+
+            // Paginanummers
+            const totalPages = doc.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(7);
+                doc.setTextColor(150);
+                doc.text(`Pagina ${i} van ${totalPages}`, pw - mr, 290, { align: 'right' });
+                doc.text(insp.inspection_number || '', ml, 290);
+                doc.setTextColor(0);
+            }
+
+            // Download
+            const filename = `Inspectierapport_${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
+            doc.save(filename);
+            showToast('✓ PDF gedownload');
         }
 
         // =========================================================
