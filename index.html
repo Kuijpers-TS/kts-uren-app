@@ -7412,6 +7412,7 @@
             const invoiceNumber = customNum || ('F-' + (invData.project?.project_code || '') + '-' + ddmmyyyy);
 
             // Duplicaat-check
+            const sb = getSupabase();
             try {
                 const { data: dupCheck } = await sb.from('invoices').select('id').eq('invoice_number', invoiceNumber).limit(1);
                 if (dupCheck && dupCheck.length > 0) {
@@ -7683,7 +7684,7 @@
                 // Email met PDF bijlage + OneDrive upload via Edge Function
                 const clientEmail = getContactEmailsByRole(invData.clientCompany, 'receives_factuur');
                 const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
-                const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+                const pdfBytes = new Uint8Array(pdfBuffer); let pdfBin = ''; for (let i = 0; i < pdfBytes.length; i++) pdfBin += String.fromCharCode(pdfBytes[i]); const pdfBase64 = btoa(pdfBin);
                 const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
 
                 try {
@@ -8379,7 +8380,7 @@
                         io_number: ioNumber,
                         created_at: new Date().toISOString()
                     }));
-                    const { error: weekErr } = await sb.from('inkooporder_weeks').insert(weekRecords);
+                    const { error: weekErr } = await sb.from('inkooporder_weeks').upsert(weekRecords, { onConflict: 'user_id,project_id,year,week_number' });
                     if (weekErr) console.warn('Inkooporder weken opslaan mislukt:', weekErr.message);
                     else console.log('Inkooporder weken opgeslagen:', ioData.includedWeeks);
                 }
@@ -8398,7 +8399,7 @@
                     : 'week ' + ioData.includedWeeks[0];
                 const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                 const maandTekst = MONTHS_NL[ioData.month - 1] + ' ' + ioData.year;
-                const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+                const pdfBytes = new Uint8Array(pdfBuffer); let pdfBin = ''; for (let i = 0; i < pdfBytes.length; i++) pdfBin += String.fromCharCode(pdfBytes[i]); const pdfBase64 = btoa(pdfBin);
                 const fileName = ioNumber.replace(/\s+/g, '_') + '.pdf';
 
                 try {
