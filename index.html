@@ -2861,9 +2861,23 @@
             try {
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-                // K afbeelding is landscape-ratio (1294x1000 ≈ 1.294)
-                // K vult de gehele pagina (rand tot rand)
-                doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
+                const imgRatio = 1.5; // K afbeelding is 3:2 (1800x1200)
+                // 30% transparantie
+                const gState = new doc.GState({ opacity: 0.30 });
+                doc.saveGraphicsState();
+                doc.setGState(gState);
+                if (isLandscape) {
+                    // Liggend: K vult de gehele pagina
+                    doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
+                } else {
+                    // Staand: K behoudt verhouding, hoogte = pagina, breedte proportioneel, gecentreerd
+                    // K mag links/rechts buiten de pagina vallen
+                    const wmH = ph;
+                    const wmW = wmH * imgRatio;
+                    const wmX = (pw - wmW) / 2; // negatief = oversteekt links
+                    doc.addImage(wmData, 'PNG', wmX, 0, wmW, wmH);
+                }
+                doc.restoreGraphicsState();
             } catch(e) { console.warn('Watermerk fout:', e); }
         }
 
