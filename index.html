@@ -1012,6 +1012,10 @@
                     <div style="width:40px;height:40px;border-radius:10px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">💰</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Tarieven</div><div style="font-size:0.7rem;color:var(--muted)">Uurtarieven & toeslagen</div></div>
                 </div>
+                <div class="admin-tile" onclick="switchAdminTab('bedrijf')">
+                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏗️</div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Bedrijfsinstellingen</div><div style="font-size:0.7rem;color:var(--muted)">Betalingstermijn & meer</div></div>
+                </div>
                 <!-- Scheiding: Documentatie -->
                 <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
                     <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Documentatie</div>
@@ -1241,6 +1245,19 @@
                     <div id="inv-list" style="display:flex;flex-direction:column;gap:6px">
                         <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ===== BEDRIJFSINSTELLINGEN TAB ===== -->
+            <div id="admin-bedrijf" style="display:none">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Bedrijfsinstellingen</div>
+                <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                    <div style="margin-bottom:16px">
+                        <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px">Betalingstermijn (dagen)</label>
+                        <input type="number" id="setting-payment-term" min="1" max="365" value="30" style="width:100px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem">
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Standaard betalingstermijn op facturen en inkooporders</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="saveCompanySettings()">💾 Opslaan</button>
                 </div>
             </div>
 
@@ -2835,10 +2852,11 @@
                 doc.text('Kuijpers Technical Services B.V.', ml, footY);
                 doc.text('Nieuwboerweg 2A', ml, footY + 3);
                 doc.text('1738BB Waarland', ml, footY + 6);
-                const rCol = isLandscape ? 220 : 140;
-                doc.text('KVK: 93410557', rCol, footY);
-                doc.text('BTW: NL866385368B01', rCol, footY + 3);
-                doc.text('info@kuijpers-ts.nl', rCol, footY + 6);
+                const mr = 15;
+                const rAlign = pw - mr;
+                doc.text('KVK: 93410557', rAlign, footY, { align: 'right' });
+                doc.text('BTW: NL866385368B01', rAlign, footY + 3, { align: 'right' });
+                doc.text('info@kuijpers-ts.nl', rAlign, footY + 6, { align: 'right' });
                 doc.setTextColor(0, 0, 0);
             }
         }
@@ -2992,8 +3010,8 @@
                 head: [tableHead],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 2, lineColor: borderColor, lineWidth: lw, font: 'helvetica', textColor: [0, 0, 0] },
-                headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8, halign: 'center' },
-                bodyStyles: { fillColor: [255, 255, 255] },
+                headStyles: { fillColor: false, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+                bodyStyles: { fillColor: false },
                 columnStyles: colStyles,
             });
 
@@ -3304,7 +3322,8 @@
                 head: [['#', 'OMSCHRIJVING', 'AANTAL', 'PRIJS/STUK', 'TOTAAL']],
                 body: lines,
                 styles: { fontSize: 8, cellPadding: 2, lineColor: [176, 190, 197], lineWidth: 0.3 },
-                headStyles: { fillColor: [232, 236, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7.5 },
+                headStyles: { fillColor: false, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7.5 },
+                bodyStyles: { fillColor: false },
                 columnStyles: {
                     0: { cellWidth: 12, halign: 'center' },
                     1: { cellWidth: 'auto' },
@@ -3344,7 +3363,7 @@
             y += 25;
             doc.setFontSize(7);
             doc.setFont('helvetica', 'normal');
-            doc.text('BETALINGSTERMIJN 30 dagen na factuurdatum', ml, y);
+            doc.text(`BETALINGSTERMIJN ${getPaymentTermDays()} dagen na factuurdatum`, ml, y);
 
             // --- Opmerkingen ---
             y += 8;
@@ -3846,7 +3865,7 @@
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
             const todayStr = fmtDate(new Date());
-            const dueDate = new Date(Date.now() + 30*24*60*60*1000);
+            const dueDate = new Date(Date.now() + getPaymentTermDays()*24*60*60*1000);
 
             const infoLines = [
                 ['Factuurnummer:', factuurNum],
@@ -3879,13 +3898,14 @@
                 body: tableBody,
                 styles: { fontSize: 8, cellPadding: 2.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
                 headStyles: { fillColor: [7, 86, 127], textColor: [255, 255, 255], fontStyle: 'bold' },
+                bodyStyles: { fillColor: false },
                 columnStyles: {
                     0: { cellWidth: 25 },
                     1: { cellWidth: 'auto' },
                     2: { cellWidth: 25 },
                     3: { cellWidth: 30, halign: 'right' },
                 },
-                alternateRowStyles: { fillColor: [240, 244, 248] },
+                alternateRowStyles: { fillColor: false },
             });
 
             // Totalen
@@ -4732,7 +4752,7 @@
             btw: 'NL866385368B01',
             tel: '+31 6 5123 9050',
             email: 'info@kuijpers-ts.nl',
-            betalingstermijn: 30
+            get betalingstermijn() { return getPaymentTermDays(); }
         };
 
         let ioEntries = [
@@ -6115,11 +6135,12 @@
             if (tiles) tiles.style.display = 'none';
             if (backBar) backBar.style.display = 'block';
 
-            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten','insp-templates','insp-overzicht'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','bedrijf','inkooporders','facturen','weekstaten','insp-templates','insp-overzicht'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = t === tab ? 'block' : 'none';
             });
             if (tab === 'dashboard') loadDashboard();
+            if (tab === 'bedrijf') loadCompanySettings();
             if (tab === 'inkooporders') { loadInkooporderFilters(); loadInkooporders(); }
             if (tab === 'facturen') { loadInvoiceFilters(); loadInvoices(); }
             if (tab === 'weekstaten') loadWeekstaten();
@@ -6132,10 +6153,25 @@
             const backBar = document.getElementById('admin-back-bar');
             if (tiles) tiles.style.display = 'grid';
             if (backBar) backBar.style.display = 'none';
-            ['dashboard','projecten','personen','gebruikers','tarieven','inkooporders','facturen','weekstaten','insp-templates','insp-overzicht'].forEach(t => {
+            ['dashboard','projecten','personen','gebruikers','tarieven','bedrijf','inkooporders','facturen','weekstaten','insp-templates','insp-overzicht'].forEach(t => {
                 const el = document.getElementById('admin-' + t);
                 if (el) el.style.display = 'none';
             });
+        }
+
+        // ===== BEDRIJFSINSTELLINGEN =====
+        function getPaymentTermDays() {
+            return parseInt(localStorage.getItem('kts_payment_term_days') || '30', 10);
+        }
+        function loadCompanySettings() {
+            const el = document.getElementById('setting-payment-term');
+            if (el) el.value = getPaymentTermDays();
+        }
+        function saveCompanySettings() {
+            const val = parseInt(document.getElementById('setting-payment-term')?.value, 10);
+            if (!val || val < 1 || val > 365) { showToast('⚠️ Voer een getal in tussen 1 en 365'); return; }
+            localStorage.setItem('kts_payment_term_days', val.toString());
+            showToast('✅ Betalingstermijn opgeslagen: ' + val + ' dagen');
         }
 
         // ===== DASHBOARD FUNCTIES =====
@@ -7158,11 +7194,7 @@
             const content = document.getElementById('inv-preview-content');
             let html = '';
 
-            if (existingInv && existingInv.length > 0) {
-                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
-                    ⚠️ Er bestaat al een factuur (<strong>${existingInv[0].invoice_number}</strong>) voor deze combinatie. Een nieuwe factuur zal een nieuw nummer krijgen.
-                </div>`;
-            }
+            /* Duplicaat-melding verwijderd — systeem pakt automatisch het volgende nummer */
 
             html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? clientCompany.name : '(Geen klant ingesteld op project)'}</div>`;
             html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Medewerker: ${user?.name || 'Onbekend'} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
@@ -7440,8 +7472,8 @@
                     fontStyle: 'bold',
                     fontSize: 8
                 },
-                bodyStyles: { fontSize: 7.5 },
-                alternateRowStyles: { fillColor: [245, 247, 250] }
+                bodyStyles: { fontSize: 7.5, fillColor: false },
+                alternateRowStyles: { fillColor: false }
             });
 
             y = doc.lastAutoTable.finalY + 6;
@@ -7472,9 +7504,10 @@
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
 
-            // Bereken vervaldatum (30 dagen)
+            // Bereken vervaldatum
+            const payTermDays = getPaymentTermDays();
             const dueDate30 = new Date(today);
-            dueDate30.setDate(dueDate30.getDate() + 30);
+            dueDate30.setDate(dueDate30.getDate() + payTermDays);
             const dueDateStr = dueDate30.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
             doc.text(`U wordt vriendelijk verzocht het bedrag van ${fmtEuroPdf(total)} vóór ${dueDateStr} over te maken op:`, cx, payBlockY, { align: 'center' });
@@ -7565,7 +7598,7 @@
                         (downloadLink
                             ? `📎 Download de factuur (PDF):\n${downloadLink}\n(link is 7 dagen geldig)\n\n`
                             : `Bestand: ${invoiceNumber.replace(/\s+/g, '_')}.pdf\n\n`) +
-                        `Betalingstermijn: 30 dagen na factuurdatum\n` +
+                        `Betalingstermijn: ${getPaymentTermDays()} dagen na factuurdatum\n` +
                         `IBAN: ${KTS_INFO.iban}\n` +
                         `t.n.v. ${KTS_INFO.naam}\n` +
                         `o.v.v. ${invoiceNumber}\n\n` +
@@ -8160,10 +8193,11 @@
                     fontSize: 8
                 },
                 bodyStyles: {
-                    fontSize: 7.5
+                    fontSize: 7.5,
+                    fillColor: false
                 },
                 alternateRowStyles: {
-                    fillColor: [245, 247, 250]
+                    fillColor: false
                 }
             });
 
@@ -8194,7 +8228,7 @@
             const payBlockYIO = footerTopIO - 22;
             const cxIO = pw / 2;
             const dueDateIO = new Date();
-            dueDateIO.setDate(dueDateIO.getDate() + 30);
+            dueDateIO.setDate(dueDateIO.getDate() + getPaymentTermDays());
             const dueDateStrIO = dueDateIO.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
