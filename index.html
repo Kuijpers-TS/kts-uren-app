@@ -2796,6 +2796,56 @@
             return '€ ' + Number(n).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        // ===== PDF WATERMERK & VOETTEKST HELPER =====
+        function addPdfWatermarkAndFooter(doc, isLandscape) {
+            const pdfImages = window.KTS_PDF_IMAGES || {};
+            const wmData = pdfImages.watermerk || null;
+            const pageCount = doc.internal.getNumberOfPages();
+            const ktsFooterBlue = [37, 92, 134]; // #255C86
+
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                const pw = doc.internal.pageSize.getWidth();
+                const ph = doc.internal.pageSize.getHeight();
+
+                // Watermerk — afbeelding is portrait (2:3 ratio)
+                if (wmData) {
+                    try {
+                        if (isLandscape) {
+                            // Landscape: schaal watermerk naar paginahoogte, centreer horizontaal
+                            const wmH = ph;
+                            const wmW = wmH * (2729 / 4091); // behoud aspect ratio
+                            const wmX = (pw - wmW) / 2;
+                            doc.addImage(wmData, 'PNG', wmX, 0, wmW, wmH);
+                        } else {
+                            // Portrait: vul hele pagina
+                            doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
+                        }
+                    } catch(e) { console.warn('Watermerk fout:', e); }
+                }
+
+                // Voettekst — Kuijpers bedrijfsgegevens
+                const footY = ph - 12;
+                const ml = 15;
+                doc.setFontSize(7);
+                doc.setTextColor(...ktsFooterBlue);
+
+                // Links kolom
+                doc.text('Kuijpers Technical Services B.V.', ml, footY);
+                doc.text('Nieuwboerweg 2A', ml, footY + 3);
+                doc.text('1738BB Waarland', ml, footY + 6);
+
+                // Rechts kolom
+                const rCol = isLandscape ? 220 : 140;
+                doc.text('KVK: 93410557', rCol, footY);
+                doc.text('BTW: NL866385368B01', rCol, footY + 3);
+                doc.text('info@kuijpers-ts.nl', rCol, footY + 6);
+
+                // Reset text color
+                doc.setTextColor(0, 0, 0);
+            }
+        }
+
         // ===== WEEKSTAAT PDF =====
         async function generateWeekstaat() {
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
@@ -3086,6 +3136,9 @@
             doc.text('Datum: ' + (signatureData.client ? new Date().toLocaleDateString('nl-NL') : '___________________________________'), sig3x + 1, y + rh + sigH + 4);
             doc.setTextColor(0, 0, 0);
 
+            // Watermerk & voettekst toevoegen
+            addPdfWatermarkAndFooter(doc, true);
+
             return doc;
         }
 
@@ -3244,6 +3297,9 @@
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
             doc.text(`Weekstaat ${weekLabel} bijgevoegd als bijlage.`, ml, y + 5);
+
+            // Watermerk & voettekst toevoegen
+            addPdfWatermarkAndFooter(doc, false);
 
             return doc;
         }
@@ -3746,6 +3802,9 @@
             doc.setFont('helvetica', 'normal');
             y += 5;
             doc.text(`o.v.v. factuurnummer ${factuurNum}`, ml, y);
+
+            // Watermerk & voettekst toevoegen
+            addPdfWatermarkAndFooter(doc, false);
 
             // Opslaan
             const fileName = `Factuur_${factuurNum}_${clientName.replace(/[^a-zA-Z0-9]/g,'_')}_${monthName}_${year}.pdf`;
@@ -7290,13 +7349,8 @@
             doc.text('IBAN: ' + KTS_INFO.iban + '  ·  BIC: ' + KTS_INFO.bic + '  ·  t.n.v. ' + KTS_INFO.naam, ml, payY + 5);
             doc.text('o.v.v. ' + invoiceNumber, ml, payY + 10);
 
-            // ===== FOOTER =====
-            const fy = ph - 12;
-            doc.setFontSize(7);
-            doc.setTextColor(100, 100, 100);
-            doc.text(KTS_INFO.naam + ' · KVK: ' + KTS_INFO.kvk + ' · BTW: ' + KTS_INFO.btw + ' · IBAN: ' + KTS_INFO.iban + ' · BIC: ' + KTS_INFO.bic, ml, fy);
-            doc.text('Tel: ' + KTS_INFO.tel2 + ' · E-mail: ' + KTS_INFO.email + ' · www.kuijpers-ts.nl', ml, fy + 4);
-            doc.setTextColor(0, 0, 0);
+            // Watermerk & voettekst toevoegen
+            addPdfWatermarkAndFooter(doc, false);
 
             // Download
             const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
@@ -8005,13 +8059,8 @@
             doc.setFontSize(8);
             doc.text('BETALINGSTERMIJN  30 dagen na factuurdatum', ml, y + 3);
 
-            // ===== FOOTER =====
-            const fy = ph - 12;
-            doc.setFontSize(7);
-            doc.setTextColor(100, 100, 100);
-            doc.text(KTS_INFO.naam + ' · KVK: ' + KTS_INFO.kvk + ' · BTW: ' + KTS_INFO.btw + ' · IBAN: ' + KTS_INFO.iban + ' · BIC: ' + KTS_INFO.bic, ml, fy);
-            doc.text('Tel: ' + KTS_INFO.tel2 + ' · E-mail: ' + KTS_INFO.email + ' · www.kuijpers-ts.nl', ml, fy + 4);
-            doc.setTextColor(0, 0, 0);
+            // Watermerk & voettekst toevoegen
+            addPdfWatermarkAndFooter(doc, false);
 
             // Save to Supabase and open mailto
             const pdfData = doc.output('datauristring');
@@ -10640,6 +10689,9 @@
                 doc.text(insp.inspection_number || '', ml, 290);
                 doc.setTextColor(0);
             }
+
+            // Watermerk & voettekst toevoegen
+            addPdfWatermarkAndFooter(doc, false);
 
             // Download
             const filename = `Inspectierapport_${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
