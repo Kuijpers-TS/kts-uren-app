@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v69';
+const CACHE_NAME = 'kts-uren-v70';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -39,6 +39,8 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
   if (url.hostname.includes('supabase') || url.hostname.includes('cdn')) return;
+  // Approve-weekstaat altijd vers laden (niet cachen)
+  if (url.pathname.includes('approve-weekstaat')) return;
 
   event.respondWith(
     fetch(event.request)

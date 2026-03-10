@@ -75,6 +75,23 @@
             overflow-x: hidden;
         }
 
+        /* ===== ADMIN TILES (mobile-friendly hover) ===== */
+        .admin-tile {
+            background: white;
+            border-radius: 14px;
+            padding: 18px 14px;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 2px solid transparent;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            -webkit-tap-highlight-color: rgba(0,100,200,0.1);
+        }
+        .admin-tile:active { border-color: var(--kts-blue); transform: scale(0.98); }
+        @media (hover: hover) { .admin-tile:hover { border-color: var(--kts-blue); } }
+
         /* ===== WATERMERK ===== */
         .watermark {
             position: fixed;
@@ -283,22 +300,22 @@
         .form-group { flex: 1; }
         .form-group label {
             display: block;
-            font-size: 0.65rem;
+            font-size: 0.75rem;
             font-weight: 600;
             color: var(--muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .form-group input, .form-group select, .form-group textarea {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
+            padding: 12px 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
             font-size: 16px;
             background: #f8fafc;
             transition: border-color 0.2s;
-            min-height: 44px;
+            min-height: 48px;
         }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
@@ -975,23 +992,23 @@
 
             <!-- Tegels grid -->
             <div id="admin-tiles" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-                <div onclick="switchAdminTab('dashboard')" style="background:var(--kts-blue);border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px;grid-column:1/-1" onmouseover="this.style.borderColor='var(--kts-dark)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('dashboard')" style="background:var(--kts-blue);box-shadow:0 1px 4px rgba(0,0,0,0.12);grid-column:1/-1">
                     <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📊</div>
                     <div><div style="font-weight:700;font-size:0.85rem;color:white">Dashboard</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.7)">Omzet, uren, projecten & status</div></div>
                 </div>
-                <div onclick="switchAdminTab('projecten')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('projecten')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Projecten</div><div style="font-size:0.7rem;color:var(--muted)">Beheer projecten</div></div>
                 </div>
-                <div onclick="switchAdminTab('personen')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('personen')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏢</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Personen & Bedrijven</div><div style="font-size:0.7rem;color:var(--muted)">ZZP, klanten, KTS</div></div>
                 </div>
-                <div onclick="switchAdminTab('gebruikers')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('gebruikers')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">👥</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Gebruikers</div><div style="font-size:0.7rem;color:var(--muted)">Rechten & instellingen</div></div>
                 </div>
-                <div onclick="switchAdminTab('tarieven')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('tarieven')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">💰</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Tarieven</div><div style="font-size:0.7rem;color:var(--muted)">Uurtarieven & toeslagen</div></div>
                 </div>
@@ -999,15 +1016,15 @@
                 <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
                     <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Documentatie</div>
                 </div>
-                <div onclick="switchAdminTab('weekstaten')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('weekstaten')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📑</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Weekstaten</div><div style="font-size:0.7rem;color:var(--muted)">Overzicht & goedkeuring</div></div>
                 </div>
-                <div onclick="switchAdminTab('inkooporders')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('inkooporders')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Inkooporders</div><div style="font-size:0.7rem;color:var(--muted)">IO's genereren</div></div>
                 </div>
-                <div onclick="switchAdminTab('facturen')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('facturen')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🧾</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Facturen</div><div style="font-size:0.7rem;color:var(--muted)">Facturen genereren</div></div>
                 </div>
@@ -1015,11 +1032,11 @@
                 <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
                     <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Inspecties</div>
                 </div>
-                <div onclick="switchAdminTab('insp-templates')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('insp-templates')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📝</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Formulieren</div><div style="font-size:0.7rem;color:var(--muted)">Inspectie-templates beheren</div></div>
                 </div>
-                <div onclick="switchAdminTab('insp-overzicht')" style="background:white;border-radius:14px;padding:18px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
+                <div class="admin-tile" onclick="switchAdminTab('insp-overzicht')">
                     <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🔍</div>
                     <div><div style="font-weight:700;font-size:0.85rem">Inspecties</div><div style="font-size:0.7rem;color:var(--muted)">Overzicht & rapporten</div></div>
                 </div>
@@ -1688,23 +1705,23 @@
                 const isWeekend = i >= 5;
                 const dis = !d.active ? 'disabled' : '';
                 return `
-                <div style="padding:8px 0;border-bottom:1px solid var(--border);${isWeekend ? 'opacity:0.6' : ''}">
+                <div style="padding:10px 0;border-bottom:1px solid var(--border);${isWeekend ? 'opacity:0.6' : ''}">
                     <div style="display:flex;align-items:center;gap:8px">
-                        <label style="width:36px;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:4px">
-                            <input type="checkbox" ${d.active ? 'checked' : ''} onchange="document.querySelectorAll('.wd-row-${i} select,.wd-row-${i} input').forEach(el=>{if(el.type!=='checkbox')el.disabled=!this.checked})">
+                        <label style="width:40px;font-size:0.9rem;font-weight:600;display:flex;align-items:center;gap:4px">
+                            <input type="checkbox" style="width:18px;height:18px" ${d.active ? 'checked' : ''} onchange="document.querySelectorAll('.wd-row-${i} select,.wd-row-${i} input').forEach(el=>{if(el.type!=='checkbox')el.disabled=!this.checked})">
                             ${DAYS_FULL[i].substring(0,2)}
                         </label>
                         <div class="wd-row-${i}" style="display:flex;gap:5px;align-items:center;flex:1">
-                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;width:76px" data-field="start" data-day="${i}">
+                            <select ${dis} style="padding:8px 6px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;flex:1;min-width:0" data-field="start" data-day="${i}">
                                 <option value="">—</option>
                                 ${generateTimeOptions(d.start)}
                             </select>
-                            <span style="color:var(--muted);font-size:0.75rem">–</span>
-                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;width:76px" data-field="end" data-day="${i}">
+                            <span style="color:var(--muted);font-size:0.8rem">–</span>
+                            <select ${dis} style="padding:8px 6px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;flex:1;min-width:0" data-field="end" data-day="${i}">
                                 <option value="">—</option>
                                 ${generateTimeOptions(d.end)}
                             </select>
-                            <select ${dis} style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem" data-field="breakMin" data-day="${i}">
+                            <select ${dis} style="padding:8px 6px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;min-width:0" data-field="breakMin" data-day="${i}">
                                 <option value="0" ${d.breakMin===0?'selected':''}>0:00</option>
                                 <option value="15" ${d.breakMin===15?'selected':''}>0:15</option>
                                 <option value="30" ${d.breakMin===30?'selected':''}>0:30</option>
@@ -2057,8 +2074,8 @@
             const rounded = Math.round(n * 10) / 10;
             return rounded.toFixed(1).replace('.', ',');
         }
-        function fmtDecimal(n) { return n.toFixed(2).replace('.', ','); }
-        function fmtEuro(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
+        function fmtDecimal(n) { return n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        function fmtEuro(n) { return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function todayLabel() {
             const d = new Date();
             const days = ['zo','ma','di','wo','do','vr','za'];
@@ -4907,6 +4924,13 @@
                 if (pw !== confirm) { showToast('⚠️ Wachtwoorden komen niet overeen'); return; }
                 const sb = getSupabase();
                 if (!sb) return;
+                // Ververs sessie eerst (voorkomt "Auth session missing")
+                try { await sb.auth.refreshSession(); } catch(e) { console.warn('Session refresh:', e); }
+                const { data: sessionCheck } = await sb.auth.getSession();
+                if (!sessionCheck?.session) {
+                    showToast('⚠️ Sessie verlopen — log opnieuw in');
+                    return;
+                }
                 const { error } = await sb.auth.updateUser({ password: pw });
                 if (error) { showToast('❌ ' + error.message); return; }
                 // Markeer dat wachtwoord is gewijzigd

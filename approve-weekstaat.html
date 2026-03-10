@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekstaat Goedkeuring — KTS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -325,12 +326,20 @@
     <script>
         // ===== CONFIG =====
         const SUPABASE_URL = 'https://fvrbirghjydkxslbewny.supabase.co';
-        const FUNCTION_BASE = SUPABASE_URL + '/functions/v1';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cmJpcmdoanlka3hzbGJld255Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNzg1MTAsImV4cCI6MjA4Nzk1NDUxMH0.-v0LgCf5QJkjEWAYR9quhkBrlAeTuV5Dv6YKA2tECu4';
 
         let weekData = null;
         let signatureDataUrl = null;
         let hasStrokes = false;
+
+        // ===== SUPABASE CLIENT =====
+        let sbApproval = null;
+        function getSb() {
+            if (!sbApproval) {
+                sbApproval = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+            return sbApproval;
+        }
 
         // ===== INIT =====
         async function init() {
@@ -343,21 +352,26 @@
             }
 
             try {
-                const res = await fetch(`${FUNCTION_BASE}/process-approval?token=${encodeURIComponent(token)}`, {
-                    headers: {
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // RPC call — SECURITY DEFINER, geen auth nodig
+                const sb = getSb();
+                const { data, error } = await sb.rpc('get_weekstaat_by_token', { p_token: token });
 
-                if (!res.ok) {
-                    const err = await res.json();
-                    showError(err.error || 'Weekstaat niet gevonden.');
+                if (error) {
+                    console.error('RPC error:', error);
+                    showError('Er is een fout opgetreden bij het ophalen van de weekstaat.');
                     return;
                 }
 
-                weekData = await res.json();
-                weekData.token = token;
+                if (!data || data.error === 'niet_gevonden') {
+                    showError('Weekstaat niet gevonden of link is verlopen.');
+                    return;
+                }
+
+                weekData = {
+                    ...data,
+                    token: token,
+                    time_entries: data.time_entries || []
+                };
 
                 // Already processed?
                 if (weekData.approval_status === 'goedgekeurd') {
@@ -442,9 +456,9 @@
                 // Group by date
                 const byDate = {};
                 weekData.time_entries.forEach(e => {
-                    const d = e.date;
+                    const d = e.entry_date;
                     if (!byDate[d]) byDate[d] = 0;
-                    byDate[d] += parseFloat(e.hours || 0);
+                    byDate[d] += parseFloat(e.total_hours || 0);
                 });
 
                 // Sort by date and render
@@ -598,26 +612,26 @@
             btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
             try {
-                const res = await fetch(`${FUNCTION_BASE}/process-approval`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        token: weekData.token,
-                        action: action,
-                        approver_name: approverName,
-                        approver_email: approverEmail,
-                        signature_base64: signatureDataUrl || null,
-                        comments: comments || null
-                    })
+                // RPC call — SECURITY DEFINER, geen auth nodig
+                const sb = getSb();
+                const { data: result, error: rpcErr } = await sb.rpc('process_weekstaat_approval', {
+                    p_token: weekData.token,
+                    p_action: action,
+                    p_approver_name: approverName || null,
+                    p_approver_email: approverEmail || null,
+                    p_signature_data: signatureDataUrl || null,
+                    p_comments: comments || null
                 });
 
-                const result = await res.json();
+                if (rpcErr) {
+                    console.error('RPC error:', rpcErr);
+                    alert('Er is een fout opgetreden. Probeer het opnieuw.');
+                    btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+                    return;
+                }
 
-                if (!res.ok) {
-                    alert(result.error || 'Er is een fout opgetreden.');
+                if (result && result.error) {
+                    alert(result.error);
                     btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
                     return;
                 }
