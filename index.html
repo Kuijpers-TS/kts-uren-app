@@ -2793,7 +2793,7 @@
         }
 
         function fmtEuroPdf(n) {
-            return '€ ' + n.toFixed(2).replace('.', ',');
+            return '€ ' + Number(n).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         // ===== WEEKSTAAT PDF =====
@@ -4201,7 +4201,7 @@
                 if (hasKm && totalMonthKm > 0) {
                     revenueHtml += `
                 <div class="summary-row">
-                    <span>Km-vergoeding (${totalMonthKm.toLocaleString('nl-NL')} km × €${KM_RATE.toFixed(2).replace('.',',')})</span>
+                    <span>Km-vergoeding (${totalMonthKm.toLocaleString('nl-NL')} km × ${fmtEuro(KM_RATE)})</span>
                     <span class="summary-value">${fmtEuro(totalKmRevenue)}</span>
                 </div>`;
                 }
@@ -6996,17 +6996,17 @@
                 const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
                 if (week.regHours > 0) {
                     const amount = week.regHours * rate.hourly_rate;
-                    html += `<tr><td style="padding:4px 6px">Uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${week.regHours.toFixed(2)}</td><td style="text-align:right;padding:4px 6px">€${rate.hourly_rate.toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${amount.toFixed(2)}</td></tr>`;
+                    html += `<tr><td style="padding:4px 6px">Uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.regHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.hourly_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
                 if (week.satHours > 0) {
                     const amount = week.satHours * rate.hourly_rate * rate.saturday_multiplier;
-                    html += `<tr><td style="padding:4px 6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${week.satHours.toFixed(2)}</td><td style="text-align:right;padding:4px 6px">€${(rate.hourly_rate * rate.saturday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${amount.toFixed(2)}</td></tr>`;
+                    html += `<tr><td style="padding:4px 6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.satHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.hourly_rate * rate.saturday_multiplier)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
                 if (week.sunHours > 0) {
                     const amount = week.sunHours * rate.hourly_rate * rate.sunday_holiday_multiplier;
-                    html += `<tr><td style="padding:4px 6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${week.sunHours.toFixed(2)}</td><td style="text-align:right;padding:4px 6px">€${(rate.hourly_rate * rate.sunday_holiday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${amount.toFixed(2)}</td></tr>`;
+                    html += `<tr><td style="padding:4px 6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.sunHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.hourly_rate * rate.sunday_holiday_multiplier)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
             });
@@ -7015,20 +7015,20 @@
             Object.values(weekData).forEach(w => { totalKm += w.totalKm; totalHotel += w.hotelNights; });
             if (totalKm > 0) {
                 const kmAmount = totalKm * rate.km_rate;
-                html += `<tr><td style="padding:4px 6px">Kilometers</td><td style="text-align:right;padding:4px 6px">${totalKm.toFixed(0)}</td><td style="text-align:right;padding:4px 6px">€${rate.km_rate.toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${kmAmount.toFixed(2)}</td></tr>`;
+                html += `<tr><td style="padding:4px 6px">Kilometers</td><td style="text-align:right;padding:4px 6px">${totalKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.km_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
                 subtotal += kmAmount;
             }
             if (totalHotel > 0) {
                 const hotelAmount = totalHotel * hotelRate;
-                html += `<tr><td style="padding:4px 6px">Hotelovernachtingen</td><td style="text-align:right;padding:4px 6px">${totalHotel}</td><td style="text-align:right;padding:4px 6px">€${hotelRate.toFixed(2)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">€${hotelAmount.toFixed(2)}</td></tr>`;
+                html += `<tr><td style="padding:4px 6px">Hotelovernachtingen</td><td style="text-align:right;padding:4px 6px">${totalHotel}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(hotelRate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
                 subtotal += hotelAmount;
             }
 
             const btw = subtotal * 0.21;
             const total = subtotal + btw;
-            html += `<tr style="border-top:2px solid var(--kts-blue)"><td colspan="3" style="padding:6px;font-weight:600">Subtotaal</td><td style="text-align:right;padding:6px;font-weight:600">€${subtotal.toFixed(2)}</td></tr>`;
-            html += `<tr><td colspan="3" style="padding:4px 6px;color:var(--muted)">BTW 21%</td><td style="text-align:right;padding:4px 6px;color:var(--muted)">€${btw.toFixed(2)}</td></tr>`;
-            html += `<tr><td colspan="3" style="padding:6px;font-weight:700;color:var(--kts-blue);font-size:1rem">Totaal incl. BTW</td><td style="text-align:right;padding:6px;font-weight:700;color:var(--kts-blue);font-size:1rem">€${total.toFixed(2)}</td></tr>`;
+            html += `<tr style="border-top:2px solid var(--kts-blue)"><td colspan="3" style="padding:6px;font-weight:600">Subtotaal</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(subtotal)}</td></tr>`;
+            html += `<tr><td colspan="3" style="padding:4px 6px;color:var(--muted)">BTW 21%</td><td style="text-align:right;padding:4px 6px;color:var(--muted)">${fmtEuro(btw)}</td></tr>`;
+            html += `<tr><td colspan="3" style="padding:6px;font-weight:700;color:var(--kts-blue);font-size:1rem">Totaal incl. BTW</td><td style="text-align:right;padding:6px;font-weight:700;color:var(--kts-blue);font-size:1rem">${fmtEuro(total)}</td></tr>`;
             html += '</table>';
 
             content.innerHTML = html;
@@ -7710,21 +7710,21 @@
                 // Regular hours
                 if (week.regHours > 0) {
                     const amount = week.regHours * ioData.rate.hourly_rate;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Reguliere uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.regHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${ioData.rate.hourly_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Reguliere uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.regHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
 
                 // Saturday hours
                 if (week.satHours > 0) {
                     const amount = week.satHours * ioData.rate.hourly_rate * ioData.rate.saturday_multiplier;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.satHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(ioData.rate.hourly_rate * ioData.rate.saturday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.satHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate * ioData.rate.saturday_multiplier)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
 
                 // Sunday hours
                 if (week.sunHours > 0) {
                     const amount = week.sunHours * ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${week.sunHours.toFixed(2)}</td><td style="text-align:right;padding:6px">€ ${(ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier).toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(amount)}</td></tr>`;
+                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.sunHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
             });
@@ -7734,7 +7734,7 @@
             Object.values(ioData.weekData).forEach(w => totalKm += w.totalKm);
             if (totalKm > 0) {
                 const kmAmount = totalKm * ioData.rate.km_rate;
-                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${ioData.rate.km_rate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(kmAmount)}</td></tr>`;
+                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.km_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
                 subtotal += kmAmount;
             }
 
@@ -7743,7 +7743,7 @@
             Object.values(ioData.weekData).forEach(w => totalHotel += w.hotelNights);
             if (totalHotel > 0) {
                 const hotelAmount = totalHotel * ioData.hotelRate;
-                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel.toFixed(0)}</td><td style="text-align:right;padding:6px">€ ${ioData.hotelRate.toFixed(2)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuroPdf(hotelAmount)}</td></tr>`;
+                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.hotelRate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
                 subtotal += hotelAmount;
             }
 
