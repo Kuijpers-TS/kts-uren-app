@@ -1259,6 +1259,24 @@
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="saveCompanySettings()">💾 Opslaan</button>
                 </div>
+                <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:12px">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:12px">📂 Opslagmappen (OneDrive)</div>
+                    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px">Kies per documenttype een map. PDF's worden automatisch daar opgeslagen i.p.v. als download.</div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <button class="btn btn-sm" onclick="chooseSaveFolder('weekstaten')" style="min-width:140px">📑 Weekstaten</button>
+                            <span id="folder-weekstaten" style="font-size:0.8rem;color:var(--muted)">Niet ingesteld</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <button class="btn btn-sm" onclick="chooseSaveFolder('inkooporders')" style="min-width:140px">📄 Inkooporders</button>
+                            <span id="folder-inkooporders" style="font-size:0.8rem;color:var(--muted)">Niet ingesteld</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <button class="btn btn-sm" onclick="chooseSaveFolder('facturen')" style="min-width:140px">🧾 Facturen</button>
+                            <span id="folder-facturen" style="font-size:0.8rem;color:var(--muted)">Niet ingesteld</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- ===== WEEKSTATEN TAB ===== -->
@@ -1500,7 +1518,8 @@
         let currentUser = null;
         let currentProject = null;
         // Feature flags staan nu direct op currentUser (users tabel)
-        let savedFolderHandle = null; // File System Access API — map voor PDF opslag
+        let savedFolderHandle = null; // File System Access API — map voor PDF opslag (legacy/fallback)
+        let savedFolderHandles = { weekstaten: null, inkooporders: null, facturen: null };
 
         // Helper: naam splitsen voor badge (voornaam\nachternaam)
         function formatBadgeName(name) {
@@ -3395,38 +3414,63 @@
 
         // ===== DOWNLOAD FUNCTIES =====
         // ===== OPSLAGMAP (File System Access API) =====
-        async function chooseSaveFolder() {
+        async function chooseSaveFolder(type) {
             if (!window.showDirectoryPicker) {
                 showToast('⚠️ Je browser ondersteunt geen mapkiezer — gebruik Chrome of Edge');
                 return;
             }
             try {
-                savedFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-                updateFolderUI(savedFolderHandle.name);
-                showToast(`✅ Opslagmap: ${savedFolderHandle.name}`);
+                const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                if (type && savedFolderHandles.hasOwnProperty(type)) {
+                    savedFolderHandles[type] = handle;
+                    updateFolderUIByType(type, handle.name);
+                    showToast(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} map: ${handle.name}`);
+                } else {
+                    // Legacy: enkele map voor alles
+                    savedFolderHandle = handle;
+                    updateFolderUI(handle.name);
+                    showToast(`✅ Opslagmap: ${handle.name}`);
+                }
             } catch (e) {
                 if (e.name !== 'AbortError') console.error('Map kiezen mislukt:', e);
             }
         }
 
         function updateFolderUI(folderName) {
-            document.getElementById('folder-icon').textContent = '✅';
-            document.getElementById('folder-label').textContent = folderName;
-            document.getElementById('folder-path').textContent = 'PDF\'s worden hier opgeslagen';
-            document.getElementById('folder-picker').style.borderColor = 'var(--kts-blue)';
-            document.getElementById('folder-picker').style.background = '#f0f9ff';
+            const icon = document.getElementById('folder-icon');
+            const label = document.getElementById('folder-label');
+            const path = document.getElementById('folder-path');
+            const picker = document.getElementById('folder-picker');
+            if (icon) icon.textContent = '✅';
+            if (label) label.textContent = folderName;
+            if (path) path.textContent = 'PDF\'s worden hier opgeslagen';
+            if (picker) { picker.style.borderColor = 'var(--kts-blue)'; picker.style.background = '#f0f9ff'; }
         }
 
-        async function savePdfToFolder(pdfDoc, fileName) {
-            if (!savedFolderHandle) return false;
+        function updateFolderUIByType(type, folderName) {
+            const el = document.getElementById('folder-' + type);
+            if (el) {
+                el.textContent = '✅ ' + folderName;
+                el.style.color = 'var(--kts-blue)';
+            }
+        }
+
+        // Haal de juiste folder handle op voor een document type
+        function getFolderHandle(type) {
+            if (type && savedFolderHandles[type]) return savedFolderHandles[type];
+            return savedFolderHandle; // fallback naar enkele map
+        }
+
+        async function savePdfToFolder(pdfDoc, fileName, type) {
+            const handle = getFolderHandle(type);
+            if (!handle) return false;
             try {
-                // Vraag opnieuw toestemming als die verlopen is
-                const perm = await savedFolderHandle.queryPermission({ mode: 'readwrite' });
+                const perm = await handle.queryPermission({ mode: 'readwrite' });
                 if (perm !== 'granted') {
-                    const req = await savedFolderHandle.requestPermission({ mode: 'readwrite' });
+                    const req = await handle.requestPermission({ mode: 'readwrite' });
                     if (req !== 'granted') return false;
                 }
-                const fileHandle = await savedFolderHandle.getFileHandle(fileName, { create: true });
+                const fileHandle = await handle.getFileHandle(fileName, { create: true });
                 const writable = await fileHandle.createWritable();
                 const pdfBlob = pdfDoc.output('blob');
                 await writable.write(pdfBlob);
@@ -3444,8 +3488,9 @@
                 const projCode = currentProject ? currentProject.project_code : 'KTS';
                 const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
                 const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userName ? '_' + userName : ''}.pdf`;
-                doc.save(fileName);
-                showToast('✓ Weekstaat gedownload');
+                const saved = await savePdfToFolder(doc, fileName, 'weekstaten');
+                if (!saved) doc.save(fileName);
+                showToast(saved ? '✓ Weekstaat opgeslagen in map' : '✓ Weekstaat gedownload');
             }
         }
 
@@ -3454,8 +3499,9 @@
             const doc = generateInkooporder(ioNum);
             if (doc) {
                 const fileName = `Inkooporder_${ioNum}_Week${currentWeekNumber}_${currentYear}.pdf`;
-                doc.save(fileName);
-                showToast('✓ Inkooporder gedownload (concept — nog niet opgeslagen)');
+                const saved = await savePdfToFolder(doc, fileName, 'inkooporders');
+                if (!saved) doc.save(fileName);
+                showToast(saved ? '✓ Inkooporder opgeslagen in map' : '✓ Inkooporder gedownload (concept — nog niet opgeslagen)');
             }
         }
 
@@ -3648,7 +3694,8 @@
                             const projCode = currentProject ? currentProject.project_code : 'KTS';
                             const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
                             const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userName ? '_' + userName : ''}.pdf`;
-                            weekstaat.save(fileName);
+                            const wsSaved = await savePdfToFolder(weekstaat, fileName, 'weekstaten');
+                            if (!wsSaved) weekstaat.save(fileName);
 
                             // Backup naar Supabase Storage
                             try {
@@ -3722,10 +3769,10 @@
 
                 const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
 
-                // 5. Download PDF lokaal
+                // 5. Download PDF lokaal (ZZP'er heeft geen OneDrive toegang)
                 weekstaat.save(fileName);
 
-                // 6. Upload naar Supabase Storage (backup) + OneDrive
+                // 6. Upload naar Supabase Storage (backup) + OneDrive via Edge Function
                 const sb = getSupabase();
                 if (sb) {
                     const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
@@ -3965,7 +4012,8 @@
 
             // Opslaan
             const fileName = `Factuur_${factuurNum}_${clientName.replace(/[^a-zA-Z0-9]/g,'_')}_${monthName}_${year}.pdf`;
-            doc.save(fileName);
+            const savedCF = await savePdfToFolder(doc, fileName, 'facturen');
+            if (!savedCF) doc.save(fileName);
 
             // Factuurnummer opslaan in database
             await saveDocumentNumber('factuur', factuurNum, {
@@ -7578,7 +7626,8 @@
 
             // Download
             const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
-            doc.save(fileName);
+            const savedInv = await savePdfToFolder(doc, fileName, 'facturen');
+            if (!savedInv) doc.save(fileName);
 
             // Upload naar Supabase
             await uploadInvoiceToSupabase(
@@ -8306,7 +8355,8 @@
             const filePath = `${ioData.year}/${ioData.project.project_code}/${fileName}`;
 
             // Download the PDF
-            doc.save(fileName);
+            const savedIO = await savePdfToFolder(doc, fileName, 'inkooporders');
+            if (!savedIO) doc.save(fileName);
 
             // Upload to Supabase
             uploadPOToSupabase(filePath, doc.output('arraybuffer'), ioData, ioNumber);
