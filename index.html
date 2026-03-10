@@ -2819,6 +2819,18 @@
 
         // ===== PDF WATERMERK & VOETTEKST HELPERS =====
         // Watermerk op huidige pagina tekenen — roep aan VÓÓR content
+        // Logo semi-transparant toevoegen
+        function addPdfLogo(doc, logoB64, x, y, w, h) {
+            if (!logoB64) return;
+            try {
+                const gState = new doc.GState({ opacity: 0.35 });
+                doc.saveGraphicsState();
+                doc.setGState(gState);
+                doc.addImage(logoB64, 'JPEG', x, y, w, h);
+                doc.restoreGraphicsState();
+            } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
+        }
+
         function addPdfWatermark(doc, isLandscape) {
             const pdfImages = window.KTS_PDF_IMAGES || {};
             const wmData = pdfImages.watermerk || null;
@@ -2826,14 +2838,14 @@
             try {
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-                if (isLandscape) {
-                    const wmH = ph;
-                    const wmW = wmH * (2729 / 4091);
-                    const wmX = (pw - wmW) / 2;
-                    doc.addImage(wmData, 'PNG', wmX, 0, wmW, wmH);
-                } else {
-                    doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
-                }
+                // K afbeelding is portrait-ratio (2729x4091 ≈ 0.667)
+                // Centreer de K op de pagina, vul de hoogte en centreer horizontaal
+                const imgRatio = 2729 / 4091;
+                const wmH = ph * 0.85; // 85% van paginahoogte
+                const wmW = wmH * imgRatio;
+                const wmX = (pw - wmW) / 2;
+                const wmY = (ph - wmH) / 2;
+                doc.addImage(wmData, 'PNG', wmX, wmY, wmW, wmH);
             } catch(e) { console.warn('Watermerk fout:', e); }
         }
 
@@ -2923,7 +2935,7 @@
             const logoW = 32, logoH = logoW; // 1.2x groter (was 27)
             const logoX = rightX + (adresBlockW - logoW) / 2; // horizontaal gecentreerd
             if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
+                addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
             // --- KTS adresgegevens (onder logo) ---
@@ -3098,7 +3110,7 @@
             // --- Rij 26+: Handtekeningen ---
             y = totY + rh + 8;
             const sigW = (uw - 10) / 3;
-            const sigH = 30; // 1.5x groter (was 20)
+            const sigH = 22; // compact zodat het boven footer past
 
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(8);
@@ -3150,7 +3162,8 @@
             doc.line(sig3x, y + rh, pw - mr, y + rh);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
-            doc.text('Handtekening Opdrachtgever' + (clientName ? ' / ' + clientName : ''), sig3x + 1, y + 4);
+            const sigClientLabel = signatureData.clientName || clientName || '';
+            doc.text('Handtekening Opdrachtgever' + (sigClientLabel ? ' / ' + sigClientLabel : ''), sig3x + 1, y + 4);
             doc.setTextColor(0, 0, 0);
             doc.setLineWidth(lw); doc.setDrawColor(...borderColor);
             doc.rect(sig3x, y + rh, sig3w, sigH);
@@ -3203,7 +3216,7 @@
             const logoW = 28, logoH = 28;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
+                addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
             // KTS adresgegevens (onder logo)
@@ -3447,7 +3460,7 @@
         }
 
         // ===== HANDTEKENING CANVAS =====
-        let signatureData = { zzp: null, client: null };
+        let signatureData = { zzp: null, client: null, clientName: '', clientEmail: '' };
         const sigCanvases = {};
         const sigContexts = {};
         let sigDrawing = false;
@@ -3589,6 +3602,9 @@
             const clientSigned = !!signatureData.client;
             const clientName = document.getElementById('sig-client-name')?.value?.trim() || '';
             const clientEmail = document.getElementById('sig-client-email')?.value?.trim() || '';
+            // Bewaar in signatureData zodat generateWeekstaat() het kan gebruiken
+            signatureData.clientName = clientName;
+            signatureData.clientEmail = clientEmail;
 
             try {
                 if (clientSigned) {
@@ -7117,8 +7133,30 @@
                 }
             }
 
-            // Bereken factuurregels op basis van PO weken
-            const ioWeekNums = new Set(ioWeeks.map(pw => pw.week_number));
+            // Check welke weken al gefactureerd zijn
+            const { data: existingInvWeeks } = await sb.from('invoices')
+                .select('invoice_number, weeks')
+                .eq('user_id', userId)
+                .eq('project_id', projectId)
+                .eq('year', parseInt(year));
+            const alreadyInvoicedWeeks = new Set();
+            const invoicedWeekDetails = []; // voor waarschuwing
+            (existingInvWeeks || []).forEach(inv => {
+                if (inv.weeks && Array.isArray(inv.weeks)) {
+                    inv.weeks.forEach(w => {
+                        alreadyInvoicedWeeks.add(w);
+                        invoicedWeekDetails.push({ week: w, invoice: inv.invoice_number });
+                    });
+                }
+            });
+
+            // Filter PO-weken: verwijder al gefactureerde weken
+            const allIoWeekNums = ioWeeks.map(pw => pw.week_number);
+            const filteredIoWeekNums = allIoWeekNums.filter(w => !alreadyInvoicedWeeks.has(w));
+            const skippedWeeks = allIoWeekNums.filter(w => alreadyInvoicedWeeks.has(w));
+
+            // Bereken factuurregels op basis van PO weken (alleen niet-gefactureerde)
+            const ioWeekNums = new Set(filteredIoWeekNums);
             const yr = parseInt(year);
             const mo = parseInt(month);
             const firstDay = new Date(yr, mo - 1, 1);
@@ -7194,7 +7232,26 @@
             const content = document.getElementById('inv-preview-content');
             let html = '';
 
-            /* Duplicaat-melding verwijderd — systeem pakt automatisch het volgende nummer */
+            // Waarschuwing als weken al gefactureerd zijn
+            if (skippedWeeks.length > 0) {
+                const skippedDetails = skippedWeeks.map(w => {
+                    const inv = invoicedWeekDetails.find(d => d.week === w);
+                    return `Week ${w} (${inv ? inv.invoice : '?'})`;
+                }).join(', ');
+                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
+                    ⚠️ ${skippedWeeks.length === 1 ? 'Week' : 'Weken'} ${skippedDetails} ${skippedWeeks.length === 1 ? 'is' : 'zijn'} al gefactureerd en ${skippedWeeks.length === 1 ? 'wordt' : 'worden'} overgeslagen.
+                </div>`;
+            }
+
+            // Als alle weken al gefactureerd zijn
+            if (filteredIoWeekNums.length === 0) {
+                html += `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
+                    Alle weken zijn al gefactureerd. Er zijn geen nieuwe weken om te factureren.
+                </div>`;
+                content.innerHTML = html;
+                preview.style.display = 'block';
+                return;
+            }
 
             html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? clientCompany.name : '(Geen klant ingesteld op project)'}</div>`;
             html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Medewerker: ${user?.name || 'Onbekend'} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
@@ -7323,7 +7380,7 @@
             const logoW = 28, logoH = 28;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
+                addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
             // KTS adresgegevens (onder logo)
@@ -7546,12 +7603,14 @@
                 else console.log('Factuur geüpload:', filePath);
 
                 // Sla factuurrecord op in invoices tabel
+                const invoicedWeekNumbers = Object.values(invData.weekData).map(w => w.weekNum).sort((a,b) => a - b);
                 await sb.from('invoices').insert({
                     invoice_number: invoiceNumber,
                     user_id: invData.userId,
                     project_id: invData.projectId,
                     year: invData.year,
                     month: invData.month,
+                    weeks: invoicedWeekNumbers,
                     storage_path: filePath,
                     total_excl_btw: Object.keys(invData.weekData).reduce((sum, wk) => {
                         const w = invData.weekData[wk];
@@ -8040,7 +8099,7 @@
             const logoW = 28, logoH = 28;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
-                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
+                addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
             // KTS adresgegevens (onder logo)
@@ -8758,6 +8817,7 @@
 
                     if (approvalStatus === 'goedgekeurd') {
                         approvalBadge = '<span style="font-size:0.65rem;background:#d1fae5;color:#059669;padding:2px 6px;border-radius:4px;font-weight:600">✅ Goedgekeurd</span>';
+                        approvalAction = `<button onclick="event.stopPropagation();openConfirmationModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Bevestiging naar klant versturen">📩</button>`;
                     } else if (approvalStatus === 'ter_goedkeuring') {
                         approvalBadge = '<span style="font-size:0.65rem;background:#fef3c7;color:#d97706;padding:2px 6px;border-radius:4px;font-weight:600">⏳ Ter goedkeuring</span>';
                         approvalAction = `<button onclick="event.stopPropagation();copyApprovalLink('${ws.approval_token}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a" title="Link kopiëren">🔗</button>`;
@@ -9433,6 +9493,83 @@
             } catch (err) {
                 showToast('❌ Fout: ' + err.message);
             }
+        }
+
+        function openConfirmationModal(userId, projectId, weekNumber, year) {
+            const project = (window._adminProjects || []).find(p => p.id === projectId);
+            const user = (window._adminUsers || []).find(u => u.id === userId);
+            const userName = user ? (user.name || user.email) : 'Onbekend';
+            const projCode = project ? project.project_code : '?';
+            const projName = project ? project.name : '';
+
+            let clientEmail = '';
+            let clientName = '';
+            if (project && project.client_company_id) {
+                const company = typeof project.client_company_id === 'object' ? project.client_company_id : null;
+                if (company) {
+                    clientEmail = getContactEmailsByRole(company, 'receives_weekstaat');
+                    clientName = getContactNameByRole(company, 'receives_weekstaat') || company.name || '';
+                }
+            }
+
+            const content = `
+                <div style="margin-bottom:16px;padding:12px;background:#d1fae5;border-radius:8px;font-size:0.85rem">
+                    <div style="font-weight:700;color:#059669;margin-bottom:4px">✅ Weekstaat goedgekeurd (ter plekke ondertekend)</div>
+                    <div><strong>Medewerker:</strong> ${userName}</div>
+                    <div><strong>Project:</strong> ${projCode} — ${projName}</div>
+                    <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
+                </div>
+                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever dat de weekstaat is goedgekeurd en ondertekend.</div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>E-mail opdrachtgever</label>
+                    <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>Naam opdrachtgever</label>
+                    <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                </div>
+                <button onclick="sendConfirmationToClient('${userId}','${projectId}',${weekNumber},${year})" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;background:#059669">📩 Verstuur bevestiging</button>
+            `;
+
+            const modal = document.getElementById('admin-modal');
+            const titleEl = document.getElementById('admin-modal-title');
+            const fieldsEl = document.getElementById('admin-modal-fields');
+            const saveBtn = document.getElementById('admin-modal-save');
+            if (modal && titleEl && fieldsEl) {
+                titleEl.textContent = 'Bevestiging weekstaat versturen';
+                fieldsEl.innerHTML = content;
+                if (saveBtn) saveBtn.style.display = 'none';
+                const delBtn = document.getElementById('admin-modal-delete');
+                if (delBtn) delBtn.style.display = 'none';
+                modal.classList.add('active');
+            }
+        }
+
+        async function sendConfirmationToClient(userId, projectId, weekNumber, year) {
+            const email = document.getElementById('confirm-email').value.trim();
+            const name = document.getElementById('confirm-name').value.trim();
+            if (!email) { showToast('⚠️ Vul een e-mailadres in'); return; }
+
+            const user = (window._adminUsers || []).find(u => u.id === userId);
+            const project = (window._adminProjects || []).find(p => p.id === projectId);
+            const userName = user ? (user.name || user.email) : 'Medewerker';
+            const projCode = project ? project.project_code : '';
+            const projName = project ? project.name : '';
+
+            const subject = encodeURIComponent(`Bevestiging weekstaat goedgekeurd — ${userName} — Week ${weekNumber}/${year}`);
+            const mailBody = encodeURIComponent(
+                `Beste ${name || 'opdrachtgever'},\n\n` +
+                `Hierbij bevestigen wij dat de weekstaat van ${userName} voor week ${weekNumber}/${year} is goedgekeurd en ondertekend.\n\n` +
+                `Project: ${projCode} — ${projName}\n` +
+                `Week: ${weekNumber} / ${year}\n\n` +
+                `Een kopie van de getekende weekstaat is als bijlage toegevoegd.\n\n` +
+                `Met vriendelijke groet,\n` +
+                `Mark Kuijpers\nKuijpers Technical Services B.V.`
+            );
+            window.open(`mailto:${email}?subject=${subject}&body=${mailBody}`);
+
+            document.getElementById('admin-modal').classList.remove('active');
+            showToast('✓ Bevestiging verstuurd naar ' + email);
         }
 
         async function downloadWeekstaatFromStorage(path) {
