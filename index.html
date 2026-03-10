@@ -100,7 +100,7 @@
             transform: translate(-50%, -50%);
             width: 450px;
             height: 450px;
-            background: url('K_KTS.jpg') center/contain no-repeat;
+            background: center/contain no-repeat;
             opacity: 0.04;
             pointer-events: none;
             z-index: 0;
@@ -691,6 +691,18 @@
 
     <!-- PDF afbeeldingen als base64 (apart bestand, 31KB) -->
     <script src="kts-pdf-images.js"></script>
+    <script>
+    // Stel CSS watermark en login logo in vanuit base64 (geen losse bestanden nodig)
+    document.addEventListener('DOMContentLoaded', function() {
+        var imgs = window.KTS_PDF_IMAGES || {};
+        // Achtergrond K-watermark
+        var wm = document.querySelector('.watermark');
+        if (wm && imgs.watermerk) wm.style.backgroundImage = 'url(' + imgs.watermerk + ')';
+        // Login logo
+        var logo = document.getElementById('login-logo-img');
+        if (logo && imgs.logo) logo.src = imgs.logo;
+    });
+    </script>
 
     <!-- LOGIN OVERLAY -->
     <div id="login-overlay" style="
@@ -722,7 +734,7 @@
                     padding:40px 28px;
                     border-right:3px solid var(--kts-blue);
                 ">
-                    <img src="KTS%20BV%20logo2.jpg" alt="Kuijpers Technical Services" style="width:180px;object-fit:contain">
+                    <img id="login-logo-img" src="" alt="Kuijpers Technical Services" style="width:180px;object-fit:contain">
                 </div>
 
                 <!-- Rechter paneel: formulier -->
