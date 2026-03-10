@@ -1431,12 +1431,16 @@
 
             <!-- Opdrachtgever handtekening -->
             <div style="margin-bottom:16px">
-                <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Handtekening opdrachtgever <span style="font-weight:400;color:var(--muted)">(optioneel)</span></div>
+                <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Handtekening opdrachtgever <span style="font-weight:400;color:var(--muted)">(optioneel — ter plekke laten tekenen)</span></div>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <input type="text" id="sig-client-name" placeholder="Naam opdrachtgever" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                    <input type="email" id="sig-client-email" placeholder="E-mail" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                </div>
                 <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
                     <canvas id="sig-canvas-client" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
                     <button onclick="clearSignature('client')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
                 </div>
-                <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Laat de opdrachtgever hier tekenen (optioneel)</div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Laat de opdrachtgever hier tekenen — weekstaat wordt dan direct goedgekeurd</div>
             </div>
 
             <div class="form-actions" style="margin-top:16px">
@@ -3509,11 +3513,74 @@
             if (btn) { btn.innerHTML = '⏳ Ondertekenen...'; btn.disabled = true; }
             closeModal('signature-modal');
 
+            // Check of opdrachtgever ook getekend heeft
+            const clientSigned = !!signatureData.client;
+            const clientName = document.getElementById('sig-client-name')?.value?.trim() || '';
+            const clientEmail = document.getElementById('sig-client-email')?.value?.trim() || '';
+
             try {
-                await updateWeekStatus('ondertekend');
-                logAudit('week_ondertekend', { week: currentWeekNumber });
-                notifyOtherTabs();
-                showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
+                if (clientSigned) {
+                    // Opdrachtgever heeft ter plekke getekend → direct goedgekeurd
+                    await updateWeekStatus('verstuurd'); // eerst status op verstuurd
+
+                    // Sla goedkeuring op in week_status
+                    const sb = getSupabase();
+                    if (sb && currentUser && currentProject) {
+                        const token = crypto.randomUUID();
+                        await sb.from('week_status')
+                            .update({
+                                approval_token: token,
+                                approval_status: 'goedgekeurd',
+                                approval_completed_at: new Date().toISOString(),
+                                approver_name: clientName || 'Opdrachtgever (ter plekke)',
+                                approver_email: clientEmail || null,
+                                client_signature_url: signatureData.client
+                            })
+                            .eq('user_id', currentUser.id)
+                            .eq('project_id', currentProject.id)
+                            .eq('week_number', currentWeekNumber)
+                            .eq('year', currentYear);
+                    }
+
+                    logAudit('week_ondertekend_goedgekeurd', {
+                        week: currentWeekNumber,
+                        approver: clientName || 'ter plekke',
+                        approver_email: clientEmail
+                    });
+                    notifyOtherTabs();
+                    showToast('✅ Week ' + currentWeekNumber + ' ondertekend & goedgekeurd — PDF wordt gegenereerd...');
+
+                    // Automatisch PDF genereren + downloaden
+                    try {
+                        if (!window.jspdf) {
+                            for (let w = 0; w < 10; w++) { await new Promise(r => setTimeout(r, 500)); if (window.jspdf) break; }
+                        }
+                        const weekstaat = await generateWeekstaat();
+                        if (weekstaat) {
+                            const projCode = currentProject ? currentProject.project_code : 'KTS';
+                            const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
+                            const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userName ? '_' + userName : ''}.pdf`;
+                            weekstaat.save(fileName);
+
+                            // Backup naar Supabase Storage
+                            try {
+                                const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
+                                const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+                                const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+                                const storagePath = `${currentYear}/week-${currentWeekNumber}/${fileName}`;
+                                await sb.storage.from('weekstaten').upload(storagePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
+                            } catch(e) { console.warn('Storage backup overgeslagen:', e); }
+
+                            showToast('✅ Weekstaat goedgekeurd & PDF gedownload');
+                        }
+                    } catch(pdfErr) { console.warn('PDF generatie na goedkeuring:', pdfErr); }
+                } else {
+                    // Alleen ZZP'er getekend — normale flow
+                    await updateWeekStatus('ondertekend');
+                    logAudit('week_ondertekend', { week: currentWeekNumber });
+                    notifyOtherTabs();
+                    showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
+                }
                 await renderOverview();
             } catch (err) {
                 showToast('⚠️ Ondertekenen mislukt — probeer opnieuw');
