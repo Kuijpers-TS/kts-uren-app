@@ -7627,7 +7627,7 @@
             doc.setFontSize(8);
 
             // Bereken vervaldatum
-            const payTermDays = getPaymentTermDays();
+            const payTermDays = getPaymentTermDays(invData.clientCompany?.id);
             const dueDate30 = new Date(today);
             dueDate30.setDate(dueDate30.getDate() + payTermDays);
             const dueDateStr = dueDate30.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -8333,20 +8333,14 @@
             doc.text(fmtEuroPdf(total), totX2, y + 3, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // Betalingsinstructie gecentreerd boven voettekst
+            // Betalingstermijn gecentreerd boven voettekst
             const footerTopIO = ph - 12;
-            const payBlockYIO = footerTopIO - 22;
+            const payBlockYIO = footerTopIO - 12;
             const cxIO = pw / 2;
-            const dueDateIO = new Date();
-            dueDateIO.setDate(dueDateIO.getDate() + getPaymentTermDays());
-            const dueDateStrIO = dueDateIO.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const payTermDaysIO = getPaymentTermDays(ioData.ioCompany?.id || ioData.company?.id);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
-            doc.text(`U wordt vriendelijk verzocht het bedrag van ${fmtEuroPdf(total)} vóór ${dueDateStrIO} over te maken op:`, cxIO, payBlockYIO, { align: 'center' });
-            doc.setFont(pdfFont, 'bold');
-            doc.text(`IBAN: ${KTS_INFO.iban}  t.n.v. ${KTS_INFO.naam}`, cxIO, payBlockYIO + 5, { align: 'center' });
-            doc.setFont(pdfFont, 'normal');
-            doc.text(`onder vermelding van het factuurnummer: ${ioData.invoiceNumber || ''}`, cxIO, payBlockYIO + 10, { align: 'center' });
+            doc.text(`Betalingstermijn: ${payTermDaysIO} dagen na factuurdatum`, cxIO, payBlockYIO, { align: 'center' });
 
             // Voettekst toevoegen
             addPdfFooter(doc, false);
@@ -9579,6 +9573,7 @@
             const userName = user ? (user.name || user.email) : 'Onbekend';
             const projCode = project ? project.project_code : '?';
             const projName = project ? project.name : '';
+            const userSlug = userName.replace(/\s+/g, '_');
 
             let clientEmail = '';
             let clientName = '';
@@ -9592,12 +9587,12 @@
 
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:#d1fae5;border-radius:8px;font-size:0.85rem">
-                    <div style="font-weight:700;color:#059669;margin-bottom:4px">✅ Weekstaat goedgekeurd (ter plekke ondertekend)</div>
+                    <div style="font-weight:700;color:#059669;margin-bottom:4px">✅ Weekstaat goedgekeurd</div>
                     <div><strong>Medewerker:</strong> ${userName}</div>
                     <div><strong>Project:</strong> ${projCode} — ${projName}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
                 </div>
-                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever dat de weekstaat is goedgekeurd en ondertekend.</div>
+                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever met de weekstaat PDF als bijlage.</div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
                     <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
@@ -9606,7 +9601,8 @@
                     <label>Naam opdrachtgever</label>
                     <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                 </div>
-                <button onclick="sendConfirmationToClient('${userId}','${projectId}',${weekNumber},${year})" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;background:#059669">📩 Verstuur bevestiging</button>
+                <div id="confirm-status" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:0.8rem"></div>
+                <button id="confirm-send-btn" onclick="sendConfirmationToClient('${userId}','${projectId}',${weekNumber},${year},'${projCode}','${userSlug}')" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;background:#059669">📩 Verstuur bevestiging met PDF</button>
             `;
 
             const modal = document.getElementById('admin-modal');
@@ -9623,31 +9619,113 @@
             }
         }
 
-        async function sendConfirmationToClient(userId, projectId, weekNumber, year) {
+        async function sendConfirmationToClient(userId, projectId, weekNumber, year, projCode, userSlug) {
             const email = document.getElementById('confirm-email').value.trim();
             const name = document.getElementById('confirm-name').value.trim();
             if (!email) { showToast('⚠️ Vul een e-mailadres in'); return; }
 
+            const btn = document.getElementById('confirm-send-btn');
+            const statusEl = document.getElementById('confirm-status');
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Bezig...'; }
+
             const user = (window._adminUsers || []).find(u => u.id === userId);
             const project = (window._adminProjects || []).find(p => p.id === projectId);
             const userName = user ? (user.name || user.email) : 'Medewerker';
-            const projCode = project ? project.project_code : '';
+            const pCode = projCode || (project ? project.project_code : '');
             const projName = project ? project.name : '';
+            const uSlug = userSlug || userName.replace(/\s+/g, '_');
 
-            const subject = encodeURIComponent(`Bevestiging weekstaat goedgekeurd — ${userName} — Week ${weekNumber}/${year}`);
-            const mailBody = encodeURIComponent(
-                `Beste ${name || 'opdrachtgever'},\n\n` +
-                `Hierbij bevestigen wij dat de weekstaat van ${userName} voor week ${weekNumber}/${year} is goedgekeurd en ondertekend.\n\n` +
-                `Project: ${projCode} — ${projName}\n` +
-                `Week: ${weekNumber} / ${year}\n\n` +
-                `Een kopie van de getekende weekstaat is als bijlage toegevoegd.\n\n` +
-                `Met vriendelijke groet,\n` +
-                `Mark Kuijpers\nKuijpers Technical Services B.V.`
-            );
-            window.open(`mailto:${email}?subject=${subject}&body=${mailBody}`);
+            function showStatus(msg, isError) {
+                if (!statusEl) return;
+                statusEl.style.display = '';
+                statusEl.style.background = isError ? '#fee2e2' : '#dbeafe';
+                statusEl.style.color = isError ? '#dc2626' : '#1e40af';
+                statusEl.textContent = msg;
+            }
 
-            document.getElementById('admin-modal').classList.remove('active');
-            showToast('✓ Bevestiging verstuurd naar ' + email);
+            try {
+                const sb = getSupabase();
+                if (!sb) throw new Error('Niet verbonden met database');
+
+                // 1. Zoek PDF in Supabase Storage
+                if (btn) btn.innerHTML = '🔍 PDF zoeken...';
+                showStatus('PDF ophalen uit storage...', false);
+
+                const folderPath = `${year}/week-${weekNumber}`;
+                const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
+                const match = (files || []).find(f => f.name.includes(pCode) || f.name.includes(uSlug));
+
+                let pdfBase64 = null;
+                let pdfFileName = null;
+
+                if (match) {
+                    // Download PDF als blob
+                    if (btn) btn.innerHTML = '📄 PDF downloaden...';
+                    const { data: blob, error: dlErr } = await sb.storage.from('weekstaten').download(`${folderPath}/${match.name}`);
+                    if (dlErr) throw new Error('PDF download mislukt: ' + dlErr.message);
+
+                    // Blob naar base64
+                    const arrayBuf = await blob.arrayBuffer();
+                    const bytes = new Uint8Array(arrayBuf);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                    pdfBase64 = btoa(binary);
+                    pdfFileName = match.name;
+                }
+
+                if (!pdfBase64) {
+                    showStatus('⚠️ PDF niet gevonden in storage — mail wordt zonder bijlage verstuurd', true);
+                }
+
+                // 2. Verstuur via Edge Function
+                if (btn) btn.innerHTML = '📩 Email versturen...';
+                showStatus('Email versturen via Edge Function...', false);
+
+                let edgeFunctionOk = false;
+                try {
+                    const { data: fnData, error: fnErr } = await sb.functions.invoke('send-weekstaat-confirmation', {
+                        body: {
+                            pdfBase64: pdfBase64,
+                            fileName: pdfFileName || `Weekstaat_${pCode}_Week${weekNumber}_${year}_${uSlug}.pdf`,
+                            recipientEmail: email,
+                            recipientName: name,
+                            userName: userName,
+                            projectCode: pCode,
+                            projectName: projName,
+                            weekNumber: parseInt(weekNumber),
+                            year: parseInt(year)
+                        }
+                    });
+                    if (!fnErr && fnData && !fnData.error) {
+                        edgeFunctionOk = true;
+                    } else {
+                        console.warn('Edge Function fout:', fnErr?.message || fnData?.error);
+                    }
+                } catch (fnErr) {
+                    console.warn('Edge Function niet beschikbaar:', fnErr);
+                }
+
+                // 3. Fallback: mailto (zonder PDF bijlage)
+                if (!edgeFunctionOk) {
+                    showStatus('Edge Function niet beschikbaar — mail openen zonder bijlage...', true);
+                    const subject = encodeURIComponent(`Bevestiging weekstaat goedgekeurd — ${userName} — Week ${weekNumber}/${year}`);
+                    const mailBody = encodeURIComponent(
+                        `Beste ${name || 'opdrachtgever'},\n\n` +
+                        `Hierbij bevestigen wij dat de weekstaat van ${userName} voor week ${weekNumber}/${year} is goedgekeurd en ondertekend.\n\n` +
+                        `Project: ${pCode} — ${projName}\n` +
+                        `Week: ${weekNumber} / ${year}\n\n` +
+                        `Met vriendelijke groet,\n` +
+                        `Mark Kuijpers\nKuijpers Technical Services B.V.`
+                    );
+                    window.open(`mailto:${email}?subject=${subject}&body=${mailBody}`);
+                }
+
+                document.getElementById('admin-modal').classList.remove('active');
+                showToast(edgeFunctionOk ? '✅ Bevestiging met PDF verstuurd naar ' + email : '✓ Mail geopend (zonder PDF bijlage)');
+            } catch (err) {
+                showStatus('❌ Fout: ' + err.message, true);
+                if (btn) { btn.disabled = false; btn.innerHTML = '📩 Verstuur bevestiging met PDF'; }
+            }
         }
 
         async function downloadWeekstaatFromStorage(path) {
