@@ -2800,54 +2800,58 @@
             return '€ ' + Number(n).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        // ===== PDF WATERMERK & VOETTEKST HELPER =====
-        function addPdfWatermarkAndFooter(doc, isLandscape) {
+        // ===== PDF WATERMERK & VOETTEKST HELPERS =====
+        // Watermerk op huidige pagina tekenen — roep aan VÓÓR content
+        function addPdfWatermark(doc, isLandscape) {
             const pdfImages = window.KTS_PDF_IMAGES || {};
             const wmData = pdfImages.watermerk || null;
+            if (!wmData) return;
+            try {
+                const pw = doc.internal.pageSize.getWidth();
+                const ph = doc.internal.pageSize.getHeight();
+                if (isLandscape) {
+                    const wmH = ph;
+                    const wmW = wmH * (2729 / 4091);
+                    const wmX = (pw - wmW) / 2;
+                    doc.addImage(wmData, 'PNG', wmX, 0, wmW, wmH);
+                } else {
+                    doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
+                }
+            } catch(e) { console.warn('Watermerk fout:', e); }
+        }
+
+        // Voettekst op alle pagina's tekenen — roep aan NA content
+        function addPdfFooter(doc, isLandscape) {
             const pageCount = doc.internal.getNumberOfPages();
             const ktsFooterBlue = [37, 92, 134]; // #255C86
-
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-
-                // Watermerk — afbeelding is portrait (2:3 ratio)
-                if (wmData) {
-                    try {
-                        if (isLandscape) {
-                            // Landscape: schaal watermerk naar paginahoogte, centreer horizontaal
-                            const wmH = ph;
-                            const wmW = wmH * (2729 / 4091); // behoud aspect ratio
-                            const wmX = (pw - wmW) / 2;
-                            doc.addImage(wmData, 'PNG', wmX, 0, wmW, wmH);
-                        } else {
-                            // Portrait: vul hele pagina
-                            doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
-                        }
-                    } catch(e) { console.warn('Watermerk fout:', e); }
-                }
-
-                // Voettekst — Kuijpers bedrijfsgegevens
                 const footY = ph - 12;
                 const ml = 15;
                 doc.setFontSize(7);
                 doc.setTextColor(...ktsFooterBlue);
-
-                // Links kolom
                 doc.text('Kuijpers Technical Services B.V.', ml, footY);
                 doc.text('Nieuwboerweg 2A', ml, footY + 3);
                 doc.text('1738BB Waarland', ml, footY + 6);
-
-                // Rechts kolom
                 const rCol = isLandscape ? 220 : 140;
                 doc.text('KVK: 93410557', rCol, footY);
                 doc.text('BTW: NL866385368B01', rCol, footY + 3);
                 doc.text('info@kuijpers-ts.nl', rCol, footY + 6);
-
-                // Reset text color
                 doc.setTextColor(0, 0, 0);
             }
+        }
+
+        // Backwards-compatible wrapper (voor inspectie PDF etc.)
+        function addPdfWatermarkAndFooter(doc, isLandscape) {
+            // Watermerk op alle bestaande pagina's (achteraf, werkt als achtergrond niet over content heen)
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                addPdfWatermark(doc, isLandscape);
+            }
+            addPdfFooter(doc, isLandscape);
         }
 
         // ===== WEEKSTAAT PDF =====
@@ -2859,6 +2863,8 @@
             const TANDWIEL_DATA_URL = pdfImages.tandwiel || null;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            // Watermerk als eerste laag
+            addPdfWatermark(doc, true);
             // DaxlinePro als beschikbaar (TTF), anders fallback naar helvetica
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             const pw = 297, ph = 210, ml = 15, mr = 15, uw = pw - ml - mr;
@@ -3140,8 +3146,8 @@
             doc.text('Datum: ' + (signatureData.client ? new Date().toLocaleDateString('nl-NL') : '___________________________________'), sig3x + 1, y + rh + sigH + 4);
             doc.setTextColor(0, 0, 0);
 
-            // Watermerk & voettekst toevoegen
-            addPdfWatermarkAndFooter(doc, true);
+            // Voettekst toevoegen (watermerk al aan begin getekend)
+            addPdfFooter(doc, true);
 
             return doc;
         }
@@ -3151,47 +3157,98 @@
             if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return null; }
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            addPdfWatermark(doc, false);
             const pw = 210, ph = 297, ml = 15, mr = 15, uw = pw - ml - mr;
 
             // --- Header ---
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text(KTS_INFO.naam, ml, 18);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.text(KTS_INFO.adres, ml, 23);
-            doc.text(KTS_INFO.postcode, ml, 27);
-            doc.text(KTS_INFO.land, ml, 35);
-            doc.text(`KVK: ${KTS_INFO.kvk}`, ml, 39);
-            doc.text(`BTW: ${KTS_INFO.btw}`, ml, 43);
+            const ktsBlue = [7, 86, 127];
+            const pdfImages = window.KTS_PDF_IMAGES || {};
+            const KTS_LOGO_B64 = pdfImages.logo || null;
+            const GEAR_B64 = pdfImages.tandwiel || null;
 
-            // Inkooporder titel
-            doc.setFontSize(16);
+            const titleFontSize = 19;
+            const titleY = 15;
+            doc.setFontSize(titleFontSize);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(7, 86, 127);
-            doc.text('Inkooporder', pw/2, 18);
+            doc.setTextColor(...ktsBlue);
+            const iconSize = 10;
+            const textCapHeightMm = titleFontSize * 0.3528 * 0.72;
+            const iconY = titleY - textCapHeightMm / 2 - iconSize / 2;
+            if (GEAR_B64) {
+                try { doc.addImage(GEAR_B64, 'PNG', ml, iconY, iconSize, iconSize); } catch(e) {}
+            }
+            doc.text('INKOOPORDER', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
+
+            // KTS Logo rechtsboven
+            const rightX = pw - mr - 55;
+            const adresBlockW = pw - mr - rightX;
+            const logoW = 28, logoH = 28;
+            const logoX = rightX + (adresBlockW - logoW) / 2;
+            if (KTS_LOGO_B64) {
+                try { doc.addImage(KTS_LOGO_B64, 'JPEG', logoX, 4, logoW, logoH); } catch(e) {}
+            }
+
+            // KTS adresgegevens (onder logo)
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(KTS_INFO.adres, rightX, 35);
+            doc.text(KTS_INFO.postcode, pw - mr, 35, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 39);
+            doc.text(KTS_INFO.tel2, pw - mr, 39, { align: 'right' });
+            doc.setTextColor(...ktsBlue);
+            doc.text(KTS_INFO.email, rightX, 43);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 43, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // Project + PO-nummer + datum
+            // Info data
             const projCode = currentProject ? (currentProject.project_code || '') : '';
+            const projName = currentProject ? (currentProject.name || '') : '';
+            const clientName = currentProject ? (currentProject.client_name || '') : '';
             const today = new Date();
             const ioDate = fmtDate(today);
             const ioNum = ioNumber || 'IO-????';
+            const userName = currentUser ? currentUser.name : '';
+            const MONTHS_NL_IO = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            const periodeMonth = MONTHS_NL_IO[today.getMonth()];
+            const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
+            const periodeTekst = `${periodeMonth} ${currentYear} (${weekLabel})`;
 
-            doc.setFontSize(8);
+            // ===== INFO BLOK =====
+            let y = 52;
+            const col1 = ml, col2 = ml + 60, col3 = ml + 120;
+
+            // Rij 1: IO-nummer, IO-datum, Project
             doc.setFont('helvetica', 'bold');
-            const rx = pw/2;
-            doc.text('PROJECT', rx, 26);
-            doc.text('DATUM', rx, 33);
-            doc.text('IO-NUMMER', rx, 40);
-
+            doc.setFontSize(9);
+            doc.setTextColor(...ktsBlue);
+            doc.text('IO-nummer:', col1, y);
+            doc.text('IO-datum:', col2, y);
+            doc.text('Project:', col3, y);
             doc.setFont('helvetica', 'normal');
-            doc.text(projCode, rx + 35, 26);
-            doc.text(ioDate, rx + 35, 33);
-            doc.text(ioNum, rx + 35, 40);
+            doc.setFontSize(8);
+            doc.setTextColor(0, 0, 0);
+            doc.text(ioNum, col1, y + 5);
+            doc.text(ioDate, col2, y + 5);
+            doc.text(projCode + (projName ? ' – ' + projName : ''), col3, y + 5);
+
+            // Rij 2: Periode, Medewerker, Klant
+            y += 14;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(...ktsBlue);
+            doc.text('Periode:', col1, y);
+            doc.text('Medewerker:', col2, y);
+            doc.text('Klant:', col3, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(0, 0, 0);
+            doc.text(periodeTekst, col1, y + 5);
+            doc.text(userName, col2, y + 5);
+            doc.text(clientName, col3, y + 5);
 
             // --- Leverancier + Leveradres ---
-            let y = 52;
+            y += 16;
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(8);
             doc.text('LEVERANCIER (ZZP)', ml, y);
@@ -3199,7 +3256,6 @@
 
             doc.setFont('helvetica', 'normal');
             y += 5;
-            const userName = currentUser ? currentUser.name : '';
             doc.text(userName, ml, y);
             doc.text('Mark Kuijpers', pw/2, y);
             y += 4;
@@ -3222,9 +3278,6 @@
             const sunHours = weekData[6].hours;
             const totalKm = weekData.reduce((s,e) => s + (e.km || 0), 0);
             const hotelNights = weekData.filter(e => e.hotel).length;
-
-            const projName = currentProject ? currentProject.name : '';
-            const weekLabel = `Week ${currentWeekNumber} / ${currentYear}`;
 
             const lines = [];
             let lineNum = 1;
@@ -3302,8 +3355,8 @@
             doc.setFontSize(7);
             doc.text(`Weekstaat ${weekLabel} bijgevoegd als bijlage.`, ml, y + 5);
 
-            // Watermerk & voettekst toevoegen
-            addPdfWatermarkAndFooter(doc, false);
+            // Voettekst toevoegen
+            addPdfFooter(doc, false);
 
             return doc;
         }
@@ -3755,6 +3808,7 @@
             // PDF genereren
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            addPdfWatermark(doc, false);
             const pw = 210, ml = 15, mr = 15, uw = pw - ml - mr;
 
             // KTS gegevens rechtsboven
@@ -3858,20 +3912,20 @@
             doc.text('Totaal te betalen', lblX, y);
             doc.text(fmtEuroPdf(totalIncl), totX, y, { align: 'right' });
 
-            // Betalingsinstructie
-            y += 15;
+            // Betalingsinstructie gecentreerd boven voettekst
+            const footerTopCF = 297 - 12;
+            const payBlockYCF = footerTopCF - 22;
+            const cxCF = 210 / 2;
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.text(`U wordt vriendelijk verzocht het bedrag van ${fmtEuroPdf(totalIncl)} voor ${fmtDate(dueDate)} over te maken op:`, ml, y);
-            y += 6;
+            doc.text(`U wordt vriendelijk verzocht het bedrag van \u20AC ${fmtEuroPdf(totalIncl)} v\u00F3\u00F3r ${fmtDate(dueDate)} over te maken op:`, cxCF, payBlockYCF, { align: 'center' });
             doc.setFont('helvetica', 'bold');
-            doc.text(`${KTS_INFO.iban} t.n.v. ${KTS_INFO.naam}`, ml, y);
+            doc.text(`IBAN: ${KTS_INFO.iban}  t.n.v. ${KTS_INFO.naam}`, cxCF, payBlockYCF + 5, { align: 'center' });
             doc.setFont('helvetica', 'normal');
-            y += 5;
-            doc.text(`o.v.v. factuurnummer ${factuurNum}`, ml, y);
+            doc.text(`onder vermelding van het factuurnummer: ${factuurNum}`, cxCF, payBlockYCF + 10, { align: 'center' });
 
-            // Watermerk & voettekst toevoegen
-            addPdfWatermarkAndFooter(doc, false);
+            // Voettekst toevoegen
+            addPdfFooter(doc, false);
 
             // Opslaan
             const fileName = `Factuur_${factuurNum}_${clientName.replace(/[^a-zA-Z0-9]/g,'_')}_${monthName}_${year}.pdf`;
@@ -7191,6 +7245,7 @@
 
             // Portrait A4
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            addPdfWatermark(doc, false);
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             doc.setFont(pdfFont);
 
@@ -7256,30 +7311,32 @@
             let y = 52;
             const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
+            // Rij 1: Factuurnummer, Factuurdatum, Project
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ktsBlue);
-            doc.text('Medewerker:', col1, y);
-            doc.text('Periode:', col2, y);
-            doc.text('Factuurnummer:', col3, y);
+            doc.text('Factuurnummer:', col1, y);
+            doc.text('Factuurdatum:', col2, y);
+            doc.text('Project:', col3, y);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
-            doc.text(userName, col1, y + 5);
-            doc.text(maandTekst + ' (' + wekenLabel + ')', col2, y + 5);
-            doc.text(invoiceNumber, col3, y + 5);
+            doc.text(invoiceNumber, col1, y + 5);
+            doc.text(today.toLocaleDateString('nl-NL'), col2, y + 5);
+            doc.text((invData.project?.project_code || '') + ' – ' + (invData.project?.name || ''), col3, y + 5);
 
+            // Rij 2: Periode, Medewerker
             y += 14;
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ktsBlue);
-            doc.text('Project:', col1, y);
-            doc.text('Factuurdatum:', col2, y);
+            doc.text('Periode:', col1, y);
+            doc.text('Medewerker:', col2, y);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
-            doc.text((invData.project?.project_code || '') + ' – ' + (invData.project?.name || ''), col1, y + 5);
-            doc.text(today.toLocaleDateString('nl-NL'), col2, y + 5);
+            doc.text(maandTekst + ' (' + wekenLabel + ')', col1, y + 5);
+            doc.text(userName, col2, y + 5);
 
             // ===== FACTUURADRES + AFZENDER naast elkaar =====
             y += 16;
@@ -7408,16 +7465,26 @@
             doc.text(fmtEuroPdf(total), totX2, y + 3, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // Betalingsgegevens links
+            // Betalingsgegevens gecentreerd boven voettekst
+            const footerTop = ph - 12; // voettekst begint hier
+            const payBlockY = footerTop - 22;
+            const cx = pw / 2;
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
-            const payY = doc.lastAutoTable.finalY + 6;
-            doc.text('BETALINGSTERMIJN  30 dagen na factuurdatum', ml, payY);
-            doc.text('IBAN: ' + KTS_INFO.iban + '  ·  BIC: ' + KTS_INFO.bic + '  ·  t.n.v. ' + KTS_INFO.naam, ml, payY + 5);
-            doc.text('o.v.v. ' + invoiceNumber, ml, payY + 10);
 
-            // Watermerk & voettekst toevoegen
-            addPdfWatermarkAndFooter(doc, false);
+            // Bereken vervaldatum (30 dagen)
+            const dueDate30 = new Date(today);
+            dueDate30.setDate(dueDate30.getDate() + 30);
+            const dueDateStr = dueDate30.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            doc.text(`U wordt vriendelijk verzocht het bedrag van ${fmtEuroPdf(total)} vóór ${dueDateStr} over te maken op:`, cx, payBlockY, { align: 'center' });
+            doc.setFont(pdfFont, 'bold');
+            doc.text(`IBAN: ${KTS_INFO.iban}  t.n.v. ${KTS_INFO.naam}`, cx, payBlockY + 5, { align: 'center' });
+            doc.setFont(pdfFont, 'normal');
+            doc.text(`onder vermelding van het factuurnummer: ${invoiceNumber}`, cx, payBlockY + 10, { align: 'center' });
+
+            // Voettekst toevoegen
+            addPdfFooter(doc, false);
 
             // Download
             const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
@@ -7902,6 +7969,7 @@
 
             // Portrait A4
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            addPdfWatermark(doc, false);
             const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
             doc.setFont(pdfFont);
 
@@ -8121,13 +8189,23 @@
             doc.text(fmtEuroPdf(total), totX2, y + 3, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
-            // Betalingstermijn links naast totalen
+            // Betalingsinstructie gecentreerd boven voettekst
+            const footerTopIO = ph - 12;
+            const payBlockYIO = footerTopIO - 22;
+            const cxIO = pw / 2;
+            const dueDateIO = new Date();
+            dueDateIO.setDate(dueDateIO.getDate() + 30);
+            const dueDateStrIO = dueDateIO.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
-            doc.text('BETALINGSTERMIJN  30 dagen na factuurdatum', ml, y + 3);
+            doc.text(`U wordt vriendelijk verzocht het bedrag van ${fmtEuroPdf(total)} vóór ${dueDateStrIO} over te maken op:`, cxIO, payBlockYIO, { align: 'center' });
+            doc.setFont(pdfFont, 'bold');
+            doc.text(`IBAN: ${KTS_INFO.iban}  t.n.v. ${KTS_INFO.naam}`, cxIO, payBlockYIO + 5, { align: 'center' });
+            doc.setFont(pdfFont, 'normal');
+            doc.text(`onder vermelding van het factuurnummer: ${ioData.invoiceNumber || ''}`, cxIO, payBlockYIO + 10, { align: 'center' });
 
-            // Watermerk & voettekst toevoegen
-            addPdfWatermarkAndFooter(doc, false);
+            // Voettekst toevoegen
+            addPdfFooter(doc, false);
 
             // Save to Supabase and open mailto
             const pdfData = doc.output('datauristring');
@@ -10569,6 +10647,7 @@
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            addPdfWatermark(doc, false);
             const pw = 210, ml = 15, mr = 15, uw = pw - ml - mr;
             const tpl = insp.inspection_templates || {};
             const sections = tpl.sections || [];
@@ -10578,7 +10657,7 @@
             const lineH = 5;
 
             function checkPage(needed) {
-                if (y + needed > 275) { doc.addPage(); y = 15; return true; }
+                if (y + needed > 275) { doc.addPage(); addPdfWatermark(doc, false); y = 15; return true; }
                 return false;
             }
 
@@ -10757,8 +10836,8 @@
                 doc.setTextColor(0);
             }
 
-            // Watermerk & voettekst toevoegen
-            addPdfWatermarkAndFooter(doc, false);
+            // Voettekst toevoegen
+            addPdfFooter(doc, false);
 
             // Download
             const filename = `Inspectierapport_${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
