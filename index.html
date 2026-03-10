@@ -2849,7 +2849,8 @@
                 const gState = new doc.GState({ opacity: 0.35 });
                 doc.saveGraphicsState();
                 doc.setGState(gState);
-                doc.addImage(logoB64, 'JPEG', x, y, w, h);
+                const fmt = logoB64.includes('image/png') ? 'PNG' : 'JPEG';
+                doc.addImage(logoB64, fmt, x, y, w, h);
                 doc.restoreGraphicsState();
             } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
         }
@@ -8180,31 +8181,34 @@
             let y = 52;
             const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
-            // Labels
+            // Rij 1: IO-nummer, IO-datum, Project
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ktsBlue);
-            doc.text('Medewerker:', col1, y);
-            doc.text('Periode:', col2, y);
+            doc.text('IO-nummer:', col1, y);
+            doc.text('IO-datum:', col2, y);
+            doc.text('Project:', col3, y);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
-            doc.text(userName, col1, y + 5);
-            doc.text(maandTekst + ' (' + wekenTekst + ')', col2, y + 5);
+            doc.text(ioNumber, col1, y + 5);
+            doc.text(fmtDate(new Date()), col2, y + 5);
+            doc.text(ioData.project.project_code + ' – ' + (ioData.project.name || ''), col3, y + 5);
 
+            // Rij 2: Periode, Medewerker, Klant
             y += 14;
             doc.setFont(pdfFont, 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ktsBlue);
-            doc.text('Project:', col1, y);
-            doc.text('Klant:', col2, y);
-            doc.text('IO-nummer:', col3, y);
+            doc.text('Periode:', col1, y);
+            doc.text('Medewerker:', col2, y);
+            doc.text('Klant:', col3, y);
             doc.setFont(pdfFont, 'normal');
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
-            doc.text(ioData.project.project_code + ' – ' + (ioData.project.name || ''), col1, y + 5);
-            doc.text(ioData.project.client_name || '', col2, y + 5);
-            doc.text(ioNumber, col3, y + 5);
+            doc.text(maandTekst + ' (' + wekenTekst + ')', col1, y + 5);
+            doc.text(userName, col2, y + 5);
+            doc.text(ioData.project.client_name || '', col3, y + 5);
 
             // ===== LEVERANCIER + LEVERADRES naast elkaar =====
             y += 16;
