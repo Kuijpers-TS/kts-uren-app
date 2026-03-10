@@ -134,7 +134,7 @@
         }
         .logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
         .logo img { height: 22px; width: 22px; }
-        .logo span { color: rgba(255,255,255,0.6); font-weight: 400; }
+        .logo span { color: #ffffff; font-weight: 800; }
         .user-badge {
             font-size: 0.75rem;
             background: rgba(255,255,255,0.15);
@@ -1025,8 +1025,8 @@
                     <div><div style="font-weight:700;font-size:0.85rem">Tarieven</div><div style="font-size:0.7rem;color:var(--muted)">Uurtarieven & toeslagen</div></div>
                 </div>
                 <div class="admin-tile" onclick="switchAdminTab('bedrijf')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏗️</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Bedrijfsinstellingen</div><div style="font-size:0.7rem;color:var(--muted)">Betalingstermijn & meer</div></div>
+                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">⚙️</div>
+                    <div><div style="font-weight:700;font-size:0.85rem">Algemene instellingen</div><div style="font-size:0.7rem;color:var(--muted)">Opslagmappen & meer</div></div>
                 </div>
                 <!-- Scheiding: Documentatie -->
                 <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
@@ -1260,18 +1260,10 @@
                 </div>
             </div>
 
-            <!-- ===== BEDRIJFSINSTELLINGEN TAB ===== -->
+            <!-- ===== ALGEMENE INSTELLINGEN TAB ===== -->
             <div id="admin-bedrijf" style="display:none">
-                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Bedrijfsinstellingen</div>
+                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Algemene instellingen</div>
                 <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-                    <div style="margin-bottom:16px">
-                        <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:4px">Betalingstermijn (dagen)</label>
-                        <input type="number" id="setting-payment-term" min="1" max="365" value="30" style="width:100px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem">
-                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Standaard betalingstermijn op facturen en inkooporders</div>
-                    </div>
-                    <button class="btn btn-primary btn-sm" onclick="saveCompanySettings()">💾 Opslaan</button>
-                </div>
-                <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:12px">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:12px">📂 Opslagmappen (OneDrive)</div>
                     <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px">Kies per documenttype een map. PDF's worden automatisch daar opgeslagen i.p.v. als download.</div>
                     <div style="display:flex;flex-direction:column;gap:8px">
@@ -2869,14 +2861,9 @@
             try {
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-                // K afbeelding is portrait-ratio (2729x4091 ≈ 0.667)
-                // Centreer de K op de pagina, vul de hoogte en centreer horizontaal
-                const imgRatio = 2729 / 4091;
-                const wmH = ph * 0.85; // 85% van paginahoogte
-                const wmW = wmH * imgRatio;
-                const wmX = (pw - wmW) / 2;
-                const wmY = (ph - wmH) / 2;
-                doc.addImage(wmData, 'PNG', wmX, wmY, wmW, wmH);
+                // K afbeelding is landscape-ratio (1294x1000 ≈ 1.294)
+                // K vult de gehele pagina (rand tot rand)
+                doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
             } catch(e) { console.warn('Watermerk fout:', e); }
         }
 
@@ -6217,6 +6204,7 @@
             });
             if (tab === 'dashboard') loadDashboard();
             if (tab === 'bedrijf') loadCompanySettings();
+            if (tab === 'personen') loadCompanySettings();
             if (tab === 'inkooporders') { loadInkooporderFilters(); loadInkooporders(); }
             if (tab === 'facturen') { loadInvoiceFilters(); loadInvoices(); }
             if (tab === 'weekstaten') loadWeekstaten();
@@ -6235,19 +6223,17 @@
             });
         }
 
-        // ===== BEDRIJFSINSTELLINGEN =====
-        function getPaymentTermDays() {
-            return parseInt(localStorage.getItem('kts_payment_term_days') || '30', 10);
+        // ===== INSTELLINGEN =====
+        function getPaymentTermDays(companyId) {
+            // Per bedrijf uit cache, fallback 30 dagen
+            if (companyId && window._adminCompanies) {
+                const comp = window._adminCompanies.find(c => c.id === companyId);
+                if (comp && comp.payment_term_days) return parseInt(comp.payment_term_days, 10);
+            }
+            return 30;
         }
         function loadCompanySettings() {
-            const el = document.getElementById('setting-payment-term');
-            if (el) el.value = getPaymentTermDays();
-        }
-        function saveCompanySettings() {
-            const val = parseInt(document.getElementById('setting-payment-term')?.value, 10);
-            if (!val || val < 1 || val > 365) { showToast('⚠️ Voer een getal in tussen 1 en 365'); return; }
-            localStorage.setItem('kts_payment_term_days', val.toString());
-            showToast('✅ Betalingstermijn opgeslagen: ' + val + ' dagen');
+            // Placeholder — instellingen worden nu per bedrijf opgeslagen
         }
 
         // ===== DASHBOARD FUNCTIES =====
@@ -8015,7 +8001,7 @@
             // Waarschuwing bij overgeslagen weken (al op eerdere inkooporder)
             if (ioData.skippedWeeks && ioData.skippedWeeks.length > 0) {
                 html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
-                    ⚠️ <strong>Week ${ioData.skippedWeeks.join(', ')}</strong> staat al op een eerdere inkooporder en is overgeslagen.
+                    ⚠️ <strong>Week ${ioData.skippedWeeks.sort((a,b) => a-b).join(', ')}</strong> staat al op een eerdere inkooporder en is overgeslagen.
                 </div>`;
             }
 
@@ -8559,6 +8545,13 @@
                     <div class="form-row" style="margin-top:12px">
                         <div class="form-group"><label>KVK / Handelsregister</label><input type="text" id="adm-pers-kvk" placeholder="89133315 / HRB 101387" value="${existing ? existing.kvk_number || '' : ''}"></div>
                         <div class="form-group"><label>BTW / USt-IdNr.</label><input type="text" id="adm-pers-btw" placeholder="NL... / DE..." value="${existing ? existing.btw_number || '' : ''}"></div>
+                    </div>
+                    <div class="form-group" style="margin-top:12px">
+                        <label>Betalingstermijn</label>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <input type="number" id="adm-pers-payment-term" min="1" max="365" placeholder="30" value="${existing && existing.payment_term_days ? existing.payment_term_days : '30'}" style="width:80px">
+                            <span style="font-size:0.8rem;color:var(--muted)">dagen</span>
+                        </div>
                     </div>
                     <div class="form-group" style="margin-top:12px">
                         <label>Notities</label>
@@ -9816,7 +9809,8 @@
                     is_test: document.getElementById('adm-pers-test').checked,
                     archived: document.getElementById('adm-pers-archived').checked,
                     notes: document.getElementById('adm-pers-notes').value.trim() || null,
-                    contacts: allContacts
+                    contacts: allContacts,
+                    payment_term_days: parseInt(document.getElementById('adm-pers-payment-term').value) || 30
                 };
                 result = _editingId
                     ? await sb.from('companies').update(data).eq('id', _editingId)
