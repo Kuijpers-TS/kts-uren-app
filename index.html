@@ -2974,19 +2974,19 @@
             doc.setFontSize(8);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 52);
-            doc.text(KTS_INFO.postcode, pw - mr, 52, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 42);
+            doc.text(KTS_INFO.postcode, pw - mr, 42, { align: 'right' });
             doc.setFont(pdfFont, 'bold');
-            doc.text(KTS_INFO.tel1, rightX, 57);
-            doc.text(KTS_INFO.tel2, pw - mr, 57, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 47);
+            doc.text(KTS_INFO.tel2, pw - mr, 47, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 62);
+            doc.text(KTS_INFO.email, rightX, 52);
             doc.setTextColor(...ktsBlue);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 62, { align: 'right' });
+            doc.text('www.kuijpers-ts.nl', pw - mr, 52, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // --- Rij 3-4: Naam + Periode (labels KTS blauw bold) ---
-            let y = 40;
+            let y = 30;
             doc.setFontSize(9);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
