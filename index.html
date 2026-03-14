@@ -933,10 +933,7 @@
 
             <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px" id="week-action-btns">
                 <button class="btn btn-primary btn-block" id="sign-week-btn" onclick="openSignatureModal()" style="padding:14px;font-size:0.95rem">
-                    ✍️ Week <span id="sign-week-num"></span> ondertekenen
-                </button>
-                <button class="btn btn-success btn-block" id="submit-week-btn" onclick="submitWeek()" style="padding:14px;font-size:0.95rem;display:none">
-                    ✓ Week <span id="submit-week-num"></span> versturen
+                    ✍️ Week <span id="sign-week-num"></span> ondertekenen & versturen
                 </button>
             </div>
             <div style="margin-top:10px;display:none" id="download-weekstaat-btn-wrap">
@@ -1453,7 +1450,7 @@
     <div class="modal-overlay" id="signature-modal">
         <div class="modal" style="max-width:420px">
             <div class="modal-handle"></div>
-            <div class="modal-title">✍️ Week ondertekenen</div>
+            <div class="modal-title">✍️ Week ondertekenen & versturen</div>
 
             <!-- Opmerkingen (optioneel) -->
             <div style="margin-bottom:16px">
@@ -1471,23 +1468,29 @@
                 <div id="sig-zzp-status" style="font-size:0.7rem;color:var(--muted);margin-top:4px">Teken hierboven met je vinger of muis</div>
             </div>
 
-            <!-- Opdrachtgever handtekening -->
+            <!-- Opdrachtgever handtekening (opt-in) -->
             <div style="margin-bottom:16px">
-                <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Handtekening opdrachtgever <span style="font-weight:400;color:var(--muted)">(optioneel — ter plekke laten tekenen)</span></div>
-                <div style="display:flex;gap:8px;margin-bottom:8px">
-                    <input type="text" id="sig-client-name" placeholder="Naam opdrachtgever" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
-                    <input type="email" id="sig-client-email" placeholder="E-mail" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
+                    <input type="checkbox" id="sig-client-toggle" onchange="toggleClientSignature()" style="width:18px;height:18px;accent-color:var(--kts-blue)">
+                    <span style="font-size:0.82rem;font-weight:600;color:var(--kts-blue)">Opdrachtgever tekent ook mee</span>
+                    <span style="font-size:0.7rem;color:var(--muted)">(ter plekke)</span>
+                </label>
+                <div id="sig-client-section" style="display:none">
+                    <div style="display:flex;gap:8px;margin-bottom:8px">
+                        <input type="text" id="sig-client-name" placeholder="Naam opdrachtgever" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                        <input type="email" id="sig-client-email" placeholder="E-mail" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                    </div>
+                    <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
+                        <canvas id="sig-canvas-client" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
+                        <button onclick="clearSignature('client')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Laat de opdrachtgever hier tekenen — weekstaat wordt dan direct goedgekeurd</div>
                 </div>
-                <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
-                    <canvas id="sig-canvas-client" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
-                    <button onclick="clearSignature('client')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
-                </div>
-                <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Laat de opdrachtgever hier tekenen — weekstaat wordt dan direct goedgekeurd</div>
             </div>
 
             <div class="form-actions" style="margin-top:16px">
                 <button class="btn btn-secondary" onclick="closeModal('signature-modal')">Annuleren</button>
-                <button class="btn btn-primary" id="sig-confirm-btn" onclick="confirmSignatures()" disabled style="opacity:0.5">Ondertekenen</button>
+                <button class="btn btn-primary" id="sig-confirm-btn" onclick="confirmSignatures()" disabled style="opacity:0.5">Ondertekenen & versturen</button>
             </div>
         </div>
     </div>
@@ -2283,10 +2286,10 @@
                 // Verberg knoppen
                 const urenWrap = document.getElementById('save-uren-btn-wrap');
                 const kostenWrap = document.getElementById('save-kosten-btn-wrap');
-                const submitBtn = document.getElementById('submit-week-btn');
                 if (urenWrap) urenWrap.style.display = 'none';
                 if (kostenWrap) kostenWrap.style.display = 'none';
-                if (submitBtn) submitBtn.parentElement.style.display = 'none';
+                const actionBtnsHide = document.getElementById('week-action-btns');
+                if (actionBtnsHide) actionBtnsHide.style.display = 'none';
                 return;
             }
 
@@ -3019,10 +3022,14 @@
             const dates = getWeekDates();
             const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
-            // Km kolom alleen tonen als gebruiker km-permissie heeft OF er km-data in de week zit
-            const showKmCol = userHasKm() || weekData.some(e => (e.km || 0) > 0);
+            // Km kolom alleen tonen als gebruiker km-permissie heeft
+            const showKmCol = userHasKm();
 
+            const showThuiswerk = userHasThuiswerk();
             const tableData = weekData.map((e, i) => {
+                // Filter locatie "Thuis" als thuiswerk uitstaat voor gebruiker
+                let loc = e.location || '';
+                if (!showThuiswerk && loc.toLowerCase() === 'thuis') loc = '';
                 const row = [
                     dagNamen[i],
                     fmtDate(dates[i]),
@@ -3031,7 +3038,7 @@
                     e.breakMin > 0 ? (e.breakMin / 60).toFixed(2).replace('.', ',') : '',
                     e.hours > 0 ? e.hours.toFixed(2).replace('.', ',') : '',
                     e.desc || '',
-                    e.location || '',
+                    loc,
                 ];
                 if (showKmCol) row.push((e.km || 0) > 0 ? e.km.toString() : '');
                 return row;
@@ -3108,7 +3115,7 @@
             // Verzamel extra kosten teksten (alleen als gebruiker rechten heeft)
             const extraKostenLines = [];
             if (showExtraKosten) {
-                if (hotelNights > 0) {
+                if (hotelNights > 0 && userHasHotel()) {
                     extraKostenLines.push(`Hotelovernachting ${hotelNights}x á €${HOTEL_RATE.toFixed(0)},- per nacht`);
                 }
                 // Extra kosten uit declaraties toevoegen
@@ -3600,6 +3607,23 @@
             canvas._resetStrokes = () => { hasStrokes = false; };
         }
 
+        function toggleClientSignature() {
+            const checked = document.getElementById('sig-client-toggle')?.checked;
+            const section = document.getElementById('sig-client-section');
+            if (section) section.style.display = checked ? 'block' : 'none';
+            if (!checked) {
+                // Wis client handtekening als checkbox uit gaat
+                clearSignature('client');
+                const nameEl = document.getElementById('sig-client-name');
+                const emailEl = document.getElementById('sig-client-email');
+                if (nameEl) nameEl.value = '';
+                if (emailEl) emailEl.value = '';
+            } else {
+                // Init canvas als die nog niet klaar is
+                setTimeout(() => initSignatureCanvas('client'), 100);
+            }
+        }
+
         function clearSignature(type) {
             const canvas = sigCanvases[type];
             const ctx = sigContexts[type];
@@ -3642,12 +3666,18 @@
             // Reset
             signatureData = { zzp: null, client: null };
 
+            // Reset opdrachtgever checkbox en sectie
+            const clientToggle = document.getElementById('sig-client-toggle');
+            if (clientToggle) clientToggle.checked = false;
+            const clientSection = document.getElementById('sig-client-section');
+            if (clientSection) clientSection.style.display = 'none';
+
             document.getElementById('signature-modal').classList.add('active');
 
             // Init canvassen na modal open (nodig voor correcte afmetingen)
             setTimeout(() => {
                 initSignatureCanvas('zzp');
-                initSignatureCanvas('client');
+                // Client canvas wordt pas geinitialiseerd als checkbox aan gaat
                 updateSignatureUI();
             }, 100);
         }
@@ -3727,18 +3757,73 @@
                         }
                     } catch(pdfErr) { console.warn('PDF generatie na goedkeuring:', pdfErr); }
                 } else {
-                    // Alleen ZZP'er getekend — normale flow
-                    await updateWeekStatus('ondertekend');
-                    logAudit('week_ondertekend', { week: currentWeekNumber });
+                    // Alleen ZZP'er getekend — direct ondertekenen + versturen in één stap
+                    const sb = getSupabase();
+
+                    // 1. Eerst opslaan naar Supabase
+                    if (sb && currentUser && currentUser.id) {
+                        await saveWeekToSupabase();
+                    }
+
+                    // 2. Wacht op jsPDF als die nog laadt
+                    if (!window.jspdf) {
+                        for (let w = 0; w < 10; w++) { await new Promise(r => setTimeout(r, 500)); if (window.jspdf) break; }
+                    }
+
+                    // 3. Genereer PDF met handtekening
+                    const weekstaat = await generateWeekstaat();
+                    if (!weekstaat) throw new Error('PDF generatie mislukt');
+
+                    const projCode = currentProject ? currentProject.project_code : 'KTS';
+                    const userNameSlug = currentUser ? currentUser.name.replace(/\s+/g, '_') : '';
+                    const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userNameSlug ? '_' + userNameSlug : ''}.pdf`;
+
+                    // 4. Download PDF lokaal
+                    const wsSaved = await savePdfToFolder(weekstaat, fileName, 'weekstaten');
+                    if (!wsSaved) weekstaat.save(fileName);
+
+                    // 5. Backup naar Supabase Storage
+                    if (sb) {
+                        try {
+                            const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
+                            const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+                            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+                            const storagePath = `${currentYear}/week-${currentWeekNumber}/${fileName}`;
+                            await sb.storage.from('weekstaten').upload(storagePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
+                        } catch(e) { console.warn('Storage backup overgeslagen:', e); }
+
+                        // 6. OneDrive upload (optioneel)
+                        try {
+                            const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
+                            const { data, error } = await sb.functions.invoke('submit-weekstaat', {
+                                body: {
+                                    pdfBase64: pdfBase64,
+                                    fileName: fileName,
+                                    weekNumber: currentWeekNumber,
+                                    year: currentYear,
+                                    userName: currentUser ? currentUser.name : 'Onbekend',
+                                    projectCode: projCode,
+                                    projectName: currentProject ? currentProject.name : ''
+                                }
+                            });
+                            if (data && !error) {
+                                console.log('OneDrive upload OK');
+                            }
+                        } catch(odErr) { console.warn('OneDrive upload overgeslagen:', odErr); }
+                    }
+
+                    // 7. Status op verstuurd
+                    await updateWeekStatus('verstuurd');
+                    logAudit('week_ondertekend_verstuurd', { week: currentWeekNumber });
                     notifyOtherTabs();
-                    showToast('✓ Week ' + currentWeekNumber + ' ondertekend — klik nu op Versturen');
+                    showToast('✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd — PDF gedownload');
                 }
                 await renderOverview();
             } catch (err) {
-                showToast('⚠️ Ondertekenen mislukt — probeer opnieuw');
-                console.error('Sign error:', err);
+                showToast('⚠️ Ondertekenen & versturen mislukt — probeer opnieuw');
+                console.error('Sign+submit error:', err);
             } finally {
-                if (btn) { btn.innerHTML = 'Ondertekenen'; btn.disabled = false; }
+                if (btn) { btn.innerHTML = 'Ondertekenen & versturen'; btn.disabled = false; }
             }
         }
 
@@ -3755,9 +3840,8 @@
             if (total === 0) { showToast('⚠️ Vul eerst uren in'); return; }
             if (!await confirmAsync(`Weet je zeker dat je week ${currentWeekNumber} wilt versturen?`)) return;
 
-            const btn = document.getElementById('submit-week-btn');
-            btn.innerHTML = '⏳ Versturen...';
-            btn.disabled = true;
+            const btn = document.getElementById('submit-week-btn') || document.getElementById('sign-week-btn');
+            if (btn) { btn.innerHTML = '⏳ Versturen...'; btn.disabled = true; }
 
             try {
                 // 1. Eerst opslaan naar Supabase
@@ -3772,7 +3856,7 @@
 
                 // 3. Wacht op jsPDF als die nog laadt
                 if (!window.jspdf) {
-                    btn.innerHTML = '📄 PDF library laden...';
+                    if (btn) btn.innerHTML = '📄 PDF library laden...';
                     for (let w = 0; w < 10; w++) {
                         await new Promise(r => setTimeout(r, 500));
                         if (window.jspdf) break;
@@ -3780,7 +3864,7 @@
                 }
 
                 // 4. Genereer PDF met handtekeningen
-                btn.innerHTML = '📄 PDF genereren...';
+                if (btn) btn.innerHTML = '📄 PDF genereren...';
                 const weekstaat = await generateWeekstaat();
                 if (!weekstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
@@ -3796,7 +3880,7 @@
 
                     // 6a. Supabase Storage backup
                     try {
-                        btn.innerHTML = '💾 PDF backup opslaan...';
+                        if (btn) btn.innerHTML = '💾 PDF backup opslaan...';
                         const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
                         const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
                         const storagePath = `${currentYear}/week-${currentWeekNumber}/${fileName}`;
@@ -3812,7 +3896,7 @@
 
                     // 6b. OneDrive upload (optioneel)
                     try {
-                        btn.innerHTML = '☁️ Uploaden naar OneDrive...';
+                        if (btn) btn.innerHTML = '☁️ Uploaden naar OneDrive...';
                         const { data, error } = await sb.functions.invoke('submit-weekstaat', {
                             body: {
                                 pdfBase64: pdfBase64,
@@ -3835,8 +3919,7 @@
                 await updateWeekStatus('verstuurd');
                 logAudit('week_verstuurd', { week: currentWeekNumber, fileName: fileName });
                 notifyOtherTabs();
-                btn.innerHTML = '✅ Verstuurd!';
-                btn.style.background = '#059669';
+                if (btn) { btn.innerHTML = '✅ Verstuurd!'; btn.style.background = '#059669'; }
                 await renderOverview();
 
                 // 8. Open vooringevulde email
@@ -3857,8 +3940,7 @@
 
             } catch (err) {
                 console.error('Versturen mislukt:', err);
-                btn.innerHTML = '✓ Week versturen';
-                btn.disabled = false;
+                if (btn) { btn.innerHTML = '✓ Week versturen'; btn.disabled = false; }
                 showToast('⚠️ Versturen mislukt: ' + err.message);
             }
         }
@@ -4530,49 +4612,32 @@
             const isOndertekend = localWeekDbStatus === 'ondertekend';
             const isVerstuurd = localWeekDbStatus === 'verstuurd';
 
-            // Reset verstuurknop naar standaardstaat
-            if (submitBtn2) {
-                submitBtn2.innerHTML = '✓ Week <span id="submit-week-num">' + currentWeekNumber + '</span> versturen';
-                submitBtn2.disabled = false;
-                submitBtn2.style.background = '';
-            }
-
             // Download-knop alleen tonen bij verstuurd
             if (downloadBtn) downloadBtn.style.display = isVerstuurd ? 'block' : 'none';
 
             if (isVerstuurd) {
-                // Al verstuurd: verberg onderteken/verstuur
+                // Al verstuurd: verberg onderteken-knop
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
-                if (submitBtn2) submitBtn2.style.display = 'none';
             } else if (!localWeekDbStatus || localWeekDbStatus === 'concept') {
-                // Nog niet opgeslagen: verberg onderteken/verstuur knoppen
+                // Nog niet opgeslagen: verberg onderteken-knop
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
-                if (submitBtn2) submitBtn2.style.display = 'none';
             } else if (weekStatus.editable) {
-                // Week is bewerkbaar
+                // Week is bewerkbaar — toon onderteken & versturen knop
                 if (actionBtns) actionBtns.style.display = 'flex';
-
-                if (signatureData.zzp) {
-                    // Handtekening in geheugen: toon verstuur-knop, verberg onderteken-knop
-                    if (signBtn) signBtn.style.display = 'none';
-                    if (submitBtn2) submitBtn2.style.display = 'block';
-                } else if (isOndertekend) {
-                    // DB zegt ondertekend maar geen handtekening in geheugen: toon BEIDE knoppen
-                    // Onderteken-knop om opnieuw te tekenen (nodig voor PDF)
-                    if (signBtn) { signBtn.style.display = 'block'; signBtn.innerHTML = '✍️ Week ' + currentWeekNumber + ' opnieuw ondertekenen'; }
-                    if (submitBtn2) submitBtn2.style.display = 'none';
-                } else {
-                    // Niet ondertekend: toon onderteken-knop
-                    if (signBtn) { signBtn.style.display = 'block'; signBtn.innerHTML = '✍️ Week <span id="sign-week-num">' + currentWeekNumber + '</span> ondertekenen'; }
-                    if (submitBtn2) submitBtn2.style.display = 'none';
+                if (signBtn) {
+                    signBtn.style.display = 'block';
+                    if (isOndertekend) {
+                        signBtn.innerHTML = '✍️ Week ' + currentWeekNumber + ' opnieuw ondertekenen & versturen';
+                    } else {
+                        signBtn.innerHTML = '✍️ Week <span id="sign-week-num">' + currentWeekNumber + '</span> ondertekenen & versturen';
+                    }
                 }
             } else {
                 // Niet bewerkbaar: verberg alles
                 if (actionBtns) actionBtns.style.display = 'none';
                 if (signBtn) signBtn.style.display = 'none';
-                if (submitBtn2) submitBtn2.style.display = 'none';
             }
 
             // Weken van deze maand ophalen en tonen
@@ -5929,10 +5994,8 @@
 
         function showReminderBanner(container, dismissKey, status) {
             let msg = '📋 Vergeet niet je weekstaat in te vullen en te versturen!';
-            if (status === 'opgeslagen') {
+            if (status === 'opgeslagen' || status === 'ondertekend') {
                 msg = '📋 Je weekstaat is opgeslagen maar nog niet verstuurd — onderteken en verstuur!';
-            } else if (status === 'ondertekend') {
-                msg = '📋 Je weekstaat is ondertekend — vergeet niet om te versturen!';
             }
 
             container.innerHTML = `
@@ -9378,7 +9441,8 @@
             try {
                 const folderPath = `${year}/week-${week}`;
                 const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
-                const match = (files || []).find(f => f.name.includes(projCode) || f.name.includes(userSlug));
+                const match = (files || []).find(f => f.name.includes(projCode) && f.name.includes(userSlug))
+                    || (files || []).find(f => f.name.includes(userSlug));
                 if (match) {
                     downloadWeekstaatFromStorage(`${folderPath}/${match.name}`);
                 } else {
