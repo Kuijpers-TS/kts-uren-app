@@ -3010,8 +3010,8 @@
             doc.text(`${projCode}${projCode && projName ? ' – ' : ''}${projName}${projLoc ? ' ' + projLoc : ''}`, ml, y);
             doc.text(clientName, ml + uw * 0.38, y);
 
-            // --- Rij 9-16: Dagtabel ---
-            y += 7;
+            // --- Rij 9-16: Dagtabel --- (extra 10mm ruimte tussen info en tabel)
+            y += 17;
             const dates = getWeekDates();
             const dagNamen = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
