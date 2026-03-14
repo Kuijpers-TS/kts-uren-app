@@ -2890,6 +2890,7 @@
                 const footY = ph - 12;
                 const ml = 15;
                 doc.setFontSize(7);
+                doc.setFont('helvetica', 'bold');
                 doc.setTextColor(...ktsFooterBlue);
                 doc.text('Kuijpers Technical Services B.V.', ml, footY);
                 doc.text('Nieuwboerweg 2A', ml, footY + 3);
@@ -2899,6 +2900,7 @@
                 doc.text('KVK: 93410557', rAlign, footY, { align: 'right' });
                 doc.text('BTW: NL866385368B01', rAlign, footY + 3, { align: 'right' });
                 doc.text('info@kuijpers-ts.nl', rAlign, footY + 6, { align: 'right' });
+                doc.setFont('helvetica', 'normal');
                 doc.setTextColor(0, 0, 0);
             }
         }
@@ -2972,19 +2974,19 @@
             doc.setFontSize(8);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 42);
-            doc.text(KTS_INFO.postcode, pw - mr, 42, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 52);
+            doc.text(KTS_INFO.postcode, pw - mr, 52, { align: 'right' });
             doc.setFont(pdfFont, 'bold');
-            doc.text(KTS_INFO.tel1, rightX, 47);
-            doc.text(KTS_INFO.tel2, pw - mr, 47, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 57);
+            doc.text(KTS_INFO.tel2, pw - mr, 57, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 52);
+            doc.text(KTS_INFO.email, rightX, 62);
             doc.setTextColor(...ktsBlue);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 52, { align: 'right' });
+            doc.text('www.kuijpers-ts.nl', pw - mr, 62, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // --- Rij 3-4: Naam + Periode (labels KTS blauw bold) ---
-            let y = 30;
+            let y = 40;
             doc.setFontSize(9);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
