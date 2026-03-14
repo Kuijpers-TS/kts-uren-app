@@ -8978,6 +8978,7 @@
                             ${approvalAction}
                             <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd" title="Uren bewerken">✏️</button>
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
+                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a" title="Terugzetten naar concept">↩️</button>
                             <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Weekstaat verwijderen">🗑️</button>
                         </div>
                     </div>`;
@@ -9287,6 +9288,50 @@
                     .eq('year', year);
                 if (error) throw error;
                 showToast('✅ Weekstaat goedgekeurd');
+                loadWeekstaten();
+            } catch (e) {
+                showToast('❌ Fout: ' + e.message);
+            }
+        }
+
+        async function adminResetWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
+            if (!await confirmAsync(`Weekstaat terugzetten naar concept?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDe status wordt teruggezet naar 'opgeslagen' en de oude PDF wordt verwijderd uit storage. Je kunt daarna opnieuw ondertekenen & versturen.`, true)) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                // 1. Reset week_status naar opgeslagen
+                const { error } = await sb.from('week_status')
+                    .update({
+                        status: 'opgeslagen',
+                        approval_status: null,
+                        approval_token: null,
+                        approval_completed_at: null,
+                        approver_name: null,
+                        approver_email: null,
+                        client_signature_url: null,
+                        approval_comments: null,
+                        signed_at: null,
+                        submitted_at: null
+                    })
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year);
+                if (error) throw error;
+
+                // 2. Verwijder oude PDF uit storage
+                try {
+                    const folderPath = `${year}/week-${weekNumber}`;
+                    const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
+                    const userSlug = userName.replace(/\s+/g, '_');
+                    const match = (files || []).find(f => f.name.includes(projCode) || f.name.includes(userSlug));
+                    if (match) {
+                        await sb.storage.from('weekstaten').remove([`${folderPath}/${match.name}`]);
+                        console.log('Oude PDF verwijderd:', match.name);
+                    }
+                } catch (storageErr) { console.warn('Storage cleanup overgeslagen:', storageErr); }
+
+                showToast('✅ Weekstaat teruggezet naar concept — klaar om opnieuw te ondertekenen');
                 loadWeekstaten();
             } catch (e) {
                 showToast('❌ Fout: ' + e.message);
