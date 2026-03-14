@@ -2852,12 +2852,8 @@
         function addPdfLogo(doc, logoB64, x, y, w, h) {
             if (!logoB64) return;
             try {
-                const gState = new doc.GState({ opacity: 0.35 });
-                doc.saveGraphicsState();
-                doc.setGState(gState);
                 const fmt = logoB64.includes('image/png') ? 'PNG' : 'JPEG';
                 doc.addImage(logoB64, fmt, x, y, w, h);
-                doc.restoreGraphicsState();
             } catch(e) { console.warn('Logo toevoegen mislukt:', e); }
         }
 
@@ -2868,7 +2864,7 @@
             try {
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-                const imgRatio = 1.5; // K afbeelding is 3:2 (1800x1200)
+                const imgRatio = 3000 / 2318; // K afbeelding (3000x2318)
                 // 30% transparantie
                 const gState = new doc.GState({ opacity: 0.30 });
                 doc.saveGraphicsState();
@@ -3033,8 +3029,8 @@
                 const row = [
                     dagNamen[i],
                     fmtDate(dates[i]),
-                    e.start || '',
-                    e.end || '',
+                    (e.start || '').slice(0, 5),
+                    (e.end || '').slice(0, 5),
                     e.breakMin > 0 ? (e.breakMin / 60).toFixed(2).replace('.', ',') : '',
                     e.hours > 0 ? e.hours.toFixed(2).replace('.', ',') : '',
                     e.desc || '',
