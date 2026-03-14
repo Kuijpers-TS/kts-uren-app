@@ -3036,16 +3036,16 @@
                 return row;
             });
 
-            const tableHead = ['Dag', 'Datum', 'Begintijd', 'Eindtijd', 'Pauze (uur)', 'Gewerkte uren', 'Omschrijving werkzaamheden', 'Locatie'];
+            const tableHead = ['Dag', 'Datum', 'Begintijd', 'Eindtijd', 'Pauze uren', 'Gewerkte uren', 'Omschrijving werkzaamheden', 'Locatie'];
             if (showKmCol) tableHead.push('Kilometers');
 
             const colStyles = {
                 0: { cellWidth: 20 },
                 1: { cellWidth: 24, halign: 'center' },
-                2: { cellWidth: 18, halign: 'center' },
-                3: { cellWidth: 18, halign: 'center' },
-                4: { cellWidth: 18, halign: 'center' },
-                5: { cellWidth: 22, halign: 'center' },
+                2: { cellWidth: 20, halign: 'center' },
+                3: { cellWidth: 20, halign: 'center' },
+                4: { cellWidth: 22, halign: 'center' },
+                5: { cellWidth: 24, halign: 'center' },
                 6: { cellWidth: 'auto', halign: 'center' },
                 7: { cellWidth: showKmCol ? 32 : 'auto', halign: 'center' },
             };
