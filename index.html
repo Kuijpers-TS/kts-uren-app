@@ -1489,7 +1489,7 @@
             </div>
 
             <div class="form-actions" style="margin-top:16px">
-                <button class="btn btn-secondary" onclick="closeModal('signature-modal')">Annuleren</button>
+                <button class="btn btn-secondary" onclick="closeModal('signature-modal');restoreAdminSignOverride()">Annuleren</button>
                 <button class="btn btn-primary" id="sig-confirm-btn" onclick="confirmSignatures()" disabled style="opacity:0.5">Ondertekenen & versturen</button>
             </div>
         </div>
@@ -3531,6 +3531,7 @@
 
         // ===== HANDTEKENING CANVAS =====
         let signatureData = { zzp: null, client: null, clientName: '', clientEmail: '' };
+        let _adminSignOverride = null; // als admin tekent namens een gebruiker
         const sigCanvases = {};
         const sigContexts = {};
         let sigDrawing = false;
@@ -3818,12 +3819,17 @@
                     notifyOtherTabs();
                     showToast('✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd — PDF gedownload');
                 }
-                await renderOverview();
+                if (!_adminSignOverride) await renderOverview();
             } catch (err) {
                 showToast('⚠️ Ondertekenen & versturen mislukt — probeer opnieuw');
                 console.error('Sign+submit error:', err);
             } finally {
                 if (btn) { btn.innerHTML = 'Ondertekenen & versturen'; btn.disabled = false; }
+                // Herstel globals als admin namens gebruiker tekende
+                if (_adminSignOverride) {
+                    restoreAdminSignOverride();
+                    loadWeekstaten(); // admin lijst verversen
+                }
             }
         }
 
@@ -8903,6 +8909,7 @@
                                     <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year} · ${projCode}</div>
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
+                                    <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Ondertekenen & versturen namens gebruiker">✍️</button>
                                     <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd" title="Uren bekijken">👁️</button>
                                 </div>
                             </div>`;
@@ -9428,6 +9435,110 @@
             const monday = new Date(jan4);
             monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
             return monday;
+        }
+
+        // ===== ADMIN: ONDERTEKENEN NAMENS GEBRUIKER =====
+        async function adminSignForUser(userId, projectId, weekNumber, year) {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            // Zoek user en project data op
+            const targetUser = (window._adminUsers || []).find(u => u.id === userId);
+            const targetProject = (window._adminProjects || []).find(p => p.id === projectId);
+            if (!targetUser) { showToast('❌ Gebruiker niet gevonden'); return; }
+            if (!targetProject) { showToast('❌ Project niet gevonden'); return; }
+
+            const userName = targetUser.name || targetUser.email || 'Onbekend';
+            if (!await confirmAsync(`Weekstaat ondertekenen & versturen namens ${userName}?\n\nWeek ${weekNumber} · ${year} · ${targetProject.project_code}`)) return;
+
+            try {
+                showToast('⏳ Weekdata laden...');
+
+                // Laad time entries voor deze week
+                const monday = getWeekMondayFromWeekNumber(year, weekNumber);
+                const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+                const weekStart = monday.toISOString().split('T')[0];
+                const weekEnd = sunday.toISOString().split('T')[0];
+
+                const { data: entries } = await sb.from('time_entries').select('*')
+                    .eq('user_id', userId).eq('project_id', projectId)
+                    .gte('entry_date', weekStart).lte('entry_date', weekEnd)
+                    .order('entry_date');
+
+                // Bouw weekData array op (7 dagen, ma-zo)
+                const targetWeekData = [];
+                for (let d = 0; d < 7; d++) {
+                    const date = new Date(monday);
+                    date.setDate(date.getDate() + d);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const entry = (entries || []).find(e => e.entry_date === dateStr);
+                    targetWeekData.push({
+                        start: entry ? (entry.start_time || '') : '',
+                        end: entry ? (entry.end_time || '') : '',
+                        breakMin: entry ? (entry.break_minutes || 0) : 0,
+                        hours: entry ? (entry.total_hours || 0) : 0,
+                        desc: entry ? (entry.description || '') : '',
+                        location: entry ? (entry.location || '') : '',
+                        km: entry ? (entry.km || 0) : 0,
+                        kmHeen: entry ? (entry.km_heen || 0) : 0,
+                        kmTerug: entry ? (entry.km_terug || 0) : 0,
+                        hotel: entry ? (entry.hotel || false) : false,
+                        thuiswerk: entry ? (entry.location === 'Thuis') : false
+                    });
+                }
+
+                const totalHours = targetWeekData.reduce((s, e) => s + e.hours, 0);
+                if (totalHours === 0) { showToast('⚠️ Geen uren gevonden voor deze week'); return; }
+
+                // Bewaar huidige globals
+                _adminSignOverride = {
+                    originalUser: currentUser,
+                    originalProject: currentProject,
+                    originalWeekData: weekData,
+                    originalWeekNumber: currentWeekNumber,
+                    originalYear: currentYear,
+                    originalWeekDbStatus: currentWeekDbStatus,
+                    originalWeekSummary: weekSummary
+                };
+
+                // Swap globals naar target user
+                currentUser = targetUser;
+                currentProject = targetProject;
+                weekData = targetWeekData;
+                currentWeekNumber = weekNumber;
+                currentYear = year;
+                currentWeekDbStatus = 'opgeslagen';
+                weekSummary = null;
+
+                // Open signature modal (skip de checks die openSignatureModal doet)
+                signatureData = { zzp: null, client: null };
+                const clientToggle = document.getElementById('sig-client-toggle');
+                if (clientToggle) clientToggle.checked = false;
+                const clientSection = document.getElementById('sig-client-section');
+                if (clientSection) clientSection.style.display = 'none';
+                document.getElementById('signature-modal').classList.add('active');
+                setTimeout(() => {
+                    initSignatureCanvas('zzp');
+                    updateSignatureUI();
+                }, 100);
+
+            } catch (err) {
+                showToast('❌ Fout: ' + err.message);
+                console.error('adminSignForUser error:', err);
+                restoreAdminSignOverride();
+            }
+        }
+
+        function restoreAdminSignOverride() {
+            if (!_adminSignOverride) return;
+            currentUser = _adminSignOverride.originalUser;
+            currentProject = _adminSignOverride.originalProject;
+            weekData = _adminSignOverride.originalWeekData;
+            currentWeekNumber = _adminSignOverride.originalWeekNumber;
+            currentYear = _adminSignOverride.originalYear;
+            currentWeekDbStatus = _adminSignOverride.originalWeekDbStatus;
+            weekSummary = _adminSignOverride.originalWeekSummary;
+            _adminSignOverride = null;
         }
 
         function copyApprovalLink(token) {
