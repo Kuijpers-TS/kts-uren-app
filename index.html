@@ -2864,17 +2864,17 @@
             try {
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-                const imgRatio = 3000 / 2318; // K afbeelding (3000x2318)
-                // 20% transparantie
+                // 20% transparantie, K oversized zodat randen afvallen
                 const gState = new doc.GState({ opacity: 0.20 });
                 doc.saveGraphicsState();
                 doc.setGState(gState);
-                // K vult altijd de hele pagina (cover) — mag bijsnijden
-                const coverW = Math.max(pw, ph * imgRatio);
-                const coverH = Math.max(ph, pw / imgRatio);
-                const wmX = (pw - coverW) / 2;
-                const wmY = (ph - coverH) / 2;
-                doc.addImage(wmData, 'PNG', wmX, wmY, coverW, coverH);
+                const imgRatio = 3000 / 2318;
+                const scale = 1.3; // K 30% groter dan pagina, randen vallen af
+                const wmW = pw * scale;
+                const wmH = wmW / imgRatio;
+                const wmX = (pw - wmW) / 2;
+                const wmY = (ph - wmH) / 2;
+                doc.addImage(wmData, 'PNG', wmX, wmY, wmW, wmH);
                 doc.restoreGraphicsState();
             } catch(e) { console.warn('Watermerk fout:', e); }
         }
@@ -3017,9 +3017,10 @@
             const showKmCol = userHasKm();
 
             const showThuiswerk = userHasThuiswerk();
+            const defaultLoc = currentProject && currentProject.default_location ? currentProject.default_location : '';
             const tableData = weekData.map((e, i) => {
-                // Filter locatie "Thuis" als thuiswerk uitstaat voor gebruiker
-                let loc = e.location || '';
+                // Locatie: uit entry, of fallback naar project standaard locatie (als er uren zijn)
+                let loc = e.location || (e.hours > 0 ? defaultLoc : '');
                 if (!showThuiswerk && loc.toLowerCase() === 'thuis') loc = '';
                 const row = [
                     dagNamen[i],
