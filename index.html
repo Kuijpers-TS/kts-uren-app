@@ -2865,21 +2865,16 @@
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
                 const imgRatio = 3000 / 2318; // K afbeelding (3000x2318)
-                // 30% transparantie
-                const gState = new doc.GState({ opacity: 0.30 });
+                // 20% transparantie
+                const gState = new doc.GState({ opacity: 0.20 });
                 doc.saveGraphicsState();
                 doc.setGState(gState);
-                if (isLandscape) {
-                    // Liggend: K vult de gehele pagina
-                    doc.addImage(wmData, 'PNG', 0, 0, pw, ph);
-                } else {
-                    // Staand: K behoudt verhouding, hoogte = pagina, breedte proportioneel, gecentreerd
-                    // K mag links/rechts buiten de pagina vallen
-                    const wmH = ph;
-                    const wmW = wmH * imgRatio;
-                    const wmX = (pw - wmW) / 2; // negatief = oversteekt links
-                    doc.addImage(wmData, 'PNG', wmX, 0, wmW, wmH);
-                }
+                // K vult altijd de hele pagina (cover) — mag bijsnijden
+                const coverW = Math.max(pw, ph * imgRatio);
+                const coverH = Math.max(ph, pw / imgRatio);
+                const wmX = (pw - coverW) / 2;
+                const wmY = (ph - coverH) / 2;
+                doc.addImage(wmData, 'PNG', wmX, wmY, coverW, coverH);
                 doc.restoreGraphicsState();
             } catch(e) { console.warn('Watermerk fout:', e); }
         }
@@ -2973,19 +2968,19 @@
                 addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
-            // --- KTS adresgegevens (onder logo) ---
+            // --- KTS adresgegevens (onder logo, gecentreerd tussen logo en tabel) ---
             doc.setFontSize(8);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 38);
-            doc.text(KTS_INFO.postcode, pw - mr, 38, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 42);
+            doc.text(KTS_INFO.postcode, pw - mr, 42, { align: 'right' });
             doc.setFont(pdfFont, 'bold');
-            doc.text(KTS_INFO.tel1, rightX, 43);
-            doc.text(KTS_INFO.tel2, pw - mr, 43, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 47);
+            doc.text(KTS_INFO.tel2, pw - mr, 47, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 48);
+            doc.text(KTS_INFO.email, rightX, 52);
             doc.setTextColor(...ktsBlue);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 48, { align: 'right' });
+            doc.text('www.kuijpers-ts.nl', pw - mr, 52, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // --- Rij 3-4: Naam + Periode (labels KTS blauw bold) ---
