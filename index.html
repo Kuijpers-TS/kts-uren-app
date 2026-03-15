@@ -11876,16 +11876,29 @@
                             return parseFloat(s);
                         }).filter(a => !isNaN(a) && a > 0);
                         inv.extractedAmounts = [...new Set(amounts)];
-                        // Main amount: typically the largest or "totaal" amount
-                        // Look for "totaal" or "total" near an amount
-                        const totaalMatch = fullText.match(/(?:totaal|total|te betalen|amount due)[^€]*€\s*([\d.,]+)/i);
-                        if (totaalMatch) {
-                            let s = totaalMatch[1];
+                        // Main amount: always incl. BTW (= the amount on the bank statement)
+                        // Priority: 1) "incl BTW/VAT" label, 2) "te betalen/amount due", 3) largest amount
+                        const parseAmountStr = (s) => {
                             if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
                             else if (s.includes(',')) s = s.replace(',', '.');
-                            inv.extractedAmount = parseFloat(s);
+                            return parseFloat(s);
+                        };
+                        // 1. Look for explicit "incl. BTW" / "incl. VAT" amount
+                        const inclMatch = fullText.match(/(?:incl\.?\s*(?:btw|vat)|inclusief\s*(?:btw|vat))[^€]*€\s*([\d.,]+)/i)
+                            || fullText.match(/€\s*([\d.,]+)[^€]*(?:incl\.?\s*(?:btw|vat)|inclusief\s*(?:btw|vat))/i);
+                        // 2. Look for "te betalen" / "amount due" / "total due"
+                        const teBetalenMatch = fullText.match(/(?:te\s*betalen|amount\s*due|total\s*due|verschuldigd)[^€]*€\s*([\d.,]+)/i);
+                        // 3. Generic "totaal" (but NOT "subtotaal" or "excl")
+                        const totaalMatch = fullText.match(/(?:^|[^b])totaa?l[^€]*€\s*([\d.,]+)/im);
+
+                        if (inclMatch) {
+                            inv.extractedAmount = parseAmountStr(inclMatch[1]);
+                        } else if (teBetalenMatch) {
+                            inv.extractedAmount = parseAmountStr(teBetalenMatch[1]);
+                        } else if (totaalMatch) {
+                            inv.extractedAmount = parseAmountStr(totaalMatch[1]);
                         } else if (amounts.length > 0) {
-                            // Use the largest amount as likely total
+                            // Fallback: use the largest amount (most likely incl. BTW)
                             inv.extractedAmount = Math.max(...amounts);
                         }
 
