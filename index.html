@@ -1119,12 +1119,12 @@
                     <div style="font-weight:600;font-size:0.9rem">Transactie-overzichten</div>
                     <div style="display:flex;gap:8px">
                         <button class="btn btn-sm btn-secondary" onclick="adminRescanInvoices()" title="Facturen opnieuw scannen">🔄 Scan</button>
-                        <button class="btn btn-sm btn-primary" onclick="adminImportBankFile()">+ Bankafschrift</button>
+                        <button class="btn btn-sm btn-primary" onclick="adminImportBankFile()">+ Transacties</button>
                     </div>
                 </div>
                 <div id="admin-uploads-list" style="margin-bottom:16px">
                     <div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">
-                        Nog geen bankafschriften ingeladen.<br>Klik op <b>+ Bankafschrift</b> om te starten.
+                        Nog geen transactieoverzichten ingeladen.<br>Klik op <b>+ Transacties</b> om een PDF, CSV of XLSX te laden.
                     </div>
                 </div>
                 <button class="btn btn-block btn-secondary" onclick="adminExportAll()" style="margin-bottom:12px">📥 Exporteer koppelingen</button>
@@ -1184,7 +1184,7 @@
             </div>
 
             <!-- Hidden file inputs -->
-            <input type="file" id="admin-bank-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="adminHandleBankFile(this)">
+            <input type="file" id="admin-bank-file-input" accept=".csv,.xlsx,.xls,.pdf" style="display:none" onchange="adminHandleBankFile(this)">
             <input type="file" id="admin-json-import-input" accept=".json" style="display:none" onchange="adminHandleJsonImport(this)">
         </div>
 
@@ -6430,6 +6430,19 @@
             ];
             loadScript(xlsxUrls, 0, 'SheetJS', function() {
                 console.log('SheetJS geladen!');
+            });
+
+            // PDF.js laden voor PDF parsing (transactieoverzichten)
+            const pdfjsUrls = [
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+                'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+                'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'
+            ];
+            loadScript(pdfjsUrls, 0, 'PDF.js', function() {
+                console.log('PDF.js geladen!');
+                if (window.pdfjsLib) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
             });
         })();
 
@@ -11821,62 +11834,67 @@
             if (!file) return;
             input.value = '';
             try {
-                let rows, headers;
-                if (file.name.toLowerCase().endsWith('.csv')) {
-                    const text = await file.text();
-                    const parsed = adminParseCSV(text);
-                    headers = parsed.headers;
-                    rows = parsed.rows;
-                } else {
-                    // XLSX
-                    if (typeof XLSX === 'undefined') { showToast('⚠️ SheetJS nog niet geladen, probeer opnieuw'); return; }
-                    const data = await file.arrayBuffer();
-                    const wb = XLSX.read(data, { type: 'array', cellDates: true });
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-                    if (json.length < 2) { showToast('⚠️ Bestand is leeg'); return; }
-                    headers = json[0].map(h => String(h).trim());
-                    rows = json.slice(1).filter(r => r.some(c => c !== ''));
-                }
-
-                // Auto-detect bank format
-                const colMap = adminDetectBankFormat(headers);
-                let mapping = colMap;
-                if (!mapping) {
-                    // Show manual mapping UI
-                    mapping = await adminShowColMapUI(headers);
-                    if (!mapping) return; // User cancelled
-                }
-
-                // Parse transactions
+                let transactions = [];
                 const uploadId = crypto.randomUUID();
-                const transactions = [];
-                for (const row of rows) {
-                    const rawDate = row[mapping.date];
-                    const rawAmount = row[mapping.amount];
-                    const desc = String(row[mapping.description] || '');
-                    const counterName = mapping.counterName !== undefined ? String(row[mapping.counterName] || '') : '';
-                    const counterAccount = mapping.counterAccount !== undefined ? String(row[mapping.counterAccount] || '') : '';
+                const isPdf = file.name.toLowerCase().endsWith('.pdf');
 
-                    const date = adminParseDate(rawDate);
-                    const amount = adminParseAmount(rawAmount, mapping.debitCredit !== undefined ? String(row[mapping.debitCredit]) : null);
-                    if (!date || isNaN(amount)) continue;
+                if (isPdf) {
+                    // PDF transactieoverzicht (bijv. Bunq)
+                    transactions = await adminParseBankPdf(file, uploadId);
+                } else {
+                    // CSV of XLSX
+                    let rows, headers;
+                    if (file.name.toLowerCase().endsWith('.csv')) {
+                        const text = await file.text();
+                        const parsed = adminParseCSV(text);
+                        headers = parsed.headers;
+                        rows = parsed.rows;
+                    } else {
+                        if (typeof XLSX === 'undefined') { showToast('⚠️ SheetJS nog niet geladen, probeer opnieuw'); return; }
+                        const data = await file.arrayBuffer();
+                        const wb = XLSX.read(data, { type: 'array', cellDates: true });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                        if (json.length < 2) { showToast('⚠️ Bestand is leeg'); return; }
+                        headers = json[0].map(h => String(h).trim());
+                        rows = json.slice(1).filter(r => r.some(c => c !== ''));
+                    }
 
-                    transactions.push({
-                        id: crypto.randomUUID(),
-                        uploadId,
-                        date,
-                        amount,
-                        description: desc,
-                        counterName,
-                        counterAccount,
-                        invoiceFilename: null,
-                        invoicePath: null,
-                        status: 'open'
-                    });
+                    // Auto-detect bank format
+                    const colMap = adminDetectBankFormat(headers);
+                    let mapping = colMap;
+                    if (!mapping) {
+                        mapping = await adminShowColMapUI(headers);
+                        if (!mapping) return;
+                    }
+
+                    for (const row of rows) {
+                        const rawDate = row[mapping.date];
+                        const rawAmount = row[mapping.amount];
+                        const desc = String(row[mapping.description] || '');
+                        const counterName = mapping.counterName !== undefined ? String(row[mapping.counterName] || '') : '';
+                        const counterAccount = mapping.counterAccount !== undefined ? String(row[mapping.counterAccount] || '') : '';
+
+                        const date = adminParseDate(rawDate);
+                        const amount = adminParseAmount(rawAmount, mapping.debitCredit !== undefined ? String(row[mapping.debitCredit]) : null);
+                        if (!date || isNaN(amount)) continue;
+
+                        transactions.push({
+                            id: crypto.randomUUID(),
+                            uploadId,
+                            date,
+                            amount,
+                            description: desc,
+                            counterName,
+                            counterAccount,
+                            invoiceFilename: null,
+                            invoicePath: null,
+                            status: 'open'
+                        });
+                    }
                 }
 
-                if (transactions.length === 0) { showToast('⚠️ Geen transacties gevonden'); return; }
+                if (transactions.length === 0) { showToast('⚠️ Geen transacties gevonden in dit bestand'); return; }
 
                 // Determine period label
                 const dates = transactions.map(t => t.date).sort();
@@ -11908,6 +11926,220 @@
                 console.error('Bank import fout:', e);
                 showToast('⚠️ Import mislukt: ' + e.message);
             }
+        }
+
+        // --- Bunq PDF parser ---
+        async function adminParseBankPdf(file, uploadId) {
+            if (typeof pdfjsLib === 'undefined') {
+                showToast('⚠️ PDF.js nog niet geladen, probeer opnieuw');
+                return [];
+            }
+            showToast('🔍 PDF verwerken...');
+            const arrayBuf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+
+            // Extract text from all pages with position info
+            const allItems = [];
+            for (let p = 1; p <= pdf.numPages; p++) {
+                const page = await pdf.getPage(p);
+                const content = await page.getTextContent();
+                const viewport = page.getViewport({ scale: 1 });
+                for (const item of content.items) {
+                    if (!item.str || !item.str.trim()) continue;
+                    // Transform y-coordinate (PDF has y=0 at bottom)
+                    const tx = item.transform;
+                    const x = tx[4];
+                    const y = viewport.height - tx[5];
+                    allItems.push({
+                        text: item.str.trim(),
+                        x: Math.round(x),
+                        y: Math.round(y),
+                        page: p
+                    });
+                }
+            }
+
+            // Group items into rows by y-coordinate (items within 4px = same row)
+            allItems.sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x);
+            const rows = [];
+            let currentRow = [];
+            let lastY = -999;
+            let lastPage = -1;
+            for (const item of allItems) {
+                if (item.page !== lastPage || Math.abs(item.y - lastY) > 4) {
+                    if (currentRow.length > 0) rows.push(currentRow);
+                    currentRow = [];
+                    lastY = item.y;
+                    lastPage = item.page;
+                }
+                currentRow.push(item);
+            }
+            if (currentRow.length > 0) rows.push(currentRow);
+
+            // Parse transactions from rows
+            // Bunq format: rows starting with a date YYYY-MM-DD contain transaction data
+            const transactions = [];
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            const amountRegex = /^[+\-]\s*€\s*[\d.,]+$/;
+
+            let i = 0;
+            while (i < rows.length) {
+                const row = rows[i];
+                // Check if first item is a date
+                const firstText = row[0].text;
+                if (!dateRegex.test(firstText)) { i++; continue; }
+
+                // This is a transaction row — extract columns by x-position
+                const date = firstText;
+                // Find the amount (rightmost item, matches +/- € pattern)
+                let amount = null;
+                let amountIdx = -1;
+                // Amount is typically the rightmost column
+                // Collect all text items in this logical row, including continuation lines
+                const txItems = [...row];
+
+                // Look ahead for continuation lines (lines that don't start with a date and aren't headers)
+                let j = i + 1;
+                while (j < rows.length) {
+                    const nextRow = rows[j];
+                    const nextFirst = nextRow[0].text;
+                    // Stop if next row starts with a date or is a header/footer
+                    if (dateRegex.test(nextFirst)) break;
+                    if (nextFirst === 'Datum' || nextFirst.startsWith('Transactieoverzicht') || nextFirst.startsWith('Aan dit overzicht') || nextFirst.startsWith('Dit product')) break;
+                    if (nextFirst === 'Download datum:') break;
+                    txItems.push(...nextRow);
+                    j++;
+                }
+
+                // Sort items by x-position to find columns
+                const sortedByX = [...txItems].sort((a, b) => a.x - b.x);
+
+                // Find amount: look for +/- € pattern
+                for (const item of txItems) {
+                    const m = item.text.match(/^([+\-])\s*€\s*([\d.,]+)$/);
+                    if (m) {
+                        let amtStr = m[2].replace(/\./g, '').replace(',', '.');
+                        amount = parseFloat(amtStr);
+                        if (m[1] === '-') amount = -amount;
+                        break;
+                    }
+                }
+
+                // If no amount found, try combining last items
+                if (amount === null) {
+                    // Sometimes the sign, € symbol, and number are separate items
+                    const texts = txItems.map(t => t.text);
+                    const fullText = texts.join(' ');
+                    const amMatch = fullText.match(/([+\-])\s*€\s*([\d.,]+)/);
+                    if (amMatch) {
+                        let amtStr = amMatch[2].replace(/\./g, '').replace(',', '.');
+                        amount = parseFloat(amtStr);
+                        if (amMatch[1] === '-') amount = -amount;
+                    }
+                }
+
+                if (amount === null || isNaN(amount)) { i = j; continue; }
+
+                // Extract counterparty and description
+                // In Bunq PDFs, columns are roughly: Datum | Rentedatum | Tegenrekening | Omschrijving | Bedrag
+                // Group by approximate x-ranges
+                const nonDateItems = txItems.filter(t => !dateRegex.test(t.text) && !t.text.match(/^[+\-]\s*€/));
+
+                // Find IBAN in the text (tegenrekening)
+                let counterAccount = '';
+                let counterName = '';
+                let description = '';
+                const ibanRegex = /^[A-Z]{2}\d{2}[A-Z]{4}\d{4,}$/;
+
+                const allTexts = nonDateItems.map(t => t.text);
+
+                // Separate counter info from description by x-position
+                // Counter info is typically in the 3rd column area, description in the 4th
+                // Get the x-positions of the date columns to determine column boundaries
+                const dateItems = txItems.filter(t => dateRegex.test(t.text));
+                let counterTexts = [];
+                let descTexts = [];
+
+                if (dateItems.length >= 2) {
+                    // We have datum + rentedatum, so column 3 starts after them
+                    // Sort non-date, non-amount items by x-position
+                    const contentItems = nonDateItems.sort((a, b) => a.x - b.x);
+                    // Try to find a natural x-gap that separates counter from description
+                    // Tegenrekening is typically around x=200-300, Omschrijving around x=350+
+                    // Use a heuristic: find the median x and split
+                    if (contentItems.length > 0) {
+                        const xs = contentItems.map(t => t.x);
+                        const minX = Math.min(...xs);
+                        const maxX = Math.max(...xs);
+                        const midX = (minX + maxX) / 2;
+
+                        // Find the biggest gap in x-positions
+                        const uniqueXs = [...new Set(xs)].sort((a, b) => a - b);
+                        let bestGap = 0, splitX = midX;
+                        for (let k = 1; k < uniqueXs.length; k++) {
+                            const gap = uniqueXs[k] - uniqueXs[k-1];
+                            if (gap > bestGap && gap > 30) { bestGap = gap; splitX = (uniqueXs[k] + uniqueXs[k-1]) / 2; }
+                        }
+
+                        counterTexts = contentItems.filter(t => t.x < splitX).map(t => t.text);
+                        descTexts = contentItems.filter(t => t.x >= splitX).map(t => t.text);
+                    }
+                }
+
+                // If splitting didn't work well, use all text as description
+                if (counterTexts.length === 0 && descTexts.length === 0) {
+                    descTexts = allTexts;
+                }
+
+                // Extract IBAN from counter texts
+                for (const t of counterTexts) {
+                    if (ibanRegex.test(t)) {
+                        counterAccount = t;
+                    } else if (!counterAccount || counterTexts.indexOf(t) < counterTexts.indexOf(counterAccount)) {
+                        // Name is typically before the IBAN
+                        if (!ibanRegex.test(t)) {
+                            counterName += (counterName ? ' ' : '') + t;
+                        }
+                    }
+                }
+
+                // If no IBAN found in counter, check all texts
+                if (!counterAccount) {
+                    for (const t of allTexts) {
+                        if (ibanRegex.test(t)) { counterAccount = t; break; }
+                    }
+                }
+
+                // If counterName is empty, use first non-IBAN counter text or first desc text
+                if (!counterName && counterTexts.length > 0) {
+                    counterName = counterTexts.filter(t => !ibanRegex.test(t)).join(' ');
+                }
+                if (!counterName && descTexts.length > 0) {
+                    counterName = descTexts[0];
+                }
+
+                description = descTexts.join(' ');
+
+                // Clean up: remove IBAN from counterName if it slipped in
+                counterName = counterName.replace(/\b[A-Z]{2}\d{2}[A-Z]{4}\d{4,}\b/g, '').trim();
+
+                transactions.push({
+                    id: crypto.randomUUID(),
+                    uploadId,
+                    date,
+                    amount,
+                    description: description.slice(0, 500),
+                    counterName: counterName.slice(0, 200),
+                    counterAccount,
+                    invoiceFilename: null,
+                    invoicePath: null,
+                    status: 'open'
+                });
+
+                i = j;
+            }
+
+            return transactions;
         }
 
         function adminParseCSV(text) {
@@ -12087,7 +12319,7 @@
             const uploads = await adminDB.getAll('adminUploads');
             const list = document.getElementById('admin-uploads-list');
             if (uploads.length === 0) {
-                list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">Nog geen bankafschriften ingeladen.<br>Klik op <b>+ Bankafschrift</b> om te starten.</div>';
+                list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">Nog geen transactieoverzichten ingeladen.<br>Klik op <b>+ Transacties</b> om een PDF, CSV of XLSX te laden.</div>';
                 return;
             }
             // Sort by upload date descending
