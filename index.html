@@ -4595,6 +4595,8 @@
             if (name === 'overzicht') renderOverview();
             if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
             if (name === 'administratie') { adminLoadScreen(); }
+            // Hide project selector on screens where it's not relevant
+            document.querySelector('.project-selector').style.display = (name === 'administratie' || name === 'admin') ? 'none' : '';
         }
 
         // ===== MODALS =====
