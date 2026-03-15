@@ -685,6 +685,119 @@
             border-radius: 0 0 3px 3px;
         }
         .nav-icon { font-size: 1.3rem; margin-bottom: 2px; }
+
+        /* ===== ADMINISTRATIE TAB ===== */
+        .admin-upload-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 8px;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .admin-upload-card:active { border-color: var(--kts-blue); transform: scale(0.98); }
+        @media (hover: hover) { .admin-upload-card:hover { border-color: var(--kts-blue); } }
+        .admin-upload-card.completed { border-left: 3px solid var(--green); }
+
+        .admin-progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            flex: 1;
+            margin: 0 10px;
+        }
+        .admin-progress-fill {
+            height: 100%;
+            background: var(--kts-blue);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .admin-tx-card {
+            background: white;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            margin-bottom: 12px;
+        }
+        .admin-tx-detail { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+        .admin-tx-amount { font-size: 1.1rem; font-weight: 700; }
+        .admin-tx-amount.negative { color: var(--red); }
+        .admin-tx-amount.positive { color: var(--green); }
+
+        .admin-suggestion {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.85rem;
+        }
+        .admin-suggestion:active, .admin-suggestion.selected { border-color: var(--kts-blue); background: #f0f7ff; }
+        @media (hover: hover) { .admin-suggestion:hover { border-color: var(--kts-blue); } }
+
+        .admin-wizard-nav {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .admin-wizard-nav .btn { flex: 1; font-size: 0.82rem; padding: 10px 8px; }
+
+        .admin-folder-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 2px dashed var(--border);
+            background: #f8fafc;
+            cursor: pointer;
+            font-size: 0.85rem;
+            width: 100%;
+            margin-bottom: 8px;
+            transition: all 0.15s;
+        }
+        .admin-folder-btn:active { border-color: var(--kts-blue); }
+        .admin-folder-btn.linked { border-style: solid; border-color: var(--green); background: #f0fdf4; }
+
+        .admin-search-input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            background: #f8fafc;
+            min-height: 44px;
+        }
+        .admin-search-input:focus { outline: none; border-color: var(--kts-blue); background: white; box-shadow: 0 0 0 3px rgba(7,86,127,0.08); }
+
+        .admin-filter-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .admin-filter-chip {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid var(--border);
+            background: white;
+            transition: all 0.15s;
+        }
+        .admin-filter-chip.active { background: var(--kts-blue); color: white; border-color: var(--kts-blue); }
     </style>
 </head>
 <body>
@@ -983,6 +1096,118 @@
                 <div id="insp-user-list" style="display:flex;flex-direction:column;gap:8px">
                     <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen inspecties gevonden</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ===== ADMINISTRATIE SCREEN ===== -->
+        <div class="screen" id="screen-administratie">
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">📋 Administratie</h2>
+
+            <!-- Mappen kiezen -->
+            <div style="margin-bottom:16px">
+                <div class="admin-folder-btn" id="admin-invoices-folder-btn" onclick="adminPickFolder('invoices')">
+                    📂 <span id="admin-invoices-folder-label">Facturen-map kiezen...</span>
+                </div>
+                <div class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')">
+                    📂 <span id="admin-export-folder-label">Export-map kiezen...</span>
+                </div>
+            </div>
+
+            <!-- Hoofd view vs wizard -->
+            <div id="admin-main-view">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div style="font-weight:600;font-size:0.9rem">Transactie-overzichten</div>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm btn-secondary" onclick="adminRescanInvoices()" title="Facturen opnieuw scannen">🔄 Scan</button>
+                        <button class="btn btn-sm btn-primary" onclick="adminImportBankFile()">+ Bankafschrift</button>
+                    </div>
+                </div>
+                <div id="admin-uploads-list" style="margin-bottom:16px">
+                    <div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">
+                        Nog geen bankafschriften ingeladen.<br>Klik op <b>+ Bankafschrift</b> om te starten.
+                    </div>
+                </div>
+                <button class="btn btn-block btn-secondary" onclick="adminExportAll()" style="margin-bottom:12px">📥 Exporteer koppelingen</button>
+                <button class="btn btn-block btn-secondary" onclick="adminImportJson()" style="font-size:0.8rem">📤 Importeer eerder geëxporteerde JSON</button>
+            </div>
+
+            <!-- Wizard view (verborgen standaard) -->
+            <div id="admin-wizard-view" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <button class="btn btn-sm btn-secondary" onclick="adminBackToMain()">← Terug</button>
+                    <span id="admin-wizard-counter" style="font-size:0.85rem;font-weight:600;color:var(--muted)">1 / 45</span>
+                </div>
+
+                <!-- Filter chips -->
+                <div class="admin-filter-chips" id="admin-filter-chips">
+                    <span class="admin-filter-chip active" onclick="adminFilterTx('all')">Alles</span>
+                    <span class="admin-filter-chip" onclick="adminFilterTx('open')">Open</span>
+                    <span class="admin-filter-chip" onclick="adminFilterTx('matched')">Gekoppeld</span>
+                    <span class="admin-filter-chip" onclick="adminFilterTx('no_invoice')">Geen factuur</span>
+                    <span class="admin-filter-chip" onclick="adminFilterTx('skipped')">Overgeslagen</span>
+                </div>
+
+                <!-- Transactie kaart -->
+                <div class="admin-tx-card" id="admin-tx-card">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div>
+                            <div id="admin-tx-date" style="font-size:0.8rem;color:var(--muted)">📅 12-03-2026</div>
+                            <div id="admin-tx-name" style="font-weight:600;margin-top:4px">BOUW MATERIAAL BV</div>
+                            <div id="admin-tx-desc" class="admin-tx-detail">📝 Factuur 2026-0342</div>
+                        </div>
+                        <div id="admin-tx-amount" class="admin-tx-amount negative">-€ 1.247,50</div>
+                    </div>
+                    <div id="admin-tx-status-badge" style="margin-top:8px"></div>
+                </div>
+
+                <!-- Zoeken -->
+                <div style="position:relative;margin-bottom:12px">
+                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem">🔍</span>
+                    <input type="text" class="admin-search-input" id="admin-invoice-search" placeholder="Zoek op bestandsnaam of bedrag..." oninput="adminSearchInvoices(this.value)">
+                </div>
+
+                <!-- Suggesties -->
+                <div id="admin-suggestions" style="margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
+
+                <!-- Actieknoppen -->
+                <div class="admin-wizard-nav">
+                    <button class="btn btn-secondary" onclick="adminTxAction('no_invoice')">Geen factuur</button>
+                    <button class="btn btn-secondary" onclick="adminTxAction('skipped')">Overslaan</button>
+                    <button class="btn btn-primary" id="admin-btn-link" onclick="adminTxAction('matched')" disabled>✅ Koppelen</button>
+                </div>
+
+                <!-- Navigatie -->
+                <div style="display:flex;gap:8px;margin-top:10px">
+                    <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(-1)">← Vorige</button>
+                    <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(1)">Volgende →</button>
+                </div>
+            </div>
+
+            <!-- Hidden file inputs -->
+            <input type="file" id="admin-bank-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="adminHandleBankFile(this)">
+            <input type="file" id="admin-json-import-input" accept=".json" style="display:none" onchange="adminHandleJsonImport(this)">
+        </div>
+
+        <!-- Factuur Preview Modal -->
+        <div class="modal-overlay" id="admin-preview-modal">
+            <div class="modal" style="max-height:90vh;height:80vh;display:flex;flex-direction:column">
+                <div class="modal-handle"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <h3 style="font-size:0.95rem;font-weight:700;margin:0" id="admin-preview-title">Factuur preview</h3>
+                    <button onclick="closeModal('admin-preview-modal')" style="background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
+                </div>
+                <iframe id="admin-preview-iframe" style="flex:1;border:none;border-radius:8px;background:#f1f5f9" title="Factuur preview"></iframe>
+            </div>
+        </div>
+
+        <!-- Bank kolom-mapping modal -->
+        <div class="modal-overlay" id="admin-colmap-modal">
+            <div class="modal" style="max-height:85vh">
+                <div class="modal-handle"></div>
+                <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:12px">Kolommen toewijzen</h3>
+                <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">We konden het bankformat niet automatisch herkennen. Wijs de kolommen handmatig toe:</p>
+                <div id="admin-colmap-fields"></div>
+                <button class="btn btn-block btn-primary" onclick="adminConfirmColMap()" style="margin-top:12px">Bevestigen</button>
             </div>
         </div>
 
@@ -1516,6 +1741,10 @@
             <div class="nav-item" id="nav-inspecties" onclick="switchScreen('inspecties', event)">
                 <div class="nav-icon">🔍</div>
                 Inspecties
+            </div>
+            <div class="nav-item" id="nav-administratie" style="display:none" onclick="switchScreen('administratie', event)">
+                <div class="nav-icon">📋</div>
+                Admin
             </div>
         </div>
     </div>
@@ -4282,6 +4511,11 @@
                 showToast('⚠️ Extra kosten niet beschikbaar');
                 return;
             }
+            // Blokkeer administratie scherm als gebruiker geen toegang heeft
+            if (name === 'administratie' && currentUser && currentUser.role !== 'admin' && !currentUser.allow_administratie) {
+                showToast('⚠️ Administratie niet beschikbaar');
+                return;
+            }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(`screen-${name}`).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -4300,6 +4534,7 @@
             // Ververs overzicht bij openen (haalt verse data uit Supabase)
             if (name === 'overzicht') renderOverview();
             if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
+            if (name === 'administratie') { adminLoadScreen(); }
         }
 
         // ===== MODALS =====
@@ -4391,6 +4626,9 @@
             // Inspecties tab tonen/verbergen
             const navInsp = document.getElementById('nav-inspecties');
             if (navInsp) navInsp.style.display = (currentUser.role === 'admin' || currentUser.allow_inspecties) ? '' : 'none';
+            // Administratie tab tonen/verbergen
+            const navAdm = document.getElementById('nav-administratie');
+            if (navAdm) navAdm.style.display = (currentUser.role === 'admin' || currentUser.allow_administratie) ? '' : 'none';
 
             // Laad tarieven voor nieuw project
             await loadProjectRates();
@@ -5636,6 +5874,9 @@
                 // Inspecties tab tonen/verbergen
                 const navInsp2 = document.getElementById('nav-inspecties');
                 if (navInsp2) navInsp2.style.display = (isAdmin || currentUser.allow_inspecties) ? '' : 'none';
+                // Administratie tab tonen/verbergen
+                const navAdm2 = document.getElementById('nav-administratie');
+                if (navAdm2) navAdm2.style.display = (isAdmin || currentUser.allow_administratie) ? '' : 'none';
 
                 // Laad uren voor huidige week
                 await loadWeekFromSupabase();
@@ -6831,6 +7072,7 @@
                     if (u.show_rates !== false) flags.push('Tarieven');
                     if (u.can_declare_expenses !== false) flags.push('Declaraties');
                     if (u.allow_inspecties) flags.push('Inspecties');
+                    if (u.allow_administratie) flags.push('Administratie');
                     const flagsHtml = flags.map(f => '<span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-size:0.65rem">' + f + '</span>').join(' ');
                     const priceInfo = [];
                     if (u.km_single_trip) priceInfo.push(u.km_single_trip + ' km');
@@ -8669,6 +8911,9 @@
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-user-inspecties" ${chk('allow_inspecties')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Inspecties
                         </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                            <input type="checkbox" id="adm-user-administratie" ${chk('allow_administratie')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Administratie
+                        </label>
                     </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Omgeving</div>
                     <div style="margin-bottom:16px">
@@ -10175,6 +10420,7 @@
                     show_rates: document.getElementById('adm-user-rates').checked,
                     can_declare_expenses: document.getElementById('adm-user-expenses').checked,
                     allow_inspecties: document.getElementById('adm-user-inspecties').checked,
+                    allow_administratie: document.getElementById('adm-user-administratie').checked,
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
                     company_id: document.getElementById('adm-user-company').value || null,
@@ -10202,6 +10448,8 @@
                         if (navKosten) navKosten.style.display = (currentUser.role === 'admin' || userCanDeclareExpenses()) ? '' : 'none';
                         const navInsp3 = document.getElementById('nav-inspecties');
                         if (navInsp3) navInsp3.style.display = (currentUser.role === 'admin' || currentUser.allow_inspecties) ? '' : 'none';
+                        const navAdm3 = document.getElementById('nav-administratie');
+                        if (navAdm3) navAdm3.style.display = (currentUser.role === 'admin' || currentUser.allow_administratie) ? '' : 'none';
                         // Overzicht + dagkaarten herladen met nieuwe flags
                         renderDays();
                         renderSummary();
@@ -11404,6 +11652,834 @@
 
         // =========================================================
         // ===== EINDE INSPECTIE MODULE ============================
+        // =========================================================
+
+        // =========================================================
+        // ===== ADMINISTRATIE MODULE ==============================
+        // =========================================================
+
+        // --- IndexedDB setup ---
+        const ADMIN_DB_NAME = 'kts_admin';
+        const ADMIN_DB_VERSION = 1;
+        let _adminDB = null;
+
+        function openAdminDB() {
+            return new Promise((resolve, reject) => {
+                if (_adminDB) return resolve(_adminDB);
+                const req = indexedDB.open(ADMIN_DB_NAME, ADMIN_DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('adminUploads')) db.createObjectStore('adminUploads', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('adminTransactions')) {
+                        const txStore = db.createObjectStore('adminTransactions', { keyPath: 'id' });
+                        txStore.createIndex('uploadId', 'uploadId', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('adminInvoices')) db.createObjectStore('adminInvoices', { keyPath: 'filename' });
+                    if (!db.objectStoreNames.contains('adminSettings')) db.createObjectStore('adminSettings', { keyPath: 'key' });
+                };
+                req.onsuccess = (e) => { _adminDB = e.target.result; resolve(_adminDB); };
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        const adminDB = {
+            async getAll(store) {
+                const db = await openAdminDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(store, 'readonly');
+                    const req = tx.objectStore(store).getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async get(store, key) {
+                const db = await openAdminDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(store, 'readonly');
+                    const req = tx.objectStore(store).get(key);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async put(store, item) {
+                const db = await openAdminDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(store, 'readwrite');
+                    const req = tx.objectStore(store).put(item);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async delete(store, key) {
+                const db = await openAdminDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(store, 'readwrite');
+                    const req = tx.objectStore(store).delete(key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async getAllByIndex(store, indexName, key) {
+                const db = await openAdminDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(store, 'readonly');
+                    const idx = tx.objectStore(store).index(indexName);
+                    const req = idx.getAll(key);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async clear(store) {
+                const db = await openAdminDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(store, 'readwrite');
+                    const req = tx.objectStore(store).clear();
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            }
+        };
+
+        // --- Folder handles ---
+        let _adminFolderHandles = { invoices: null, export: null };
+
+        async function adminPickFolder(type) {
+            if (!window.showDirectoryPicker) {
+                showToast('⚠️ Je browser ondersteunt geen mapkiezer — gebruik Chrome of Edge');
+                return;
+            }
+            try {
+                const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                _adminFolderHandles[type] = handle;
+                const label = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-label' : 'admin-export-folder-label');
+                const btn = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-btn' : 'admin-export-folder-btn');
+                if (label) label.textContent = '✅ ' + handle.name;
+                if (btn) btn.classList.add('linked');
+                // Auto-scan invoices folder
+                if (type === 'invoices') await adminScanInvoicesFolder(handle);
+            } catch (e) {
+                if (e.name !== 'AbortError') showToast('⚠️ Map kiezen mislukt');
+            }
+        }
+
+        // --- Invoice folder scanner ---
+        async function adminScanInvoicesFolder(dirHandle) {
+            showToast('🔍 Facturen scannen...');
+            const invoices = [];
+            async function scanDir(handle, path) {
+                for await (const entry of handle.values()) {
+                    if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
+                        const file = await entry.getFile();
+                        invoices.push({
+                            filename: entry.name,
+                            path: path ? path + '/' + entry.name : entry.name,
+                            size: file.size,
+                            lastModified: new Date(file.lastModified).toISOString(),
+                            quarterFolder: path.split('/')[0] || '',
+                            linkedToTransaction: null
+                        });
+                    } else if (entry.kind === 'directory') {
+                        await scanDir(entry, path ? path + '/' + entry.name : entry.name);
+                    }
+                }
+            }
+            await scanDir(dirHandle, '');
+            // Save all to IndexedDB
+            await adminDB.clear('adminInvoices');
+            for (const inv of invoices) await adminDB.put('adminInvoices', inv);
+            await adminDB.put('adminSettings', { key: 'lastScanDate', value: new Date().toISOString() });
+            showToast('✓ ' + invoices.length + ' facturen gevonden');
+            // Cache in memory
+            _adminInvoicesCache = invoices;
+        }
+
+        async function adminRescanInvoices() {
+            if (!_adminFolderHandles.invoices) {
+                showToast('⚠️ Kies eerst een facturen-map');
+                return;
+            }
+            try {
+                // Re-request permission
+                const perm = await _adminFolderHandles.invoices.requestPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') { showToast('⚠️ Geen toegang tot map'); return; }
+                await adminScanInvoicesFolder(_adminFolderHandles.invoices);
+            } catch (e) {
+                showToast('⚠️ Scannen mislukt: ' + e.message);
+            }
+        }
+
+        // --- Bank file import ---
+        function adminImportBankFile() {
+            document.getElementById('admin-bank-file-input').click();
+        }
+
+        let _adminColMapResolve = null;
+        let _adminColMapHeaders = [];
+
+        async function adminHandleBankFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            input.value = '';
+            try {
+                let rows, headers;
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const text = await file.text();
+                    const parsed = adminParseCSV(text);
+                    headers = parsed.headers;
+                    rows = parsed.rows;
+                } else {
+                    // XLSX
+                    if (typeof XLSX === 'undefined') { showToast('⚠️ SheetJS nog niet geladen, probeer opnieuw'); return; }
+                    const data = await file.arrayBuffer();
+                    const wb = XLSX.read(data, { type: 'array', cellDates: true });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                    if (json.length < 2) { showToast('⚠️ Bestand is leeg'); return; }
+                    headers = json[0].map(h => String(h).trim());
+                    rows = json.slice(1).filter(r => r.some(c => c !== ''));
+                }
+
+                // Auto-detect bank format
+                const colMap = adminDetectBankFormat(headers);
+                let mapping = colMap;
+                if (!mapping) {
+                    // Show manual mapping UI
+                    mapping = await adminShowColMapUI(headers);
+                    if (!mapping) return; // User cancelled
+                }
+
+                // Parse transactions
+                const uploadId = crypto.randomUUID();
+                const transactions = [];
+                for (const row of rows) {
+                    const rawDate = row[mapping.date];
+                    const rawAmount = row[mapping.amount];
+                    const desc = String(row[mapping.description] || '');
+                    const counterName = mapping.counterName !== undefined ? String(row[mapping.counterName] || '') : '';
+                    const counterAccount = mapping.counterAccount !== undefined ? String(row[mapping.counterAccount] || '') : '';
+
+                    const date = adminParseDate(rawDate);
+                    const amount = adminParseAmount(rawAmount, mapping.debitCredit !== undefined ? String(row[mapping.debitCredit]) : null);
+                    if (!date || isNaN(amount)) continue;
+
+                    transactions.push({
+                        id: crypto.randomUUID(),
+                        uploadId,
+                        date,
+                        amount,
+                        description: desc,
+                        counterName,
+                        counterAccount,
+                        invoiceFilename: null,
+                        invoicePath: null,
+                        status: 'open'
+                    });
+                }
+
+                if (transactions.length === 0) { showToast('⚠️ Geen transacties gevonden'); return; }
+
+                // Determine period label
+                const dates = transactions.map(t => t.date).sort();
+                const firstMonth = new Date(dates[0]);
+                const lastMonth = new Date(dates[dates.length - 1]);
+                const months = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+                let periodLabel;
+                if (firstMonth.getMonth() === lastMonth.getMonth() && firstMonth.getFullYear() === lastMonth.getFullYear()) {
+                    periodLabel = months[firstMonth.getMonth()] + ' ' + firstMonth.getFullYear();
+                } else {
+                    periodLabel = months[firstMonth.getMonth()] + ' - ' + months[lastMonth.getMonth()] + ' ' + lastMonth.getFullYear();
+                }
+
+                const upload = {
+                    id: uploadId,
+                    filename: file.name,
+                    periodLabel,
+                    uploadDate: new Date().toISOString(),
+                    totalRows: transactions.length,
+                    matchedRows: 0,
+                    status: 'in_progress'
+                };
+
+                await adminDB.put('adminUploads', upload);
+                for (const tx of transactions) await adminDB.put('adminTransactions', tx);
+                showToast('✓ ' + transactions.length + ' transacties ingeladen');
+                adminRenderUploads();
+            } catch (e) {
+                console.error('Bank import fout:', e);
+                showToast('⚠️ Import mislukt: ' + e.message);
+            }
+        }
+
+        function adminParseCSV(text) {
+            // Handle semicolon-separated (Dutch standard) and comma-separated
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length < 2) return { headers: [], rows: [] };
+            const sep = lines[0].includes(';') ? ';' : ',';
+            const parseRow = (line) => {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    if (ch === '"') { inQuotes = !inQuotes; }
+                    else if (ch === sep && !inQuotes) { result.push(current.trim()); current = ''; }
+                    else { current += ch; }
+                }
+                result.push(current.trim());
+                return result;
+            };
+            const headers = parseRow(lines[0]);
+            const rows = lines.slice(1).map(parseRow);
+            return { headers, rows };
+        }
+
+        function adminDetectBankFormat(headers) {
+            const h = headers.map(x => String(x).toLowerCase().trim());
+            // ING
+            if (h.includes('datum') && h.includes('naam / omschrijving') && h.includes('bedrag (eur)')) {
+                return {
+                    date: h.indexOf('datum'),
+                    description: h.indexOf('mededelingen') !== -1 ? h.indexOf('mededelingen') : h.indexOf('naam / omschrijving'),
+                    amount: h.indexOf('bedrag (eur)'),
+                    counterName: h.indexOf('naam / omschrijving'),
+                    counterAccount: h.indexOf('tegenrekening'),
+                    debitCredit: h.indexOf('af bij')
+                };
+            }
+            // Rabobank
+            if (h.includes('datum') && h.includes('naam tegenpartij') && h.includes('bedrag')) {
+                return {
+                    date: h.indexOf('datum'),
+                    description: h.indexOf('omschrijving') !== -1 ? h.indexOf('omschrijving') : h.indexOf('naam tegenpartij'),
+                    amount: h.indexOf('bedrag'),
+                    counterName: h.indexOf('naam tegenpartij'),
+                    counterAccount: h.indexOf('rekening tegenpartij') !== -1 ? h.indexOf('rekening tegenpartij') : undefined
+                };
+            }
+            // ABN AMRO
+            if (h.includes('transactiedatum') && h.includes('bedrag') && h.includes('naam')) {
+                return {
+                    date: h.indexOf('transactiedatum'),
+                    description: h.indexOf('omschrijving') !== -1 ? h.indexOf('omschrijving') : h.indexOf('naam'),
+                    amount: h.indexOf('bedrag'),
+                    counterName: h.indexOf('naam'),
+                    counterAccount: undefined
+                };
+            }
+            // Generic fallback: look for common column names
+            const dateIdx = h.findIndex(x => x === 'datum' || x === 'date' || x === 'boekdatum');
+            const amountIdx = h.findIndex(x => x === 'bedrag' || x === 'amount' || x === 'bedrag (eur)');
+            const descIdx = h.findIndex(x => x === 'omschrijving' || x === 'description' || x === 'mededelingen');
+            if (dateIdx !== -1 && amountIdx !== -1) {
+                return { date: dateIdx, amount: amountIdx, description: descIdx !== -1 ? descIdx : dateIdx };
+            }
+            return null; // Unknown format
+        }
+
+        function adminShowColMapUI(headers) {
+            return new Promise((resolve) => {
+                _adminColMapHeaders = headers;
+                _adminColMapResolve = resolve;
+                const fields = [
+                    { key: 'date', label: 'Datum', required: true },
+                    { key: 'amount', label: 'Bedrag', required: true },
+                    { key: 'description', label: 'Omschrijving', required: true },
+                    { key: 'counterName', label: 'Naam tegenpartij', required: false },
+                    { key: 'counterAccount', label: 'Rekening tegenpartij', required: false },
+                    { key: 'debitCredit', label: 'Af/Bij kolom', required: false }
+                ];
+                const container = document.getElementById('admin-colmap-fields');
+                container.innerHTML = fields.map(f => `
+                    <div class="form-group" style="margin-bottom:10px">
+                        <label style="font-size:0.82rem;font-weight:600">${f.label}${f.required ? ' *' : ''}</label>
+                        <select id="admin-colmap-${f.key}" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <option value="">-- Kies kolom --</option>
+                            ${headers.map((h, i) => '<option value="' + i + '">' + h + '</option>').join('')}
+                        </select>
+                    </div>
+                `).join('');
+                document.getElementById('admin-colmap-modal').classList.add('active');
+            });
+        }
+
+        function adminConfirmColMap() {
+            const mapping = {};
+            const dateVal = document.getElementById('admin-colmap-date').value;
+            const amountVal = document.getElementById('admin-colmap-amount').value;
+            const descVal = document.getElementById('admin-colmap-description').value;
+            if (dateVal === '' || amountVal === '' || descVal === '') {
+                showToast('⚠️ Datum, bedrag en omschrijving zijn verplicht');
+                return;
+            }
+            mapping.date = parseInt(dateVal);
+            mapping.amount = parseInt(amountVal);
+            mapping.description = parseInt(descVal);
+            const cn = document.getElementById('admin-colmap-counterName').value;
+            if (cn !== '') mapping.counterName = parseInt(cn);
+            const ca = document.getElementById('admin-colmap-counterAccount').value;
+            if (ca !== '') mapping.counterAccount = parseInt(ca);
+            const dc = document.getElementById('admin-colmap-debitCredit').value;
+            if (dc !== '') mapping.debitCredit = parseInt(dc);
+            closeModal('admin-colmap-modal');
+            if (_adminColMapResolve) _adminColMapResolve(mapping);
+            _adminColMapResolve = null;
+        }
+
+        function adminParseDate(val) {
+            if (!val) return null;
+            const s = String(val).trim();
+            // YYYYMMDD
+            if (/^\d{8}$/.test(s)) return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8);
+            // DD-MM-YYYY or DD/MM/YYYY
+            const m1 = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+            if (m1) return m1[3] + '-' + m1[2].padStart(2, '0') + '-' + m1[1].padStart(2, '0');
+            // YYYY-MM-DD
+            const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m2) return m2[1] + '-' + m2[2] + '-' + m2[3];
+            // Date object (from SheetJS)
+            if (val instanceof Date && !isNaN(val)) {
+                return val.getFullYear() + '-' + String(val.getMonth()+1).padStart(2,'0') + '-' + String(val.getDate()).padStart(2,'0');
+            }
+            return null;
+        }
+
+        function adminParseAmount(val, debitCreditFlag) {
+            if (val == null) return NaN;
+            let s = String(val).trim();
+            // Remove currency symbols
+            s = s.replace(/[€$]/g, '').trim();
+            // Handle Dutch format: 1.234,56
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',') && !s.includes('.')) {
+                s = s.replace(',', '.');
+            }
+            let amount = parseFloat(s);
+            if (isNaN(amount)) return NaN;
+            // Handle debit/credit column (ING style: "Af" = negative, "Bij" = positive)
+            if (debitCreditFlag) {
+                const dc = debitCreditFlag.toLowerCase().trim();
+                if (dc === 'af' && amount > 0) amount = -amount;
+                if (dc === 'bij' && amount < 0) amount = -amount;
+            }
+            return amount;
+        }
+
+        // --- Screen loading ---
+        let _adminInvoicesCache = [];
+        let _adminCurrentUpload = null;
+        let _adminCurrentTxs = [];
+        let _adminCurrentTxIdx = 0;
+        let _adminSelectedInvoice = null;
+        let _adminTxFilter = 'all';
+
+        async function adminLoadScreen() {
+            try {
+                await openAdminDB();
+                _adminInvoicesCache = await adminDB.getAll('adminInvoices');
+                adminRenderUploads();
+            } catch (e) {
+                console.error('AdminLoadScreen fout:', e);
+            }
+        }
+
+        async function adminRenderUploads() {
+            const uploads = await adminDB.getAll('adminUploads');
+            const list = document.getElementById('admin-uploads-list');
+            if (uploads.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">Nog geen bankafschriften ingeladen.<br>Klik op <b>+ Bankafschrift</b> om te starten.</div>';
+                return;
+            }
+            // Sort by upload date descending
+            uploads.sort((a, b) => b.uploadDate.localeCompare(a.uploadDate));
+            list.innerHTML = uploads.map(u => {
+                const pct = u.totalRows > 0 ? Math.round((u.matchedRows / u.totalRows) * 100) : 0;
+                const done = u.matchedRows === u.totalRows;
+                return `
+                    <div class="admin-upload-card ${done ? 'completed' : ''}" onclick="adminOpenUpload('${u.id}')">
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.9rem">${u.periodLabel}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${u.matchedRows}/${u.totalRows} verwerkt</div>
+                        </div>
+                        <div class="admin-progress-bar" style="max-width:80px">
+                            <div class="admin-progress-fill" style="width:${pct}%"></div>
+                        </div>
+                        <div style="font-size:0.8rem;font-weight:600;color:${done ? 'var(--green)' : 'var(--muted)'}">
+                            ${done ? '✅' : pct + '%'} ▶
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- Wizard ---
+        async function adminOpenUpload(uploadId) {
+            _adminCurrentUpload = await adminDB.get('adminUploads', uploadId);
+            if (!_adminCurrentUpload) return;
+            _adminCurrentTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', uploadId);
+            _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
+            _adminCurrentTxIdx = 0;
+            _adminTxFilter = 'all';
+            _adminSelectedInvoice = null;
+            document.getElementById('admin-main-view').style.display = 'none';
+            document.getElementById('admin-wizard-view').style.display = '';
+            // Reset filter chips
+            document.querySelectorAll('#admin-filter-chips .admin-filter-chip').forEach(c => c.classList.remove('active'));
+            document.querySelector('#admin-filter-chips .admin-filter-chip').classList.add('active');
+            adminRenderCurrentTx();
+        }
+
+        function adminBackToMain() {
+            document.getElementById('admin-main-view').style.display = '';
+            document.getElementById('admin-wizard-view').style.display = 'none';
+            _adminCurrentUpload = null;
+            adminRenderUploads();
+        }
+
+        function adminGetFilteredTxs() {
+            if (_adminTxFilter === 'all') return _adminCurrentTxs;
+            return _adminCurrentTxs.filter(t => t.status === _adminTxFilter);
+        }
+
+        function adminFilterTx(filter) {
+            _adminTxFilter = filter;
+            _adminCurrentTxIdx = 0;
+            document.querySelectorAll('#admin-filter-chips .admin-filter-chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            adminRenderCurrentTx();
+        }
+
+        function adminWizardNav(dir) {
+            const filtered = adminGetFilteredTxs();
+            _adminCurrentTxIdx = Math.max(0, Math.min(filtered.length - 1, _adminCurrentTxIdx + dir));
+            _adminSelectedInvoice = null;
+            adminRenderCurrentTx();
+        }
+
+        function adminRenderCurrentTx() {
+            const filtered = adminGetFilteredTxs();
+            const counter = document.getElementById('admin-wizard-counter');
+            if (filtered.length === 0) {
+                counter.textContent = '0 / 0';
+                document.getElementById('admin-tx-card').style.display = 'none';
+                document.getElementById('admin-suggestions').innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:0.85rem">Geen transacties in deze filter</div>';
+                return;
+            }
+            document.getElementById('admin-tx-card').style.display = '';
+            if (_adminCurrentTxIdx >= filtered.length) _adminCurrentTxIdx = filtered.length - 1;
+            const tx = filtered[_adminCurrentTxIdx];
+            counter.textContent = (_adminCurrentTxIdx + 1) + ' / ' + filtered.length;
+
+            // Render tx card
+            const d = tx.date.split('-');
+            document.getElementById('admin-tx-date').textContent = '📅 ' + d[2] + '-' + d[1] + '-' + d[0];
+            document.getElementById('admin-tx-name').textContent = tx.counterName || tx.description.slice(0, 40);
+            document.getElementById('admin-tx-desc').textContent = '📝 ' + tx.description;
+            const amountEl = document.getElementById('admin-tx-amount');
+            const formatted = (tx.amount < 0 ? '-' : '+') + '€ ' + Math.abs(tx.amount).toLocaleString('nl-NL', { minimumFractionDigits: 2 });
+            amountEl.textContent = formatted;
+            amountEl.className = 'admin-tx-amount ' + (tx.amount < 0 ? 'negative' : 'positive');
+
+            // Status badge
+            const badgeEl = document.getElementById('admin-tx-status-badge');
+            if (tx.status === 'matched') {
+                badgeEl.innerHTML = '<span class="status-badge status-approved">✅ Gekoppeld: ' + (tx.invoiceFilename || '') + '</span>';
+            } else if (tx.status === 'no_invoice') {
+                badgeEl.innerHTML = '<span class="status-badge status-draft">Geen factuur</span>';
+            } else if (tx.status === 'skipped') {
+                badgeEl.innerHTML = '<span class="status-badge status-pending">Overgeslagen</span>';
+            } else {
+                badgeEl.innerHTML = '';
+            }
+
+            // Render suggestions
+            _adminSelectedInvoice = tx.status === 'matched' ? tx.invoiceFilename : null;
+            adminRenderSuggestions(tx);
+
+            // Update link button
+            document.getElementById('admin-btn-link').disabled = !_adminSelectedInvoice;
+        }
+
+        function adminRenderSuggestions(tx) {
+            const container = document.getElementById('admin-suggestions');
+            if (_adminInvoicesCache.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.82rem">Geen facturen geïndexeerd. Kies eerst een facturen-map.</div>';
+                return;
+            }
+
+            // Score invoices
+            const scored = _adminInvoicesCache.map(inv => {
+                let score = 0;
+                const fn = inv.filename.toLowerCase();
+                const txDesc = (tx.description + ' ' + tx.counterName).toLowerCase();
+
+                // Amount match (extract numbers from filename)
+                const amountStr = Math.abs(tx.amount).toFixed(2);
+                const amountStrComma = amountStr.replace('.', ',');
+                const amountStrNoDecimals = Math.abs(tx.amount).toFixed(0);
+                if (fn.includes(amountStr) || fn.includes(amountStrComma) || fn.includes(amountStrNoDecimals)) score += 50;
+
+                // Name match
+                const txWords = txDesc.split(/\s+/).filter(w => w.length > 2);
+                for (const word of txWords) {
+                    if (fn.includes(word)) score += 10;
+                }
+
+                // Quarter/date proximity
+                if (tx.date) {
+                    const txDate = new Date(tx.date);
+                    const q = 'q' + (Math.floor(txDate.getMonth() / 3) + 1) + '-' + txDate.getFullYear();
+                    if (inv.quarterFolder && inv.quarterFolder.toLowerCase().includes(q)) score += 5;
+                    // Same month bonus
+                    const invDate = new Date(inv.lastModified);
+                    if (invDate.getMonth() === txDate.getMonth() && invDate.getFullYear() === txDate.getFullYear()) score += 3;
+                }
+
+                return { ...inv, score };
+            });
+
+            // Sort by score descending, take top 10
+            scored.sort((a, b) => b.score - a.score);
+            const top = scored.filter(s => s.score > 0).slice(0, 10);
+
+            if (top.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.82rem">Geen overeenkomsten gevonden. Gebruik de zoekbalk.</div>';
+                return;
+            }
+
+            container.innerHTML = top.map(inv => `
+                <div class="admin-suggestion ${_adminSelectedInvoice === inv.filename ? 'selected' : ''}"
+                     onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
+                    <span style="font-size:1.1rem">${_adminSelectedInvoice === inv.filename ? '🔘' : '⚪'}</span>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
+                        <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:4px 8px">👁️</button>
+                </div>
+            `).join('');
+        }
+
+        function adminSearchInvoices(query) {
+            if (!query || query.length < 2) {
+                const filtered = adminGetFilteredTxs();
+                if (filtered.length > 0) adminRenderSuggestions(filtered[_adminCurrentTxIdx]);
+                return;
+            }
+            const q = query.toLowerCase();
+            const results = _adminInvoicesCache.filter(inv =>
+                inv.filename.toLowerCase().includes(q) || inv.path.toLowerCase().includes(q)
+            ).slice(0, 15);
+
+            const container = document.getElementById('admin-suggestions');
+            if (results.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.82rem">Geen resultaten</div>';
+                return;
+            }
+            container.innerHTML = results.map(inv => `
+                <div class="admin-suggestion ${_adminSelectedInvoice === inv.filename ? 'selected' : ''}"
+                     onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
+                    <span style="font-size:1.1rem">${_adminSelectedInvoice === inv.filename ? '🔘' : '⚪'}</span>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
+                        <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:4px 8px">👁️</button>
+                </div>
+            `).join('');
+        }
+
+        function adminSelectInvoice(filename) {
+            _adminSelectedInvoice = (_adminSelectedInvoice === filename) ? null : filename;
+            document.getElementById('admin-btn-link').disabled = !_adminSelectedInvoice;
+            // Re-render suggestions to update radio buttons
+            const filtered = adminGetFilteredTxs();
+            if (filtered.length > 0) {
+                const searchVal = document.getElementById('admin-invoice-search').value;
+                if (searchVal && searchVal.length >= 2) {
+                    adminSearchInvoices(searchVal);
+                } else {
+                    adminRenderSuggestions(filtered[_adminCurrentTxIdx]);
+                }
+            }
+        }
+
+        // --- Transaction actions ---
+        async function adminTxAction(action) {
+            const filtered = adminGetFilteredTxs();
+            if (filtered.length === 0) return;
+            const tx = filtered[_adminCurrentTxIdx];
+
+            if (action === 'matched' && !_adminSelectedInvoice) {
+                showToast('⚠️ Selecteer eerst een factuur');
+                return;
+            }
+
+            // Update transaction
+            tx.status = action;
+            if (action === 'matched') {
+                const inv = _adminInvoicesCache.find(i => i.filename === _adminSelectedInvoice);
+                tx.invoiceFilename = _adminSelectedInvoice;
+                tx.invoicePath = inv ? inv.path : null;
+                // Update invoice index
+                if (inv) {
+                    inv.linkedToTransaction = tx.id;
+                    await adminDB.put('adminInvoices', inv);
+                }
+            } else {
+                tx.invoiceFilename = null;
+                tx.invoicePath = null;
+            }
+            await adminDB.put('adminTransactions', tx);
+
+            // Update upload stats
+            const allTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', _adminCurrentUpload.id);
+            const processed = allTxs.filter(t => t.status !== 'open' && t.status !== 'skipped').length;
+            _adminCurrentUpload.matchedRows = processed;
+            _adminCurrentUpload.status = processed === _adminCurrentUpload.totalRows ? 'completed' : 'in_progress';
+            await adminDB.put('adminUploads', _adminCurrentUpload);
+
+            // Reload current txs list
+            _adminCurrentTxs = allTxs;
+            _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
+
+            showToast(action === 'matched' ? '✅ Factuur gekoppeld' : action === 'no_invoice' ? '📝 Gemarkeerd als geen factuur' : '⏭️ Overgeslagen');
+
+            // Auto-advance to next open
+            _adminSelectedInvoice = null;
+            document.getElementById('admin-invoice-search').value = '';
+            const newFiltered = adminGetFilteredTxs();
+            if (_adminCurrentTxIdx < newFiltered.length - 1) {
+                _adminCurrentTxIdx++;
+            }
+            adminRenderCurrentTx();
+        }
+
+        // --- PDF Preview ---
+        async function adminPreviewInvoice(relativePath) {
+            if (!_adminFolderHandles.invoices) {
+                showToast('⚠️ Kies eerst een facturen-map');
+                return;
+            }
+            try {
+                // Navigate to the file through the directory handle
+                const parts = relativePath.split('/');
+                let handle = _adminFolderHandles.invoices;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    handle = await handle.getDirectoryHandle(parts[i]);
+                }
+                const fileHandle = await handle.getFileHandle(parts[parts.length - 1]);
+                const file = await fileHandle.getFile();
+                const blob = new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                document.getElementById('admin-preview-title').textContent = parts[parts.length - 1];
+                document.getElementById('admin-preview-iframe').src = url;
+                document.getElementById('admin-preview-modal').classList.add('active');
+            } catch (e) {
+                showToast('⚠️ Kan factuur niet openen: ' + e.message);
+            }
+        }
+
+        // --- Export ---
+        async function adminExportAll() {
+            const uploads = await adminDB.getAll('adminUploads');
+            const allTxs = await adminDB.getAll('adminTransactions');
+            if (allTxs.length === 0) { showToast('⚠️ Geen transacties om te exporteren'); return; }
+
+            // JSON backup
+            const jsonData = {
+                exportDate: new Date().toISOString(),
+                uploads,
+                transactions: allTxs,
+                invoices: _adminInvoicesCache
+            };
+
+            if (_adminFolderHandles.export) {
+                try {
+                    const perm = await _adminFolderHandles.export.requestPermission({ mode: 'readwrite' });
+                    if (perm !== 'granted') { showToast('⚠️ Geen schrijfrechten'); return; }
+
+                    // Write JSON
+                    const jsonHandle = await _adminFolderHandles.export.getFileHandle(
+                        'administratie_backup_' + new Date().toISOString().slice(0, 10) + '.json',
+                        { create: true }
+                    );
+                    const jsonWritable = await jsonHandle.createWritable();
+                    await jsonWritable.write(JSON.stringify(jsonData, null, 2));
+                    await jsonWritable.close();
+
+                    // Write CSV
+                    const csvRows = [['Datum', 'Bedrag', 'Tegenpartij', 'Omschrijving', 'Status', 'Factuur', 'Factuurpad']];
+                    for (const tx of allTxs) {
+                        csvRows.push([
+                            tx.date,
+                            tx.amount.toFixed(2).replace('.', ','),
+                            tx.counterName,
+                            tx.description.replace(/"/g, '""'),
+                            tx.status,
+                            tx.invoiceFilename || '',
+                            tx.invoicePath || ''
+                        ]);
+                    }
+                    const csvContent = csvRows.map(r => r.map(c => '"' + c + '"').join(';')).join('\r\n');
+                    const csvHandle = await _adminFolderHandles.export.getFileHandle(
+                        'administratie_export_' + new Date().toISOString().slice(0, 10) + '.csv',
+                        { create: true }
+                    );
+                    const csvWritable = await csvHandle.createWritable();
+                    await csvWritable.write(new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' }));
+                    await csvWritable.close();
+
+                    showToast('✓ Export opgeslagen in map');
+                } catch (e) {
+                    showToast('⚠️ Export mislukt: ' + e.message);
+                }
+            } else {
+                // Fallback: download
+                const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'administratie_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('✓ JSON backup gedownload');
+            }
+        }
+
+        // --- JSON Import ---
+        function adminImportJson() {
+            document.getElementById('admin-json-import-input').click();
+        }
+
+        async function adminHandleJsonImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+            input.value = '';
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                if (!data.uploads || !data.transactions) { showToast('⚠️ Ongeldig JSON-bestand'); return; }
+
+                // Import uploads
+                for (const u of data.uploads) await adminDB.put('adminUploads', u);
+                // Import transactions
+                for (const t of data.transactions) await adminDB.put('adminTransactions', t);
+                // Import invoices if present
+                if (data.invoices) {
+                    for (const inv of data.invoices) await adminDB.put('adminInvoices', inv);
+                    _adminInvoicesCache = await adminDB.getAll('adminInvoices');
+                }
+
+                showToast('✓ ' + data.transactions.length + ' transacties geïmporteerd');
+                adminRenderUploads();
+            } catch (e) {
+                showToast('⚠️ Import mislukt: ' + e.message);
+            }
+        }
+
+        // =========================================================
+        // ===== EINDE ADMINISTRATIE MODULE ========================
         // =========================================================
 
         // ===== PWA SERVICE WORKER =====
