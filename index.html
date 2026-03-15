@@ -12576,7 +12576,7 @@
         let _adminCurrentUpload = null;
         let _adminCurrentTxs = [];
         let _adminCurrentTxIdx = 0;
-        let _adminSelectedInvoice = null;
+        let _adminSelectedInvoices = new Set();
         let _adminTxFilter = 'all';
 
         async function adminLoadScreen() {
@@ -12649,7 +12649,7 @@
             _adminCurrentTxIdx = 0;
             _adminTxFilter = 'all';
             _adminListFilter = 'all';
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             // Show list view (not wizard)
             document.getElementById('admin-main-view').style.display = 'none';
             document.getElementById('admin-wizard-view').style.display = 'none';
@@ -12731,7 +12731,10 @@
                 }
 
                 let statusIcon = '';
-                if (tx.status === 'matched') statusIcon = '<span style="font-size:0.7rem;color:#16a34a">✅ ' + (tx.invoiceFilename || '').slice(0, 20) + '</span>';
+                if (tx.status === 'matched') {
+                    const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+                    statusIcon = '<span style="font-size:0.7rem;color:#16a34a">✅ ' + fnames.map(f => f.slice(0, 20)).join(', ') + '</span>';
+                }
                 else if (tx.status === 'no_invoice') {
                     const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
                     statusIcon = '<span style="font-size:0.7rem;color:#94a3b8">' + (cat ? cat.label : 'Geen factuur') + '</span>';
@@ -12753,7 +12756,7 @@
         function adminOpenTxFromList(globalIdx) {
             _adminCurrentTxIdx = 0;
             _adminTxFilter = 'all';
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             // Find the index in the filtered list
             _adminCurrentTxIdx = globalIdx;
             document.getElementById('admin-list-view').style.display = 'none';
@@ -12780,7 +12783,7 @@
         function adminWizardNav(dir) {
             const filtered = adminGetFilteredTxs();
             _adminCurrentTxIdx = Math.max(0, Math.min(filtered.length - 1, _adminCurrentTxIdx + dir));
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             adminRenderCurrentTx();
         }
 
@@ -12811,7 +12814,8 @@
             // Status badge
             const badgeEl = document.getElementById('admin-tx-status-badge');
             if (tx.status === 'matched') {
-                badgeEl.innerHTML = '<span class="status-badge status-approved">✅ Gekoppeld: ' + (tx.invoiceFilename || '') + '</span>';
+                const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+                badgeEl.innerHTML = '<span class="status-badge status-approved">✅ Gekoppeld: ' + fnames.join(', ') + '</span>';
             } else if (tx.status === 'no_invoice') {
                 const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
                 badgeEl.innerHTML = '<span class="status-badge status-draft">' + (cat ? cat.label : '📝 Geen factuur') + '</span>';
@@ -12825,11 +12829,16 @@
             document.getElementById('admin-category-picker').style.display = 'none';
 
             // Render suggestions
-            _adminSelectedInvoice = tx.status === 'matched' ? tx.invoiceFilename : null;
+            _adminSelectedInvoices = new Set();
+            if (tx.status === 'matched') {
+                // Support both old (string) and new (array) format
+                if (Array.isArray(tx.invoiceFilenames)) tx.invoiceFilenames.forEach(f => _adminSelectedInvoices.add(f));
+                else if (tx.invoiceFilename) _adminSelectedInvoices.add(tx.invoiceFilename);
+            }
             adminRenderSuggestions(tx);
 
             // Update link/unlink buttons
-            document.getElementById('admin-btn-link').disabled = !_adminSelectedInvoice;
+            document.getElementById('admin-btn-link').disabled = _adminSelectedInvoices.size === 0;
             document.getElementById('admin-btn-unlink').style.display = tx.status === 'matched' ? '' : 'none';
         }
 
@@ -12889,9 +12898,9 @@
             }
 
             return `
-                <div class="admin-suggestion ${_adminSelectedInvoice === inv.filename ? 'selected' : ''}"
+                <div class="admin-suggestion ${_adminSelectedInvoices.has(inv.filename) ? 'selected' : ''}"
                      onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
-                    <span style="font-size:1.1rem">${_adminSelectedInvoice === inv.filename ? '🔘' : '⚪'}</span>
+                    <span style="font-size:1.1rem">${_adminSelectedInvoices.has(inv.filename) ? '☑️' : '⬜'}</span>
                     <div style="flex:1;min-width:0">
                         <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem">${inv.filename}</div>
                         ${subtitleHtml}${tagsHtml}
@@ -12928,8 +12937,9 @@
         }
 
         function adminSelectInvoice(filename) {
-            _adminSelectedInvoice = (_adminSelectedInvoice === filename) ? null : filename;
-            document.getElementById('admin-btn-link').disabled = !_adminSelectedInvoice;
+            if (_adminSelectedInvoices.has(filename)) _adminSelectedInvoices.delete(filename);
+            else _adminSelectedInvoices.add(filename);
+            document.getElementById('admin-btn-link').disabled = _adminSelectedInvoices.size === 0;
             // Re-render suggestions to update radio buttons
             const filtered = adminGetFilteredTxs();
             if (filtered.length > 0) {
@@ -13011,7 +13021,7 @@
             showToast('📁 Gecategoriseerd als ' + (cat ? cat.label : categoryId));
 
             // Auto-advance
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             const newFiltered = adminGetFilteredTxs();
             if (_adminCurrentTxIdx < newFiltered.length - 1) {
                 _adminCurrentTxIdx++;
@@ -13025,19 +13035,20 @@
             const tx = filtered[_adminCurrentTxIdx];
             if (tx.status !== 'matched') return;
 
-            // Free the invoice back to the pool
-            if (tx.invoiceFilename) {
-                const inv = _adminInvoicesCache.find(i => i.filename === tx.invoiceFilename);
-                if (inv) {
-                    inv.linkedToTransaction = null;
-                    await adminDB.put('adminInvoices', inv);
-                }
+            // Free all linked invoices back to the pool
+            const oldFiles = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+            for (const fn of oldFiles) {
+                const inv = _adminInvoicesCache.find(i => i.filename === fn);
+                if (inv) { inv.linkedToTransaction = null; await adminDB.put('adminInvoices', inv); }
             }
 
             // Reset transaction to open
             tx.status = 'open';
             tx.invoiceFilename = null;
+            tx.invoiceFilenames = null;
             tx.invoicePath = null;
+            tx.invoicePaths = null;
+            tx.category = null;
             await adminDB.put('adminTransactions', tx);
 
             // Update upload stats
@@ -13049,7 +13060,7 @@
             _adminCurrentTxs = allTxs;
             _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
 
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             showToast('🔓 Factuur ontkoppeld');
             adminRenderCurrentTx();
         }
@@ -13059,25 +13070,42 @@
             if (filtered.length === 0) return;
             const tx = filtered[_adminCurrentTxIdx];
 
-            if (action === 'matched' && !_adminSelectedInvoice) {
+            if (action === 'matched' && _adminSelectedInvoices.size === 0) {
                 showToast('⚠️ Selecteer eerst een factuur');
                 return;
+            }
+
+            // Free previously linked invoices if re-linking
+            if (tx.status === 'matched') {
+                const oldFiles = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+                for (const fn of oldFiles) {
+                    const oldInv = _adminInvoicesCache.find(i => i.filename === fn);
+                    if (oldInv) { oldInv.linkedToTransaction = null; await adminDB.put('adminInvoices', oldInv); }
+                }
             }
 
             // Update transaction
             tx.status = action;
             if (action === 'matched') {
-                const inv = _adminInvoicesCache.find(i => i.filename === _adminSelectedInvoice);
-                tx.invoiceFilename = _adminSelectedInvoice;
-                tx.invoicePath = inv ? inv.path : null;
-                // Update invoice index
-                if (inv) {
-                    inv.linkedToTransaction = tx.id;
-                    await adminDB.put('adminInvoices', inv);
+                const selectedArr = [..._adminSelectedInvoices];
+                tx.invoiceFilenames = selectedArr;
+                tx.invoiceFilename = selectedArr[0]; // backwards compat
+                const firstInv = _adminInvoicesCache.find(i => i.filename === selectedArr[0]);
+                tx.invoicePath = firstInv ? firstInv.path : null;
+                tx.invoicePaths = selectedArr.map(fn => {
+                    const inv = _adminInvoicesCache.find(i => i.filename === fn);
+                    return inv ? inv.path : null;
+                });
+                // Mark all selected invoices as linked
+                for (const fn of selectedArr) {
+                    const inv = _adminInvoicesCache.find(i => i.filename === fn);
+                    if (inv) { inv.linkedToTransaction = tx.id; await adminDB.put('adminInvoices', inv); }
                 }
             } else {
                 tx.invoiceFilename = null;
+                tx.invoiceFilenames = null;
                 tx.invoicePath = null;
+                tx.invoicePaths = null;
             }
             await adminDB.put('adminTransactions', tx);
 
@@ -13095,7 +13123,7 @@
             showToast(action === 'matched' ? '✅ Factuur gekoppeld' : action === 'no_invoice' ? '📝 Gemarkeerd als geen factuur' : '⏭️ Overgeslagen');
 
             // Auto-advance to next open
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             document.getElementById('admin-invoice-search').value = '';
             const newFiltered = adminGetFilteredTxs();
             if (_adminCurrentTxIdx < newFiltered.length - 1) {
@@ -13251,7 +13279,9 @@
                         const inv = best.inv;
                         tx.status = 'matched';
                         tx.invoiceFilename = inv.filename;
+                        tx.invoiceFilenames = [inv.filename];
                         tx.invoicePath = inv.path;
+                        tx.invoicePaths = [inv.path];
                         inv.linkedToTransaction = tx.id;
                         await adminDB.put('adminTransactions', tx);
                         await adminDB.put('adminInvoices', inv);
@@ -13292,7 +13322,9 @@
                         if (!second || second.score < 60 || best.score - second.score >= 10 || best.score >= 150) {
                             tx.status = 'matched';
                             tx.invoiceFilename = best.inv.filename;
+                            tx.invoiceFilenames = [best.inv.filename];
                             tx.invoicePath = best.inv.path;
+                            tx.invoicePaths = [best.inv.path];
                             best.inv.linkedToTransaction = tx.id;
                             await adminDB.put('adminTransactions', tx);
                             await adminDB.put('adminInvoices', best.inv);
@@ -13347,7 +13379,7 @@
 
             showToast('🗑️ Transactie verwijderd');
 
-            _adminSelectedInvoice = null;
+            _adminSelectedInvoices = new Set();
             if (_adminCurrentTxIdx >= adminGetFilteredTxs().length) {
                 _adminCurrentTxIdx = Math.max(0, adminGetFilteredTxs().length - 1);
             }
@@ -13408,16 +13440,20 @@
                     await jsonWritable.close();
 
                     // Write CSV
-                    const csvRows = [['Datum', 'Bedrag', 'Tegenpartij', 'Omschrijving', 'Status', 'Factuur', 'Factuurpad']];
+                    const csvRows = [['Datum', 'Bedrag', 'Tegenpartij', 'Omschrijving', 'Status', 'Categorie', 'Factuur', 'Factuurpad']];
                     for (const tx of allTxs) {
+                        const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+                        const fpaths = tx.invoicePaths || (tx.invoicePath ? [tx.invoicePath] : []);
+                        const cat = tx.category ? (ADMIN_CATEGORIES.find(c => c.id === tx.category) || {}).label || tx.category : '';
                         csvRows.push([
                             tx.date,
                             tx.amount.toFixed(2).replace('.', ','),
                             tx.counterName,
                             tx.description.replace(/"/g, '""'),
                             tx.status,
-                            tx.invoiceFilename || '',
-                            tx.invoicePath || ''
+                            cat,
+                            fnames.join(' | '),
+                            fpaths.join(' | ')
                         ]);
                     }
                     const csvContent = csvRows.map(r => r.map(c => '"' + c + '"').join(';')).join('\r\n');
@@ -13490,12 +13526,13 @@
                     const name = tx.counterName || tx.description.slice(0, 40);
 
                     let invoiceCell = '';
-                    if (tx.status === 'matched' && tx.invoicePath) {
-                        // Relative link to invoice in the invoices folder
-                        const relativePath = '../' + invoiceFolderName + '/' + tx.invoicePath;
-                        invoiceCell = '<a href="' + relativePath.replace(/"/g, '&quot;') + '" style="color:#2563eb;text-decoration:none;font-size:0.8rem" title="Open factuur">📄 ' + (tx.invoiceFilename || '').replace(/</g, '&lt;') + '</a>';
-                    } else if (tx.status === 'matched' && tx.invoiceFilename) {
-                        invoiceCell = '<span style="font-size:0.8rem">📄 ' + tx.invoiceFilename.replace(/</g, '&lt;') + '</span>';
+                    if (tx.status === 'matched') {
+                        const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+                        const fpaths = tx.invoicePaths || (tx.invoicePath ? [tx.invoicePath] : []);
+                        invoiceCell = fnames.map((fn, i) => {
+                            const fullPath = invoiceFolderName + '/' + (fpaths[i] || fn);
+                            return '<span class="inv-link" onclick="navigator.clipboard.writeText(\'' + fullPath.replace(/'/g, "\\'") + '\');this.textContent=\'✓ Gekopieerd!\';setTimeout(()=>this.textContent=\'📄 ' + fn.replace(/'/g, "\\'").replace(/</g, '&lt;') + '\',1500)" style="color:#2563eb;cursor:pointer;font-size:0.8rem;display:block" title="Klik om pad te kopiëren: ' + fullPath.replace(/"/g, '&quot;') + '">📄 ' + fn.replace(/</g, '&lt;') + '</span>';
+                        }).join('');
                     } else {
                         const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
                         invoiceCell = '<span style="font-size:0.75rem;color:#9ca3af">' + (cat ? cat.label : (statusLabel[tx.status] || '')) + '</span>';
