@@ -1151,21 +1151,30 @@
                 </div>
             </div>
 
-            <!-- Hoofd view vs wizard -->
+            <!-- Hoofd view: Rekeningen overzicht -->
             <div id="admin-main-view">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <div style="font-weight:600;font-size:0.9rem">Transactie-overzichten</div>
+                    <div style="font-weight:600;font-size:0.9rem">Rekeningen</div>
                     <div style="display:flex;gap:8px">
                         <button class="btn btn-sm btn-secondary" onclick="adminRescanInvoices()" title="Facturen opnieuw scannen">🔄 Scan</button>
                     </div>
                 </div>
-                <div id="admin-uploads-list" style="margin-bottom:16px">
+                <div id="admin-accounts-list" style="margin-bottom:16px">
                     <div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">
                         Nog geen transactieoverzichten ingeladen.<br>Kies een <b>Transacties-map</b> hierboven om bankafschriften in te laden.
                     </div>
                 </div>
                 <button class="btn btn-block btn-secondary" onclick="adminExportAll()" style="margin-bottom:12px">📥 Exporteer koppelingen</button>
                 <button class="btn btn-block btn-secondary" onclick="adminImportJson()" style="font-size:0.8rem">📤 Importeer eerder geëxporteerde JSON</button>
+            </div>
+
+            <!-- Uploads per rekening view -->
+            <div id="admin-account-view" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <button class="btn btn-sm btn-secondary" onclick="adminBackToAccounts()">← Rekeningen</button>
+                    <div id="admin-account-title" style="font-weight:600;font-size:0.9rem"></div>
+                </div>
+                <div id="admin-uploads-list" style="margin-bottom:16px"></div>
             </div>
 
             <!-- Overzichtslijst view (verborgen standaard) -->
@@ -12591,16 +12600,70 @@
             }
         }
 
+        // --- Account labels ---
+        const ADMIN_ACCOUNT_LABELS = {};
+        let _adminCurrentAccount = null;
+
+        function adminExtractAccount(filename) {
+            const m = filename.match(/(NL\d{2}[A-Z]{4}\d+)/i);
+            return m ? m[1].toUpperCase() : 'onbekend';
+        }
+
+        function adminAccountLabel(iban) {
+            if (ADMIN_ACCOUNT_LABELS[iban]) return ADMIN_ACCOUNT_LABELS[iban];
+            const last2 = iban.slice(-2);
+            if (last2 === '08') return 'Hoofdrekening';
+            if (last2 === '69') return 'BTW rekening';
+            return 'Rekening …' + last2;
+        }
+
         async function adminRenderUploads() {
             const uploads = await adminDB.getAll('adminUploads');
-            const list = document.getElementById('admin-uploads-list');
+            const list = document.getElementById('admin-accounts-list');
             if (uploads.length === 0) {
                 list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">Nog geen transactieoverzichten ingeladen.<br>Kies een <b>Transacties-map</b> hierboven om bankafschriften in te laden.</div>';
                 return;
             }
-            // Sort by upload date descending
-            uploads.sort((a, b) => b.uploadDate.localeCompare(a.uploadDate));
-            list.innerHTML = uploads.map(u => {
+            // Group by account
+            const accounts = {};
+            for (const u of uploads) {
+                const iban = adminExtractAccount(u.filename);
+                if (!accounts[iban]) accounts[iban] = { iban, uploads: [], totalRows: 0, matchedRows: 0 };
+                accounts[iban].uploads.push(u);
+                accounts[iban].totalRows += u.totalRows;
+                accounts[iban].matchedRows += u.matchedRows;
+            }
+            const sorted = Object.values(accounts).sort((a, b) => a.iban.localeCompare(b.iban));
+            list.innerHTML = sorted.map(acc => {
+                const pct = acc.totalRows > 0 ? Math.round((acc.matchedRows / acc.totalRows) * 100) : 0;
+                const done = acc.matchedRows === acc.totalRows && acc.totalRows > 0;
+                const label = adminAccountLabel(acc.iban);
+                const last4 = acc.iban.length >= 4 ? acc.iban.slice(-4) : acc.iban;
+                return `
+                    <div class="admin-upload-card ${done ? 'completed' : ''}" onclick="adminOpenAccount('${acc.iban}')" style="cursor:pointer">
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.95rem">🏦 ${label}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">…${last4} · ${acc.uploads.length} overzicht${acc.uploads.length !== 1 ? 'en' : ''} · ${acc.matchedRows}/${acc.totalRows} verwerkt</div>
+                        </div>
+                        <div class="admin-progress-bar" style="max-width:80px">
+                            <div class="admin-progress-fill" style="width:${pct}%"></div>
+                        </div>
+                        <div style="font-size:0.8rem;font-weight:600;color:${done ? 'var(--green)' : 'var(--muted)'}">
+                            ${done ? '✅' : pct + '%'} ▶
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function adminOpenAccount(iban) {
+            _adminCurrentAccount = iban;
+            const uploads = await adminDB.getAll('adminUploads');
+            const filtered = uploads.filter(u => adminExtractAccount(u.filename) === iban);
+            filtered.sort((a, b) => b.uploadDate.localeCompare(a.uploadDate));
+            const list = document.getElementById('admin-uploads-list');
+            document.getElementById('admin-account-title').textContent = adminAccountLabel(iban) + ' (…' + iban.slice(-4) + ')';
+            list.innerHTML = filtered.map(u => {
                 const pct = u.totalRows > 0 ? Math.round((u.matchedRows / u.totalRows) * 100) : 0;
                 const done = u.matchedRows === u.totalRows;
                 return `
@@ -12619,6 +12682,15 @@
                     </div>
                 `;
             }).join('');
+            document.getElementById('admin-main-view').style.display = 'none';
+            document.getElementById('admin-account-view').style.display = '';
+        }
+
+        function adminBackToAccounts() {
+            document.getElementById('admin-account-view').style.display = 'none';
+            document.getElementById('admin-main-view').style.display = '';
+            _adminCurrentAccount = null;
+            adminRenderUploads();
         }
 
         async function adminDeleteUpload(uploadId) {
@@ -12635,7 +12707,11 @@
             }
             await adminDB.delete('adminUploads', uploadId);
             showToast('🗑️ Overzicht verwijderd');
-            adminRenderUploads();
+            if (_adminCurrentAccount) {
+                adminOpenAccount(_adminCurrentAccount);
+            } else {
+                adminRenderUploads();
+            }
         }
 
         // --- Wizard ---
@@ -12652,6 +12728,7 @@
             _adminSelectedInvoices = new Set();
             // Show list view (not wizard)
             document.getElementById('admin-main-view').style.display = 'none';
+            document.getElementById('admin-account-view').style.display = 'none';
             document.getElementById('admin-wizard-view').style.display = 'none';
             document.getElementById('admin-list-view').style.display = '';
             // Reset filter chips
@@ -12663,11 +12740,16 @@
         }
 
         function adminBackToMain() {
-            document.getElementById('admin-main-view').style.display = '';
             document.getElementById('admin-wizard-view').style.display = 'none';
             document.getElementById('admin-list-view').style.display = 'none';
             _adminCurrentUpload = null;
-            adminRenderUploads();
+            if (_adminCurrentAccount) {
+                document.getElementById('admin-account-view').style.display = '';
+                adminOpenAccount(_adminCurrentAccount);
+            } else {
+                document.getElementById('admin-main-view').style.display = '';
+                adminRenderUploads();
+            }
         }
 
         function adminBackToList() {
