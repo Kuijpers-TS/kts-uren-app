@@ -5616,6 +5616,10 @@
             currentProject = null;
             weekData = defaultWeekData();
             markClean();
+            // Reset admin DB connection so next user gets their own DB
+            if (_adminDB) { _adminDB.close(); _adminDB = null; _adminDBName = null; }
+            _adminInvoicesCache = [];
+            _adminFolderHandles = { invoices: null, export: null };
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('user-menu').style.display = 'none';
             document.getElementById('login-email').value = '';
@@ -11732,14 +11736,26 @@
         // =========================================================
 
         // --- IndexedDB setup ---
-        const ADMIN_DB_NAME = 'kts_admin';
         const ADMIN_DB_VERSION = 1;
         let _adminDB = null;
+        let _adminDBName = null;
+
+        function getAdminDBName() {
+            const uid = currentUser && currentUser.id ? currentUser.id : 'default';
+            return 'kts_admin_' + uid;
+        }
 
         function openAdminDB() {
             return new Promise((resolve, reject) => {
+                const dbName = getAdminDBName();
+                // If user changed, close old DB and open new one
+                if (_adminDB && _adminDBName !== dbName) {
+                    _adminDB.close();
+                    _adminDB = null;
+                    _adminDBName = null;
+                }
                 if (_adminDB) return resolve(_adminDB);
-                const req = indexedDB.open(ADMIN_DB_NAME, ADMIN_DB_VERSION);
+                const req = indexedDB.open(dbName, ADMIN_DB_VERSION);
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('adminUploads')) db.createObjectStore('adminUploads', { keyPath: 'id' });
@@ -11750,7 +11766,7 @@
                     if (!db.objectStoreNames.contains('adminInvoices')) db.createObjectStore('adminInvoices', { keyPath: 'filename' });
                     if (!db.objectStoreNames.contains('adminSettings')) db.createObjectStore('adminSettings', { keyPath: 'key' });
                 };
-                req.onsuccess = (e) => { _adminDB = e.target.result; resolve(_adminDB); };
+                req.onsuccess = (e) => { _adminDB = e.target.result; _adminDBName = dbName; resolve(_adminDB); };
                 req.onerror = (e) => reject(e.target.error);
             });
         }
