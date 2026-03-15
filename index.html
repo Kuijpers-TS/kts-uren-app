@@ -11766,14 +11766,45 @@
             try {
                 const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
                 _adminFolderHandles[type] = handle;
-                const label = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-label' : 'admin-export-folder-label');
-                const btn = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-btn' : 'admin-export-folder-btn');
-                if (label) label.textContent = '✅ ' + handle.name;
-                if (btn) btn.classList.add('linked');
+                adminUpdateFolderUI(type, handle.name);
+                // Persist handle in IndexedDB
+                await adminDB.put('adminSettings', { key: 'folderHandle_' + type, value: handle });
                 // Auto-scan invoices folder
                 if (type === 'invoices') await adminScanInvoicesFolder(handle);
             } catch (e) {
                 if (e.name !== 'AbortError') showToast('⚠️ Map kiezen mislukt');
+            }
+        }
+
+        function adminUpdateFolderUI(type, name) {
+            const label = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-label' : 'admin-export-folder-label');
+            const btn = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-btn' : 'admin-export-folder-btn');
+            if (label) label.textContent = '✅ ' + name;
+            if (btn) btn.classList.add('linked');
+        }
+
+        async function adminRestoreFolderHandles() {
+            for (const type of ['invoices', 'export']) {
+                try {
+                    const stored = await adminDB.get('adminSettings', 'folderHandle_' + type);
+                    if (stored && stored.value) {
+                        const handle = stored.value;
+                        // Request permission (browser shows a small prompt, not the full picker)
+                        const perm = await handle.requestPermission({ mode: 'readwrite' });
+                        if (perm === 'granted') {
+                            _adminFolderHandles[type] = handle;
+                            adminUpdateFolderUI(type, handle.name);
+                        } else {
+                            // Permission not granted yet — show name but indicate needs re-auth
+                            adminUpdateFolderUI(type, '🔒 ' + handle.name + ' (klik om toegang te geven)');
+                            // Store handle anyway so re-clicking can re-request
+                            _adminFolderHandles[type] = handle;
+                        }
+                    }
+                } catch (e) {
+                    // Handle expired or unavailable, ignore
+                    console.warn('Folder handle restore mislukt voor ' + type + ':', e.message);
+                }
             }
         }
 
@@ -12413,6 +12444,8 @@
                 await openAdminDB();
                 _adminInvoicesCache = await adminDB.getAll('adminInvoices');
                 adminRenderUploads();
+                // Restore saved folder handles
+                await adminRestoreFolderHandles();
             } catch (e) {
                 console.error('AdminLoadScreen fout:', e);
             }
