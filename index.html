@@ -1235,6 +1235,7 @@
                     <button class="btn btn-secondary" onclick="adminTxAction('no_invoice')">Geen factuur</button>
                     <button class="btn btn-secondary" onclick="adminTxAction('skipped')">Overslaan</button>
                     <button class="btn btn-primary" id="admin-btn-link" onclick="adminTxAction('matched')" disabled>✅ Koppelen</button>
+                    <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:#fef2f2;color:#dc2626;border-color:#fecaca">🔓 Ontkoppelen</button>
                 </div>
 
                 <!-- Navigatie + verwijderen -->
@@ -11948,29 +11949,33 @@
                         fullText = fullText.trim();
                         inv.extractedText = fullText.slice(0, 2000); // Keep first 2000 chars for search
 
-                        // Extract amounts (€ XX,XX patterns)
-                        const amountMatches = fullText.match(/€\s*[\d.,]+/g) || [];
+                        // Extract amounts (€/£/$ XX,XX patterns)
+                        const amountMatches = fullText.match(/[€£$]\s*[\d.,]+/g) || [];
                         const amounts = amountMatches.map(m => {
-                            let s = m.replace('€', '').trim();
+                            const currency = m.charAt(0);
+                            let s = m.replace(/[€£$]/, '').trim();
                             if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
                             else if (s.includes(',')) s = s.replace(',', '.');
-                            return parseFloat(s);
-                        }).filter(a => !isNaN(a) && a > 0);
-                        inv.extractedAmounts = [...new Set(amounts)];
-                        // Main amount: always incl. BTW (= the amount on the bank statement)
-                        // Priority: 1) "incl BTW/VAT" label, 2) "te betalen/amount due", 3) largest amount
+                            return { value: parseFloat(s), currency };
+                        }).filter(a => !isNaN(a.value) && a.value > 0);
+                        inv.extractedAmounts = [...new Set(amounts.map(a => a.value))];
+                        // Detect primary currency
+                        const currencies = amounts.map(a => a.currency);
+                        inv.extractedCurrency = currencies.includes('€') ? 'EUR' : currencies.includes('£') ? 'GBP' : currencies.includes('$') ? 'USD' : 'EUR';
+                        // Main amount: always incl. BTW/VAT (= the amount on the bank statement)
                         const parseAmountStr = (s) => {
                             if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
                             else if (s.includes(',')) s = s.replace(',', '.');
                             return parseFloat(s);
                         };
+                        const cur = '[€£$]';
                         // 1. Look for explicit "incl. BTW" / "incl. VAT" amount
-                        const inclMatch = fullText.match(/(?:incl\.?\s*(?:btw|vat)|inclusief\s*(?:btw|vat))[^€]*€\s*([\d.,]+)/i)
-                            || fullText.match(/€\s*([\d.,]+)[^€]*(?:incl\.?\s*(?:btw|vat)|inclusief\s*(?:btw|vat))/i);
-                        // 2. Look for "te betalen" / "amount due" / "total due"
-                        const teBetalenMatch = fullText.match(/(?:te\s*betalen|amount\s*due|total\s*due|verschuldigd)[^€]*€\s*([\d.,]+)/i);
-                        // 3. Generic "totaal" (but NOT "subtotaal" or "excl")
-                        const totaalMatch = fullText.match(/(?:^|[^b])totaa?l[^€]*€\s*([\d.,]+)/im);
+                        const inclMatch = fullText.match(new RegExp('(?:incl\\.?\\s*(?:btw|vat)|inclusief\\s*(?:btw|vat))[^€£$]*[€£$]\\s*([\\d.,]+)', 'i'))
+                            || fullText.match(new RegExp('[€£$]\\s*([\\d.,]+)[^€£$]*(?:incl\\.?\\s*(?:btw|vat)|inclusief\\s*(?:btw|vat))', 'i'));
+                        // 2. Look for "te betalen" / "amount due" / "total due" / "Total:"
+                        const teBetalenMatch = fullText.match(new RegExp('(?:te\\s*betalen|amount\\s*due|total\\s*due|verschuldigd|Total:)[^€£$]*[€£$]\\s*([\\d.,]+)', 'i'));
+                        // 3. Generic "totaal/total" (but NOT "subtotaal/subtotal")
+                        const totaalMatch = fullText.match(new RegExp('(?:^|[^bu])totaa?l[^€£$]*[€£$]\\s*([\\d.,]+)', 'im'));
 
                         if (inclMatch) {
                             inv.extractedAmount = parseAmountStr(inclMatch[1]);
@@ -11979,8 +11984,8 @@
                         } else if (totaalMatch) {
                             inv.extractedAmount = parseAmountStr(totaalMatch[1]);
                         } else if (amounts.length > 0) {
-                            // Fallback: use the largest amount (most likely incl. BTW)
-                            inv.extractedAmount = Math.max(...amounts);
+                            // Fallback: use the largest amount (most likely incl. BTW/VAT)
+                            inv.extractedAmount = Math.max(...amounts.map(a => a.value));
                         }
 
                         // Extract invoice number patterns
@@ -12011,7 +12016,7 @@
                         // Extract company/sender name - look near top of document
                         const topText = fullText.slice(0, 300);
                         // Look for B.V., BV, VOF etc. patterns
-                        const companyMatch = topText.match(/([A-Z][\w\s&\.]+(?:B\.?V\.?|BV|VOF|V\.O\.F\.|GmbH|ApS|N\.V\.|NV|LLC))/);
+                        const companyMatch = topText.match(/([A-Z][\w\s&\.]+(?:B\.?V\.?|BV|VOF|V\.O\.F\.|GmbH|ApS|N\.V\.|NV|LLC|Ltd\.?|Limited|Inc\.?|S\.?L\.?|S\.?A\.?))/);
                         if (companyMatch) inv.extractedName = companyMatch[1].trim();
 
                         // Extract IBAN
@@ -12794,8 +12799,9 @@
             _adminSelectedInvoice = tx.status === 'matched' ? tx.invoiceFilename : null;
             adminRenderSuggestions(tx);
 
-            // Update link button
+            // Update link/unlink buttons
             document.getElementById('admin-btn-link').disabled = !_adminSelectedInvoice;
+            document.getElementById('admin-btn-unlink').style.display = tx.status === 'matched' ? '' : 'none';
         }
 
         function adminRenderSuggestions(tx) {
@@ -12899,6 +12905,41 @@
         }
 
         // --- Transaction actions ---
+        async function adminUnlinkTx() {
+            const filtered = adminGetFilteredTxs();
+            if (filtered.length === 0) return;
+            const tx = filtered[_adminCurrentTxIdx];
+            if (tx.status !== 'matched') return;
+
+            // Free the invoice back to the pool
+            if (tx.invoiceFilename) {
+                const inv = _adminInvoicesCache.find(i => i.filename === tx.invoiceFilename);
+                if (inv) {
+                    inv.linkedToTransaction = null;
+                    await adminDB.put('adminInvoices', inv);
+                }
+            }
+
+            // Reset transaction to open
+            tx.status = 'open';
+            tx.invoiceFilename = null;
+            tx.invoicePath = null;
+            await adminDB.put('adminTransactions', tx);
+
+            // Update upload stats
+            const allTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', _adminCurrentUpload.id);
+            const processed = allTxs.filter(t => t.status !== 'open' && t.status !== 'skipped').length;
+            _adminCurrentUpload.matchedRows = processed;
+            _adminCurrentUpload.status = processed === _adminCurrentUpload.totalRows ? 'completed' : 'in_progress';
+            await adminDB.put('adminUploads', _adminCurrentUpload);
+            _adminCurrentTxs = allTxs;
+            _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
+
+            _adminSelectedInvoice = null;
+            showToast('🔓 Factuur ontkoppeld');
+            adminRenderCurrentTx();
+        }
+
         async function adminTxAction(action) {
             const filtered = adminGetFilteredTxs();
             if (filtered.length === 0) return;
@@ -12954,22 +12995,34 @@
             // Score how well an invoice matches a transaction (higher = better)
             let score = 0;
             const absAmount = Math.abs(tx.amount);
+            const isIncoming = tx.amount > 0; // Positive = money received, not a purchase invoice payment
             const fn = inv.filename.toLowerCase();
             const txDesc = (tx.description + ' ' + tx.counterName).toLowerCase();
 
-            // 1. AMOUNT MATCH — strongest signal
+            // 1. AMOUNT MATCH — strongest signal (but much weaker for incoming amounts)
+            const amountWeight = isIncoming ? 0.2 : 1; // Incoming: amount match is weak signal
             // Match on extracted PDF amount
             if (inv.extractedAmount && Math.abs(inv.extractedAmount - absAmount) < 0.02) {
-                score += 100; // Exact amount match from PDF content
+                score += Math.round(100 * amountWeight);
             }
             // Match on any extracted amount
             if (inv.extractedAmounts && inv.extractedAmounts.some(a => Math.abs(a - absAmount) < 0.02)) {
-                score += 80;
+                score += Math.round(80 * amountWeight);
             }
             // Match amount in filename
             const amountStr = absAmount.toFixed(2);
             const amountStrComma = amountStr.replace('.', ',');
-            if (fn.includes(amountStr) || fn.includes(amountStrComma)) score += 70;
+            if (fn.includes(amountStr) || fn.includes(amountStrComma)) score += Math.round(70 * amountWeight);
+            // Foreign currency match: e.g. tx description "102.79 GBP" matches invoice amount £102.79
+            if (inv.extractedAmount && inv.extractedCurrency && inv.extractedCurrency !== 'EUR') {
+                const foreignMatch = txDesc.match(/([\d.]+)\s*(?:gbp|usd|eur|chf|sek|dkk|nok|pln|czk)/i);
+                if (foreignMatch) {
+                    const foreignAmt = parseFloat(foreignMatch[1]);
+                    if (!isNaN(foreignAmt) && Math.abs(inv.extractedAmount - foreignAmt) < 0.02) {
+                        score += 100; // Strong signal: foreign currency amount matches exactly
+                    }
+                }
+            }
 
             // 2. INVOICE NUMBER MATCH — very strong signal
             if (inv.extractedInvoiceNr) {
