@@ -12467,17 +12467,35 @@
                     <div class="admin-upload-card ${done ? 'completed' : ''}" onclick="adminOpenUpload('${u.id}')">
                         <div style="flex:1;min-width:0">
                             <div style="font-weight:600;font-size:0.9rem">${u.periodLabel}</div>
-                            <div style="font-size:0.75rem;color:var(--muted)">${u.matchedRows}/${u.totalRows} verwerkt</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${u.matchedRows}/${u.totalRows} verwerkt · ${u.filename}</div>
                         </div>
                         <div class="admin-progress-bar" style="max-width:80px">
                             <div class="admin-progress-fill" style="width:${pct}%"></div>
                         </div>
+                        <button onclick="event.stopPropagation(); adminDeleteUpload('${u.id}')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:0.9rem;margin-left:6px" title="Verwijderen">🗑️</button>
                         <div style="font-size:0.8rem;font-weight:600;color:${done ? 'var(--green)' : 'var(--muted)'}">
                             ${done ? '✅' : pct + '%'} ▶
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        async function adminDeleteUpload(uploadId) {
+            if (!confirm('Weet je zeker dat je dit transactieoverzicht wilt verwijderen? Alle koppelingen gaan verloren.')) return;
+            // Delete all transactions for this upload
+            const txs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', uploadId);
+            for (const tx of txs) {
+                // Unlink any linked invoices
+                if (tx.invoiceFilename) {
+                    const inv = _adminInvoicesCache.find(i => i.filename === tx.invoiceFilename);
+                    if (inv) { inv.linkedToTransaction = null; await adminDB.put('adminInvoices', inv); }
+                }
+                await adminDB.delete('adminTransactions', tx.id);
+            }
+            await adminDB.delete('adminUploads', uploadId);
+            showToast('🗑️ Overzicht verwijderd');
+            adminRenderUploads();
         }
 
         // --- Wizard ---
