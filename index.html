@@ -12557,33 +12557,44 @@
                 return;
             }
 
-            container.innerHTML = top.map(inv => {
-                // Build match info tags
+            container.innerHTML = top.map(inv => adminRenderInvoiceCard(inv, tx)).join('');
+        }
+
+        function adminRenderInvoiceCard(inv, tx) {
+            // Build subtitle: amount + company name (from PDF), no filename repeat
+            const infoParts = [];
+            if (inv.extractedAmount) infoParts.push('€ ' + inv.extractedAmount.toLocaleString('nl-NL', {minimumFractionDigits:2}));
+            if (inv.extractedName) infoParts.push(inv.extractedName.slice(0, 35));
+            if (infoParts.length === 0 && inv.quarterFolder) infoParts.push(inv.quarterFolder);
+            const subtitleHtml = infoParts.length > 0 ? '<div style="font-size:0.75rem;color:#6b7280;margin-top:1px">' + infoParts.join(' · ') + '</div>' : '';
+
+            // Match tags (only if tx provided)
+            let tagsHtml = '';
+            if (tx) {
                 const tags = [];
                 const absAmt = Math.abs(tx.amount);
                 if (inv.extractedAmount && Math.abs(inv.extractedAmount - absAmt) < 0.02) tags.push('💰 Bedrag');
                 else if (inv.extractedAmounts && inv.extractedAmounts.some(a => Math.abs(a - absAmt) < 0.02)) tags.push('💰 Bedrag');
                 if (inv.extractedInvoiceNr && (tx.description + ' ' + tx.counterName).toLowerCase().includes(inv.extractedInvoiceNr.toLowerCase())) tags.push('🔢 Nr');
                 if (inv.extractedIBAN && tx.counterAccount && inv.extractedIBAN === tx.counterAccount.replace(/\s/g, '')) tags.push('🏦 IBAN');
-                if (inv.extractedName && tx.counterName && (inv.extractedName.toLowerCase().includes(tx.counterName.toLowerCase().slice(0,5)) || tx.counterName.toLowerCase().includes((inv.extractedName||'').toLowerCase().slice(0,5)))) tags.push('🏢 Naam');
-                const tagsHtml = tags.length > 0 ? '<div style="display:flex;gap:4px;margin-top:2px">' + tags.map(t => '<span style="font-size:0.62rem;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px">' + t + '</span>').join('') + '</div>' : '';
-                const extraInfo = [];
-                if (inv.extractedAmount) extraInfo.push('€' + inv.extractedAmount.toLocaleString('nl-NL', {minimumFractionDigits:2}));
-                if (inv.extractedName) extraInfo.push(inv.extractedName.slice(0,30));
-                const extraHtml = extraInfo.length > 0 ? '<div style="font-size:0.68rem;color:#6b7280;margin-top:1px">' + extraInfo.join(' · ') + '</div>' : '';
+                if (inv.extractedName && tx.counterName) {
+                    const invN = inv.extractedName.toLowerCase();
+                    const txN = tx.counterName.toLowerCase();
+                    if (txN.length >= 4 && (invN.includes(txN.slice(0,5)) || txN.includes(invN.slice(0,5)))) tags.push('🏢 Naam');
+                }
+                if (tags.length > 0) tagsHtml = '<div style="display:flex;gap:4px;margin-top:3px">' + tags.map(t => '<span style="font-size:0.65rem;background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px">' + t + '</span>').join('') + '</div>';
+            }
 
-                return `
+            return `
                 <div class="admin-suggestion ${_adminSelectedInvoice === inv.filename ? 'selected' : ''}"
                      onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
                     <span style="font-size:1.1rem">${_adminSelectedInvoice === inv.filename ? '🔘' : '⚪'}</span>
                     <div style="flex:1;min-width:0">
-                        <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
-                        <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
-                        ${extraHtml}${tagsHtml}
+                        <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem">${inv.filename}</div>
+                        ${subtitleHtml}${tagsHtml}
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1rem;padding:6px 10px;min-width:40px">👁️</button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1.1rem;padding:8px 12px;min-width:44px">👁️</button>
                 </div>`;
-            }).join('');
         }
 
         function adminSearchInvoices(query) {
@@ -12594,7 +12605,11 @@
             }
             const q = query.toLowerCase();
             const results = _adminInvoicesCache.filter(inv =>
-                inv.filename.toLowerCase().includes(q) || inv.path.toLowerCase().includes(q)
+                inv.filename.toLowerCase().includes(q) ||
+                inv.path.toLowerCase().includes(q) ||
+                (inv.extractedName && inv.extractedName.toLowerCase().includes(q)) ||
+                (inv.extractedInvoiceNr && inv.extractedInvoiceNr.toLowerCase().includes(q)) ||
+                (inv.extractedAmount && ('€' + inv.extractedAmount.toFixed(2)).includes(q))
             ).slice(0, 15);
 
             const container = document.getElementById('admin-suggestions');
@@ -12602,17 +12617,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.82rem">Geen resultaten</div>';
                 return;
             }
-            container.innerHTML = results.map(inv => `
-                <div class="admin-suggestion ${_adminSelectedInvoice === inv.filename ? 'selected' : ''}"
-                     onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
-                    <span style="font-size:1.1rem">${_adminSelectedInvoice === inv.filename ? '🔘' : '⚪'}</span>
-                    <div style="flex:1;min-width:0">
-                        <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
-                        <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
-                    </div>
-                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1rem;padding:6px 10px;min-width:40px">👁️</button>
-                </div>
-            `).join('');
+            container.innerHTML = results.map(inv => adminRenderInvoiceCard(inv, null)).join('');
         }
 
         function adminSelectInvoice(filename) {
