@@ -12811,8 +12811,13 @@
                 return;
             }
 
+            // Filter out invoices already linked to OTHER transactions
+            const available = _adminInvoicesCache.filter(inv =>
+                !inv.linkedToTransaction || inv.linkedToTransaction === tx.id
+            );
+
             // Score invoices using the smart matching function
-            const scored = _adminInvoicesCache.map(inv => {
+            const scored = available.map(inv => {
                 const score = adminScoreMatch(tx, inv);
                 return { ...inv, score };
             });
@@ -12873,12 +12878,16 @@
                 return;
             }
             const q = query.toLowerCase();
+            const filtered = adminGetFilteredTxs();
+            const currentTx = filtered.length > 0 ? filtered[_adminCurrentTxIdx] : null;
             const results = _adminInvoicesCache.filter(inv =>
-                inv.filename.toLowerCase().includes(q) ||
+                // Exclude invoices linked to OTHER transactions
+                (!inv.linkedToTransaction || (currentTx && inv.linkedToTransaction === currentTx.id)) &&
+                (inv.filename.toLowerCase().includes(q) ||
                 inv.path.toLowerCase().includes(q) ||
                 (inv.extractedName && inv.extractedName.toLowerCase().includes(q)) ||
                 (inv.extractedInvoiceNr && inv.extractedInvoiceNr.toLowerCase().includes(q)) ||
-                (inv.extractedAmount && ('€' + inv.extractedAmount.toFixed(2)).includes(q))
+                (inv.extractedAmount && ('€' + inv.extractedAmount.toFixed(2)).includes(q)))
             ).slice(0, 15);
 
             const container = document.getElementById('admin-suggestions');
