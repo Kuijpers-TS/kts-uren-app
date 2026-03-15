@@ -539,24 +539,30 @@
         }
 
         /* ===== TOAST ===== */
-        .toast {
+        .toast-container {
             position: fixed;
             top: 36px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            pointer-events: none;
+            max-width: calc(100vw - 40px);
+        }
+        .toast {
             background: var(--kts-blue);
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 12px;
             font-size: 0.85rem;
             font-weight: 600;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            z-index: 300;
             opacity: 0;
             transition: opacity 0.3s;
-            pointer-events: none;
             white-space: normal;
-            max-width: calc(100vw - 40px);
             text-align: center;
         }
         .toast.show { opacity: 1; }
@@ -1784,7 +1790,7 @@
     </div>
 
     <!-- TOAST -->
-    <div class="toast" id="toast"></div>
+    <div class="toast-container" id="toast-container"></div>
 
     <!-- BOTTOM NAV -->
     <div class="bottom-nav">
@@ -4721,11 +4727,20 @@
 
         // ===== TOAST =====
         function showToast(msg, duration) {
-            const t = document.getElementById('toast');
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
             t.textContent = msg;
-            t.classList.add('show');
-            clearTimeout(t._tid);
-            t._tid = setTimeout(() => t.classList.remove('show'), duration || 5000);
+            container.appendChild(t);
+            // Fade in
+            requestAnimationFrame(() => t.classList.add('show'));
+            // Fade out and remove
+            setTimeout(() => {
+                t.classList.remove('show');
+                setTimeout(() => t.remove(), 350);
+            }, duration || 5000);
+            // Max 5 toasts visible
+            while (container.children.length > 5) container.firstChild.remove();
         }
 
         // ===== OVERZICHT RENDER =====
