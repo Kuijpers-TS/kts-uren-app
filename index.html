@@ -1238,10 +1238,15 @@
 
                 <!-- Actieknoppen -->
                 <div class="admin-wizard-nav">
-                    <button class="btn btn-secondary" onclick="adminTxAction('no_invoice')">Geen factuur</button>
+                    <button class="btn btn-secondary" onclick="adminShowCategoryPicker()">📁 Categorie</button>
                     <button class="btn btn-secondary" onclick="adminTxAction('skipped')">Overslaan</button>
                     <button class="btn btn-primary" id="admin-btn-link" onclick="adminTxAction('matched')" disabled>✅ Koppelen</button>
                     <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:#fef2f2;color:#dc2626;border-color:#fecaca">🔓 Ontkoppelen</button>
+                </div>
+                <!-- Categorie picker -->
+                <div id="admin-category-picker" style="display:none;margin-top:8px;background:white;border-radius:12px;padding:12px;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
+                    <div style="font-weight:600;font-size:0.82rem;margin-bottom:8px">Categorie toewijzen:</div>
+                    <div id="admin-category-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
                 </div>
 
                 <!-- Navigatie + verwijderen -->
@@ -12700,7 +12705,8 @@
                     t.description.toLowerCase().includes(searchVal) ||
                     t.date.includes(searchVal) ||
                     String(t.amount).includes(searchVal) ||
-                    (t.invoiceFilename && t.invoiceFilename.toLowerCase().includes(searchVal))
+                    (t.invoiceFilename && t.invoiceFilename.toLowerCase().includes(searchVal)) ||
+                    (t.category && t.category.toLowerCase().includes(searchVal))
                 );
             }
 
@@ -12726,7 +12732,10 @@
 
                 let statusIcon = '';
                 if (tx.status === 'matched') statusIcon = '<span style="font-size:0.7rem;color:#16a34a">✅ ' + (tx.invoiceFilename || '').slice(0, 20) + '</span>';
-                else if (tx.status === 'no_invoice') statusIcon = '<span style="font-size:0.7rem;color:#94a3b8">Geen factuur</span>';
+                else if (tx.status === 'no_invoice') {
+                    const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
+                    statusIcon = '<span style="font-size:0.7rem;color:#94a3b8">' + (cat ? cat.label : 'Geen factuur') + '</span>';
+                }
                 else if (tx.status === 'skipped') statusIcon = '<span style="font-size:0.7rem;color:#a1a1aa">Overgeslagen</span>';
 
                 return `<div class="admin-list-row status-${tx.status}" onclick="adminOpenTxFromList(${globalIdx})">
@@ -12804,12 +12813,16 @@
             if (tx.status === 'matched') {
                 badgeEl.innerHTML = '<span class="status-badge status-approved">✅ Gekoppeld: ' + (tx.invoiceFilename || '') + '</span>';
             } else if (tx.status === 'no_invoice') {
-                badgeEl.innerHTML = '<span class="status-badge status-draft">Geen factuur</span>';
+                const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
+                badgeEl.innerHTML = '<span class="status-badge status-draft">' + (cat ? cat.label : '📝 Geen factuur') + '</span>';
             } else if (tx.status === 'skipped') {
                 badgeEl.innerHTML = '<span class="status-badge status-pending">Overgeslagen</span>';
             } else {
                 badgeEl.innerHTML = '';
             }
+
+            // Hide category picker on navigation
+            document.getElementById('admin-category-picker').style.display = 'none';
 
             // Render suggestions
             _adminSelectedInvoice = tx.status === 'matched' ? tx.invoiceFilename : null;
@@ -12930,6 +12943,82 @@
         }
 
         // --- Transaction actions ---
+        const ADMIN_CATEGORIES = [
+            { id: 'interne_boeking', label: '🔄 Interne boeking', desc: 'Overboeking tussen eigen rekeningen' },
+            { id: 'loonbelasting', label: '💼 Loonbelasting', desc: 'Belastingdienst' },
+            { id: 'btw_afdracht', label: '🏛️ BTW afdracht', desc: 'Belastingdienst' },
+            { id: 'motorrijtuigenbelasting', label: '🚗 Motorrijtuigenbelasting', desc: 'Belastingdienst' },
+            { id: 'dividendbelasting', label: '💰 Dividendbelasting', desc: 'Belastingdienst' },
+            { id: 'vennootschapsbelasting', label: '🏢 Vennootschapsbelasting', desc: 'Belastingdienst' },
+            { id: 'inkomstenbelasting', label: '📊 Inkomstenbelasting', desc: 'Belastingdienst' },
+            { id: 'salaris', label: '👤 Salaris', desc: 'Salarisbetaling' },
+            { id: 'pin_contant', label: '💳 Pin/Contant', desc: 'Pinbetaling of geldopname' },
+            { id: 'abonnement', label: '🔁 Abonnement', desc: 'Vast abonnement' },
+            { id: 'prive', label: '🏠 Privé', desc: 'Privé-uitgave/-ontvangst' },
+            { id: 'overig', label: '📝 Overig', desc: 'Geen factuur nodig' },
+        ];
+
+        function adminShowCategoryPicker() {
+            const picker = document.getElementById('admin-category-picker');
+            const isVisible = picker.style.display !== 'none';
+            picker.style.display = isVisible ? 'none' : '';
+            if (isVisible) return;
+
+            // Get current category if set
+            const filtered = adminGetFilteredTxs();
+            const tx = filtered.length > 0 ? filtered[_adminCurrentTxIdx] : null;
+            const currentCat = tx ? tx.category : null;
+
+            const list = document.getElementById('admin-category-list');
+            list.innerHTML = ADMIN_CATEGORIES.map(cat =>
+                '<button onclick="adminSetCategory(\'' + cat.id + '\')" style="' +
+                'padding:8px 12px;border-radius:8px;border:1px solid ' + (currentCat === cat.id ? '#2563eb' : '#e2e8f0') + ';' +
+                'background:' + (currentCat === cat.id ? '#eff6ff' : 'white') + ';' +
+                'cursor:pointer;font-size:0.8rem;font-weight:500;white-space:nowrap;' +
+                'transition:all 0.1s" title="' + cat.desc + '">' +
+                cat.label + '</button>'
+            ).join('');
+        }
+
+        async function adminSetCategory(categoryId) {
+            const filtered = adminGetFilteredTxs();
+            if (filtered.length === 0) return;
+            const tx = filtered[_adminCurrentTxIdx];
+            const cat = ADMIN_CATEGORIES.find(c => c.id === categoryId);
+
+            // If was matched, free the invoice
+            if (tx.status === 'matched' && tx.invoiceFilename) {
+                const inv = _adminInvoicesCache.find(i => i.filename === tx.invoiceFilename);
+                if (inv) { inv.linkedToTransaction = null; await adminDB.put('adminInvoices', inv); }
+            }
+
+            tx.status = 'no_invoice';
+            tx.category = categoryId;
+            tx.invoiceFilename = null;
+            tx.invoicePath = null;
+            await adminDB.put('adminTransactions', tx);
+
+            // Update upload stats
+            const allTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', _adminCurrentUpload.id);
+            const processed = allTxs.filter(t => t.status !== 'open' && t.status !== 'skipped').length;
+            _adminCurrentUpload.matchedRows = processed;
+            _adminCurrentUpload.status = processed === _adminCurrentUpload.totalRows ? 'completed' : 'in_progress';
+            await adminDB.put('adminUploads', _adminCurrentUpload);
+            _adminCurrentTxs = allTxs;
+            _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
+
+            document.getElementById('admin-category-picker').style.display = 'none';
+            showToast('📁 Gecategoriseerd als ' + (cat ? cat.label : categoryId));
+
+            // Auto-advance
+            _adminSelectedInvoice = null;
+            const newFiltered = adminGetFilteredTxs();
+            if (_adminCurrentTxIdx < newFiltered.length - 1) {
+                _adminCurrentTxIdx++;
+            }
+            adminRenderCurrentTx();
+        }
+
         async function adminUnlinkTx() {
             const filtered = adminGetFilteredTxs();
             if (filtered.length === 0) return;
@@ -13408,7 +13497,8 @@
                     } else if (tx.status === 'matched' && tx.invoiceFilename) {
                         invoiceCell = '<span style="font-size:0.8rem">📄 ' + tx.invoiceFilename.replace(/</g, '&lt;') + '</span>';
                     } else {
-                        invoiceCell = '<span style="font-size:0.75rem;color:#9ca3af">' + (statusLabel[tx.status] || '') + '</span>';
+                        const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
+                        invoiceCell = '<span style="font-size:0.75rem;color:#9ca3af">' + (cat ? cat.label : (statusLabel[tx.status] || '')) + '</span>';
                     }
 
                     rows += '<tr style="border-left:4px solid ' + border + ';background:' + bg + '">' +
