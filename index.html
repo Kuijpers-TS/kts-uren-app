@@ -3486,26 +3486,26 @@
             }
             doc.text('INKOOPORDER', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
 
-            // KTS Logo rechtsboven
-            const rightX = pw - mr - 55;
+            // KTS Logo rechtsboven (vol, niet transparant — zoals weekstaat)
+            const rightX = pw - mr - 65;
             const adresBlockW = pw - mr - rightX;
-            const logoW = 28, logoH = 28;
+            const logoW = 32, logoH = 32;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
                 addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
-            // KTS adresgegevens (onder logo)
-            doc.setFontSize(7);
+            // KTS adresgegevens (onder logo — consistent met weekstaat)
+            doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 35);
-            doc.text(KTS_INFO.postcode, pw - mr, 35, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 39);
-            doc.text(KTS_INFO.tel2, pw - mr, 39, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 42);
+            doc.text(KTS_INFO.postcode, pw - mr, 42, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 47);
+            doc.text(KTS_INFO.tel2, pw - mr, 47, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 43);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 43, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 52);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 52, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // Info data
@@ -3522,7 +3522,7 @@
             const periodeTekst = `${periodeMonth} ${currentYear} (${weekLabel})`;
 
             // ===== INFO BLOK =====
-            let y = 52;
+            let y = 60;
             const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
             // Rij 1: IO-nummer, IO-datum, Project
@@ -7754,30 +7754,30 @@
             }
             doc.text('FACTUUR', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
 
-            // KTS Logo rechtsboven
-            const rightX = pw - mr - 55;
+            // KTS Logo rechtsboven (vol, niet transparant — zoals weekstaat)
+            const rightX = pw - mr - 65;
             const adresBlockW = pw - mr - rightX;
-            const logoW = 28, logoH = 28;
+            const logoW = 32, logoH = 32;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
                 addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
-            // KTS adresgegevens (onder logo)
-            doc.setFontSize(7);
+            // KTS adresgegevens (onder logo — consistent met weekstaat)
+            doc.setFontSize(8);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 35);
-            doc.text(KTS_INFO.postcode, pw - mr, 35, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 39);
-            doc.text(KTS_INFO.tel2, pw - mr, 39, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 42);
+            doc.text(KTS_INFO.postcode, pw - mr, 42, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 47);
+            doc.text(KTS_INFO.tel2, pw - mr, 47, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 43);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 43, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 52);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 52, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // ===== INFO BLOK =====
-            let y = 52;
+            let y = 60;
             const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
             // Rij 1: Factuurnummer, Factuurdatum, Project
@@ -8456,30 +8456,30 @@
             }
             doc.text('INKOOPORDER', ml + (GEAR_B64 ? iconSize + 2 : 0), titleY);
 
-            // KTS Logo rechtsboven
-            const rightX = pw - mr - 55;
+            // KTS Logo rechtsboven (vol, niet transparant — zoals weekstaat)
+            const rightX = pw - mr - 65;
             const adresBlockW = pw - mr - rightX;
-            const logoW = 28, logoH = 28;
+            const logoW = 32, logoH = 32;
             const logoX = rightX + (adresBlockW - logoW) / 2;
             if (KTS_LOGO_B64) {
                 addPdfLogo(doc, KTS_LOGO_B64, logoX, 4, logoW, logoH);
             }
 
-            // KTS adresgegevens (onder logo)
-            doc.setFontSize(7);
+            // KTS adresgegevens (onder logo — consistent met weekstaat)
+            doc.setFontSize(8);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(KTS_INFO.adres, rightX, 35);
-            doc.text(KTS_INFO.postcode, pw - mr, 35, { align: 'right' });
-            doc.text(KTS_INFO.tel1, rightX, 39);
-            doc.text(KTS_INFO.tel2, pw - mr, 39, { align: 'right' });
+            doc.text(KTS_INFO.adres, rightX, 42);
+            doc.text(KTS_INFO.postcode, pw - mr, 42, { align: 'right' });
+            doc.text(KTS_INFO.tel1, rightX, 47);
+            doc.text(KTS_INFO.tel2, pw - mr, 47, { align: 'right' });
             doc.setTextColor(...ktsBlue);
-            doc.text(KTS_INFO.email, rightX, 43);
-            doc.text('www.kuijpers-ts.nl', pw - mr, 43, { align: 'right' });
+            doc.text(KTS_INFO.email, rightX, 52);
+            doc.text('www.kuijpers-ts.nl', pw - mr, 52, { align: 'right' });
             doc.setTextColor(0, 0, 0);
 
             // ===== INFO BLOK =====
-            let y = 52;
+            let y = 60;
             const col1 = ml, col2 = ml + 60, col3 = ml + 120;
 
             // Rij 1: IO-nummer, IO-datum, Project
