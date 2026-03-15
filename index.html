@@ -966,7 +966,7 @@
                                 <button onclick="event.stopPropagation();setZoom('groot')" id="zoom-btn-groot" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--border);background:white;cursor:pointer;font-size:1rem;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center" title="Groot">A</button>
                             </div>
                         </div>
-                        <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Instellingen</div>
+                        <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Beheer</div>
                         <div onclick="openWeekDefaults()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🕐 Mijn werkweek</div>
                         <div onclick="openChangePassword()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🔑 Wachtwoord wijzigen</div>
                         <div onclick="doLogout()" style="padding:12px 16px;font-size:0.85rem;color:#ef4444;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">🚪 Uitloggen</div>
@@ -1274,7 +1274,7 @@
         <!-- ===== ADMIN SCREEN (alleen voor admin) ===== -->
         <div class="screen" id="screen-admin">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h2 style="font-size:1.1rem;font-weight:700;margin:0">⚙️ Instellingen</h2>
+                <h2 style="font-size:1.1rem;font-weight:700;margin:0">⚙️ Beheer</h2>
                 <div style="display:flex;align-items:center;gap:8px">
                     <span id="env-label" style="font-size:0.7rem;font-weight:700;padding:3px 8px;border-radius:6px;background:#dcfce7;color:#16a34a">PRODUCTIE</span>
                     <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
@@ -11923,7 +11923,7 @@
                             fullText += pageText + ' ';
                         }
                         fullText = fullText.trim();
-                        inv.extractedText = fullText.slice(0, 1000); // Keep first 1000 chars for search
+                        inv.extractedText = fullText.slice(0, 2000); // Keep first 2000 chars for search
 
                         // Extract amounts (€ XX,XX patterns)
                         const amountMatches = fullText.match(/€\s*[\d.,]+/g) || [];
@@ -12995,11 +12995,17 @@
                 if (invDate.getMonth() === txD.getMonth() && invDate.getFullYear() === txD.getFullYear()) score += 3;
             }
 
-            // 6. FULL TEXT SEARCH — last resort
+            // 6. REFERENCE/ORDER NUMBER MATCH — check numbers from transaction in invoice text
             if (inv.extractedText) {
                 const invText = inv.extractedText.toLowerCase();
-                // Check if transaction description words appear in invoice text
-                const importantWords = txDesc.split(/\s+/).filter(w => w.length > 3);
+                // Long numbers (6+ digits) from transaction description — order numbers, reference codes
+                const txNumbers = txDesc.match(/\d{6,}/g) || [];
+                for (const num of txNumbers) {
+                    if (invText.includes(num)) score += 70;
+                    if (fn.includes(num)) score += 60;
+                }
+                // Also check company name words from transaction in invoice text
+                const importantWords = txDesc.split(/\s+/).filter(w => w.length > 3 && !/^\d+$/.test(w));
                 let textHits = 0;
                 for (const w of importantWords) {
                     if (invText.includes(w)) textHits++;
