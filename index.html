@@ -9411,18 +9411,20 @@
                 const dateStr = toLocalDateStr(date);
                 const entry = (entries || []).find(e => e.entry_date === dateStr) || {};
                 const id = entry.id || '';
-                rows += `<div style="display:grid;grid-template-columns:50px 62px 62px 44px 44px 1fr;gap:6px;align-items:center;margin-bottom:6px;font-size:0.85rem" data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}">
-                    <span style="font-weight:600;color:${d>=5?'var(--kts-blue)':'inherit'}">${dagNamen[d]} ${date.getDate()}</span>
-                    <input type="time" class="aew-start" value="${entry.start_time || ''}" style="padding:5px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                    <input type="time" class="aew-end" value="${entry.end_time || ''}" style="padding:5px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                    <input type="number" step="0.25" class="aew-hours" value="${entry.total_hours || ''}" placeholder="0" style="padding:5px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:center">
-                    <input type="number" step="5" min="0" max="120" class="aew-break" value="${entry.break_minutes || 0}" placeholder="0" style="padding:5px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:center" title="Pauze in minuten">
-                    <input type="text" class="aew-desc" value="${entry.description || ''}" placeholder="Werkzaamheden" style="padding:5px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem">
+                rows += `<div style="background:${d>=5?'#f8fafc':'#fff'};border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px" data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}">
+                    <div style="display:grid;grid-template-columns:54px 1fr 1fr 56px 56px;gap:8px;align-items:center;font-size:0.85rem">
+                        <span style="font-weight:700;color:${d>=5?'var(--kts-blue)':'inherit'}">${dagNamen[d]} ${date.getDate()}</span>
+                        <input type="time" class="aew-start" value="${entry.start_time || ''}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%">
+                        <input type="time" class="aew-end" value="${entry.end_time || ''}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%">
+                        <input type="number" step="0.25" class="aew-hours" value="${entry.total_hours || ''}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center">
+                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${entry.break_minutes || 0}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center" title="Pauze in minuten">
+                    </div>
+                    <input type="text" class="aew-desc" value="${entry.description || ''}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                 </div>`;
             }
             document.getElementById('admin-modal-fields').innerHTML = `
-                <div style="display:grid;grid-template-columns:50px 62px 62px 44px 44px 1fr;gap:6px;margin-bottom:8px;font-size:0.75rem;color:var(--muted);font-weight:600">
-                    <span>Dag</span><span>Start</span><span>Eind</span><span>Uren</span><span>Pauze</span><span>Werkzaamheden</span>
+                <div style="display:grid;grid-template-columns:54px 1fr 1fr 56px 56px;gap:8px;margin-bottom:8px;padding:0 10px;font-size:0.75rem;color:var(--muted);font-weight:600">
+                    <span>Dag</span><span>Start</span><span>Eind</span><span>Uren</span><span>Pauze</span>
                 </div>
                 ${rows}
             `;
