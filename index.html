@@ -11781,30 +11781,131 @@
         async function adminScanInvoicesFolder(dirHandle) {
             showToast('🔍 Facturen scannen...');
             const invoices = [];
+            const fileEntries = [];
             async function scanDir(handle, path) {
                 for await (const entry of handle.values()) {
                     if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
-                        const file = await entry.getFile();
-                        invoices.push({
-                            filename: entry.name,
-                            path: path ? path + '/' + entry.name : entry.name,
-                            size: file.size,
-                            lastModified: new Date(file.lastModified).toISOString(),
-                            quarterFolder: path.split('/')[0] || '',
-                            linkedToTransaction: null
-                        });
+                        fileEntries.push({ entry, path });
                     } else if (entry.kind === 'directory') {
                         await scanDir(entry, path ? path + '/' + entry.name : entry.name);
                     }
                 }
             }
             await scanDir(dirHandle, '');
+
+            // Process each PDF: extract metadata + text content
+            const hasPdfJs = typeof pdfjsLib !== 'undefined';
+            let processed = 0;
+            for (const { entry, path } of fileEntries) {
+                processed++;
+                if (processed % 5 === 0 || processed === fileEntries.length) {
+                    showToast('🔍 Facturen scannen... ' + processed + '/' + fileEntries.length);
+                }
+                const file = await entry.getFile();
+                const inv = {
+                    filename: entry.name,
+                    path: path ? path + '/' + entry.name : entry.name,
+                    size: file.size,
+                    lastModified: new Date(file.lastModified).toISOString(),
+                    quarterFolder: path.split('/')[0] || '',
+                    linkedToTransaction: null,
+                    // Extracted data from PDF content
+                    extractedAmount: null,
+                    extractedAmounts: [],
+                    extractedInvoiceNr: null,
+                    extractedDate: null,
+                    extractedName: null,
+                    extractedIBAN: null,
+                    extractedText: ''
+                };
+
+                // Extract text from PDF
+                if (hasPdfJs) {
+                    try {
+                        const arrayBuf = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+                        let fullText = '';
+                        // Only read first 2 pages (enough for invoice header info)
+                        const maxPages = Math.min(pdf.numPages, 2);
+                        for (let p = 1; p <= maxPages; p++) {
+                            const page = await pdf.getPage(p);
+                            const content = await page.getTextContent();
+                            const pageText = content.items.map(i => i.str).join(' ');
+                            fullText += pageText + ' ';
+                        }
+                        fullText = fullText.trim();
+                        inv.extractedText = fullText.slice(0, 1000); // Keep first 1000 chars for search
+
+                        // Extract amounts (€ XX,XX patterns)
+                        const amountMatches = fullText.match(/€\s*[\d.,]+/g) || [];
+                        const amounts = amountMatches.map(m => {
+                            let s = m.replace('€', '').trim();
+                            if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+                            else if (s.includes(',')) s = s.replace(',', '.');
+                            return parseFloat(s);
+                        }).filter(a => !isNaN(a) && a > 0);
+                        inv.extractedAmounts = [...new Set(amounts)];
+                        // Main amount: typically the largest or "totaal" amount
+                        // Look for "totaal" or "total" near an amount
+                        const totaalMatch = fullText.match(/(?:totaal|total|te betalen|amount due)[^€]*€\s*([\d.,]+)/i);
+                        if (totaalMatch) {
+                            let s = totaalMatch[1];
+                            if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+                            else if (s.includes(',')) s = s.replace(',', '.');
+                            inv.extractedAmount = parseFloat(s);
+                        } else if (amounts.length > 0) {
+                            // Use the largest amount as likely total
+                            inv.extractedAmount = Math.max(...amounts);
+                        }
+
+                        // Extract invoice number patterns
+                        const invNrPatterns = [
+                            /(?:factuurnummer|factuurnr|invoice\s*(?:number|nr|no)|factuur)\s*[:\s#]*\s*([A-Z0-9][\w\-\/\.]{2,20})/i,
+                            /(?:kenmerk|referentie|reference)\s*[:\s]*\s*([A-Z0-9][\w\-\/\.]{2,20})/i,
+                            /\b([A-Z]{1,4}[\-\/]?\d{4,}[\-\/]?\d*)\b/,  // Common patterns like F-2026001, INV2026-001
+                        ];
+                        for (const pat of invNrPatterns) {
+                            const m = fullText.match(pat);
+                            if (m) { inv.extractedInvoiceNr = m[1]; break; }
+                        }
+
+                        // Extract date
+                        const datePatterns = [
+                            /(?:factuurdatum|datum|date|invoice date)\s*[:\s]*\s*(\d{1,2}[\-\/]\d{1,2}[\-\/]\d{4})/i,
+                            /(?:factuurdatum|datum|date|invoice date)\s*[:\s]*\s*(\d{4}[\-\/]\d{2}[\-\/]\d{2})/i,
+                            /(\d{1,2}[\-\/]\d{1,2}[\-\/]\d{4})/,
+                        ];
+                        for (const pat of datePatterns) {
+                            const m = fullText.match(pat);
+                            if (m) {
+                                inv.extractedDate = adminParseDate(m[1]);
+                                if (inv.extractedDate) break;
+                            }
+                        }
+
+                        // Extract company/sender name - look near top of document
+                        const topText = fullText.slice(0, 300);
+                        // Look for B.V., BV, VOF etc. patterns
+                        const companyMatch = topText.match(/([A-Z][\w\s&\.]+(?:B\.?V\.?|BV|VOF|V\.O\.F\.|GmbH|ApS|N\.V\.|NV|LLC))/);
+                        if (companyMatch) inv.extractedName = companyMatch[1].trim();
+
+                        // Extract IBAN
+                        const ibanMatch = fullText.match(/\b([A-Z]{2}\d{2}\s?[A-Z]{4}\s?\d{4}\s?\d{4}\s?\d{2,4}\s?\d{0,2})\b/);
+                        if (ibanMatch) inv.extractedIBAN = ibanMatch[1].replace(/\s/g, '');
+
+                    } catch (e) {
+                        // PDF parsing failed for this file, continue with filename-only data
+                        console.warn('PDF extract mislukt voor ' + entry.name + ':', e.message);
+                    }
+                }
+                invoices.push(inv);
+            }
+
             // Save all to IndexedDB
             await adminDB.clear('adminInvoices');
             for (const inv of invoices) await adminDB.put('adminInvoices', inv);
             await adminDB.put('adminSettings', { key: 'lastScanDate', value: new Date().toISOString() });
-            showToast('✓ ' + invoices.length + ' facturen gevonden');
-            // Cache in memory
+            showToast('✓ ' + invoices.length + ' facturen gescand' + (hasPdfJs ? ' (met inhoud)' : ''));
             _adminInvoicesCache = invoices;
         }
 
@@ -12441,34 +12542,9 @@
                 return;
             }
 
-            // Score invoices
+            // Score invoices using the smart matching function
             const scored = _adminInvoicesCache.map(inv => {
-                let score = 0;
-                const fn = inv.filename.toLowerCase();
-                const txDesc = (tx.description + ' ' + tx.counterName).toLowerCase();
-
-                // Amount match (extract numbers from filename)
-                const amountStr = Math.abs(tx.amount).toFixed(2);
-                const amountStrComma = amountStr.replace('.', ',');
-                const amountStrNoDecimals = Math.abs(tx.amount).toFixed(0);
-                if (fn.includes(amountStr) || fn.includes(amountStrComma) || fn.includes(amountStrNoDecimals)) score += 50;
-
-                // Name match
-                const txWords = txDesc.split(/\s+/).filter(w => w.length > 2);
-                for (const word of txWords) {
-                    if (fn.includes(word)) score += 10;
-                }
-
-                // Quarter/date proximity
-                if (tx.date) {
-                    const txDate = new Date(tx.date);
-                    const q = 'q' + (Math.floor(txDate.getMonth() / 3) + 1) + '-' + txDate.getFullYear();
-                    if (inv.quarterFolder && inv.quarterFolder.toLowerCase().includes(q)) score += 5;
-                    // Same month bonus
-                    const invDate = new Date(inv.lastModified);
-                    if (invDate.getMonth() === txDate.getMonth() && invDate.getFullYear() === txDate.getFullYear()) score += 3;
-                }
-
+                const score = adminScoreMatch(tx, inv);
                 return { ...inv, score };
             });
 
@@ -12481,17 +12557,33 @@
                 return;
             }
 
-            container.innerHTML = top.map(inv => `
+            container.innerHTML = top.map(inv => {
+                // Build match info tags
+                const tags = [];
+                const absAmt = Math.abs(tx.amount);
+                if (inv.extractedAmount && Math.abs(inv.extractedAmount - absAmt) < 0.02) tags.push('💰 Bedrag');
+                else if (inv.extractedAmounts && inv.extractedAmounts.some(a => Math.abs(a - absAmt) < 0.02)) tags.push('💰 Bedrag');
+                if (inv.extractedInvoiceNr && (tx.description + ' ' + tx.counterName).toLowerCase().includes(inv.extractedInvoiceNr.toLowerCase())) tags.push('🔢 Nr');
+                if (inv.extractedIBAN && tx.counterAccount && inv.extractedIBAN === tx.counterAccount.replace(/\s/g, '')) tags.push('🏦 IBAN');
+                if (inv.extractedName && tx.counterName && (inv.extractedName.toLowerCase().includes(tx.counterName.toLowerCase().slice(0,5)) || tx.counterName.toLowerCase().includes((inv.extractedName||'').toLowerCase().slice(0,5)))) tags.push('🏢 Naam');
+                const tagsHtml = tags.length > 0 ? '<div style="display:flex;gap:4px;margin-top:2px">' + tags.map(t => '<span style="font-size:0.62rem;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px">' + t + '</span>').join('') + '</div>' : '';
+                const extraInfo = [];
+                if (inv.extractedAmount) extraInfo.push('€' + inv.extractedAmount.toLocaleString('nl-NL', {minimumFractionDigits:2}));
+                if (inv.extractedName) extraInfo.push(inv.extractedName.slice(0,30));
+                const extraHtml = extraInfo.length > 0 ? '<div style="font-size:0.68rem;color:#6b7280;margin-top:1px">' + extraInfo.join(' · ') + '</div>' : '';
+
+                return `
                 <div class="admin-suggestion ${_adminSelectedInvoice === inv.filename ? 'selected' : ''}"
                      onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
                     <span style="font-size:1.1rem">${_adminSelectedInvoice === inv.filename ? '🔘' : '⚪'}</span>
                     <div style="flex:1;min-width:0">
                         <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
                         <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
+                        ${extraHtml}${tagsHtml}
                     </div>
                     <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1rem;padding:6px 10px;min-width:40px">👁️</button>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         function adminSearchInvoices(query) {
@@ -12589,37 +12681,129 @@
             adminRenderCurrentTx();
         }
 
-        // --- Auto-match: koppel transacties automatisch op exact bedragmatch ---
+        // --- Auto-match: koppel transacties automatisch ---
+        function adminScoreMatch(tx, inv) {
+            // Score how well an invoice matches a transaction (higher = better)
+            let score = 0;
+            const absAmount = Math.abs(tx.amount);
+            const fn = inv.filename.toLowerCase();
+            const txDesc = (tx.description + ' ' + tx.counterName).toLowerCase();
+
+            // 1. AMOUNT MATCH — strongest signal
+            // Match on extracted PDF amount
+            if (inv.extractedAmount && Math.abs(inv.extractedAmount - absAmount) < 0.02) {
+                score += 100; // Exact amount match from PDF content
+            }
+            // Match on any extracted amount
+            if (inv.extractedAmounts && inv.extractedAmounts.some(a => Math.abs(a - absAmount) < 0.02)) {
+                score += 80;
+            }
+            // Match amount in filename
+            const amountStr = absAmount.toFixed(2);
+            const amountStrComma = amountStr.replace('.', ',');
+            if (fn.includes(amountStr) || fn.includes(amountStrComma)) score += 70;
+
+            // 2. INVOICE NUMBER MATCH — very strong signal
+            if (inv.extractedInvoiceNr) {
+                const invNr = inv.extractedInvoiceNr.toLowerCase();
+                if (txDesc.includes(invNr)) score += 90;
+                // Also check partial match (numbers only)
+                const invNrDigits = invNr.replace(/\D/g, '');
+                if (invNrDigits.length >= 4 && txDesc.includes(invNrDigits)) score += 80;
+            }
+            // Check if invoice number from filename appears in transaction
+            const fnNumbers = fn.match(/\d{4,}/g) || [];
+            for (const num of fnNumbers) {
+                if (txDesc.includes(num)) score += 60;
+            }
+
+            // 3. COMPANY NAME MATCH
+            if (inv.extractedName) {
+                const invName = inv.extractedName.toLowerCase();
+                const txName = tx.counterName.toLowerCase();
+                // Exact company name match
+                if (txName && invName.includes(txName)) score += 40;
+                if (txName && txName.includes(invName)) score += 40;
+                // Word-level match
+                const nameWords = invName.split(/\s+/).filter(w => w.length > 2 && !['b.v.','bv','de','het','van','voor'].includes(w));
+                for (const w of nameWords) {
+                    if (txName.includes(w)) score += 15;
+                }
+            }
+            // Name match from filename
+            const txWords = txDesc.split(/\s+/).filter(w => w.length > 2);
+            for (const word of txWords) {
+                if (fn.includes(word)) score += 10;
+            }
+
+            // 4. IBAN MATCH
+            if (inv.extractedIBAN && tx.counterAccount) {
+                if (inv.extractedIBAN === tx.counterAccount.replace(/\s/g, '')) score += 60;
+            }
+
+            // 5. DATE PROXIMITY
+            if (tx.date && inv.extractedDate) {
+                const txD = new Date(tx.date);
+                const invD = new Date(inv.extractedDate);
+                const daysDiff = Math.abs((txD - invD) / 86400000);
+                if (daysDiff <= 3) score += 20;
+                else if (daysDiff <= 14) score += 10;
+                else if (daysDiff <= 45) score += 5;
+            }
+            if (tx.date) {
+                const txDate = new Date(tx.date);
+                const q = 'q' + (Math.floor(txDate.getMonth() / 3) + 1) + '-' + txDate.getFullYear();
+                if (inv.quarterFolder && inv.quarterFolder.toLowerCase().includes(q)) score += 5;
+                const invDate = new Date(inv.lastModified);
+                if (invDate.getMonth() === txDate.getMonth() && invDate.getFullYear() === txDate.getFullYear()) score += 3;
+            }
+
+            // 6. FULL TEXT SEARCH — last resort
+            if (inv.extractedText) {
+                const invText = inv.extractedText.toLowerCase();
+                // Check if transaction description words appear in invoice text
+                const importantWords = txDesc.split(/\s+/).filter(w => w.length > 3);
+                let textHits = 0;
+                for (const w of importantWords) {
+                    if (invText.includes(w)) textHits++;
+                }
+                if (textHits >= 3) score += 15;
+                else if (textHits >= 1) score += 5;
+            }
+
+            return score;
+        }
+
         async function adminAutoMatch() {
             if (_adminInvoicesCache.length === 0) {
                 showToast('⚠️ Scan eerst de facturen-map');
                 return;
             }
+            showToast('⚡ Auto-koppelen bezig...');
             let matched = 0;
             const openTxs = _adminCurrentTxs.filter(t => t.status === 'open');
+
             for (const tx of openTxs) {
-                const absAmount = Math.abs(tx.amount);
-                const amountStr = absAmount.toFixed(2);
-                const amountStrComma = amountStr.replace('.', ',');
-                const amountStrNoDec = absAmount.toFixed(0);
+                // Score all unlinked invoices
+                const available = _adminInvoicesCache.filter(inv => !inv.linkedToTransaction);
+                const scored = available.map(inv => ({ inv, score: adminScoreMatch(tx, inv) }));
+                scored.sort((a, b) => b.score - a.score);
 
-                // Look for exact amount match in filename
-                const candidates = _adminInvoicesCache.filter(inv => {
-                    if (inv.linkedToTransaction) return false;
-                    const fn = inv.filename.toLowerCase();
-                    return fn.includes(amountStr) || fn.includes(amountStrComma) || fn.includes(amountStrNoDec.length > 3 ? amountStrNoDec : '___SKIP___');
-                });
-
-                // If exactly one candidate, auto-link
-                if (candidates.length === 1) {
-                    const inv = candidates[0];
-                    tx.status = 'matched';
-                    tx.invoiceFilename = inv.filename;
-                    tx.invoicePath = inv.path;
-                    inv.linkedToTransaction = tx.id;
-                    await adminDB.put('adminTransactions', tx);
-                    await adminDB.put('adminInvoices', inv);
-                    matched++;
+                // Auto-match if top score is high enough AND significantly better than #2
+                const best = scored[0];
+                const second = scored[1];
+                if (best && best.score >= 80) {
+                    // Must be clearly the best match (at least 30 points ahead of runner-up, or only candidate)
+                    if (!second || best.score - second.score >= 30 || best.score >= 150) {
+                        const inv = best.inv;
+                        tx.status = 'matched';
+                        tx.invoiceFilename = inv.filename;
+                        tx.invoicePath = inv.path;
+                        inv.linkedToTransaction = tx.id;
+                        await adminDB.put('adminTransactions', tx);
+                        await adminDB.put('adminInvoices', inv);
+                        matched++;
+                    }
                 }
             }
 
@@ -12632,7 +12816,7 @@
             _adminCurrentTxs = allTxs;
             _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
 
-            showToast(matched > 0 ? '⚡ ' + matched + ' transacties automatisch gekoppeld' : 'Geen exacte matches gevonden');
+            showToast(matched > 0 ? '⚡ ' + matched + ' transacties automatisch gekoppeld' : 'Geen zekere matches gevonden — handmatig koppelen');
             adminRenderCurrentTx();
         }
 
