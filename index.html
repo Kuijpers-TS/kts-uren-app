@@ -1135,6 +1135,7 @@
             <div id="admin-wizard-view" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <button class="btn btn-sm btn-secondary" onclick="adminBackToMain()">← Terug</button>
+                    <button class="btn btn-sm btn-primary" onclick="adminAutoMatch()" style="font-size:0.75rem">⚡ Auto-koppel</button>
                     <span id="admin-wizard-counter" style="font-size:0.85rem;font-weight:600;color:var(--muted)">1 / 45</span>
                 </div>
 
@@ -1176,9 +1177,10 @@
                     <button class="btn btn-primary" id="admin-btn-link" onclick="adminTxAction('matched')" disabled>✅ Koppelen</button>
                 </div>
 
-                <!-- Navigatie -->
+                <!-- Navigatie + verwijderen -->
                 <div style="display:flex;gap:8px;margin-top:10px">
                     <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(-1)">← Vorige</button>
+                    <button class="btn btn-sm" style="padding:6px 10px;background:#fee2e2;color:#dc2626;font-weight:600;border:none;border-radius:8px;cursor:pointer;font-size:0.78rem" onclick="adminDeleteTx()">🗑️</button>
                     <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(1)">Volgende →</button>
                 </div>
             </div>
@@ -12487,7 +12489,7 @@
                         <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
                         <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:4px 8px">👁️</button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1rem;padding:6px 10px;min-width:40px">👁️</button>
                 </div>
             `).join('');
         }
@@ -12516,7 +12518,7 @@
                         <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.filename}</div>
                         <div style="font-size:0.72rem;color:var(--muted)">${inv.quarterFolder || inv.path}</div>
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:4px 8px">👁️</button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1rem;padding:6px 10px;min-width:40px">👁️</button>
                 </div>
             `).join('');
         }
@@ -12583,6 +12585,95 @@
             const newFiltered = adminGetFilteredTxs();
             if (_adminCurrentTxIdx < newFiltered.length - 1) {
                 _adminCurrentTxIdx++;
+            }
+            adminRenderCurrentTx();
+        }
+
+        // --- Auto-match: koppel transacties automatisch op exact bedragmatch ---
+        async function adminAutoMatch() {
+            if (_adminInvoicesCache.length === 0) {
+                showToast('⚠️ Scan eerst de facturen-map');
+                return;
+            }
+            let matched = 0;
+            const openTxs = _adminCurrentTxs.filter(t => t.status === 'open');
+            for (const tx of openTxs) {
+                const absAmount = Math.abs(tx.amount);
+                const amountStr = absAmount.toFixed(2);
+                const amountStrComma = amountStr.replace('.', ',');
+                const amountStrNoDec = absAmount.toFixed(0);
+
+                // Look for exact amount match in filename
+                const candidates = _adminInvoicesCache.filter(inv => {
+                    if (inv.linkedToTransaction) return false;
+                    const fn = inv.filename.toLowerCase();
+                    return fn.includes(amountStr) || fn.includes(amountStrComma) || fn.includes(amountStrNoDec.length > 3 ? amountStrNoDec : '___SKIP___');
+                });
+
+                // If exactly one candidate, auto-link
+                if (candidates.length === 1) {
+                    const inv = candidates[0];
+                    tx.status = 'matched';
+                    tx.invoiceFilename = inv.filename;
+                    tx.invoicePath = inv.path;
+                    inv.linkedToTransaction = tx.id;
+                    await adminDB.put('adminTransactions', tx);
+                    await adminDB.put('adminInvoices', inv);
+                    matched++;
+                }
+            }
+
+            // Update upload stats
+            const allTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', _adminCurrentUpload.id);
+            const processed = allTxs.filter(t => t.status !== 'open' && t.status !== 'skipped').length;
+            _adminCurrentUpload.matchedRows = processed;
+            _adminCurrentUpload.status = processed === _adminCurrentUpload.totalRows ? 'completed' : 'in_progress';
+            await adminDB.put('adminUploads', _adminCurrentUpload);
+            _adminCurrentTxs = allTxs;
+            _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
+
+            showToast(matched > 0 ? '⚡ ' + matched + ' transacties automatisch gekoppeld' : 'Geen exacte matches gevonden');
+            adminRenderCurrentTx();
+        }
+
+        // --- Delete transaction ---
+        async function adminDeleteTx() {
+            const filtered = adminGetFilteredTxs();
+            if (filtered.length === 0) return;
+            const tx = filtered[_adminCurrentTxIdx];
+
+            // Remove from IndexedDB
+            await adminDB.delete('adminTransactions', tx.id);
+
+            // If it was linked to an invoice, unlink
+            if (tx.invoiceFilename) {
+                const inv = _adminInvoicesCache.find(i => i.filename === tx.invoiceFilename);
+                if (inv) {
+                    inv.linkedToTransaction = null;
+                    await adminDB.put('adminInvoices', inv);
+                }
+            }
+
+            // Update upload stats
+            const allTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', _adminCurrentUpload.id);
+            _adminCurrentUpload.totalRows = allTxs.length;
+            const processed = allTxs.filter(t => t.status !== 'open' && t.status !== 'skipped').length;
+            _adminCurrentUpload.matchedRows = processed;
+            if (allTxs.length === 0) {
+                _adminCurrentUpload.status = 'completed';
+            } else {
+                _adminCurrentUpload.status = processed === allTxs.length ? 'completed' : 'in_progress';
+            }
+            await adminDB.put('adminUploads', _adminCurrentUpload);
+
+            _adminCurrentTxs = allTxs;
+            _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
+
+            showToast('🗑️ Transactie verwijderd');
+
+            _adminSelectedInvoice = null;
+            if (_adminCurrentTxIdx >= adminGetFilteredTxs().length) {
+                _adminCurrentTxIdx = Math.max(0, adminGetFilteredTxs().length - 1);
             }
             adminRenderCurrentTx();
         }
