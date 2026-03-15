@@ -798,6 +798,35 @@
             transition: all 0.15s;
         }
         .admin-filter-chip.active { background: var(--kts-blue); color: white; border-color: var(--kts-blue); }
+
+        .admin-list-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.12s;
+            border-left: 4px solid transparent;
+        }
+        .admin-list-row:active { transform: scale(0.99); }
+        @media (hover: hover) { .admin-list-row:hover { filter: brightness(0.97); } }
+        .admin-list-row.status-open { background: #fefce8; border-left-color: #eab308; }
+        .admin-list-row.status-matched { background: #f0fdf4; border-left-color: #22c55e; }
+        .admin-list-row.status-no_invoice { background: #f8fafc; border-left-color: #94a3b8; }
+        .admin-list-row.status-skipped { background: #f8fafc; border-left-color: #d4d4d8; }
+
+        .admin-stat-card {
+            flex: 1;
+            min-width: 60px;
+            text-align: center;
+            padding: 8px 4px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .admin-stat-card .stat-num { font-size: 1.2rem; font-weight: 700; display: block; }
     </style>
 </head>
 <body>
@@ -1131,10 +1160,39 @@
                 <button class="btn btn-block btn-secondary" onclick="adminImportJson()" style="font-size:0.8rem">📤 Importeer eerder geëxporteerde JSON</button>
             </div>
 
+            <!-- Overzichtslijst view (verborgen standaard) -->
+            <div id="admin-list-view" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <button class="btn btn-sm btn-secondary" onclick="adminBackToMain()">← Terug</button>
+                    <button class="btn btn-sm btn-primary" onclick="adminAutoMatch()" style="font-size:0.75rem">⚡ Auto-koppel</button>
+                </div>
+
+                <!-- Statistieken -->
+                <div id="admin-list-stats" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"></div>
+
+                <!-- Zoekbalk transacties -->
+                <div style="position:relative;margin-bottom:12px">
+                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem">🔍</span>
+                    <input type="text" class="admin-search-input" id="admin-list-search" placeholder="Zoek transactie..." oninput="adminRenderListView()">
+                </div>
+
+                <!-- Filter chips -->
+                <div class="admin-filter-chips" id="admin-list-filter-chips">
+                    <span class="admin-filter-chip active" onclick="adminListFilter('all')">Alles</span>
+                    <span class="admin-filter-chip" onclick="adminListFilter('open')">Open</span>
+                    <span class="admin-filter-chip" onclick="adminListFilter('matched')">Gekoppeld</span>
+                    <span class="admin-filter-chip" onclick="adminListFilter('no_invoice')">Geen factuur</span>
+                    <span class="admin-filter-chip" onclick="adminListFilter('skipped')">Overgeslagen</span>
+                </div>
+
+                <!-- Transactielijst -->
+                <div id="admin-list-items" style="margin-bottom:16px"></div>
+            </div>
+
             <!-- Wizard view (verborgen standaard) -->
             <div id="admin-wizard-view" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <button class="btn btn-sm btn-secondary" onclick="adminBackToMain()">← Terug</button>
+                    <button class="btn btn-sm btn-secondary" onclick="adminBackToList()">← Overzicht</button>
                     <button class="btn btn-sm btn-primary" onclick="adminAutoMatch()" style="font-size:0.75rem">⚡ Auto-koppel</button>
                     <span id="admin-wizard-counter" style="font-size:0.85rem;font-weight:600;color:var(--muted)">1 / 45</span>
                 </div>
@@ -12512,6 +12570,8 @@
         }
 
         // --- Wizard ---
+        let _adminListFilter = 'all';
+
         async function adminOpenUpload(uploadId) {
             _adminCurrentUpload = await adminDB.get('adminUploads', uploadId);
             if (!_adminCurrentUpload) return;
@@ -12519,20 +12579,116 @@
             _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
             _adminCurrentTxIdx = 0;
             _adminTxFilter = 'all';
+            _adminListFilter = 'all';
             _adminSelectedInvoice = null;
+            // Show list view (not wizard)
             document.getElementById('admin-main-view').style.display = 'none';
-            document.getElementById('admin-wizard-view').style.display = '';
+            document.getElementById('admin-wizard-view').style.display = 'none';
+            document.getElementById('admin-list-view').style.display = '';
             // Reset filter chips
-            document.querySelectorAll('#admin-filter-chips .admin-filter-chip').forEach(c => c.classList.remove('active'));
-            document.querySelector('#admin-filter-chips .admin-filter-chip').classList.add('active');
-            adminRenderCurrentTx();
+            document.querySelectorAll('#admin-list-filter-chips .admin-filter-chip').forEach(c => c.classList.remove('active'));
+            document.querySelector('#admin-list-filter-chips .admin-filter-chip').classList.add('active');
+            const searchEl = document.getElementById('admin-list-search');
+            if (searchEl) searchEl.value = '';
+            adminRenderListView();
         }
 
         function adminBackToMain() {
             document.getElementById('admin-main-view').style.display = '';
             document.getElementById('admin-wizard-view').style.display = 'none';
+            document.getElementById('admin-list-view').style.display = 'none';
             _adminCurrentUpload = null;
             adminRenderUploads();
+        }
+
+        function adminBackToList() {
+            document.getElementById('admin-list-view').style.display = '';
+            document.getElementById('admin-wizard-view').style.display = 'none';
+            adminRenderListView();
+        }
+
+        function adminListFilter(filter) {
+            _adminListFilter = filter;
+            document.querySelectorAll('#admin-list-filter-chips .admin-filter-chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            adminRenderListView();
+        }
+
+        function adminRenderListView() {
+            // Stats
+            const stats = { total: _adminCurrentTxs.length, open: 0, matched: 0, no_invoice: 0, skipped: 0 };
+            for (const tx of _adminCurrentTxs) stats[tx.status] = (stats[tx.status] || 0) + 1;
+            document.getElementById('admin-list-stats').innerHTML = `
+                <div class="admin-stat-card" style="background:#f0fdf4;color:#16a34a"><span class="stat-num">${stats.matched}</span>Gekoppeld</div>
+                <div class="admin-stat-card" style="background:#fefce8;color:#a16207"><span class="stat-num">${stats.open}</span>Open</div>
+                <div class="admin-stat-card" style="background:#f8fafc;color:#64748b"><span class="stat-num">${stats.no_invoice}</span>Geen fact.</div>
+                <div class="admin-stat-card" style="background:#f8fafc;color:#a1a1aa"><span class="stat-num">${stats.skipped}</span>Overgesl.</div>
+            `;
+
+            // Filter
+            let txs = _adminListFilter === 'all' ? _adminCurrentTxs : _adminCurrentTxs.filter(t => t.status === _adminListFilter);
+
+            // Search
+            const searchVal = (document.getElementById('admin-list-search')?.value || '').toLowerCase().trim();
+            if (searchVal.length >= 2) {
+                txs = txs.filter(t =>
+                    t.counterName.toLowerCase().includes(searchVal) ||
+                    t.description.toLowerCase().includes(searchVal) ||
+                    t.date.includes(searchVal) ||
+                    String(t.amount).includes(searchVal) ||
+                    (t.invoiceFilename && t.invoiceFilename.toLowerCase().includes(searchVal))
+                );
+            }
+
+            const container = document.getElementById('admin-list-items');
+            if (txs.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen transacties gevonden</div>';
+                return;
+            }
+
+            container.innerHTML = txs.map((tx, i) => {
+                const d = tx.date.split('-');
+                const dateStr = d[2] + '-' + d[1];
+                const absAmt = Math.abs(tx.amount);
+                const amtStr = (tx.amount < 0 ? '-' : '+') + '€' + absAmt.toLocaleString('nl-NL', { minimumFractionDigits: 2 });
+                const amtColor = tx.amount < 0 ? '#dc2626' : '#16a34a';
+                const name = tx.counterName || tx.description.slice(0, 30);
+                const globalIdx = _adminCurrentTxs.indexOf(tx);
+
+                let rightHtml = '';
+                if (tx.status === 'matched' && tx.invoicePath) {
+                    rightHtml = '<button class="btn btn-sm" onclick="event.stopPropagation(); adminPreviewInvoice(\'' + tx.invoicePath.replace(/'/g, "\\'") + '\')" style="font-size:0.9rem;padding:5px 8px;background:#d1fae5;border:none;border-radius:6px;cursor:pointer" title="Factuur bekijken">👁️</button>';
+                }
+
+                let statusIcon = '';
+                if (tx.status === 'matched') statusIcon = '<span style="font-size:0.7rem;color:#16a34a">✅ ' + (tx.invoiceFilename || '').slice(0, 20) + '</span>';
+                else if (tx.status === 'no_invoice') statusIcon = '<span style="font-size:0.7rem;color:#94a3b8">Geen factuur</span>';
+                else if (tx.status === 'skipped') statusIcon = '<span style="font-size:0.7rem;color:#a1a1aa">Overgeslagen</span>';
+
+                return `<div class="admin-list-row status-${tx.status}" onclick="adminOpenTxFromList(${globalIdx})">
+                    <div style="font-size:0.75rem;color:var(--muted);min-width:42px">${dateStr}</div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600;font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+                        ${statusIcon ? '<div>' + statusIcon + '</div>' : ''}
+                    </div>
+                    <div style="font-weight:700;font-size:0.82rem;color:${amtColor};white-space:nowrap;margin-right:4px">${amtStr}</div>
+                    ${rightHtml}
+                </div>`;
+            }).join('');
+        }
+
+        function adminOpenTxFromList(globalIdx) {
+            _adminCurrentTxIdx = 0;
+            _adminTxFilter = 'all';
+            _adminSelectedInvoice = null;
+            // Find the index in the filtered list
+            _adminCurrentTxIdx = globalIdx;
+            document.getElementById('admin-list-view').style.display = 'none';
+            document.getElementById('admin-wizard-view').style.display = '';
+            // Reset wizard filter chips
+            document.querySelectorAll('#admin-filter-chips .admin-filter-chip').forEach(c => c.classList.remove('active'));
+            document.querySelector('#admin-filter-chips .admin-filter-chip').classList.add('active');
+            adminRenderCurrentTx();
         }
 
         function adminGetFilteredTxs() {
