@@ -12797,21 +12797,33 @@
                 if (inv.extractedIBAN === tx.counterAccount.replace(/\s/g, '')) score += 60;
             }
 
-            // 5. DATE PROXIMITY
-            if (tx.date && inv.extractedDate) {
-                const txD = new Date(tx.date);
-                const invD = new Date(inv.extractedDate);
-                const daysDiff = Math.abs((txD - invD) / 86400000);
-                if (daysDiff <= 3) score += 20;
-                else if (daysDiff <= 14) score += 10;
-                else if (daysDiff <= 45) score += 5;
-            }
+            // 5. DATE PROXIMITY — crucial for disambiguating same-amount invoices
             if (tx.date) {
-                const txDate = new Date(tx.date);
-                const q = 'q' + (Math.floor(txDate.getMonth() / 3) + 1) + '-' + txDate.getFullYear();
+                const txD = new Date(tx.date);
+                // Match on extracted date from PDF content
+                if (inv.extractedDate) {
+                    const invD = new Date(inv.extractedDate);
+                    const daysDiff = Math.abs((txD - invD) / 86400000);
+                    if (daysDiff <= 3) score += 30;
+                    else if (daysDiff <= 14) score += 20;
+                    else if (daysDiff <= 45) score += 10;
+                    else if (daysDiff <= 90) score += 3;
+                }
+                // Match date in filename (e.g. bunq_invoice_2026-01-01)
+                const fnDateMatch = inv.filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+                if (fnDateMatch) {
+                    const fnDate = new Date(fnDateMatch[1] + '-' + fnDateMatch[2] + '-' + fnDateMatch[3]);
+                    const daysDiff = Math.abs((txD - fnDate) / 86400000);
+                    if (daysDiff <= 3) score += 25;
+                    else if (daysDiff <= 14) score += 15;
+                    else if (daysDiff <= 45) score += 5;
+                }
+                // Quarter folder match
+                const q = 'q' + (Math.floor(txD.getMonth() / 3) + 1) + '-' + txD.getFullYear();
                 if (inv.quarterFolder && inv.quarterFolder.toLowerCase().includes(q)) score += 5;
+                // File modification date same month
                 const invDate = new Date(inv.lastModified);
-                if (invDate.getMonth() === txDate.getMonth() && invDate.getFullYear() === txDate.getFullYear()) score += 3;
+                if (invDate.getMonth() === txD.getMonth() && invDate.getFullYear() === txD.getFullYear()) score += 3;
             }
 
             // 6. FULL TEXT SEARCH — last resort
@@ -12845,12 +12857,12 @@
                 const scored = available.map(inv => ({ inv, score: adminScoreMatch(tx, inv) }));
                 scored.sort((a, b) => b.score - a.score);
 
-                // Auto-match if top score is high enough AND significantly better than #2
+                // Auto-match if top score is high enough AND clearly better than #2
                 const best = scored[0];
                 const second = scored[1];
-                if (best && best.score >= 80) {
-                    // Must be clearly the best match (at least 30 points ahead of runner-up, or only candidate)
-                    if (!second || best.score - second.score >= 30 || best.score >= 150) {
+                if (best && best.score >= 60) {
+                    // Match if: only candidate, or meaningfully ahead of runner-up (10+ pts), or very high score
+                    if (!second || second.score < 60 || best.score - second.score >= 10 || best.score >= 150) {
                         const inv = best.inv;
                         tx.status = 'matched';
                         tx.invoiceFilename = inv.filename;
