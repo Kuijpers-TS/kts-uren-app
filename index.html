@@ -1626,14 +1626,24 @@
         let overviewMonth = new Date().getMonth(); // 0-indexed
         let overviewYear = new Date().getFullYear();
 
+        // Helper: lokale datum naar YYYY-MM-DD string (zonder UTC-conversie)
+        function toLocalDateStr(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
         function getDateForDayIndex(i) {
             const d = new Date(currentWeekMonday);
             d.setDate(d.getDate() + i);
-            return d.toISOString().split('T')[0];
+            return toLocalDateStr(d);
         }
 
         function getDayIndexForDate(dateStr) {
-            const d = new Date(dateStr);
+            // Parse als lokale datum (niet UTC) om timezone-verschuiving te voorkomen
+            const parts = dateStr.split('-');
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const diff = Math.round((d - currentWeekMonday) / (1000 * 60 * 60 * 24));
             return diff;
         }
@@ -1658,8 +1668,8 @@
             if (!currentProject) return { editable: true };
             const weekFriday = new Date(currentWeekMonday);
             weekFriday.setDate(weekFriday.getDate() + 4);
-            const weekMondayStr = currentWeekMonday.toISOString().split('T')[0];
-            const weekFridayStr = weekFriday.toISOString().split('T')[0];
+            const weekMondayStr = toLocalDateStr(currentWeekMonday);
+            const weekFridayStr = toLocalDateStr(weekFriday);
 
             // Project niet actief
             if (currentProject.status === 'inactive') {
@@ -1852,12 +1862,12 @@
 
         function getTodayDayIndex() {
             const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            const todayStr = toLocalDateStr(today);
             // Check of vandaag in de huidige week valt
             for (let i = 0; i < 7; i++) {
                 const d = new Date(currentWeekMonday);
                 d.setDate(d.getDate() + i);
-                if (d.toISOString().split('T')[0] === todayStr) return i;
+                if (toLocalDateStr(d) === todayStr) return i;
             }
             return -1; // vandaag valt niet in deze week
         }
@@ -4294,7 +4304,7 @@
 
         // ===== MODALS =====
         function openExpenseModal() {
-            document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('exp-date').value = toLocalDateStr(new Date());
             document.getElementById('expense-modal').classList.add('active');
         }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -4443,8 +4453,8 @@
             document.getElementById('month-label').textContent = `${MONTHS_LONG[overviewMonth]} ${overviewYear}`;
 
             // Bepaal eerste en laatste dag van de geselecteerde maand
-            const monthStart = new Date(overviewYear, overviewMonth, 1).toISOString().split('T')[0];
-            const monthEnd = new Date(overviewYear, overviewMonth + 1, 0).toISOString().split('T')[0];
+            const monthStart = toLocalDateStr(new Date(overviewYear, overviewMonth, 1));
+            const monthEnd = toLocalDateStr(new Date(overviewYear, overviewMonth + 1, 0));
 
             // Haal alle time_entries van deze maand op uit Supabase
             let monthEntries = [];
@@ -4677,8 +4687,8 @@
                 endD.setDate(endD.getDate() + 6);
 
                 // Week overslaan als deze volledig vóór project startdatum valt
-                const weekEndStr = endD.toISOString().split('T')[0];
-                const weekStartStr = weekStart.toISOString().split('T')[0];
+                const weekEndStr = toLocalDateStr(endD);
+                const weekStartStr = toLocalDateStr(weekStart);
                 if (projStartDate && weekEndStr < projStartDate) {
                     weekStart.setDate(weekStart.getDate() + 7);
                     continue;
@@ -4694,8 +4704,8 @@
                 const isCurrent = weekStart.getTime() === currentWeekMonday.getTime();
 
                 // Tel uren voor deze week
-                const ws = weekStart.toISOString().split('T')[0];
-                const we = endD.toISOString().split('T')[0];
+                const ws = toLocalDateStr(weekStart);
+                const we = toLocalDateStr(endD);
                 const weekHours = monthEntries
                     .filter(e => e.entry_date >= ws && e.entry_date <= we)
                     .reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
@@ -5967,7 +5977,7 @@
             if (currentProject.start_date) {
                 const weekFriday = new Date(currentWeekMonday);
                 weekFriday.setDate(weekFriday.getDate() + 4);
-                if (weekFriday.toISOString().split('T')[0] < currentProject.start_date) {
+                if (toLocalDateStr(weekFriday) < currentProject.start_date) {
                     container.innerHTML = '';
                     return;
                 }
@@ -6350,10 +6360,10 @@
             const selectedMonth = isFullYear ? -1 : parseInt(filterVal);
             const monthStart = isFullYear
                 ? (currentYear + '-01-01')
-                : new Date(currentYear, selectedMonth, 1).toISOString().split('T')[0];
+                : toLocalDateStr(new Date(currentYear, selectedMonth, 1));
             const monthEnd = isFullYear
                 ? (currentYear + '-12-31')
-                : new Date(currentYear, selectedMonth + 1, 0).toISOString().split('T')[0];
+                : toLocalDateStr(new Date(currentYear, selectedMonth + 1, 0));
             const yearStart = currentYear + '-01-01';
             const yearEnd = currentYear + '-12-31';
 
@@ -6421,8 +6431,8 @@
             // Vorige maand
             const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
             const prevYear = selectedMonth === 0 ? year - 1 : year;
-            const prevStart = new Date(prevYear, prevMonth, 1).toISOString().split('T')[0];
-            const prevEnd = new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0];
+            const prevStart = toLocalDateStr(new Date(prevYear, prevMonth, 1));
+            const prevEnd = toLocalDateStr(new Date(prevYear, prevMonth + 1, 0));
             const prevEntries = yearEntries.filter(e => e.entry_date >= prevStart && e.entry_date <= prevEnd);
             const omzetVorig = calcRevenue(prevEntries);
 
@@ -6479,8 +6489,8 @@
             const monthlyRevenue = [];
 
             for (let m = 0; m < 12; m++) {
-                const mStart = new Date(year, m, 1).toISOString().split('T')[0];
-                const mEnd = new Date(year, m + 1, 0).toISOString().split('T')[0];
+                const mStart = toLocalDateStr(new Date(year, m, 1));
+                const mEnd = toLocalDateStr(new Date(year, m + 1, 0));
                 const mEntries = yearEntries.filter(e => e.entry_date >= mStart && e.entry_date <= mEnd);
                 monthlyRevenue.push(calcRevenue(mEntries));
             }
@@ -6738,8 +6748,8 @@
             // Sheet 2: Omzet per maand (jaarcijfers)
             const maandRows = [];
             for (let m = 0; m < 12; m++) {
-                const mStart = new Date(d.currentYear, m, 1).toISOString().split('T')[0];
-                const mEnd = new Date(d.currentYear, m + 1, 0).toISOString().split('T')[0];
+                const mStart = toLocalDateStr(new Date(d.currentYear, m, 1));
+                const mEnd = toLocalDateStr(new Date(d.currentYear, m + 1, 0));
                 const mEntries = d.yearEntries.filter(e => e.entry_date >= mStart && e.entry_date <= mEnd);
                 const mHours = mEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
                 maandRows.push({
@@ -7288,8 +7298,8 @@
             const mo = parseInt(month);
             const firstDay = new Date(yr, mo - 1, 1);
             const lastDay = new Date(yr, mo, 0);
-            const dateFrom = firstDay.toISOString().split('T')[0];
-            const dateTo = lastDay.toISOString().split('T')[0];
+            const dateFrom = toLocalDateStr(firstDay);
+            const dateTo = toLocalDateStr(lastDay);
 
             const { data: entries } = await sb.from('time_entries').select('*')
                 .eq('user_id', userId)
@@ -7891,8 +7901,8 @@
             const mo = parseInt(month);
             const firstDay = new Date(yr, mo - 1, 1);
             const lastDay = new Date(yr, mo, 0);
-            const dateFrom = firstDay.toISOString().split('T')[0];
-            const dateTo = lastDay.toISOString().split('T')[0];
+            const dateFrom = toLocalDateStr(firstDay);
+            const dateTo = toLocalDateStr(lastDay);
 
             // Query time_entries met datumfilter
             let query = sb.from('time_entries').select('*')
@@ -9353,8 +9363,8 @@
                 const monday = getWeekMondayFromWeekNumber(year, weekNumber);
                 const sunday = new Date(monday);
                 sunday.setDate(sunday.getDate() + 6);
-                const weekStart = monday.toISOString().split('T')[0];
-                const weekEnd = sunday.toISOString().split('T')[0];
+                const weekStart = toLocalDateStr(monday);
+                const weekEnd = toLocalDateStr(sunday);
                 await sb.from('time_entries')
                     .delete()
                     .eq('user_id', userId)
@@ -9382,8 +9392,8 @@
             if (!sb) return;
             const monday = getWeekMondayFromWeekNumber(year, weekNumber);
             const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
-            const weekStart = monday.toISOString().split('T')[0];
-            const weekEnd = sunday.toISOString().split('T')[0];
+            const weekStart = toLocalDateStr(monday);
+            const weekEnd = toLocalDateStr(sunday);
 
             const { data: entries } = await sb.from('time_entries').select('*')
                 .eq('user_id', userId).eq('project_id', projectId)
@@ -9398,7 +9408,7 @@
             for (let d = 0; d < 7; d++) {
                 const date = new Date(monday);
                 date.setDate(date.getDate() + d);
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = toLocalDateStr(date);
                 const entry = (entries || []).find(e => e.entry_date === dateStr) || {};
                 const id = entry.id || '';
                 rows += `<div style="display:grid;grid-template-columns:40px 55px 55px 50px auto;gap:4px;align-items:center;margin-bottom:4px;font-size:0.8rem" data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}">
@@ -9496,8 +9506,8 @@
                 // Laad time entries voor deze week
                 const monday = getWeekMondayFromWeekNumber(year, weekNumber);
                 const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
-                const weekStart = monday.toISOString().split('T')[0];
-                const weekEnd = sunday.toISOString().split('T')[0];
+                const weekStart = toLocalDateStr(monday);
+                const weekEnd = toLocalDateStr(sunday);
 
                 const { data: entries } = await sb.from('time_entries').select('*')
                     .eq('user_id', userId).eq('project_id', projectId)
@@ -9509,7 +9519,7 @@
                 for (let d = 0; d < 7; d++) {
                     const date = new Date(monday);
                     date.setDate(date.getDate() + d);
-                    const dateStr = date.toISOString().split('T')[0];
+                    const dateStr = toLocalDateStr(date);
                     const entry = (entries || []).find(e => e.entry_date === dateStr);
                     targetWeekData.push({
                         start: entry ? (entry.start_time || '') : '',
@@ -10814,7 +10824,7 @@
                 project_id: currentProject.id,
                 user_id: currentUser.id,
                 inspection_number: inspNumber,
-                inspection_date: new Date().toISOString().split('T')[0],
+                inspection_date: toLocalDateStr(new Date()),
                 location: tpl.location || '',
                 installation: tpl.installation || '',
                 asset: tpl.asset || '',
