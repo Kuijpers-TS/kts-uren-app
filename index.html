@@ -1137,6 +1137,9 @@
                 <div class="admin-folder-btn" id="admin-invoices-folder-btn" onclick="adminPickFolder('invoices')">
                     📂 <span id="admin-invoices-folder-label">Facturen-map kiezen...</span>
                 </div>
+                <div class="admin-folder-btn" id="admin-transactions-folder-btn" onclick="adminPickFolder('transactions')">
+                    📂 <span id="admin-transactions-folder-label">Transacties-map kiezen...</span>
+                </div>
                 <div class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')">
                     📂 <span id="admin-export-folder-label">Export-map kiezen...</span>
                 </div>
@@ -1148,12 +1151,11 @@
                     <div style="font-weight:600;font-size:0.9rem">Transactie-overzichten</div>
                     <div style="display:flex;gap:8px">
                         <button class="btn btn-sm btn-secondary" onclick="adminRescanInvoices()" title="Facturen opnieuw scannen">🔄 Scan</button>
-                        <button class="btn btn-sm btn-primary" onclick="adminImportBankFile()">+ Transacties</button>
                     </div>
                 </div>
                 <div id="admin-uploads-list" style="margin-bottom:16px">
                     <div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">
-                        Nog geen transactieoverzichten ingeladen.<br>Klik op <b>+ Transacties</b> om een PDF, CSV of XLSX te laden.
+                        Nog geen transactieoverzichten ingeladen.<br>Kies een <b>Transacties-map</b> hierboven om bankafschriften in te laden.
                     </div>
                 </div>
                 <button class="btn btn-block btn-secondary" onclick="adminExportAll()" style="margin-bottom:12px">📥 Exporteer koppelingen</button>
@@ -5621,7 +5623,7 @@
             // Reset admin DB connection so next user gets their own DB
             if (_adminDB) { _adminDB.close(); _adminDB = null; _adminDBName = null; }
             _adminInvoicesCache = [];
-            _adminFolderHandles = { invoices: null, export: null };
+            _adminFolderHandles = { invoices: null, export: null, transactions: null };
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('user-menu').style.display = 'none';
             document.getElementById('login-email').value = '';
@@ -11832,7 +11834,7 @@
         };
 
         // --- Folder handles ---
-        let _adminFolderHandles = { invoices: null, export: null };
+        let _adminFolderHandles = { invoices: null, export: null, transactions: null };
 
         async function adminPickFolder(type) {
             if (!window.showDirectoryPicker) {
@@ -11845,22 +11847,25 @@
                 adminUpdateFolderUI(type, handle.name);
                 // Persist handle in IndexedDB
                 await adminDB.put('adminSettings', { key: 'folderHandle_' + type, value: handle });
-                // Auto-scan invoices folder
+                // Auto-scan folders
                 if (type === 'invoices') await adminScanInvoicesFolder(handle);
+                if (type === 'transactions') await adminScanTransactionsFolder(handle);
             } catch (e) {
                 if (e.name !== 'AbortError') showToast('⚠️ Map kiezen mislukt');
             }
         }
 
         function adminUpdateFolderUI(type, name) {
-            const label = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-label' : 'admin-export-folder-label');
-            const btn = document.getElementById(type === 'invoices' ? 'admin-invoices-folder-btn' : 'admin-export-folder-btn');
+            const labelId = { invoices: 'admin-invoices-folder-label', export: 'admin-export-folder-label', transactions: 'admin-transactions-folder-label' }[type];
+            const btnId = { invoices: 'admin-invoices-folder-btn', export: 'admin-export-folder-btn', transactions: 'admin-transactions-folder-btn' }[type];
+            const label = document.getElementById(labelId);
+            const btn = document.getElementById(btnId);
             if (label) label.textContent = '✅ ' + name;
             if (btn) btn.classList.add('linked');
         }
 
         async function adminRestoreFolderHandles() {
-            for (const type of ['invoices', 'export']) {
+            for (const type of ['invoices', 'export', 'transactions']) {
                 try {
                     const stored = await adminDB.get('adminSettings', 'folderHandle_' + type);
                     if (stored && stored.value) {
@@ -12027,6 +12032,8 @@
             await adminDB.put('adminSettings', { key: 'lastScanDate', value: new Date().toISOString() });
             showToast('✓ ' + invoices.length + ' facturen gescand' + (hasPdfJs ? ' (met inhoud)' : ''));
             _adminInvoicesCache = invoices;
+            // Auto-match all open transactions with the new invoice index
+            await adminAutoMatchAll();
         }
 
         async function adminRescanInvoices() {
@@ -12044,7 +12051,110 @@
             }
         }
 
-        // --- Bank file import ---
+        // --- Transactions folder scanner ---
+        async function adminScanTransactionsFolder(dirHandle) {
+            showToast('🔍 Transactiebestanden zoeken...');
+            const files = [];
+            async function scanDir(handle) {
+                for await (const entry of handle.values()) {
+                    if (entry.kind === 'file') {
+                        const ext = entry.name.toLowerCase().split('.').pop();
+                        if (['pdf', 'csv', 'xlsx', 'xls'].includes(ext)) files.push(entry);
+                    } else if (entry.kind === 'directory') {
+                        await scanDir(entry);
+                    }
+                }
+            }
+            await scanDir(dirHandle);
+            if (files.length === 0) { showToast('⚠️ Geen transactiebestanden gevonden in deze map'); return; }
+
+            // Check which files are already imported
+            const existingUploads = await adminDB.getAll('adminUploads');
+            const existingNames = new Set(existingUploads.map(u => u.filename));
+            const newFiles = files.filter(f => !existingNames.has(f.name));
+
+            if (newFiles.length === 0) {
+                showToast('✓ Alle ' + files.length + ' bestanden zijn al ingeladen');
+                return;
+            }
+
+            showToast('📥 ' + newFiles.length + ' nieuwe bestanden inladen...');
+            let imported = 0;
+            for (const entry of newFiles) {
+                try {
+                    const file = await entry.getFile();
+                    // Reuse existing import logic via a synthetic input
+                    await adminImportFile(file);
+                    imported++;
+                } catch (e) {
+                    console.warn('Import mislukt voor ' + entry.name + ':', e.message);
+                }
+            }
+            showToast('✓ ' + imported + ' transactieoverzichten ingeladen');
+            adminRenderUploads();
+        }
+
+        // Import a single File object (extracted from adminHandleBankFile for reuse)
+        async function adminImportFile(file) {
+            let transactions = [];
+            const uploadId = crypto.randomUUID();
+            const isPdf = file.name.toLowerCase().endsWith('.pdf');
+
+            if (isPdf) {
+                transactions = await adminParseBankPdf(file, uploadId);
+            } else {
+                let rows, headers;
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const text = await file.text();
+                    const parsed = adminParseCSV(text);
+                    headers = parsed.headers;
+                    rows = parsed.rows;
+                } else {
+                    if (typeof XLSX === 'undefined') return;
+                    const data = await file.arrayBuffer();
+                    const wb = XLSX.read(data, { type: 'array', cellDates: true });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                    if (json.length < 2) return;
+                    headers = json[0].map(h => String(h).trim());
+                    rows = json.slice(1).filter(r => r.some(c => c !== ''));
+                }
+                const colMap = adminDetectBankFormat(headers);
+                if (!colMap) return; // Skip files with unknown format in batch mode
+                for (const row of rows) {
+                    const rawDate = row[colMap.date];
+                    const rawAmount = row[colMap.amount];
+                    const desc = String(row[colMap.description] || '');
+                    const counterName = colMap.counterName !== undefined ? String(row[colMap.counterName] || '') : '';
+                    const counterAccount = colMap.counterAccount !== undefined ? String(row[colMap.counterAccount] || '') : '';
+                    const date = adminParseDate(rawDate);
+                    const amount = adminParseAmount(rawAmount, colMap.debitCredit !== undefined ? String(row[colMap.debitCredit]) : null);
+                    if (!date || isNaN(amount)) continue;
+                    transactions.push({ id: crypto.randomUUID(), uploadId, date, amount, description: desc, counterName, counterAccount, invoiceFilename: null, invoicePath: null, status: 'open' });
+                }
+            }
+
+            if (transactions.length === 0) return;
+
+            const dates = transactions.map(t => t.date).sort();
+            const firstMonth = new Date(dates[0]);
+            const lastMonth = new Date(dates[dates.length - 1]);
+            const months = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            let periodLabel;
+            if (firstMonth.getMonth() === lastMonth.getMonth() && firstMonth.getFullYear() === lastMonth.getFullYear()) {
+                periodLabel = months[firstMonth.getMonth()] + ' ' + firstMonth.getFullYear();
+            } else {
+                periodLabel = months[firstMonth.getMonth()] + ' - ' + months[lastMonth.getMonth()] + ' ' + lastMonth.getFullYear();
+            }
+
+            const upload = { id: uploadId, filename: file.name, periodLabel, uploadDate: new Date().toISOString(), totalRows: transactions.length, matchedRows: 0, status: 'in_progress' };
+            await adminDB.put('adminUploads', upload);
+            for (const tx of transactions) await adminDB.put('adminTransactions', tx);
+            // Auto-match if invoices are available
+            if (_adminInvoicesCache.length > 0) await adminAutoMatchAll();
+        }
+
+        // --- Bank file import (single file via input) ---
         function adminImportBankFile() {
             document.getElementById('admin-bank-file-input').click();
         }
@@ -12057,94 +12167,9 @@
             if (!file) return;
             input.value = '';
             try {
-                let transactions = [];
-                const uploadId = crypto.randomUUID();
-                const isPdf = file.name.toLowerCase().endsWith('.pdf');
-
-                if (isPdf) {
-                    // PDF transactieoverzicht (bijv. Bunq)
-                    transactions = await adminParseBankPdf(file, uploadId);
-                } else {
-                    // CSV of XLSX
-                    let rows, headers;
-                    if (file.name.toLowerCase().endsWith('.csv')) {
-                        const text = await file.text();
-                        const parsed = adminParseCSV(text);
-                        headers = parsed.headers;
-                        rows = parsed.rows;
-                    } else {
-                        if (typeof XLSX === 'undefined') { showToast('⚠️ SheetJS nog niet geladen, probeer opnieuw'); return; }
-                        const data = await file.arrayBuffer();
-                        const wb = XLSX.read(data, { type: 'array', cellDates: true });
-                        const ws = wb.Sheets[wb.SheetNames[0]];
-                        const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-                        if (json.length < 2) { showToast('⚠️ Bestand is leeg'); return; }
-                        headers = json[0].map(h => String(h).trim());
-                        rows = json.slice(1).filter(r => r.some(c => c !== ''));
-                    }
-
-                    // Auto-detect bank format
-                    const colMap = adminDetectBankFormat(headers);
-                    let mapping = colMap;
-                    if (!mapping) {
-                        mapping = await adminShowColMapUI(headers);
-                        if (!mapping) return;
-                    }
-
-                    for (const row of rows) {
-                        const rawDate = row[mapping.date];
-                        const rawAmount = row[mapping.amount];
-                        const desc = String(row[mapping.description] || '');
-                        const counterName = mapping.counterName !== undefined ? String(row[mapping.counterName] || '') : '';
-                        const counterAccount = mapping.counterAccount !== undefined ? String(row[mapping.counterAccount] || '') : '';
-
-                        const date = adminParseDate(rawDate);
-                        const amount = adminParseAmount(rawAmount, mapping.debitCredit !== undefined ? String(row[mapping.debitCredit]) : null);
-                        if (!date || isNaN(amount)) continue;
-
-                        transactions.push({
-                            id: crypto.randomUUID(),
-                            uploadId,
-                            date,
-                            amount,
-                            description: desc,
-                            counterName,
-                            counterAccount,
-                            invoiceFilename: null,
-                            invoicePath: null,
-                            status: 'open'
-                        });
-                    }
-                }
-
-                if (transactions.length === 0) { showToast('⚠️ Geen transacties gevonden in dit bestand'); return; }
-
-                // Determine period label
-                const dates = transactions.map(t => t.date).sort();
-                const firstMonth = new Date(dates[0]);
-                const lastMonth = new Date(dates[dates.length - 1]);
-                const months = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-                let periodLabel;
-                if (firstMonth.getMonth() === lastMonth.getMonth() && firstMonth.getFullYear() === lastMonth.getFullYear()) {
-                    periodLabel = months[firstMonth.getMonth()] + ' ' + firstMonth.getFullYear();
-                } else {
-                    periodLabel = months[firstMonth.getMonth()] + ' - ' + months[lastMonth.getMonth()] + ' ' + lastMonth.getFullYear();
-                }
-
-                const upload = {
-                    id: uploadId,
-                    filename: file.name,
-                    periodLabel,
-                    uploadDate: new Date().toISOString(),
-                    totalRows: transactions.length,
-                    matchedRows: 0,
-                    status: 'in_progress'
-                };
-
-                await adminDB.put('adminUploads', upload);
-                for (const tx of transactions) await adminDB.put('adminTransactions', tx);
-                showToast('✓ ' + transactions.length + ' transacties ingeladen');
+                await adminImportFile(file);
                 adminRenderUploads();
+                showToast('✓ Transacties ingeladen');
             } catch (e) {
                 console.error('Bank import fout:', e);
                 showToast('⚠️ Import mislukt: ' + e.message);
@@ -12544,7 +12569,7 @@
             const uploads = await adminDB.getAll('adminUploads');
             const list = document.getElementById('admin-uploads-list');
             if (uploads.length === 0) {
-                list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">Nog geen transactieoverzichten ingeladen.<br>Klik op <b>+ Transacties</b> om een PDF, CSV of XLSX te laden.</div>';
+                list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem">Nog geen transactieoverzichten ingeladen.<br>Kies een <b>Transacties-map</b> hierboven om bankafschriften in te laden.</div>';
                 return;
             }
             // Sort by upload date descending
@@ -13079,6 +13104,45 @@
 
             showToast(matched > 0 ? '⚡ ' + matched + ' transacties automatisch gekoppeld' : 'Geen zekere matches gevonden — handmatig koppelen');
             adminRenderCurrentTx();
+        }
+
+        // Auto-match across ALL uploads (runs after scan or import)
+        async function adminAutoMatchAll() {
+            if (_adminInvoicesCache.length === 0) return;
+            const uploads = await adminDB.getAll('adminUploads');
+            let totalMatched = 0;
+            for (const upload of uploads) {
+                const txs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', upload.id);
+                const openTxs = txs.filter(t => t.status === 'open');
+                let matched = 0;
+                for (const tx of openTxs) {
+                    const available = _adminInvoicesCache.filter(inv => !inv.linkedToTransaction);
+                    const scored = available.map(inv => ({ inv, score: adminScoreMatch(tx, inv) }));
+                    scored.sort((a, b) => b.score - a.score);
+                    const best = scored[0];
+                    const second = scored[1];
+                    if (best && best.score >= 60) {
+                        if (!second || second.score < 60 || best.score - second.score >= 10 || best.score >= 150) {
+                            tx.status = 'matched';
+                            tx.invoiceFilename = best.inv.filename;
+                            tx.invoicePath = best.inv.path;
+                            best.inv.linkedToTransaction = tx.id;
+                            await adminDB.put('adminTransactions', tx);
+                            await adminDB.put('adminInvoices', best.inv);
+                            matched++;
+                        }
+                    }
+                }
+                if (matched > 0) {
+                    const allTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', upload.id);
+                    const processed = allTxs.filter(t => t.status !== 'open' && t.status !== 'skipped').length;
+                    upload.matchedRows = processed;
+                    upload.status = processed === upload.totalRows ? 'completed' : 'in_progress';
+                    await adminDB.put('adminUploads', upload);
+                    totalMatched += matched;
+                }
+            }
+            if (totalMatched > 0) showToast('⚡ ' + totalMatched + ' transacties automatisch gekoppeld');
         }
 
         // --- Delete transaction ---
