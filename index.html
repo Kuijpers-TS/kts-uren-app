@@ -13340,7 +13340,18 @@
                     await csvWritable.write(new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' }));
                     await csvWritable.close();
 
-                    showToast('✓ Export opgeslagen in map');
+                    // Write HTML overview
+                    const invoiceFolderName = _adminFolderHandles.invoices ? _adminFolderHandles.invoices.name : 'Facturen';
+                    const htmlContent = adminBuildHtmlExport(uploads, allTxs, invoiceFolderName);
+                    const htmlHandle = await _adminFolderHandles.export.getFileHandle(
+                        'administratie_overzicht_' + new Date().toISOString().slice(0, 10) + '.html',
+                        { create: true }
+                    );
+                    const htmlWritable = await htmlHandle.createWritable();
+                    await htmlWritable.write(new Blob([htmlContent], { type: 'text/html;charset=utf-8' }));
+                    await htmlWritable.close();
+
+                    showToast('✓ Export opgeslagen in map (CSV + HTML + JSON)');
                 } catch (e) {
                     showToast('⚠️ Export mislukt: ' + e.message);
                 }
@@ -13355,6 +13366,100 @@
                 URL.revokeObjectURL(url);
                 showToast('✓ JSON backup gedownload');
             }
+        }
+
+        function adminBuildHtmlExport(uploads, allTxs, invoiceFolderName) {
+            const today = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' });
+            // Group transactions by upload
+            const byUpload = {};
+            for (const tx of allTxs) {
+                if (!byUpload[tx.uploadId]) byUpload[tx.uploadId] = [];
+                byUpload[tx.uploadId].push(tx);
+            }
+            // Sort each group by date
+            for (const uid in byUpload) byUpload[uid].sort((a, b) => a.date.localeCompare(b.date));
+
+            const statusLabel = { matched: 'Gekoppeld', open: 'Open', no_invoice: 'Geen factuur', skipped: 'Overgeslagen' };
+            const statusColor = { matched: '#dcfce7', open: '#fef9c3', no_invoice: '#f1f5f9', skipped: '#f1f5f9' };
+            const statusBorder = { matched: '#22c55e', open: '#eab308', no_invoice: '#94a3b8', skipped: '#d4d4d8' };
+
+            let sections = '';
+            for (const upload of uploads.sort((a, b) => (a.periodLabel || '').localeCompare(b.periodLabel || ''))) {
+                const txs = byUpload[upload.id] || [];
+                if (txs.length === 0) continue;
+                const matched = txs.filter(t => t.status === 'matched').length;
+                const total = txs.length;
+
+                let rows = '';
+                for (const tx of txs) {
+                    const d = tx.date.split('-');
+                    const dateStr = d[2] + '-' + d[1] + '-' + d[0];
+                    const amt = (tx.amount < 0 ? '-' : '+') + '€\u00A0' + Math.abs(tx.amount).toLocaleString('nl-NL', { minimumFractionDigits: 2 });
+                    const amtColor = tx.amount < 0 ? '#dc2626' : '#16a34a';
+                    const bg = statusColor[tx.status] || '#fff';
+                    const border = statusBorder[tx.status] || '#e5e7eb';
+                    const name = tx.counterName || tx.description.slice(0, 40);
+
+                    let invoiceCell = '';
+                    if (tx.status === 'matched' && tx.invoicePath) {
+                        // Relative link to invoice in the invoices folder
+                        const relativePath = '../' + invoiceFolderName + '/' + tx.invoicePath;
+                        invoiceCell = '<a href="' + relativePath.replace(/"/g, '&quot;') + '" style="color:#2563eb;text-decoration:none;font-size:0.8rem" title="Open factuur">📄 ' + (tx.invoiceFilename || '').replace(/</g, '&lt;') + '</a>';
+                    } else if (tx.status === 'matched' && tx.invoiceFilename) {
+                        invoiceCell = '<span style="font-size:0.8rem">📄 ' + tx.invoiceFilename.replace(/</g, '&lt;') + '</span>';
+                    } else {
+                        invoiceCell = '<span style="font-size:0.75rem;color:#9ca3af">' + (statusLabel[tx.status] || '') + '</span>';
+                    }
+
+                    rows += '<tr style="border-left:4px solid ' + border + ';background:' + bg + '">' +
+                        '<td style="padding:8px 10px;font-size:0.82rem;white-space:nowrap">' + dateStr + '</td>' +
+                        '<td style="padding:8px 10px;font-weight:600;font-size:0.85rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name.replace(/</g, '&lt;') + '</td>' +
+                        '<td style="padding:8px 10px;text-align:right;font-weight:700;color:' + amtColor + ';white-space:nowrap;font-size:0.85rem">' + amt + '</td>' +
+                        '<td style="padding:8px 10px">' + invoiceCell + '</td>' +
+                        '</tr>\n';
+                }
+
+                sections += '<div style="margin-bottom:32px">' +
+                    '<h2 style="font-size:1rem;font-weight:700;margin:0 0 4px 0;color:#1e3a5f">' + (upload.periodLabel || upload.filename).replace(/</g, '&lt;') + '</h2>' +
+                    '<div style="font-size:0.8rem;color:#6b7280;margin-bottom:10px">' + matched + ' / ' + total + ' gekoppeld · ' + (upload.filename || '').replace(/</g, '&lt;') + '</div>' +
+                    '<table style="width:100%;border-collapse:collapse;border-spacing:0">' +
+                    '<thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">' +
+                    '<th style="padding:6px 10px;text-align:left;font-size:0.75rem;font-weight:600;color:#64748b">Datum</th>' +
+                    '<th style="padding:6px 10px;text-align:left;font-size:0.75rem;font-weight:600;color:#64748b">Tegenpartij</th>' +
+                    '<th style="padding:6px 10px;text-align:right;font-size:0.75rem;font-weight:600;color:#64748b">Bedrag</th>' +
+                    '<th style="padding:6px 10px;text-align:left;font-size:0.75rem;font-weight:600;color:#64748b">Factuur</th>' +
+                    '</tr></thead><tbody>\n' + rows + '</tbody></table></div>\n';
+            }
+
+            // Summary stats
+            const totalTxs = allTxs.length;
+            const totalMatched = allTxs.filter(t => t.status === 'matched').length;
+            const totalNoInv = allTxs.filter(t => t.status === 'no_invoice').length;
+            const totalOpen = allTxs.filter(t => t.status === 'open').length;
+            const totalSkipped = allTxs.filter(t => t.status === 'skipped').length;
+
+            return '<!DOCTYPE html>\n<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+                '<title>Administratie Overzicht — ' + today + '</title>' +
+                '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px 24px;background:#f8fafc;color:#1e293b}' +
+                'a:hover{text-decoration:underline!important}' +
+                'table{box-shadow:0 1px 3px rgba(0,0,0,0.08);border-radius:8px;overflow:hidden}' +
+                'tr:hover td{filter:brightness(0.97)}' +
+                '@media print{body{padding:10px}table{box-shadow:none}a{color:#000!important}}' +
+                '@media(max-width:600px){td,th{padding:6px 6px!important;font-size:0.75rem!important}}</style></head><body>' +
+                '<div style="max-width:900px;margin:0 auto">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;border-bottom:2px solid #1e3a5f;padding-bottom:12px">' +
+                '<div><h1 style="font-size:1.3rem;font-weight:700;margin:0;color:#1e3a5f">📋 Administratie Overzicht</h1>' +
+                '<div style="font-size:0.8rem;color:#6b7280;margin-top:2px">Kuijpers Technical Services · ' + today + '</div></div>' +
+                '<div style="display:flex;gap:12px;font-size:0.8rem;font-weight:600">' +
+                '<span style="color:#22c55e">✅ ' + totalMatched + '</span>' +
+                '<span style="color:#eab308">⏳ ' + totalOpen + '</span>' +
+                '<span style="color:#94a3b8">📝 ' + totalNoInv + '</span>' +
+                (totalSkipped > 0 ? '<span style="color:#d4d4d8">⏭️ ' + totalSkipped + '</span>' : '') +
+                '<span style="color:#1e3a5f">' + totalTxs + ' totaal</span></div></div>' +
+                sections +
+                '<div style="text-align:center;font-size:0.72rem;color:#9ca3af;margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0">' +
+                'Gegenereerd vanuit KTS Uren App · Facturen-map: ' + invoiceFolderName.replace(/</g, '&lt;') + '</div>' +
+                '</div></body></html>';
         }
 
         // --- JSON Import ---
