@@ -13698,7 +13698,7 @@
                 '<span style="color:#1e3a5f">' + totalTxs + ' totaal</span></div></div>' +
                 sections +
                 '<div style="text-align:center;font-size:0.72rem;color:#9ca3af;margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0">' +
-                'Gegenereerd vanuit KTS Uren App · Facturen-map: ' + invoiceFolderName.replace(/</g, '&lt;') + '</div>' +
+                'Gegenereerd vanuit KTS Uren App · Facturen-map: ' + (invoiceBasePath || '(niet ingesteld)').replace(/</g, '&lt;') + '</div>' +
                 '</div></body></html>';
         }
 
