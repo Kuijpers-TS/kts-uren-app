@@ -11934,7 +11934,7 @@
 
         async function adminSaveInvoiceBasePath(val) {
             val = val.trim().replace(/[\\/]+$/, '');
-            await adminDB.put('adminSettings', { id: 'invoiceBasePath', value: val });
+            await adminDB.put('adminSettings', { key: 'invoiceBasePath', value: val });
             showToast('✓ Facturen-pad opgeslagen');
         }
 
