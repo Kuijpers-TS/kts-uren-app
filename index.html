@@ -13638,8 +13638,11 @@
                         const fpaths = tx.invoicePaths || (tx.invoicePath ? [tx.invoicePath] : []);
                         invoiceCell = fnames.map((fn, i) => {
                             const relPath = (fpaths[i] && fpaths[i] !== 'null') ? fpaths[i] : fn;
-                            const winRel = relPath.replace(/\//g, '\\');
-                            return '<span class="inv-link" data-rel="' + winRel.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" onclick="copyInvPath(this)" style="color:#2563eb;cursor:pointer;font-size:0.8rem;display:block">📄 ' + fn.replace(/</g, '&lt;') + '</span>';
+                            const baseFwd = (invoiceBasePath || '').replace(/\\/g, '/').replace(/\/+$/, '');
+                            const relFwd = relPath.replace(/\\/g, '/');
+                            const fullPath = baseFwd ? baseFwd + '/' + relFwd : relFwd;
+                            const fileUrl = 'file:///' + fullPath.split('/').map(p => encodeURIComponent(p)).join('/');
+                            return '<a href="' + fileUrl + '" style="color:#2563eb;font-size:0.8rem;display:block;text-decoration:none" target="_blank">📄 ' + fn.replace(/</g, '&lt;') + '</a>';
                         }).join('');
                     } else {
                         const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
@@ -13680,17 +13683,7 @@
                 'table{box-shadow:0 1px 3px rgba(0,0,0,0.08);border-radius:8px;overflow:hidden}' +
                 'tr:hover td{filter:brightness(0.97)}' +
                 '@media print{body{padding:10px}table{box-shadow:none}a{color:#000!important}}' +
-                '@media(max-width:600px){td,th{padding:6px 6px!important;font-size:0.75rem!important}}</style>' +
-                '<scr' + 'ipt>var INVOICE_BASE=' + JSON.stringify(invoiceBasePath || '') + ';' +
-                'function copyInvPath(el){' +
-                  'var rel=el.getAttribute("data-rel");' +
-                  'var folder=INVOICE_BASE;' +
-                  'if(rel.indexOf(String.fromCharCode(92))>-1){folder=INVOICE_BASE+String.fromCharCode(92)+rel.substring(0,rel.lastIndexOf(String.fromCharCode(92)))}' +
-                  'else if(INVOICE_BASE){folder=INVOICE_BASE}' +
-                  'navigator.clipboard.writeText(folder).then(function(){' +
-                    'var orig=el.innerHTML;el.innerHTML="✓ "+folder;setTimeout(function(){el.innerHTML=orig},2500)' +
-                  '})' +
-                '}</' + 'script></head><body>' +
+                '@media(max-width:600px){td,th{padding:6px 6px!important;font-size:0.75rem!important}}</style></head><body>' +
                 '<div style="max-width:900px;margin:0 auto">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;border-bottom:2px solid #1e3a5f;padding-bottom:12px">' +
                 '<div><h1 style="font-size:1.3rem;font-weight:700;margin:0;color:#1e3a5f">📋 Administratie Overzicht</h1>' +
