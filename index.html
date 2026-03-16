@@ -12753,6 +12753,8 @@
             _adminTxFilter = 'all';
             _adminListFilter = 'all';
             _adminSelectedInvoices = new Set();
+            // Check for duplicate invoice links across all transactions
+            await adminCheckDuplicateLinks();
             // Show list view (not wizard)
             document.getElementById('admin-main-view').style.display = 'none';
             document.getElementById('admin-account-view').style.display = 'none';
@@ -12765,6 +12767,34 @@
             if (searchEl) searchEl.value = '';
             adminRenderListView();
         }
+
+        async function adminCheckDuplicateLinks() {
+            // Find invoices linked to multiple transactions across all uploads
+            const allTxs = await adminDB.getAll('adminTransactions');
+            const invoiceUsage = {}; // filename -> [{ txId, counterName, date, uploadId }]
+            for (const tx of allTxs) {
+                if (tx.status !== 'matched') continue;
+                const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
+                for (const fn of fnames) {
+                    if (!fn) continue;
+                    if (!invoiceUsage[fn]) invoiceUsage[fn] = [];
+                    invoiceUsage[fn].push({ txId: tx.id, name: tx.counterName || tx.description.slice(0, 30), date: tx.date, uploadId: tx.uploadId });
+                }
+            }
+            const duplicates = Object.entries(invoiceUsage).filter(([fn, usages]) => usages.length > 1);
+            if (duplicates.length > 0) {
+                const msgs = duplicates.map(([fn, usages]) => {
+                    return '⚠️ ' + fn + ' is ' + usages.length + 'x gekoppeld:\n' + usages.map(u => '   • ' + u.date + ' — ' + u.name).join('\n');
+                });
+                showToast('⚠️ ' + duplicates.length + ' factuur/facturen dubbel gekoppeld!', 8000);
+                console.warn('Dubbel gekoppelde facturen:\n' + msgs.join('\n\n'));
+                // Mark duplicates visually in the list view
+                _adminDuplicateInvoices = new Set(duplicates.map(([fn]) => fn));
+            } else {
+                _adminDuplicateInvoices = new Set();
+            }
+        }
+        let _adminDuplicateInvoices = new Set();
 
         function adminBackToMain() {
             document.getElementById('admin-wizard-view').style.display = 'none';
@@ -12836,13 +12866,18 @@
 
                 let rightHtml = '';
                 if (tx.status === 'matched' && tx.invoicePath) {
-                    rightHtml = '<button class="btn btn-sm" onclick="event.stopPropagation(); adminPreviewInvoice(\'' + tx.invoicePath.replace(/'/g, "\\'") + '\')" style="font-size:0.9rem;padding:5px 8px;background:#d1fae5;border:none;border-radius:6px;cursor:pointer" title="Factuur bekijken">👁️</button>';
+                    rightHtml = '<button class="btn btn-sm" onclick="event.stopPropagation(); adminPreviewInvoice(\'' + tx.invoicePath.replace(/'/g, "\\'") + '\')" style="font-size:1.15rem;padding:8px 12px;background:#d1fae5;border:none;border-radius:6px;cursor:pointer" title="Factuur bekijken">👁️</button>';
                 }
 
                 let statusIcon = '';
                 if (tx.status === 'matched') {
                     const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
-                    statusIcon = '<span style="font-size:0.7rem;color:#16a34a">✅ ' + fnames.map(f => f.slice(0, 20)).join(', ') + '</span>';
+                    const hasDup = fnames.some(fn => _adminDuplicateInvoices.has(fn));
+                    if (hasDup) {
+                        statusIcon = '<span style="font-size:0.7rem;color:#dc2626;font-weight:600">⚠️ DUBBEL: ' + fnames.map(f => f.slice(0, 20)).join(', ') + '</span>';
+                    } else {
+                        statusIcon = '<span style="font-size:0.7rem;color:#16a34a">✅ ' + fnames.map(f => f.slice(0, 20)).join(', ') + '</span>';
+                    }
                 }
                 else if (tx.status === 'no_invoice') {
                     const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
@@ -13014,7 +13049,7 @@
                         <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem">${inv.filename}</div>
                         ${subtitleHtml}${tagsHtml}
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1.1rem;padding:8px 12px;min-width:44px">👁️</button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1.35rem;padding:10px 14px;min-width:50px">👁️</button>
                 </div>`;
         }
 
