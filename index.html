@@ -12745,6 +12745,8 @@
         async function adminOpenUpload(uploadId) {
             _adminCurrentUpload = await adminDB.get('adminUploads', uploadId);
             if (!_adminCurrentUpload) return;
+            // Refresh invoice cache to get latest linkedToTransaction state
+            _adminInvoicesCache = await adminDB.getAll('adminInvoices');
             _adminCurrentTxs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', uploadId);
             _adminCurrentTxs.sort((a, b) => a.date.localeCompare(b.date));
             _adminCurrentTxIdx = 0;
