@@ -1149,6 +1149,10 @@
                 <div class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')">
                     📂 <span id="admin-export-folder-label">Export-map kiezen...</span>
                 </div>
+                <div style="margin-top:8px">
+                    <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:4px">Volledig pad facturen-map (voor export links):</label>
+                    <input type="text" id="admin-invoice-base-path" placeholder="Bijv. C:\Users\mkuij\OneDrive\Administratie KTS BV\KTDS Holding B.V\2026" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;box-sizing:border-box" onchange="adminSaveInvoiceBasePath(this.value)">
+                </div>
             </div>
 
             <!-- Hoofd view: Rekeningen overzicht -->
@@ -11918,6 +11922,27 @@
                     console.warn('Folder handle restore mislukt voor ' + type + ':', e.message);
                 }
             }
+            // Restore invoice base path
+            try {
+                const bp = await adminDB.get('adminSettings', 'invoiceBasePath');
+                if (bp && bp.value) {
+                    const el = document.getElementById('admin-invoice-base-path');
+                    if (el) el.value = bp.value;
+                }
+            } catch (e) {}
+        }
+
+        async function adminSaveInvoiceBasePath(val) {
+            val = val.trim().replace(/[\\/]+$/, '');
+            await adminDB.put('adminSettings', { id: 'invoiceBasePath', value: val });
+            showToast('✓ Facturen-pad opgeslagen');
+        }
+
+        async function adminGetInvoiceBasePath() {
+            try {
+                const bp = await adminDB.get('adminSettings', 'invoiceBasePath');
+                return bp && bp.value ? bp.value.trim().replace(/[\\/]+$/, '') : '';
+            } catch (e) { return ''; }
         }
 
         // --- Invoice folder scanner ---
@@ -13548,8 +13573,8 @@
                     await csvWritable.close();
 
                     // Write HTML overview
-                    const invoiceFolderName = _adminFolderHandles.invoices ? _adminFolderHandles.invoices.name : 'Facturen';
-                    const htmlContent = adminBuildHtmlExport(uploads, allTxs, invoiceFolderName);
+                    const invoiceBasePath = await adminGetInvoiceBasePath();
+                    const htmlContent = adminBuildHtmlExport(uploads, allTxs, invoiceBasePath);
                     const htmlHandle = await _adminFolderHandles.export.getFileHandle(
                         'administratie_overzicht_' + new Date().toISOString().slice(0, 10) + '.html',
                         { create: true }
@@ -13575,7 +13600,7 @@
             }
         }
 
-        function adminBuildHtmlExport(uploads, allTxs, invoiceFolderName) {
+        function adminBuildHtmlExport(uploads, allTxs, invoiceBasePath) {
             const today = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' });
             // Group transactions by upload
             const byUpload = {};
@@ -13612,8 +13637,14 @@
                         const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
                         const fpaths = tx.invoicePaths || (tx.invoicePath ? [tx.invoicePath] : []);
                         invoiceCell = fnames.map((fn, i) => {
-                            const fullPath = invoiceFolderName + '/' + (fpaths[i] || fn);
-                            return '<span class="inv-link" onclick="navigator.clipboard.writeText(\'' + fullPath.replace(/'/g, "\\'") + '\');this.textContent=\'✓ Gekopieerd!\';setTimeout(()=>this.textContent=\'📄 ' + fn.replace(/'/g, "\\'").replace(/</g, '&lt;') + '\',1500)" style="color:#2563eb;cursor:pointer;font-size:0.8rem;display:block" title="Klik om pad te kopiëren: ' + fullPath.replace(/"/g, '&quot;') + '">📄 ' + fn.replace(/</g, '&lt;') + '</span>';
+                            const relPath = fpaths[i] || fn;
+                            const winRel = relPath.replace(/\//g, '\\');
+                            const fullFilePath = invoiceBasePath ? (invoiceBasePath + '\\' + winRel) : winRel;
+                            const folderPath = fullFilePath.lastIndexOf('\\') > 0 ? fullFilePath.substring(0, fullFilePath.lastIndexOf('\\')) : fullFilePath;
+                            const folderUrl = 'file:///' + encodeURI(folderPath.replace(/\\/g, '/'));
+                            const safeFolderPath = folderPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                            const safeFn = fn.replace(/'/g, "\\'").replace(/</g, '&lt;');
+                            return '<a href="' + folderUrl + '" class="inv-link" onclick="event.preventDefault();navigator.clipboard.writeText(\'' + safeFolderPath + '\');this.textContent=\'✓ Map gekopieerd!\';setTimeout(()=>this.textContent=\'📄 ' + safeFn + '\',1500)" style="color:#2563eb;cursor:pointer;font-size:0.8rem;display:block;text-decoration:none" title="Klik = kopieer mappad&#10;Rechtermuisknop → Link openen = open in Verkenner&#10;' + folderPath.replace(/"/g, '&quot;') + '">📄 ' + fn.replace(/</g, '&lt;') + '</a>';
                         }).join('');
                     } else {
                         const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
