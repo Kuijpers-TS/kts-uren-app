@@ -4623,7 +4623,7 @@
             if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
             if (name === 'administratie') { adminLoadScreen(); }
             // Hide project selector on screens where it's not relevant
-            document.querySelector('.project-selector').style.display = (name === 'administratie' || name === 'admin') ? 'none' : '';
+            document.querySelector('.project-selector').style.display = (name === 'administratie' || name === 'admin' || name === 'inspecties') ? 'none' : '';
         }
 
         // ===== MODALS =====
@@ -6635,6 +6635,7 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('screen-admin').classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector('.project-selector').style.display = 'none';
             showAdminTiles();
             loadAdminData();
         }
