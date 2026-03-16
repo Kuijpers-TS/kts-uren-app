@@ -13637,13 +13637,15 @@
                         const fnames = tx.invoiceFilenames || (tx.invoiceFilename ? [tx.invoiceFilename] : []);
                         const fpaths = tx.invoicePaths || (tx.invoicePath ? [tx.invoicePath] : []);
                         invoiceCell = fnames.map((fn, i) => {
-                            const relPath = fpaths[i] || fn;
+                            const relPath = (fpaths[i] && fpaths[i] !== 'null') ? fpaths[i] : fn;
                             const winRel = relPath.replace(/\//g, '\\');
                             const fullFilePath = invoiceBasePath ? (invoiceBasePath + '\\' + winRel) : winRel;
-                            const folderPath = fullFilePath.lastIndexOf('\\') > 0 ? fullFilePath.substring(0, fullFilePath.lastIndexOf('\\')) : fullFilePath;
+                            const folderPath = fullFilePath.lastIndexOf('\\') > 0 ? fullFilePath.substring(0, fullFilePath.lastIndexOf('\\')) : invoiceBasePath || fullFilePath;
                             const folderUrl = 'file:///' + encodeURI(folderPath.replace(/\\/g, '/'));
-                            const b64path = btoa(unescape(encodeURIComponent(folderPath)));
-                            return '<a href="' + folderUrl + '" class="inv-link" data-path="' + b64path + '" onclick="event.preventDefault();var p=atob(this.dataset.path);navigator.clipboard.writeText(p);var el=this;el.textContent=\'✓ Gekopieerd: \'+p.substring(p.lastIndexOf(String.fromCharCode(92))+1);setTimeout(function(){el.textContent=\'📄 '+fn.replace(/'/g,"&#39;").replace(/</g,'&lt;')+'\'},2000)" style="color:#2563eb;cursor:pointer;font-size:0.8rem;display:block;text-decoration:none" title="Klik = kopieer mappad naar klembord&#10;' + folderPath.replace(/&/g,'&amp;').replace(/"/g, '&quot;').replace(/</g,'&lt;') + '">📄 ' + fn.replace(/</g, '&lt;') + '</a>';
+                            const b64folder = btoa(unescape(encodeURIComponent(folderPath)));
+                            const b64file = btoa(unescape(encodeURIComponent(fullFilePath)));
+                            const safeLabel = fn.replace(/&/g,'&amp;').replace(/'/g,"&#39;").replace(/</g,'&lt;').replace(/"/g,'&quot;');
+                            return '<a href="' + folderUrl + '" class="inv-link" data-folder="' + b64folder + '" data-file="' + b64file + '" onclick="event.preventDefault();var f=decodeURIComponent(escape(atob(this.dataset.folder)));navigator.clipboard.writeText(f);var el=this;el.textContent=\'✓ Gekopieerd!\';el.title=f;setTimeout(function(){el.textContent=\'📄 ' + safeLabel + '\'},2000)" style="color:#2563eb;cursor:pointer;font-size:0.8rem;display:block;text-decoration:none" title="Klik = kopieer mappad&#10;' + folderPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;') + '">📄 ' + fn.replace(/</g, '&lt;') + '</a>';
                         }).join('');
                     } else {
                         const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
