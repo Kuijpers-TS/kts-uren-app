@@ -960,7 +960,7 @@
     <div class="header">
         <div class="header-inner">
             <div class="header-top">
-                <div class="logo"><img src="tandwiel-wit-v2.png" alt="KTS">Kuijpers <span> | Technical Services</span></div>
+                <div class="logo"><img src="tandwiel-wit-v2.png" alt="KTS"><span>Kuijpers</span><span style="margin:0 2px">|</span><span>Technical Services</span></div>
                 <div class="user-badge" onclick="toggleUserMenu()" style="position:relative"><span id="user-badge-name">👤 M. Kuijpers</span>
                     <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:220px;overflow:hidden;z-index:200">
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
@@ -9111,7 +9111,7 @@
                         <div class="form-group" id="adm-user-km-wrap" style="${existing && existing.allow_km === false ? 'display:none' : ''}"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
                         <div class="form-group" id="adm-user-hotel-wrap" style="${existing && existing.allow_hotel === false ? 'display:none' : ''}"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
                     </div>
-                    ${existing ? '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"><button type="button" class="btn btn-sm btn-secondary" onclick="resetWelcomeGuide(\'' + existing.id + '\', \'' + (existing.name || existing.email) + '\')" style="font-size:0.8rem">🔄 Welkomstgids opnieuw tonen bij volgende login</button></div>' : ''}
+                    ${existing ? '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px"><button type="button" class="btn btn-sm" onclick="inviteUser(\'' + existing.email + '\', \'' + (existing.name || '').replace(/'/g, "\\'") + '\')" style="font-size:0.8rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0">📧 Uitnodigen voor de app</button><button type="button" class="btn btn-sm btn-secondary" onclick="resetWelcomeGuide(\'' + existing.id + '\', \'' + (existing.name || existing.email) + '\')" style="font-size:0.8rem">🔄 Welkomstgids opnieuw tonen bij volgende login</button></div>' : ''}
                 `;
             }
 
@@ -10554,6 +10554,24 @@
         }
 
         // toggleAssignmentSetting verwijderd — feature flags staan nu op users tabel
+
+        function inviteUser(email, name) {
+            const appUrl = window.location.origin;
+            const aanhef = name ? name.split(' ')[0] : '';
+            const subject = encodeURIComponent('Uitnodiging KTS Uren App');
+            const body = encodeURIComponent(
+                `Hoi ${aanhef},\n\n` +
+                `Je hebt toegang gekregen tot de KTS Uren App.\n\n` +
+                `App: ${appUrl}\n` +
+                `E-mail: ${email}\n` +
+                `Wachtwoord: Welkom123!\n\n` +
+                `Na je eerste login wordt gevraagd om je wachtwoord te wijzigen.\n\n` +
+                `Met vriendelijke groet,\n` +
+                `Kuijpers Technical Services`
+            );
+            window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
+            showToast('✓ E-mail wordt geopend voor ' + (name || email));
+        }
 
         async function resetWelcomeGuide(userId, userName) {
             if (!await confirmAsync('Welkomstgids opnieuw tonen voor ' + userName + ' bij volgende login?')) return;
