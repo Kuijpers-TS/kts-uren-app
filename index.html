@@ -4496,9 +4496,9 @@
 
             // Blokkeer navigatie vóór startweek van gebruiker (niet voor admins)
             if (dir < 0 && !isAdmin && currentUser && currentUser.start_week && currentUser.start_year) {
-                const prevWeekNum = getISOWeek(new Date(currentWeekMonday.getTime() - 7 * 24 * 60 * 60 * 1000));
-                const prevYear = getISOYear(new Date(currentWeekMonday.getTime() - 7 * 24 * 60 * 60 * 1000));
-                if (prevYear < currentUser.start_year || (prevYear === currentUser.start_year && prevWeekNum < currentUser.start_week)) {
+                const sw = parseInt(currentUser.start_week);
+                const sy = parseInt(currentUser.start_year);
+                if (currentYear < sy || (currentYear === sy && currentWeekNumber <= sw)) {
                     showToast('⛔ Dit is je eerste week');
                     return;
                 }
@@ -4565,7 +4565,9 @@
             // Startweek check: kan niet verder terug dan start_week/start_year
             let canGoPrev = true;
             if (!isAdmin && currentUser && currentUser.start_week && currentUser.start_year) {
-                canGoPrev = currentYear > currentUser.start_year || (currentYear === currentUser.start_year && currentWeekNumber > currentUser.start_week);
+                const sw = parseInt(currentUser.start_week);
+                const sy = parseInt(currentUser.start_year);
+                canGoPrev = currentYear > sy || (currentYear === sy && currentWeekNumber > sw);
             }
 
             // Week-knoppen
