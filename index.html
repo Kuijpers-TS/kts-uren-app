@@ -4468,6 +4468,16 @@
                 }
             }
 
+            // Blokkeer navigatie vóór startweek van gebruiker (niet voor admins)
+            if (dir < 0 && !isAdmin && currentUser && currentUser.start_week && currentUser.start_year) {
+                const prevWeekNum = getISOWeek(new Date(currentWeekMonday.getTime() - 7 * 24 * 60 * 60 * 1000));
+                const prevYear = getISOYear(new Date(currentWeekMonday.getTime() - 7 * 24 * 60 * 60 * 1000));
+                if (prevYear < currentUser.start_year || (prevYear === currentUser.start_year && prevWeekNum < currentUser.start_week)) {
+                    showToast('⛔ Dit is je eerste week');
+                    return;
+                }
+            }
+
             // Auto-save huidige week als er wijzigingen zijn
             if (weekDataDirty && getSupabase() && currentUser && currentUser.id) {
                 try {
@@ -4526,6 +4536,12 @@
             nextMonday.setDate(nextMonday.getDate() + 7);
             const canGoNext = isAdmin || nextMonday <= maxMonday;
 
+            // Startweek check: kan niet verder terug dan start_week/start_year
+            let canGoPrev = true;
+            if (!isAdmin && currentUser && currentUser.start_week && currentUser.start_year) {
+                canGoPrev = currentYear > currentUser.start_year || (currentYear === currentUser.start_year && currentWeekNumber > currentUser.start_week);
+            }
+
             // Week-knoppen
             ['week-next-btn', 'kosten-next-btn'].forEach(id => {
                 const btn = document.getElementById(id);
@@ -4533,6 +4549,14 @@
                     btn.disabled = !canGoNext;
                     btn.style.opacity = canGoNext ? '1' : '0.3';
                     btn.style.background = canGoNext ? 'var(--kts-blue)' : '#b0bec5';
+                }
+            });
+            ['week-prev-btn', 'kosten-prev-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.disabled = !canGoPrev;
+                    btn.style.opacity = canGoPrev ? '1' : '0.3';
+                    btn.style.background = canGoPrev ? 'var(--kts-blue)' : '#b0bec5';
                 }
             });
         }
@@ -9008,6 +9032,7 @@
                 const chk = (field) => existing && existing[field] !== false ? 'checked' : '';
                 fields = `
                     <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${existing ? existing.email : ''}</div>
+                    <div class="form-group" style="margin-bottom:16px"><label style="font-weight:600;font-size:0.85rem">Naam</label><input type="text" id="adm-user-name" placeholder="Volledige naam" value="${existing && existing.name ? existing.name : ''}"></div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Rechten</div>
                     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
@@ -9032,6 +9057,12 @@
                             <input type="checkbox" id="adm-user-administratie" ${chk('allow_administratie')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Administratie
                         </label>
                     </div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Startweek</div>
+                    <div class="form-row" style="margin-bottom:16px">
+                        <div class="form-group"><label>Week</label><input type="number" min="1" max="53" id="adm-user-start-week" placeholder="Bijv. 10" value="${existing && existing.start_week ? existing.start_week : ''}"></div>
+                        <div class="form-group"><label>Jaar</label><input type="number" min="2024" max="2030" id="adm-user-start-year" placeholder="Bijv. 2026" value="${existing && existing.start_year ? existing.start_year : ''}"></div>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--muted);margin-top:-12px;margin-bottom:16px">Gebruiker kan niet verder terug navigeren dan deze week</div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Omgeving</div>
                     <div style="margin-bottom:16px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
@@ -10636,7 +10667,9 @@
                     : await sb.from('rates').insert(data);
             } else if (type === 'gebruiker') {
                 if (!_editingId) return;
+                const nameVal = document.getElementById('adm-user-name').value.trim();
                 const data = {
+                    name: nameVal || null,
                     allow_km: document.getElementById('adm-user-km').checked,
                     allow_thuiswerk: document.getElementById('adm-user-thuiswerk').checked,
                     allow_hotel: document.getElementById('adm-user-hotel').checked,
@@ -10644,6 +10677,8 @@
                     can_declare_expenses: document.getElementById('adm-user-expenses').checked,
                     allow_inspecties: document.getElementById('adm-user-inspecties').checked,
                     allow_administratie: document.getElementById('adm-user-administratie').checked,
+                    start_week: parseInt(document.getElementById('adm-user-start-week').value) || null,
+                    start_year: parseInt(document.getElementById('adm-user-start-year').value) || null,
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
                     company_id: document.getElementById('adm-user-company').value || null,
