@@ -960,9 +960,9 @@
     <div class="header">
         <div class="header-inner">
             <div class="header-top">
-                <div class="logo"><img src="tandwiel-wit-v2.png" alt="KTS">Kuijpers <span>| Technical Services</span></div>
+                <div class="logo"><img src="tandwiel-wit-v2.png" alt="KTS">Kuijpers <span> | Technical Services</span></div>
                 <div class="user-badge" onclick="toggleUserMenu()" style="position:relative"><span id="user-badge-name">👤 M. Kuijpers</span>
-                    <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;overflow:hidden;z-index:200">
+                    <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:220px;overflow:hidden;z-index:200">
                         <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
                         <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
                             <span style="font-size:0.75rem;color:var(--muted);font-weight:600">Tekstgrootte</span>
@@ -2332,7 +2332,7 @@
             const defaults = getWeekDefaults();
             return defaults.map((d, i) => {
                 if (!d.active || !d.start || !d.end) {
-                    return { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 };
+                    return { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0, dayOff: false };
                 }
                 const [sh,sm] = d.start.split(':').map(Number);
                 const [eh,em] = d.end.split(':').map(Number);
@@ -2370,7 +2370,7 @@
                 return {
                     start: d.start, end: d.end, breakMin: effectiveBreak,
                     desc: desc, location: loc, km: km, kmHeen: kmH, kmTerug: kmT,
-                    hotel: isHotel, thuiswerk: isThuiswerk, hours: hours
+                    hotel: isHotel, thuiswerk: isThuiswerk, hours: hours, dayOff: false
                 };
             });
         }
@@ -2629,12 +2629,15 @@
             container.innerHTML = weekData.map((entry, i) => {
                 totalHours += entry.hours;
                 const isWeekend = i >= 5;
+                const isDayOff = entry.dayOff;
                 const isFilled = entry.hours > 0;
                 const isExpanded = expandedDay === i;
 
                 // Build badges
                 let badges = '';
-                if (isFilled) {
+                if (isDayOff) {
+                    badges += '<span class="day-badge" style="background:#fef3c7;color:#92400e">Vrij</span>';
+                } else if (isFilled) {
                     if (userHasThuiswerk() && entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
                     if (userHasKm() && entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
                     if (userHasHotel() && entry.hotel) badges += '<span class="day-badge hotel">Hotel</span>';
@@ -2644,22 +2647,32 @@
                 const locText = (isFilled && entry.location && !isExpanded) ? '<div class="day-location">📍 ' + entry.location + '</div>' : '';
 
                 return `
-                    <div class="day-card ${isExpanded ? 'expanded' : ''} ${isWeekend ? 'weekend-card' : ''}">
+                    <div class="day-card ${isExpanded ? 'expanded' : ''} ${isWeekend ? 'weekend-card' : ''}" ${isDayOff ? 'style="opacity:0.6"' : ''}>
                         <div class="day-header" onclick="toggleDay(${i})">
                             <div class="day-info">
-                                <div class="day-indicator ${isFilled ? 'filled' : ''} ${isWeekend ? 'weekend' : ''}">${DAY_ABBR[i]}</div>
+                                <div class="day-indicator ${isFilled ? 'filled' : ''} ${isWeekend ? 'weekend' : ''} ${isDayOff ? 'day-off' : ''}" ${isDayOff ? 'style="background:#f59e0b"' : ''}>${DAY_ABBR[i]}</div>
                                 <div>
-                                    <div class="day-name">${DAYS_FULL[i]}</div>
+                                    <div class="day-name">${DAYS_FULL[i]}${isDayOff ? ' · <span style="color:#92400e;font-weight:600">Niet gewerkt</span>' : ''}</div>
                                     <div class="day-date">${getDATES()[i]}${isWeekend ? ' · Weekend' : ''}</div>
                                     ${locText}
                                 </div>
                             </div>
                             <div class="day-right">
-                                <div class="day-hours ${!isFilled ? 'empty' : ''}">${isFilled ? fmt(entry.hours) + ' u' : '—'}</div>
+                                <div class="day-hours ${!isFilled ? 'empty' : ''}">${isDayOff ? '—' : (isFilled ? fmt(entry.hours) + ' u' : '—')}</div>
                                 ${badges ? '<div class="day-badges">' + badges + '</div>' : ''}
                             </div>
                         </div>
                         <div class="day-form">
+                            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isDayOff?'#fef3c7':'#f8fafc'};border:1px solid ${isDayOff?'#fbbf24':'var(--border)'};border-radius:10px;cursor:pointer;margin-bottom:12px" onclick="event.stopPropagation();toggleDayOff(${i})">
+                                <div style="width:20px;height:20px;border-radius:4px;border:2px solid ${isDayOff?'#d97706':'#cbd5e1'};background:${isDayOff?'#d97706':'white'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                    ${isDayOff ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : ''}
+                                </div>
+                                <div style="flex:1">
+                                    <div style="font-weight:600;font-size:0.85rem;color:${isDayOff?'#92400e':'var(--muted)'}">🚫 Niet gewerkt</div>
+                                    <div style="font-size:0.75rem;color:var(--muted)">Markeer als vrije dag (geen uren)</div>
+                                </div>
+                            </div>
+                            <div style="${isDayOff ? 'display:none' : ''}">
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Start</label>
@@ -2733,6 +2746,7 @@
                                 <button class="btn btn-primary btn-sm" onclick="saveDayEntry(${i})">Opslaan</button>
                                 ${i < 6 ? '<button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
                             </div>
+                            </div>
                         </div>
                     </div>`;
             }).join('');
@@ -2778,6 +2792,18 @@
 
         // ===== UREN ACTIONS =====
         function toggleDay(i) { expandedDay = expandedDay === i ? -1 : i; renderDays(); }
+
+        function toggleDayOff(i) {
+            weekData[i].dayOff = !weekData[i].dayOff;
+            if (weekData[i].dayOff) {
+                weekData[i].start = ''; weekData[i].end = ''; weekData[i].breakMin = 0;
+                weekData[i].hours = 0; weekData[i].km = 0; weekData[i].kmHeen = 0; weekData[i].kmTerug = 0;
+                weekData[i].hotel = false; weekData[i].thuiswerk = false;
+                weekData[i].desc = ''; weekData[i].location = '';
+            }
+            markDirty();
+            renderDays();
+        }
 
         function saveDayEntry(i) {
             const dag = weekData[i];
@@ -3357,8 +3383,8 @@
                     (e.end || '').slice(0, 5),
                     e.breakMin > 0 ? (e.breakMin / 60).toFixed(2).replace('.', ',') : '',
                     e.hours > 0 ? e.hours.toFixed(2).replace('.', ',') : '',
-                    e.desc || '',
-                    loc,
+                    e.dayOff ? 'Niet gewerkt' : (e.desc || ''),
+                    e.dayOff ? '' : loc,
                 ];
                 if (showKmCol) row.push((e.km || 0) > 0 ? e.km.toString() : '');
                 return row;
@@ -5851,7 +5877,7 @@
                     if (currentProject) existQuery = existQuery.eq('project_id', currentProject.id);
                     const { data: existing } = await existQuery.maybeSingle();
 
-                    if (d.hours <= 0 && !d.thuiswerk) {
+                    if (d.hours <= 0 && !d.thuiswerk && !d.dayOff) {
                         // Geen data voor deze dag — verwijder bestaande entry als die er is
                         if (existing) {
                             await sb.from('time_entries').delete().eq('id', existing.id);
@@ -5874,6 +5900,7 @@
                         km_terug: d.kmTerug || 0,
                         hotel: d.hotel || false,
                         thuiswerk: d.thuiswerk || false,
+                        day_off: d.dayOff || false,
                         status: 'draft'
                     };
 
@@ -6088,6 +6115,7 @@
                                 kmTerug: e.km_terug || 0,
                                 hotel: e.hotel || false,
                                 thuiswerk: e.thuiswerk || false,
+                                dayOff: e.day_off || false,
                                 hours: parseFloat(e.total_hours) || 0
                             };
                         }
