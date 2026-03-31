@@ -5723,6 +5723,49 @@
             showToast('✓ Uitgelogd');
         }
 
+        // Auto-goedkeuring weekstaten na 3 werkdagen zonder reactie
+        async function autoApproveExpiredWeekstaten() {
+            const sb = getSupabase();
+            if (!sb || !currentUser || currentUser.role !== 'admin') return;
+            try {
+                const { data: pending } = await sb.from('week_status')
+                    .select('*')
+                    .eq('approval_status', 'ter_goedkeuring')
+                    .not('approval_requested_at', 'is', null);
+                if (!pending || pending.length === 0) return;
+
+                // Bereken 3 werkdagen geleden
+                function subtractBusinessDays(date, days) {
+                    let d = new Date(date);
+                    let count = 0;
+                    while (count < days) {
+                        d.setDate(d.getDate() - 1);
+                        const dow = d.getDay();
+                        if (dow !== 0 && dow !== 6) count++;
+                    }
+                    return d;
+                }
+                const cutoff = subtractBusinessDays(new Date(), 3);
+                const expired = pending.filter(ws => new Date(ws.approval_requested_at) < cutoff);
+                if (expired.length === 0) return;
+
+                // Auto-goedkeuren
+                for (const ws of expired) {
+                    await sb.from('week_status').update({
+                        approval_status: 'goedgekeurd',
+                        approved_at: new Date().toISOString(),
+                        approved_by: 'Auto-goedgekeurd (geen reactie binnen 3 werkdagen)'
+                    }).eq('user_id', ws.user_id)
+                      .eq('project_id', ws.project_id)
+                      .eq('week_number', ws.week_number)
+                      .eq('year', ws.year);
+                }
+                showToast(`✅ ${expired.length} weeksta${expired.length === 1 ? 'at' : 'ten'} automatisch goedgekeurd (geen reactie binnen 3 werkdagen)`);
+            } catch (err) {
+                console.error('Auto-goedkeuring fout:', err);
+            }
+        }
+
         // Check bestaande sessie
         async function checkSession() {
             if (!getSupabase()) return;
@@ -5735,6 +5778,7 @@
                     document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
                     await loadDataFromSupabase();
                     startSessionMonitor();
+                    autoApproveExpiredWeekstaten();
                 }
             } catch (err) {
                 console.error('checkSession fout:', err);
@@ -7529,6 +7573,7 @@
                             <div style="font-size:0.7rem;color:var(--muted)">Week ${wekenTekst} · ${maandTekst} · ${datumTekst}</div>
                         </div>
                         <div style="display:flex;gap:4px;align-items:center">
+                            <button onclick="mailInkooporder('${storagePath}','${io.io_number.replace(/'/g, "\\'")}','${io.user_id}','${io.project_id}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Mailen naar opdrachtnemer">📧</button>
                             <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
                             <button onclick="adminDeleteIO('${io.io_number.replace(/'/g, "\\'")}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
                         </div>
@@ -7556,6 +7601,55 @@
                 showToast('✓ PDF gedownload');
             } catch (err) {
                 showToast('❌ Download mislukt: ' + err.message);
+            }
+        }
+
+        async function mailInkooporder(storagePath, ioNumber, userId, projectId) {
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                // Zoek het ZZP-bedrijf (opdrachtnemer) via de user
+                const user = (window._adminUsers || []).find(u => u.id === userId);
+                let recipientEmail = '';
+                let recipientName = '';
+
+                if (user && user.company_id) {
+                    const { data: zzpComp } = await sb.from('companies').select('*').eq('id', user.company_id).single();
+                    if (zzpComp) {
+                        recipientEmail = zzpComp.email_po || zzpComp.email || '';
+                        recipientName = zzpComp.contact_name || zzpComp.name || '';
+                    }
+                }
+
+                // Project info
+                const project = (window._adminProjects || []).find(p => p.id === projectId);
+                const projName = project ? project.name : '';
+                const projCode = project ? project.project_code : '';
+
+                // Download PDF eerst
+                const { data, error } = await sb.storage.from('inkooporders').download(storagePath);
+                if (error) throw error;
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = storagePath.split('/').pop();
+                a.click();
+                URL.revokeObjectURL(url);
+
+                // Open mailto
+                const aanhef = recipientName ? recipientName.split(' ')[0] : '';
+                const subject = encodeURIComponent(`Inkooporder ${ioNumber} — ${projCode}`);
+                const body = encodeURIComponent(
+                    `Hoi ${aanhef},\n\n` +
+                    `Hierbij de inkooporder ${ioNumber} voor project ${projCode}${projName ? ' (' + projName + ')' : ''}.\n\n` +
+                    `De PDF is als bijlage bijgevoegd.\n\n` +
+                    `Met vriendelijke groet,\n` +
+                    `Kuijpers Technical Services`
+                );
+                window.location.href = 'mailto:' + recipientEmail + '?subject=' + subject + '&body=' + body;
+                showToast('✓ PDF gedownload — voeg deze als bijlage toe aan de e-mail');
+            } catch (err) {
+                showToast('❌ Fout: ' + err.message);
             }
         }
 
