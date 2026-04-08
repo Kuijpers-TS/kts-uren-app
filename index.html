@@ -7628,7 +7628,10 @@
 
                 // Download PDF eerst
                 const { data, error } = await sb.storage.from('inkooporders').download(storagePath);
-                if (error) throw error;
+                if (error) {
+                    showToast('⚠️ PDF niet gevonden in storage — genereer de inkooporder opnieuw');
+                    return;
+                }
                 const url = URL.createObjectURL(data);
                 const a = document.createElement('a');
                 a.href = url;
@@ -8403,15 +8406,31 @@
             const sb = getSupabase();
             if (!sb) return null;
 
-            // Bereken datumbereik voor de maand
+            // Bereken datumbereik — uitgebreid zodat weken op maandgrens compleet mee komen
             const yr = parseInt(year);
             const mo = parseInt(month);
             const firstDay = new Date(yr, mo - 1, 1);
             const lastDay = new Date(yr, mo, 0);
-            const dateFrom = toLocalDateStr(firstDay);
-            const dateTo = toLocalDateStr(lastDay);
 
-            // Query time_entries met datumfilter
+            // Uitbreiden: 7 dagen voor begin en 7 dagen na einde van de maand
+            // zodat weken op de maandgrens volledig worden meegenomen
+            const extendedFrom = new Date(firstDay);
+            extendedFrom.setDate(extendedFrom.getDate() - 7);
+            const extendedTo = new Date(lastDay);
+            extendedTo.setDate(extendedTo.getDate() + 7);
+            const dateFrom = toLocalDateStr(extendedFrom);
+            const dateTo = toLocalDateStr(extendedTo);
+
+            // Bepaal welke ISO weken bij deze maand horen
+            // (een week hoort bij de maand als de maandag van die week in de maand valt)
+            const monthWeeks = new Set();
+            const d = new Date(firstDay);
+            while (d <= lastDay) {
+                monthWeeks.add(getISOWeek(new Date(d.getTime())));
+                d.setDate(d.getDate() + 1);
+            }
+
+            // Query time_entries met uitgebreid datumfilter
             let query = sb.from('time_entries').select('*')
                 .eq('user_id', userId)
                 .eq('project_id', projectId)
@@ -8445,10 +8464,13 @@
             if (alOpIO.size > 0) console.log('PO: weken al op eerdere PO:', Object.fromEntries(alOpIO));
 
             // Filter op verstuurd + specifiek weeknummer + NIET al op PO
+            // + week moet bij de geselecteerde maand horen (hele week mee, ook over maandgrens)
             const skippedWeeks = [];
             const filtered = (entries || []).filter(e => {
                 if (!e.entry_date) return false;
                 const isoWeek = getISOWeek(new Date(e.entry_date + 'T12:00:00'));
+                // Week moet bij de geselecteerde maand horen
+                if (!monthWeeks.has(isoWeek)) return false;
                 // Alleen goedgekeurde weken meenemen (klant moet eerst goedkeuren)
                 if (!goedgekeurdeWeken.has(isoWeek)) return false;
                 // Week al op eerdere PO? Overslaan
@@ -8933,6 +8955,15 @@
             // Download the PDF
             const savedIO = await savePdfToFolder(doc, fileName, 'inkooporders');
             if (!savedIO) doc.save(fileName);
+
+            // Upload PDF to Supabase Storage
+            try {
+                const pdfBlob = new Blob([doc.output('arraybuffer')], { type: 'application/pdf' });
+                await getSupabase().storage.from('inkooporders').upload(filePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
+                console.log('IO PDF uploaded to storage:', filePath);
+            } catch (storErr) {
+                console.warn('IO PDF upload naar storage mislukt:', storErr.message);
+            }
 
             // Upload to Supabase
             uploadPOToSupabase(filePath, doc.output('arraybuffer'), ioData, ioNumber);
