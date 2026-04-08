@@ -10696,6 +10696,8 @@
         // toggleAssignmentSetting verwijderd — feature flags staan nu op users tabel
 
         function inviteUser(email, name) {
+            const pw = prompt('Wachtwoord voor de nieuwe gebruiker:', '');
+            if (!pw) return;
             const appUrl = window.location.origin;
             const aanhef = name ? name.split(' ')[0] : '';
             const subject = encodeURIComponent('Uitnodiging KTS Uren App');
@@ -10704,7 +10706,7 @@
                 `Je hebt toegang gekregen tot de KTS Uren App.\n\n` +
                 `App: ${appUrl}\n` +
                 `E-mail: ${email}\n` +
-                `Wachtwoord: Welkom123!\n\n` +
+                `Wachtwoord: ${pw}\n\n` +
                 `Na je eerste login wordt gevraagd om je wachtwoord te wijzigen.\n\n` +
                 `Met vriendelijke groet,\n` +
                 `Kuijpers Technical Services`
