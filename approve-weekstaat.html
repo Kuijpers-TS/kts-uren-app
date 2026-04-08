@@ -373,6 +373,12 @@
                     time_entries: data.time_entries || []
                 };
 
+                // Token verlopen? (3 werkdagen)
+                if (weekData.approval_expires_at && new Date(weekData.approval_expires_at) < new Date()) {
+                    showError('Deze goedkeuringslink is verlopen. Neem contact op met KTS voor een nieuwe link.');
+                    return;
+                }
+
                 // Already processed?
                 if (weekData.approval_status === 'goedgekeurd') {
                     showDone('goedgekeurd');

@@ -10381,6 +10381,16 @@
                         approval_token: token,
                         approval_status: 'ter_goedkeuring',
                         approval_requested_at: new Date().toISOString(),
+                        approval_expires_at: (() => {
+                            // 3 werkdagen vanaf nu
+                            const exp = new Date();
+                            let days = 0;
+                            while (days < 3) {
+                                exp.setDate(exp.getDate() + 1);
+                                if (exp.getDay() !== 0 && exp.getDay() !== 6) days++;
+                            }
+                            return exp.toISOString();
+                        })(),
                         approver_email: email,
                         approver_name: name
                     }, { onConflict: 'user_id,project_id,week_number,year' });
