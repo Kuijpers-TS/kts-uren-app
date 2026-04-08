@@ -1850,10 +1850,10 @@
         // Helper: naam splitsen voor badge (voornaam\nachternaam)
         function formatBadgeName(name) {
             if (!name) return '👤';
-            const parts = name.trim().split(/\s+/);
-            if (parts.length <= 1) return '👤 ' + name;
-            // Desktop: naam naast elkaar, mobiel: boven elkaar
-            if (window.innerWidth > 600) return '👤 ' + name;
+            const safe = escapeHtml(name);
+            const parts = safe.trim().split(/\s+/);
+            if (parts.length <= 1) return '👤 ' + safe;
+            if (window.innerWidth > 600) return '👤 ' + safe;
             return '👤 ' + parts[0] + '<br>' + parts.slice(1).join(' ');
         }
 
@@ -1943,6 +1943,11 @@
         let overviewYear = new Date().getFullYear();
 
         // Helper: lokale datum naar YYYY-MM-DD string (zonder UTC-conversie)
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        }
+
         function toLocalDateStr(d) {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -2768,7 +2773,7 @@
             document.getElementById('expense-list').innerHTML = expEntries.map(e => `
                 <div class="entry-card">
                     <div class="entry-details">
-                        <div class="entry-route">${e.icon} ${e.desc}</div>
+                        <div class="entry-route">${e.icon} ${escapeHtml(e.desc)}</div>
                         <div class="entry-meta">${e.date} · ${e.catLabel}</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
@@ -3106,9 +3111,9 @@
                             <div style="font-weight:700;font-size:0.85rem;color:#e67e22">${p.number}</div>
                             <span style="font-size:0.65rem;color:var(--muted)">${p.weeks || ''}</span>
                         </div>
-                        <div style="font-size:0.78rem;color:var(--text)">${p.description || '—'}</div>
+                        <div style="font-size:0.78rem;color:var(--text)">${escapeHtml(p.description || '—')}</div>
                         <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
-                            <span>${p.client_name || ''}</span>
+                            <span>${escapeHtml(p.client_name || '')}</span>
                             <span>€${(p.amount_excl_btw || 0).toLocaleString('nl-NL', {minimumFractionDigits:2})}</span>
                         </div>
                     </div>
@@ -3150,7 +3155,7 @@
             csv += '\n\nINKOOPORDERS (KTS → ZZP)\n';
             csv += 'IO Nummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
             pos.forEach(p => {
-                csv += `${p.number};${p.description || ''};${p.client_name || ''};${p.weeks || ''};${(p.amount_excl_btw||0).toFixed(2).replace('.',',')};${p.document_date || ''};${p.status || ''}\n`;
+                csv += `${p.number};${p.description || ''};${escapeHtml(p.client_name || '')};${p.weeks || ''};${(p.amount_excl_btw||0).toFixed(2).replace('.',',')};${p.document_date || ''};${p.status || ''}\n`;
             });
 
             // Download
@@ -4724,8 +4729,8 @@
                 " onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='${isActive ? '#f0f9ff' : 'white'}'">
                     <div style="width:40px;height:40px;border-radius:10px;background:${isActive ? 'var(--kts-blue)' : '#e2e8f0'};display:flex;align-items:center;justify-content:center;flex-shrink:0"><img src="tandwiel-wit-v2.png" alt="" style="width:22px;height:22px;opacity:${isActive ? '1' : '0.5'}"></div>
                     <div style="flex:1;min-width:0">
-                        <div style="font-weight:700;font-size:0.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-                        <div style="font-size:0.75rem;color:var(--muted)">${p.client_name || ''} · ${p.location || ''}</div>
+                        <div style="font-weight:700;font-size:0.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</div>
+                        <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(p.client_name || '')} · ${escapeHtml(p.location || '')}</div>
                     </div>
                     ${isActive ? '<div style="color:var(--kts-blue);font-weight:700;font-size:1.1rem">✓</div>' : ''}
                 </div>`;
@@ -7047,7 +7052,7 @@
 
                 html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
                     <div style="min-width:0">
-                        <div style="font-weight:600;font-size:0.8rem;display:flex;align-items:center;gap:6px">${u.name || u.email} ${actief}</div>
+                        <div style="font-weight:600;font-size:0.8rem;display:flex;align-items:center;gap:6px">${escapeHtml(u.name || u.email)} ${actief}</div>
                         <div style="display:flex;gap:2px;margin-top:4px;flex-wrap:wrap">${weekBadges}</div>
                     </div>
                     <div style="text-align:right;flex-shrink:0">
@@ -7082,8 +7087,8 @@
                 html += `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start">
                         <div>
-                            <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue)">${p.project_code}</div>
-                            <div style="font-size:0.75rem;color:var(--muted)">${p.name}</div>
+                            <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue)">${escapeHtml(p.project_code)}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(p.name)}</div>
                         </div>
                         <div style="text-align:right">
                             <div style="font-weight:700;font-size:0.85rem">${fmtEuro(totalRevenue)}</div>
@@ -7261,8 +7266,8 @@
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:6px;cursor:pointer" onclick="openAdminModal('project', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${p.name}${p.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${p.project_code} · ${p.location || ''} · ${p.client_name || ''}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(p.name)}${p.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(p.project_code)} · ${escapeHtml(p.location || '')} · ${escapeHtml(p.client_name || '')}</div>
                             </div>
                             <span class="status-badge ${p.status === 'active' ? 'status-approved' : 'status-draft'}">${p.status}</span>
                         </div>
@@ -7315,8 +7320,8 @@
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('gebruiker', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${u.name || u.email}${u.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${u.email}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(u.name || u.email)}${u.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(u.email)}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
                                 <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${flagsHtml}</div>
                                 ${laatstActief ? '<div style="font-size:0.7rem;color:' + activityColor + ';margin-top:3px">' + activityDot + laatstActief + '</div>' : ''}
                             </div>
@@ -7353,8 +7358,8 @@
                     // Fallback: oude contact_name
                     if (contactNames.length === 0 && c.contact_name) contactNames = [c.contact_name];
                     const contactHtml = contactNames.length > 0
-                        ? contactNames.map(n => `<div style="font-weight:700;font-size:0.9rem">${n}</div>`).join('')
-                        : `<div style="font-weight:700;font-size:0.9rem">${c.name}</div>`;
+                        ? contactNames.map(n => `<div style="font-weight:700;font-size:0.9rem">${escapeHtml(n)}</div>`).join('')
+                        : `<div style="font-weight:700;font-size:0.9rem">${escapeHtml(c.name)}</div>`;
                     const showCompanyLine = contactNames.length > 0;
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:2px;cursor:pointer" onclick="openAdminModal('persoon', ${idx})">
@@ -7377,7 +7382,7 @@
             // Haal user-namen op voor weergave
             const { data: allUsersForRates } = await sb.from('users').select('id, name, email');
             const userMap = {};
-            if (allUsersForRates) allUsersForRates.forEach(u => { userMap[u.id] = u.name || u.email; });
+            if (allUsersForRates) allUsersForRates.forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
 
             const tariefList = document.getElementById('admin-tarief-list');
             // Filter tarieven: toon alleen tarieven van projecten die passen bij test/productie modus
@@ -7422,14 +7427,14 @@
             const projSel = document.getElementById('io-filter-project');
             if (projSel && window._adminProjects) {
                 projSel.innerHTML = '<option value="">-- Selecteer project --</option>' +
-                    window._adminProjects.map(p => `<option value="${p.id}">${p.project_code} — ${p.name}</option>`).join('');
+                    window._adminProjects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`).join('');
             }
 
             // Vul medewerker dropdown
             const userSel = document.getElementById('io-filter-user');
             if (userSel && window._adminUsers) {
                 userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
-                    getFilteredUsers().map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+                    getFilteredUsers().map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
                 userSel.onchange = () => autoFillCompanyForUser();
             }
 
@@ -7552,9 +7557,9 @@
 
                 // Haal namen op voor weergave
                 const userMap = {};
-                (window._adminUsers || []).forEach(u => { userMap[u.id] = u.name || u.email; });
+                (window._adminUsers || []).forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
                 const projMap = {};
-                (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code + ' — ' + p.name; });
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code + ' — ' + p.name); });
                 const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
                 listEl.innerHTML = ioList.map(io => {
@@ -7701,12 +7706,12 @@
             // Projecten
             if (projSel.options.length <= 1 && window._adminProjects) {
                 (window._adminProjects || []).filter(p => p.status === 'active').forEach(p => {
-                    projSel.innerHTML += `<option value="${p.id}">${p.project_code} — ${p.name}</option>`;
+                    projSel.innerHTML += `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`;
                 });
             }
             // Users
             userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
-                getFilteredUsers().map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+                getFilteredUsers().map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
             // Jaar
             if (yearSel.options.length <= 1) {
                 const y = new Date().getFullYear();
@@ -8327,9 +8332,9 @@
                 }
 
                 const userMap = {};
-                (window._adminUsers || []).forEach(u => { userMap[u.id] = u.name || u.email; });
+                (window._adminUsers || []).forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
                 const projMap = {};
-                (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code + ' — ' + p.name; });
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code + ' — ' + p.name); });
                 const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
                 listEl.innerHTML = filteredInvoices.map(inv => {
@@ -9292,13 +9297,13 @@
                         return true;
                     });
                     compSel.innerHTML = '<option value="">-- Geen bedrijf --</option>' +
-                        uniqueComps.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                        uniqueComps.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
                     // Als bestaand bedrijf niet in gefilterde lijst zit, toch toevoegen
                     if (existing && existing.company_id) {
                         if (!uniqueComps.find(c => c.id === existing.company_id)) {
                             const orig = window._adminCompanies.find(c => c.id === existing.company_id);
                             if (orig) {
-                                compSel.innerHTML += `<option value="${orig.id}">${orig.name} (gearchiveerd)</option>`;
+                                compSel.innerHTML += `<option value="${orig.id}">${escapeHtml(orig.name)} (gearchiveerd)</option>`;
                             }
                         }
                         compSel.value = existing.company_id;
@@ -9309,7 +9314,7 @@
             // Vul bedrijf-dropdowns bij project
             if (type === 'project') {
                 const companies = window._adminCompanies || [];
-                const companyOpts = companies.map(c => `<option value="${c.id}">${c.name}${c.contact_name ? ' (' + c.contact_name + ')' : ''}</option>`).join('');
+                const companyOpts = companies.map(c => `<option value="${c.id}">${escapeHtml(c.name)}${c.contact_name ? ' (' + escapeHtml(c.contact_name) + ')' : ''}</option>`).join('');
 
                 const factuurSel = document.getElementById('adm-proj-factuur-company');
                 if (factuurSel) {
@@ -9364,7 +9369,7 @@
             window._tariffProjects = projects || [];
             const sel = document.getElementById('adm-tar-project');
             if (projects) {
-                sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.project_code} — ${p.name}</option>`).join('');
+                sel.innerHTML = projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`).join('');
             }
             updateTariffKmVisibility();
             // Gebruikers dropdown vullen
@@ -9373,7 +9378,7 @@
             const userSel = document.getElementById('adm-tar-user');
             if (userSel && users) {
                 userSel.innerHTML = '<option value="">Projectbreed (alle medewerkers)</option>' +
-                    users.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+                    users.map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
             }
         }
 
@@ -9440,9 +9445,9 @@
 
                 // User/project lookup (vroeg laden voor beide secties)
                 const userMap = {};
-                (window._adminUsers || []).forEach(u => { userMap[u.id] = u.name || u.email; });
+                (window._adminUsers || []).forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
                 const projMap = {};
-                (window._adminProjects || []).forEach(p => { projMap[p.id] = p.project_code; });
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code); });
 
                 if (conceptEl && filteredConcepts.length > 0) {
                     conceptEl.innerHTML = `
@@ -9758,9 +9763,9 @@
             row.innerHTML = `
                 <span class="ec-hoofdcontact-label" style="display:none;font-size:0.65rem;font-weight:700;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.5px">Hoofdcontact</span>
                 <button type="button" onclick="this.parentElement.remove();updateHoofdcontactLabel()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.9rem;padding:0" title="Verwijderen">✕</button>
-                <input type="text" class="ec-name" placeholder="Naam" value="${data ? (data.name||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                <input type="email" class="ec-email" placeholder="E-mail" value="${data ? (data.email||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-                <input type="text" class="ec-role" placeholder="Functie" value="${data ? (data.role||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="text" class="ec-name" placeholder="Naam" value="${data ? escapeHtml(data.name||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="email" class="ec-email" placeholder="E-mail" value="${data ? escapeHtml(data.email||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                <input type="text" class="ec-role" placeholder="Functie" value="${data ? escapeHtml(data.role||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
                 <div style="display:flex;gap:12px;margin-top:2px;font-size:0.75rem">
                     <label class="cb-weekstaat" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
                         <input type="checkbox" class="ec-recv-weekstaat" ${data && data.receives_weekstaat ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Weekstaten
@@ -9967,7 +9972,7 @@
                         <input type="number" step="0.25" class="aew-hours" value="${entry.total_hours || ''}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center">
                         <input type="number" step="5" min="0" max="120" class="aew-break" value="${entry.break_minutes || 0}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center" title="Pauze in minuten">
                     </div>
-                    <input type="text" class="aew-desc" value="${entry.description || ''}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                    <input type="text" class="aew-desc" value="${escapeHtml(entry.description || '')}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                 </div>`;
             }
             document.getElementById('admin-modal-fields').innerHTML = `
@@ -10684,7 +10689,7 @@
             if (select && allUsers) {
                 const available = allUsers.filter(u => !assignedIds.includes(u.id));
                 select.innerHTML = '<option value="">Kies gebruiker...</option>' +
-                    available.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+                    available.map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
             }
         }
 
@@ -10960,12 +10965,12 @@
                                 <div style="flex:1;min-width:0">
                                     <div style="font-weight:700;font-size:0.85rem">${t.name || 'Naamloos'}</div>
                                     <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
-                                        ${t.location ? t.location + ' · ' : ''}${t.installation || ''}
+                                        ${t.location ? escapeHtml(t.location) + ' · ' : ''}${escapeHtml(t.installation || '')}
                                     </div>
                                     <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                                         <span style="font-size:0.65rem;background:${catBg};padding:2px 8px;border-radius:4px;font-weight:600">${t.category || 'algemeen'}</span>
                                         <span style="font-size:0.65rem;background:#f3f4f6;padding:2px 8px;border-radius:4px">${sections.length} secties · ${totalQuestions} vragen</span>
-                                        ${t.frequency ? `<span style="font-size:0.65rem;background:#ede9fe;padding:2px 8px;border-radius:4px">${t.frequency}</span>` : ''}
+                                        ${t.frequency ? `<span style="font-size:0.65rem;background:#ede9fe;padding:2px 8px;border-radius:4px">${escapeHtml(t.frequency)}</span>` : ''}
                                     </div>
                                 </div>
                                 <div style="font-size:0.7rem;color:var(--muted);white-space:nowrap">${t.is_active ? '✅ Actief' : '⏸ Inactief'}</div>
@@ -11363,7 +11368,7 @@
                                     <div style="font-weight:700;font-size:0.85rem">${tplName}</div>
                                     <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
                                         ${userName} · ${new Date(insp.inspection_date).toLocaleDateString('nl-NL')}
-                                        ${insp.location ? ' · ' + insp.location : ''}
+                                        ${insp.location ? ' · ' + escapeHtml(insp.location) : ''}
                                     </div>
                                     <div style="display:flex;gap:6px;margin-top:6px">
                                         <span style="font-size:0.65rem;background:${statusColors[insp.status] || '#f3f4f6'};padding:2px 8px;border-radius:4px;font-weight:600">${statusLabels[insp.status] || insp.status}</span>
@@ -11407,12 +11412,12 @@
                 <div onclick="inspStartFromTemplate('${t.id}')" style="background:white;border-radius:12px;padding:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
                     <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
                     <div style="flex:1;min-width:0">
-                        <div style="font-weight:700;font-size:0.85rem">${t.name}</div>
-                        <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description || ''}</div>
+                        <div style="font-weight:700;font-size:0.85rem">${escapeHtml(t.name)}</div>
+                        <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.description || '')}</div>
                         <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-                            ${t.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${t.category}</span>` : ''}
-                            ${t.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${t.frequency}</span>` : ''}
-                            ${t.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${t.location}</span>` : ''}
+                            ${t.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${escapeHtml(t.category)}</span>` : ''}
+                            ${t.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${escapeHtml(t.frequency)}</span>` : ''}
+                            ${t.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(t.location)}</span>` : ''}
                         </div>
                     </div>
                     <div style="color:var(--kts-blue);font-size:1.2rem;flex-shrink:0">▶</div>
@@ -11701,7 +11706,7 @@
                             <div>
                                 <div style="font-size:0.7rem;color:var(--muted)">${insp.inspection_number || ''}</div>
                                 <div style="font-weight:700;font-size:1rem">${tpl.name || 'Inspectie'}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}${insp.location ? ' — ' + insp.location : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}${insp.location ? ' — ' + escapeHtml(insp.location) : ''}</div>
                             </div>
                             <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1">×</button>
                         </div>
