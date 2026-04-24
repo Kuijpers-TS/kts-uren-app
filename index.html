@@ -11654,10 +11654,10 @@
                         <div style="display:flex;align-items:center;gap:6px">
                             <span style="font-size:0.7rem;color:var(--muted)">${st.done}/${st.total}</span>
                             ${isDone ? (hasFail ? '<span style="font-size:0.9rem">⚠️</span>' : '<span style="font-size:0.9rem">✅</span>') : ''}
-                            <span id="insp-sec-arrow-${si}" style="font-size:0.8rem;color:var(--muted);transition:transform 0.2s">▼</span>
+                            <span id="insp-sec-arrow-${si}" style="font-size:0.8rem;color:var(--muted);transition:transform 0.2s;transform:rotate(-90deg)">▼</span>
                         </div>
                     </div>
-                    <div id="insp-sec-body-${si}" style="display:block">`;
+                    <div id="insp-sec-body-${si}" style="display:none">`;
 
                 (sec.questions || []).forEach((q, qi) => {
                     const key = `s${si}_q${qi}`;
@@ -11690,8 +11690,15 @@
                             ${q.component ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">📎 ${q.component}${q.discipline ? ' · ' + q.discipline : ''}</div>` : ''}
                             ${inputHtml}
                             <div style="margin-top:6px">
-                                <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.nextElementSibling.style.display==='none'?'💬 Opmerking toevoegen':'💬 Opmerking verbergen'" style="font-size:0.7rem;color:var(--kts-blue);cursor:pointer">${val.remark ? '💬 Opmerking verbergen' : '💬 Opmerking toevoegen'}</div>
+                                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+                                    <div onclick="this.parentElement.nextElementSibling.style.display=this.parentElement.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.parentElement.nextElementSibling.style.display==='none'?'💬 Opmerking toevoegen':'💬 Opmerking verbergen'" style="font-size:0.7rem;color:var(--kts-blue);cursor:pointer">${val.remark ? '💬 Opmerking verbergen' : '💬 Opmerking toevoegen'}</div>
+                                    <label for="insp-photo-${key}" style="font-size:0.7rem;color:var(--kts-blue);cursor:pointer">📷 Foto toevoegen</label>
+                                    <input type="file" id="insp-photo-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                                </div>
                                 <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="display:${val.remark ? 'block' : 'none'};width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
+                                <div id="insp-photos-${key}" style="display:${(val.photos && val.photos.length) ? 'flex' : 'none'};gap:6px;flex-wrap:wrap;margin-top:6px">
+                                    ${(val.photos || []).map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('')}
+                                </div>
                             </div>
                         </div>`;
                 });
@@ -11704,7 +11711,7 @@
             if (insp.status === 'concept') {
                 footerHtml = `
                     <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        ${totalDone < totalQ ? `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-align:center">⚠️ ${totalQ - totalDone} vragen nog niet beantwoord</div>` : ''}
+                        ${totalDone < totalQ ? `<div style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600">⚠️ ${totalQ - totalDone} vragen nog niet beantwoord</div>` : ''}
                         <button onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem" ${totalDone < totalQ ? 'disabled style="padding:14px;font-size:0.95rem;opacity:0.5;cursor:not-allowed"' : ''}>✓ Inspectie afronden</button>
                     </div>`;
             } else {
@@ -11871,6 +11878,52 @@
 
         // Opmerking opslaan (debounced)
         let _inspRemarkTimer = null;
+        async function inspAddPhoto(key, input) {
+            if (!window._inspActive) return;
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const state = window._inspActive;
+            if (!state.answers[key]) state.answers[key] = {};
+            if (!state.answers[key].photos) state.answers[key].photos = [];
+
+            // Compress foto naar max 1200px breed en sla op als base64 JPEG
+            const reader = new FileReader();
+            reader.onload = async function(ev) {
+                const img = new Image();
+                img.onload = async function() {
+                    const maxW = 1200;
+                    const scale = img.width > maxW ? maxW / img.width : 1;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                    state.answers[key].photos.push(dataUrl);
+                    // Direct opslaan
+                    const sb = getSupabase();
+                    await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
+                    // Re-render
+                    showToast('✓ Foto toegevoegd');
+                    inspOpenInspection(state.id);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+        }
+
+        async function inspRemovePhoto(key, photoIdx) {
+            if (!window._inspActive) return;
+            if (!await confirmAsync('Foto verwijderen?')) return;
+            const state = window._inspActive;
+            if (!state.answers[key] || !state.answers[key].photos) return;
+            state.answers[key].photos.splice(photoIdx, 1);
+            const sb = getSupabase();
+            await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
+            inspOpenInspection(state.id);
+        }
+
         function inspAnswerRemark(key, remark) {
             if (!window._inspActive) return;
             const state = window._inspActive;
@@ -12071,6 +12124,24 @@
                         doc.text(remarkLines, ml + 4, y);
                         doc.setTextColor(0, 0, 0);
                         y += remarkLines.length * 3.5;
+                    }
+
+                    // Foto's (max 3 per rij, 40mm breed)
+                    if (a.photos && a.photos.length > 0) {
+                        const photoW = 40, photoH = 30, photoGap = 3;
+                        const photosPerRow = 3;
+                        for (let pi = 0; pi < a.photos.length; pi++) {
+                            if (pi % photosPerRow === 0) {
+                                checkPage(photoH + 4);
+                                if (pi > 0) y += photoH + photoGap;
+                            }
+                            const col = pi % photosPerRow;
+                            const xPos = ml + 4 + col * (photoW + photoGap);
+                            try {
+                                doc.addImage(a.photos[pi], 'JPEG', xPos, y, photoW, photoH);
+                            } catch(e) { console.warn('Foto niet toegevoegd:', e); }
+                        }
+                        y += photoH + 3;
                     }
 
                     // Lijn onder vraag
