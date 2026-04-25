@@ -11815,29 +11815,38 @@
             inspUpdateQuestionUI(key, value);
             inspUpdateProgressUI();
 
-            // Bij 'fout': klap opmerkingenveld automatisch uit en focus
-            if (value === 'fout') {
+            // Bij 'fout' of 'nvt': klap opmerkingenveld automatisch uit en focus
+            if (value === 'fout' || value === 'nvt') {
+                const isFout = value === 'fout';
+                const accentColor = isFout ? '#dc2626' : '#6b7280';
+                const placeholder = isFout
+                    ? 'Beschrijf het probleem (verplicht bij fout)...'
+                    : 'Licht toe waarom n.v.t. (verplicht)...';
+                const hintText = isFout
+                    ? '⚠️ Voeg een opmerking en foto toe bij een fout'
+                    : 'ℹ️ Opmerking verplicht bij n.v.t.';
+
                 const remarkEl = document.getElementById('insp-remark-' + key);
                 if (remarkEl) {
                     remarkEl.style.display = 'block';
-                    remarkEl.style.borderColor = '#dc2626';
-                    remarkEl.placeholder = 'Beschrijf het probleem (verplicht bij fout)...';
+                    remarkEl.style.borderColor = accentColor;
+                    remarkEl.placeholder = placeholder;
                     setTimeout(() => remarkEl.focus(), 50);
                 }
-                // Toon hint dat foto vereist is
+                // Toon hint
                 const card = document.getElementById('insp-q-' + key);
                 if (card) {
                     let hint = card.querySelector('.insp-fout-hint');
                     if (!hint) {
                         hint = document.createElement('div');
                         hint.className = 'insp-fout-hint';
-                        hint.style.cssText = 'font-size:0.7rem;color:#dc2626;margin-top:4px;font-weight:600';
-                        hint.innerHTML = '⚠️ Voeg een opmerking en foto toe bij een fout';
                         card.appendChild(hint);
                     }
+                    hint.style.cssText = `font-size:0.7rem;color:${accentColor};margin-top:4px;font-weight:600`;
+                    hint.innerHTML = hintText;
                 }
             } else {
-                // Bij goed/nvt: hint weghalen en placeholder resetten
+                // Bij goed: hint weghalen en placeholder resetten
                 const card = document.getElementById('insp-q-' + key);
                 if (card) {
                     const hint = card.querySelector('.insp-fout-hint');
@@ -12043,23 +12052,24 @@
             if (!window._inspActive) return;
             const state = window._inspActive;
 
-            // Validatie: foute antwoorden moeten opmerking + foto hebben
+            // Validatie: 'fout' vereist opmerking + foto, 'nvt' vereist alleen opmerking
             const ontbrekend = [];
             (state.sections || []).forEach((sec, si) => {
                 (sec.questions || []).forEach((q, qi) => {
                     const key = `s${si}_q${qi}`;
                     const a = state.answers[key];
-                    if (a && a.value === 'fout') {
-                        const heeftOpmerking = a.remark && a.remark.trim().length > 0;
-                        const heeftFoto = a.photos && a.photos.length > 0;
-                        if (!heeftOpmerking || !heeftFoto) {
-                            ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)}${!heeftOpmerking ? ' (opmerking)' : ''}${!heeftFoto ? ' (foto)' : ''}`);
-                        }
+                    if (!a) return;
+                    const heeftOpmerking = a.remark && a.remark.trim().length > 0;
+                    const heeftFoto = a.photos && a.photos.length > 0;
+                    if (a.value === 'fout' && (!heeftOpmerking || !heeftFoto)) {
+                        ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)} [fout]${!heeftOpmerking ? ' (opmerking)' : ''}${!heeftFoto ? ' (foto)' : ''}`);
+                    } else if (a.value === 'nvt' && !heeftOpmerking) {
+                        ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)} [n.v.t.] (opmerking)`);
                     }
                 });
             });
             if (ontbrekend.length > 0) {
-                await confirmAsync('Bij foute antwoorden is een opmerking én foto verplicht.\n\nNog te doen:\n' + ontbrekend.slice(0, 5).join('\n') + (ontbrekend.length > 5 ? `\n...en ${ontbrekend.length - 5} meer` : ''));
+                await confirmAsync('Bij foute antwoorden zijn opmerking + foto verplicht. Bij n.v.t. is een opmerking verplicht.\n\nNog te doen:\n' + ontbrekend.slice(0, 5).join('\n') + (ontbrekend.length > 5 ? `\n...en ${ontbrekend.length - 5} meer` : ''));
                 return;
             }
 
@@ -12164,41 +12174,68 @@
                 });
             });
 
-            doc.setFontSize(10);
+            // Samenvatting in een KTS-blauw kader met percentage
+            const pct = totalQ > 0 ? Math.round((totalGood / totalQ) * 100) : 0;
+            const summaryH = 26;
+            doc.setFillColor(240, 247, 252);
+            doc.setDrawColor(7, 86, 127);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(ml, y - 2, uw, summaryH, 2, 2, 'FD');
+
+            doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.text('Samenvatting', ml, y);
-            y += 6;
+            doc.setTextColor(7, 86, 127);
+            doc.text('SAMENVATTING', ml + 3, y + 3);
+
+            // Statistieken op 1 rij: Totaal | Goed | Fout | Nvt | Score%
             doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-
-            // Gekleurde samenvatting
-            const summaryItems = [
-                { label: 'Totaal vragen:', value: String(totalQ), color: [0, 0, 0] },
-                { label: 'Beantwoord:', value: String(totalDone), color: [0, 0, 0] },
-                { label: 'Goed:', value: String(totalGood), color: [22, 163, 74] },
-                { label: 'Fout:', value: String(totalBad), color: [220, 38, 38] },
-                { label: 'N.v.t.:', value: String(totalNvt), color: [107, 114, 128] },
+            doc.setTextColor(0, 0, 0);
+            const statY = y + 11;
+            const colW = uw / 5;
+            const stats = [
+                { label: 'Totaal', value: String(totalQ), color: [0, 0, 0] },
+                { label: 'Goed', value: String(totalGood), color: [22, 163, 74] },
+                { label: 'Fout', value: String(totalBad), color: [220, 38, 38] },
+                { label: 'N.v.t.', value: String(totalNvt), color: [107, 114, 128] },
+                { label: 'Score', value: pct + '%', color: pct === 100 ? [22, 163, 74] : (totalBad > 0 ? [220, 38, 38] : [7, 86, 127]) },
             ];
-
-            summaryItems.forEach(item => {
+            stats.forEach((s, i) => {
+                const cx = ml + colW * i + colW / 2;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(120, 120, 120);
+                doc.text(s.label, cx, statY, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
-                doc.text(item.label, ml, y);
-                doc.setTextColor(...item.color);
-                doc.text(item.value, ml + 25, y);
-                doc.setTextColor(0, 0, 0);
-                y += lineH;
+                doc.setFontSize(11);
+                doc.setTextColor(...s.color);
+                doc.text(s.value, cx, statY + 7, { align: 'center' });
             });
-            y += 5;
+            doc.setTextColor(0, 0, 0);
+            doc.setLineWidth(0.2);
+            y += summaryH + 5;
 
             // === SECTIES MET RESULTATEN ===
             sections.forEach((sec, si) => {
                 checkPage(20);
-                doc.setFillColor(240, 245, 249);
+                // Bereken sectie-stats voor mini-counter rechts
+                let secDone = 0, secGood = 0, secBad = 0;
+                (sec.questions || []).forEach((q, qi) => {
+                    const a = answers[`s${si}_q${qi}`];
+                    if (a && a.value) { secDone++; if (a.value === 'goed') secGood++; if (a.value === 'fout') secBad++; }
+                });
+                // KTS-blauwe sectie header
+                doc.setFillColor(7, 86, 127);
                 doc.rect(ml, y - 4, uw, 8, 'F');
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'bold');
-                doc.text(sec.title || 'Sectie ' + (si + 1), ml + 2, y);
-                y += 8;
+                doc.setTextColor(255, 255, 255);
+                doc.text(sec.title || 'Sectie ' + (si + 1), ml + 3, y + 1);
+                // Stats rechts in header
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`${secDone}/${(sec.questions || []).length} beantwoord${secBad > 0 ? ` | ${secBad} fout` : ''}`, pw - mr - 2, y + 1, { align: 'right' });
+                doc.setTextColor(0, 0, 0);
+                y += 9;
 
                 (sec.questions || []).forEach((q, qi) => {
                     checkPage(14);
@@ -12206,6 +12243,17 @@
                     const a = answers[key] || {};
                     const val = a.value || '';
                     const remark = a.remark || '';
+
+                    // Lichtrode achtergrond bij fout antwoorden
+                    if (val === 'fout') {
+                        // Schat hoogte: vraag + component + opmerking + foto's
+                        let estH = 6;
+                        if (q.component) estH += 4;
+                        if (remark) estH += 4;
+                        if (a.photos && a.photos.length > 0) estH += 4 + 30 + 3 + (Math.ceil(a.photos.length / 3) - 1) * 33;
+                        doc.setFillColor(254, 242, 242);
+                        doc.rect(ml, y - 3, uw, estH, 'F');
+                    }
 
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'normal');
@@ -12241,18 +12289,27 @@
                     // Opmerking
                     if (remark) {
                         doc.setFontSize(7);
-                        doc.setFont('helvetica', 'italic');
+                        doc.setFont('helvetica', 'bold');
                         doc.setTextColor(100, 100, 100);
-                        const remarkLines = doc.splitTextToSize('💬 ' + remark, uw - 10);
-                        doc.text(remarkLines, ml + 4, y);
+                        doc.text('Opmerking:', ml + 4, y);
+                        doc.setFont('helvetica', 'italic');
+                        const remarkLines = doc.splitTextToSize(remark, uw - 22);
+                        doc.text(remarkLines, ml + 22, y);
                         doc.setTextColor(0, 0, 0);
-                        y += remarkLines.length * 3.5;
+                        y += Math.max(remarkLines.length * 3.5, 4);
                     }
 
                     // Foto's (max 3 per rij, 40mm breed)
                     if (a.photos && a.photos.length > 0) {
                         const photoW = 40, photoH = 30, photoGap = 3;
                         const photosPerRow = 3;
+                        // Label "Foto's:"
+                        doc.setFontSize(7);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(100, 100, 100);
+                        doc.text(`Foto's (${a.photos.length}):`, ml + 4, y);
+                        doc.setTextColor(0, 0, 0);
+                        y += 4;
                         for (let pi = 0; pi < a.photos.length; pi++) {
                             if (pi % photosPerRow === 0) {
                                 checkPage(photoH + 4);
