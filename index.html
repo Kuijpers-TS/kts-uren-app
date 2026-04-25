@@ -3221,12 +3221,14 @@
             try {
                 const pw = doc.internal.pageSize.getWidth();
                 const ph = doc.internal.pageSize.getHeight();
-                // 10% transparantie, K oversized zodat randen afvallen
-                const gState = new doc.GState({ opacity: 0.10 });
+                // Subtiele watermark — opacity 0.10 op alle PDFs
+                // Portrait (inspectie/IO/factuur) groter dan landscape (weekstaat)
+                const opacity = 0.10;
+                const scale = isLandscape ? 1.3 : 2.2;
+                const gState = new doc.GState({ opacity });
                 doc.saveGraphicsState();
                 doc.setGState(gState);
                 const imgRatio = 3000 / 2318;
-                const scale = 1.95; // K ~95% groter dan pagina, randen vallen af
                 const wmW = pw * scale;
                 const wmH = wmW / imgRatio;
                 const wmX = (pw - wmW) / 2;
@@ -11716,7 +11718,7 @@
                                 <div style="display:flex;gap:4px;flex-shrink:0">
                                     <button onclick="document.getElementById('insp-remark-${key}').style.display=document.getElementById('insp-remark-${key}').style.display==='none'?'block':'none';document.getElementById('insp-remark-${key}').focus()" title="Opmerking" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${val.remark ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;padding:0">💬</button>
                                     <label for="insp-photo-${key}" title="Foto toevoegen" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
-                                    <input type="file" id="insp-photo-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                                    <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
                                 </div>
                             </div>
                             ${inputHtml}
@@ -11982,9 +11984,9 @@
                     // Direct opslaan
                     const sb = getSupabase();
                     await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
-                    // Re-render
+                    // Update alleen de foto-container (geen full re-render)
+                    inspUpdatePhotoUI(key);
                     showToast('✓ Foto toegevoegd');
-                    inspOpenInspection(state.id);
                 };
                 img.src = ev.target.result;
             };
@@ -12000,7 +12002,24 @@
             state.answers[key].photos.splice(photoIdx, 1);
             const sb = getSupabase();
             await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
-            inspOpenInspection(state.id);
+            inspUpdatePhotoUI(key);
+        }
+
+        // Update alleen foto-container van een vraag zonder hele modal te re-renderen
+        function inspUpdatePhotoUI(key) {
+            const state = window._inspActive;
+            if (!state) return;
+            const photos = (state.answers[key] && state.answers[key].photos) || [];
+            const container = document.getElementById('insp-photos-' + key);
+            if (container) {
+                container.style.display = photos.length ? 'flex' : 'none';
+                container.innerHTML = photos.map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('');
+            }
+            // Update foto-knop achtergrond (blauw als foto's aanwezig)
+            const photoBtn = document.querySelector(`label[for="insp-photo-${key}"]`);
+            if (photoBtn) {
+                photoBtn.style.background = photos.length ? '#dbeafe' : 'white';
+            }
         }
 
         function inspAnswerRemark(key, remark) {
