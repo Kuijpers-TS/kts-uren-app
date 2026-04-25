@@ -11729,14 +11729,19 @@
             const modal = document.getElementById('admin-modal');
             modal.innerHTML = `
                 <div class="modal-content" style="max-width:600px;max-height:92vh;overflow-y:auto;padding:16px">
-                    <div style="position:sticky;top:-16px;background:white;padding:16px 0 8px 0;margin:-16px 0 0 0;z-index:2;border-bottom:1px solid var(--border)">
-                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-                            <div>
-                                <div style="font-size:0.7rem;color:var(--muted)">${insp.inspection_number || ''}</div>
-                                <div style="font-weight:700;font-size:1rem">${tpl.name || 'Inspectie'}</div>
-                                <div style="font-size:0.75rem;color:var(--muted)">${insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}${insp.location ? ' — ' + escapeHtml(insp.location) : ''}</div>
+                    <div style="position:sticky;top:-16px;background:white;padding:14px 0 10px 0;margin:-16px 0 0 0;z-index:2;border-bottom:1px solid var(--border)">
+                        <div style="display:flex;align-items:start;gap:12px;margin-bottom:10px">
+                            <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(tpl.name || 'Inspectie')}</div>
+                                <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${insp.inspection_number || ''}${insp.inspection_date ? ' · ' + new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}</div>
+                                <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+                                    ${tpl.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.category)}</span>` : ''}
+                                    ${tpl.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.frequency)}</span>` : ''}
+                                    ${insp.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(insp.location)}</span>` : (tpl.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.location)}</span>` : '')}
+                                </div>
                             </div>
-                            <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1">×</button>
+                            <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
                         </div>
                         ${progressHtml}
                         ${tabsHtml}
