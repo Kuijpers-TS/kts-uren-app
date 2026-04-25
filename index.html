@@ -11735,8 +11735,8 @@
             if (insp.status === 'concept') {
                 footerHtml = `
                     <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        ${totalDone < totalQ ? `<div style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600">⚠️ ${totalQ - totalDone} vragen nog niet beantwoord</div>` : ''}
-                        <button onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem" ${totalDone < totalQ ? 'disabled style="padding:14px;font-size:0.95rem;opacity:0.5;cursor:not-allowed"' : ''}>✓ Inspectie afronden</button>
+                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
+                        <button id="insp-finish-btn" onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem;${totalDone < totalQ ? 'opacity:0.5;cursor:not-allowed' : ''}" ${totalDone < totalQ ? 'disabled' : ''}>✓ Inspectie afronden</button>
                     </div>`;
             } else {
                 footerHtml = `
@@ -11807,6 +11807,41 @@
             // UI lokaal bijwerken (geen full reload)
             inspUpdateQuestionUI(key, value);
             inspUpdateProgressUI();
+
+            // Bij 'fout': klap opmerkingenveld automatisch uit en focus
+            if (value === 'fout') {
+                const remarkEl = document.getElementById('insp-remark-' + key);
+                if (remarkEl) {
+                    remarkEl.style.display = 'block';
+                    remarkEl.style.borderColor = '#dc2626';
+                    remarkEl.placeholder = 'Beschrijf het probleem (verplicht bij fout)...';
+                    setTimeout(() => remarkEl.focus(), 50);
+                }
+                // Toon hint dat foto vereist is
+                const card = document.getElementById('insp-q-' + key);
+                if (card) {
+                    let hint = card.querySelector('.insp-fout-hint');
+                    if (!hint) {
+                        hint = document.createElement('div');
+                        hint.className = 'insp-fout-hint';
+                        hint.style.cssText = 'font-size:0.7rem;color:#dc2626;margin-top:4px;font-weight:600';
+                        hint.innerHTML = '⚠️ Voeg een opmerking en foto toe bij een fout';
+                        card.appendChild(hint);
+                    }
+                }
+            } else {
+                // Bij goed/nvt: hint weghalen en placeholder resetten
+                const card = document.getElementById('insp-q-' + key);
+                if (card) {
+                    const hint = card.querySelector('.insp-fout-hint');
+                    if (hint) hint.remove();
+                }
+                const remarkEl = document.getElementById('insp-remark-' + key);
+                if (remarkEl) {
+                    remarkEl.style.borderColor = 'var(--border)';
+                    remarkEl.placeholder = 'Opmerkingen...';
+                }
+            }
 
             // Achtergrond save naar Supabase
             const answers = state.answers;
@@ -11903,6 +11938,19 @@
                     }
                 }
             });
+
+            // Afrond-knop status bijwerken
+            const finishBtn = document.getElementById('insp-finish-btn');
+            const warnDiv = document.getElementById('insp-warn-incomplete');
+            const warnCount = document.getElementById('insp-warn-count');
+            const allDone = totalDone >= totalQ;
+            if (finishBtn) {
+                finishBtn.disabled = !allDone;
+                finishBtn.style.opacity = allDone ? '1' : '0.5';
+                finishBtn.style.cursor = allDone ? 'pointer' : 'not-allowed';
+            }
+            if (warnDiv) warnDiv.style.display = allDone ? 'none' : 'block';
+            if (warnCount) warnCount.textContent = totalQ - totalDone;
         }
 
         // Opmerking opslaan (debounced)
@@ -11969,6 +12017,28 @@
         // Inspectie afronden
         async function inspFinish() {
             if (!window._inspActive) return;
+            const state = window._inspActive;
+
+            // Validatie: foute antwoorden moeten opmerking + foto hebben
+            const ontbrekend = [];
+            (state.sections || []).forEach((sec, si) => {
+                (sec.questions || []).forEach((q, qi) => {
+                    const key = `s${si}_q${qi}`;
+                    const a = state.answers[key];
+                    if (a && a.value === 'fout') {
+                        const heeftOpmerking = a.remark && a.remark.trim().length > 0;
+                        const heeftFoto = a.photos && a.photos.length > 0;
+                        if (!heeftOpmerking || !heeftFoto) {
+                            ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)}${!heeftOpmerking ? ' (opmerking)' : ''}${!heeftFoto ? ' (foto)' : ''}`);
+                        }
+                    }
+                });
+            });
+            if (ontbrekend.length > 0) {
+                await confirmAsync('Bij foute antwoorden is een opmerking én foto verplicht.\n\nNog te doen:\n' + ontbrekend.slice(0, 5).join('\n') + (ontbrekend.length > 5 ? `\n...en ${ontbrekend.length - 5} meer` : ''));
+                return;
+            }
+
             const ok = await confirmAsync('Weet je zeker dat je deze inspectie wilt afronden?');
             if (!ok) return;
 
