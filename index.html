@@ -11489,10 +11489,30 @@
                         </div>
                         <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${ins.answered_questions}/${ins.total_questions} vragen (${progress}%)</div>
                         ` : ''}
-                        ${ins.status === 'afgerond' || ins.status === 'goedgekeurd' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="margin-top:8px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
+                        <div style="display:flex;gap:6px;margin-top:8px">
+                            ${ins.status === 'afgerond' || ins.status === 'goedgekeurd' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
+                            <button onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(templateName).replace(/'/g, "\\'")}')" style="padding:6px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:0.75rem;cursor:pointer">🗑️ Verwijder</button>
+                        </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // Inspectie verwijderen (met bevestiging)
+        async function inspDelete(inspectionId, templateName) {
+            const ok = await confirmAsync(`Weet je zeker dat je deze inspectie wilt verwijderen?\n\n"${templateName}"\n\nDit kan niet ongedaan worden gemaakt.`, true);
+            if (!ok) return;
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const { error } = await sb.from('inspections').delete().eq('id', inspectionId);
+                if (error) throw error;
+                showToast('✓ Inspectie verwijderd');
+                if (typeof inspLoadUserInspections === 'function') inspLoadUserInspections();
+                if (typeof loadInspectiesAdmin === 'function') loadInspectiesAdmin();
+            } catch (err) {
+                showToast('❌ Verwijderen mislukt: ' + err.message);
+            }
         }
 
         // Start nieuwe inspectie vanuit een template
@@ -11728,8 +11748,8 @@
 
             const modal = document.getElementById('admin-modal');
             modal.innerHTML = `
-                <div class="modal-content" style="max-width:600px;max-height:92vh;overflow-y:auto;padding:16px">
-                    <div style="position:sticky;top:-16px;background:white;padding:14px 0 10px 0;margin:-16px 0 0 0;z-index:2;border-bottom:1px solid var(--border)">
+                <div class="modal-content" style="max-width:600px;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
+                    <div style="position:sticky;top:-16px;background:white;padding:14px 16px 10px 16px;margin:-16px -16px 0 -16px;z-index:2;border-bottom:1px solid var(--border);border-radius:16px 16px 0 0">
                         <div style="display:flex;align-items:start;gap:12px;margin-bottom:10px">
                             <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
                             <div style="flex:1;min-width:0">
