@@ -3224,7 +3224,7 @@
                 // Subtiele watermark — opacity 0.10 op alle PDFs
                 // Portrait (inspectie/IO/factuur) groter dan landscape (weekstaat)
                 const opacity = 0.10;
-                const scale = isLandscape ? 1.3 : 2.3;
+                const scale = isLandscape ? 1.3 : 2.35;
                 const gState = new doc.GState({ opacity });
                 doc.saveGraphicsState();
                 doc.setGState(gState);
@@ -3239,7 +3239,8 @@
         }
 
         // Voettekst op alle pagina's tekenen — roep aan NA content
-        function addPdfFooter(doc, isLandscape) {
+        // docNumber: optioneel, wordt linksonder als 4e regel toegevoegd (bv. inspectienummer)
+        function addPdfFooter(doc, isLandscape, docNumber) {
             const pageCount = doc.internal.getNumberOfPages();
             const ktsFooterBlue = [37, 92, 134]; // #255C86
             for (let i = 1; i <= pageCount; i++) {
@@ -3254,12 +3255,14 @@
                 doc.text('Kuijpers Technical Services B.V.', ml, footY);
                 doc.text('Nieuwboerweg 2A', ml, footY + 3);
                 doc.text('1738BB Waarland', ml, footY + 6);
+                if (docNumber) {
+                    doc.text(String(docNumber), ml, footY + 9);
+                }
                 const mr = 15;
                 const rAlign = pw - mr;
                 doc.text('KVK: 93410557', rAlign, footY, { align: 'right' });
                 doc.text('BTW: NL866385368B01', rAlign, footY + 3, { align: 'right' });
                 doc.text('info@kuijpers-ts.nl', rAlign, footY + 6, { align: 'right' });
-                // Paginanummering in dezelfde stijl als de footer
                 doc.text(`Pagina ${i} van ${pageCount}`, rAlign, footY + 9, { align: 'right' });
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(0, 0, 0);
@@ -12285,7 +12288,7 @@
             doc.text('Kuijpers Technical Services BV — KTS Uren App', ml, y + 4);
 
             // Voettekst toevoegen (paginanummers zitten daar nu in)
-            addPdfFooter(doc, false);
+            addPdfFooter(doc, false, insp.inspection_number || '');
 
             // Download
             const filename = `Inspectierapport_${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
