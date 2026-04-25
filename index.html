@@ -11719,14 +11719,15 @@
                                     ${q.component ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">${q.component}${q.discipline ? ' · ' + q.discipline : ''}</div>` : ''}
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
-                                    <button onclick="document.getElementById('insp-remark-${key}').style.display=document.getElementById('insp-remark-${key}').style.display==='none'?'block':'none';document.getElementById('insp-remark-${key}').focus()" title="Opmerking" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${val.remark ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;padding:0">💬</button>
-                                    <label for="insp-photo-${key}" title="Foto toevoegen" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
+                                    <label for="insp-camera-${key}" title="Foto maken met camera" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
+                                    <input type="file" id="insp-camera-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                                    <label for="insp-photo-${key}" title="Uit galerij/bestanden" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">🖼️</label>
                                     <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
                                 </div>
                             </div>
                             ${inputHtml}
                             <div style="margin-top:6px">
-                                <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="display:${val.remark ? 'block' : 'none'};width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
+                                <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
                                 <div id="insp-photos-${key}" style="display:${(val.photos && val.photos.length) ? 'flex' : 'none'};gap:6px;flex-wrap:wrap;margin-top:6px">
                                     ${(val.photos || []).map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('')}
                                 </div>
@@ -11828,7 +11829,6 @@
 
                 const remarkEl = document.getElementById('insp-remark-' + key);
                 if (remarkEl) {
-                    remarkEl.style.display = 'block';
                     remarkEl.style.borderColor = accentColor;
                     remarkEl.placeholder = placeholder;
                     setTimeout(() => remarkEl.focus(), 50);
@@ -12027,11 +12027,12 @@
                 container.style.display = photos.length ? 'flex' : 'none';
                 container.innerHTML = photos.map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('');
             }
-            // Update foto-knop achtergrond (blauw als foto's aanwezig)
+            // Update foto-knoppen achtergrond (blauw als foto's aanwezig)
             const photoBtn = document.querySelector(`label[for="insp-photo-${key}"]`);
-            if (photoBtn) {
-                photoBtn.style.background = photos.length ? '#dbeafe' : 'white';
-            }
+            const cameraBtn = document.querySelector(`label[for="insp-camera-${key}"]`);
+            const bg = photos.length ? '#dbeafe' : 'white';
+            if (photoBtn) photoBtn.style.background = bg;
+            if (cameraBtn) cameraBtn.style.background = bg;
         }
 
         function inspAnswerRemark(key, remark) {
