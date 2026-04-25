@@ -1123,10 +1123,10 @@
                 <div style="font-weight:600;font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Mijn inspecties</div>
                 <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
                     <select id="insp-user-filter-status" onchange="inspLoadUserInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
-                        <option value="">Alle statussen</option>
+                        <option value="">Actieve (concept + afgerond)</option>
                         <option value="concept">Concept</option>
                         <option value="afgerond">Afgerond</option>
-                        <option value="goedgekeurd">Goedgekeurd</option>
+                        <option value="archief">Gearchiveerd</option>
                     </select>
                 </div>
                 <div id="insp-user-list" style="display:flex;flex-direction:column;gap:8px">
@@ -1639,10 +1639,10 @@
                         <option value="">Alle medewerkers</option>
                     </select>
                     <select id="insp-filter-status" onchange="inspLoadInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
-                        <option value="">Alle statussen</option>
+                        <option value="">Actieve (concept + afgerond)</option>
                         <option value="concept">Concept</option>
                         <option value="afgerond">Afgerond</option>
-                        <option value="goedgekeurd">Goedgekeurd</option>
+                        <option value="archief">Gearchiveerd</option>
                     </select>
                 </div>
                 <div id="insp-list" style="display:flex;flex-direction:column;gap:8px">
@@ -11364,7 +11364,11 @@
                 const statusFilter = document.getElementById('insp-filter-status')?.value;
                 if (templateFilter) query = query.eq('template_id', templateFilter);
                 if (userFilter) query = query.eq('user_id', userFilter);
-                if (statusFilter) query = query.eq('status', statusFilter);
+                if (statusFilter) {
+                    query = query.eq('status', statusFilter);
+                } else {
+                    query = query.neq('status', 'archief');
+                }
 
                 const { data, error } = await query.limit(50);
                 if (error) throw error;
@@ -11382,8 +11386,8 @@
                     const tplName = insp.inspection_templates?.name || 'Onbekend formulier';
                     const user = (window._adminUsers || []).find(u => u.id === insp.user_id);
                     const userName = user ? user.name : 'Onbekend';
-                    const statusColors = { 'concept': '#fef3c7', 'afgerond': '#d1fae5', 'goedgekeurd': '#d1fae5', 'afgekeurd': '#fee2e2' };
-                    const statusLabels = { 'concept': '📝 Concept', 'afgerond': '✅ Afgerond', 'goedgekeurd': '✅ Goedgekeurd', 'afgekeurd': '❌ Afgekeurd' };
+                    const statusColors = { 'concept': '#fef3c7', 'afgerond': '#d1fae5', 'archief': '#e2e8f0', 'goedgekeurd': '#d1fae5', 'afgekeurd': '#fee2e2' };
+                    const statusLabels = { 'concept': '📝 Concept', 'afgerond': '✅ Afgerond', 'archief': '📦 Gearchiveerd', 'goedgekeurd': '✅ Goedgekeurd', 'afgekeurd': '❌ Afgekeurd' };
                     const pct = insp.total_questions > 0 ? Math.round(insp.answered_questions / insp.total_questions * 100) : 0;
 
                     return `
@@ -11464,7 +11468,12 @@
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
 
-            if (statusFilter) query = query.eq('status', statusFilter);
+            if (statusFilter) {
+                query = query.eq('status', statusFilter);
+            } else {
+                // Standaard: alleen actieve inspecties (geen archief)
+                query = query.neq('status', 'archief');
+            }
 
             const { data: inspections, error } = await query;
 
@@ -11497,13 +11506,31 @@
                         </div>
                         <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${ins.answered_questions}/${ins.total_questions} vragen (${progress}%)</div>
                         ` : ''}
-                        <div style="display:flex;gap:6px;margin-top:8px">
-                            ${ins.status === 'afgerond' || ins.status === 'goedgekeurd' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
+                        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                            ${ins.status === 'afgerond' || ins.status === 'archief' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
+                            ${ins.status === 'afgerond' ? `<button onclick="event.stopPropagation();inspArchive('${ins.id}', true)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#f1f5f9;color:#475569;font-size:0.75rem;cursor:pointer">📦 Archiveer</button>` : ''}
+                            ${ins.status === 'archief' ? `<button onclick="event.stopPropagation();inspArchive('${ins.id}', false)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#dcfce7;color:#166534;font-size:0.75rem;cursor:pointer">↩️ Terug naar afgerond</button>` : ''}
                             <button onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(templateName).replace(/'/g, "\\'")}')" style="padding:6px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:0.75rem;cursor:pointer">🗑️ Verwijder</button>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // Inspectie archiveren of terugzetten
+        async function inspArchive(inspectionId, archive) {
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const newStatus = archive ? 'archief' : 'afgerond';
+                const { error } = await sb.from('inspections').update({ status: newStatus }).eq('id', inspectionId);
+                if (error) throw error;
+                showToast(archive ? '✓ Inspectie gearchiveerd' : '✓ Inspectie teruggezet naar afgerond');
+                if (typeof inspLoadUserInspections === 'function') inspLoadUserInspections();
+                if (typeof loadInspectiesAdmin === 'function') loadInspectiesAdmin();
+            } catch (err) {
+                showToast('❌ Fout: ' + err.message);
+            }
         }
 
         // Inspectie verwijderen (met bevestiging)
@@ -11749,9 +11776,13 @@
                     </div>`;
             } else {
                 footerHtml = `
-                    <div style="text-align:center;padding:16px">
-                        <div style="color:#16a34a;font-weight:600;font-size:0.9rem;margin-bottom:12px">✅ Deze inspectie is afgerond</div>
-                        <button onclick="inspGeneratePDF('${inspectionId}')" class="btn btn-secondary" style="padding:10px 20px;font-size:0.85rem">📄 PDF Rapport downloaden</button>
+                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
+                        <div style="text-align:center;color:#16a34a;font-weight:600;font-size:0.9rem;margin-bottom:8px">✅ Deze inspectie is afgerond</div>
+                        <div style="text-align:center;color:var(--muted);font-size:0.7rem;margin-bottom:12px">Wijzigingen worden automatisch opgeslagen</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+                            <button onclick="inspGeneratePDF('${inspectionId}')" class="btn btn-secondary" style="padding:10px 20px;font-size:0.85rem">📄 PDF Rapport</button>
+                            <button onclick="inspCloseForm()" class="btn btn-primary" style="padding:10px 20px;font-size:0.85rem">💾 Opslaan & sluiten</button>
+                        </div>
                     </div>`;
             }
 
