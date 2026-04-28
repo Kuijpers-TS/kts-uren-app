@@ -11106,7 +11106,7 @@
 
             container.innerHTML = sections.map((sec, si) => {
                 const questions = (sec.questions || []).map((q, qi) => {
-                    const typeLabel = { 'ja_nee': 'Ja/Nee', 'goed_matig_slecht': 'Goed/Matig/Slecht', 'numeriek': 'Numeriek', 'tekst': 'Tekst', 'foto': 'Foto', 'handtekening': 'Handtekening', 'selectie': 'Selectie', 'datum': 'Datum' };
+                    const typeLabel = { 'ja_nee': 'Ja/Nee', 'goed_fout': 'Goed/Fout/Nvt', 'goed_matig_slecht': 'Goed/Matig/Slecht', 'conditiescore': 'Conditiescore (1-6)', 'numeriek': 'Numeriek', 'meting': 'Meting', 'tekst': 'Tekst', 'foto': 'Foto', 'handtekening': 'Handtekening', 'selectie': 'Selectie', 'datum': 'Datum' };
                     return `
                         <div style="display:flex;align-items:start;gap:6px;padding:8px;background:#f9fafb;border-radius:6px;margin-bottom:4px">
                             <div style="flex:1;min-width:0">
@@ -11177,8 +11177,11 @@
         function inspEditQuestion(si, qi) {
             const q = window._inspTplSections[si].questions[qi];
             const typeOptions = [
+                ['goed_fout', 'Goed / Fout / Nvt'],
+                ['conditiescore', 'Conditiescore 1-6 (NEN 2767)'],
                 ['ja_nee', 'Ja / Nee / NVT'],
                 ['goed_matig_slecht', 'Goed / Matig / Slecht'],
+                ['meting', 'Meting (numeriek)'],
                 ['numeriek', 'Numeriek (meetwaarde)'],
                 ['tekst', 'Tekst (vrij veld)'],
                 ['foto', 'Foto'],
@@ -11508,6 +11511,7 @@
                         ` : ''}
                         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
                             ${ins.status === 'afgerond' || ins.status === 'archief' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
+                            <button onclick="event.stopPropagation();inspCopyForObject('${ins.id}','${ins.template_id}')" style="padding:6px 10px;border:1px solid #bae6fd;border-radius:6px;background:#e0f2fe;color:#0369a1;font-size:0.75rem;cursor:pointer" title="Kopieer antwoorden naar nieuwe inspectie voor ander object">📑 Kopieer voor ander object</button>
                             ${ins.status === 'afgerond' ? `<button onclick="event.stopPropagation();inspArchive('${ins.id}', true)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#f1f5f9;color:#475569;font-size:0.75rem;cursor:pointer">📦 Archiveer</button>` : ''}
                             ${ins.status === 'archief' ? `<button onclick="event.stopPropagation();inspArchive('${ins.id}', false)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#dcfce7;color:#166534;font-size:0.75rem;cursor:pointer">↩️ Terug naar afgerond</button>` : ''}
                             <button onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(templateName).replace(/'/g, "\\'")}')" style="padding:6px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:0.75rem;cursor:pointer">🗑️ Verwijder</button>
@@ -11515,6 +11519,13 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // Inspectie kopiëren voor ander object (zelfde template, antwoorden mee)
+        async function inspCopyForObject(sourceInspectionId, templateId) {
+            if (!await confirmAsync('Antwoorden van deze inspectie kopiëren naar een nieuwe inspectie voor een ander object?\n\nBijvoorbeeld voor NSM-PG2 als deze NSM-PG1 is. Je kunt daarna de antwoorden waar nodig aanpassen.')) return;
+            // Roep inspStartFromTemplate aan met de copyFromInspectionId parameter
+            await inspStartFromTemplate(templateId, sourceInspectionId);
         }
 
         // Inspectie archiveren of terugzetten
@@ -11551,7 +11562,7 @@
         }
 
         // Start nieuwe inspectie vanuit een template
-        async function inspStartFromTemplate(templateId) {
+        async function inspStartFromTemplate(templateId, copyFromInspectionId) {
             const sb = getSupabase();
             if (!currentUser || !currentProject) {
                 showToast('⚠️ Selecteer eerst een project');
@@ -11569,7 +11580,28 @@
                 return;
             }
 
-            // Genereer inspectienummer
+            // Vraag om asset/locatie code (verplicht voor Maximo-koppeling)
+            const assetCode = prompt(
+                'Asset / locatie code voor deze inspectie\n\n' +
+                'Bijv. NSM-PG1, NSM-PG2 — komt in PDF-titel en bestandsnaam zodat\n' +
+                'klant het kan koppelen aan Maximo werkorders.\n\n' +
+                'Asset code:',
+                tpl.asset || ''
+            );
+            if (!assetCode || !assetCode.trim()) {
+                showToast('⚠️ Asset code is verplicht');
+                return;
+            }
+            const cleanAsset = assetCode.trim().replace(/\s+/g, '_');
+
+            // Eventueel antwoorden kopiëren van bestaande inspectie
+            let copiedAnswers = {};
+            if (copyFromInspectionId) {
+                const { data: src } = await sb.from('inspections').select('answers').eq('id', copyFromInspectionId).single();
+                if (src && src.answers) copiedAnswers = JSON.parse(JSON.stringify(src.answers));
+            }
+
+            // Genereer inspectienummer met asset code
             const year = new Date().getFullYear();
             const { data: lastInsp } = await sb.from('inspections')
                 .select('inspection_number')
@@ -11579,15 +11611,26 @@
 
             let nextSeq = 1;
             if (lastInsp && lastInsp.length > 0) {
+                // Pak het sequentienummer (3e segment) uit "INS-2026-0011" of "INS-2026-0011-NSM_PG1"
                 const parts = lastInsp[0].inspection_number.split('-');
                 nextSeq = (parseInt(parts[2]) || 0) + 1;
             }
-            const inspNumber = `INS-${year}-${String(nextSeq).padStart(4, '0')}`;
+            const inspNumber = `INS-${year}-${String(nextSeq).padStart(4, '0')}-${cleanAsset}`;
 
             // Tel vragen
             const sections = tpl.sections || [];
             let totalQ = 0;
             sections.forEach(s => { totalQ += (s.questions || []).length; });
+
+            // Tel beantwoorde vragen uit gekopieerde antwoorden
+            let answeredCount = 0, passedCount = 0, failedCount = 0;
+            Object.values(copiedAnswers).forEach(a => {
+                if (a && a.value !== undefined && a.value !== '') {
+                    answeredCount++;
+                    if (a.value === 'goed') passedCount++;
+                    if (a.value === 'fout') failedCount++;
+                }
+            });
 
             // Maak inspectie aan
             const { data: newInsp, error: insErr } = await sb.from('inspections').insert({
@@ -11598,14 +11641,14 @@
                 inspection_date: toLocalDateStr(new Date()),
                 location: tpl.location || '',
                 installation: tpl.installation || '',
-                asset: tpl.asset || '',
-                description: tpl.name,
-                answers: {},
+                asset: cleanAsset,
+                description: tpl.name + ' — ' + cleanAsset,
+                answers: copiedAnswers,
                 status: 'concept',
                 total_questions: totalQ,
-                answered_questions: 0,
-                passed_questions: 0,
-                failed_questions: 0
+                answered_questions: answeredCount,
+                passed_questions: passedCount,
+                failed_questions: failedCount
             }).select().single();
 
             if (insErr) {
@@ -11624,11 +11667,11 @@
         // In-memory state voor het actieve formulier
         window._inspActive = null; // { id, answers, sections, status, totalQ }
 
-        // Open een inspectie
-        async function inspOpenInspection(inspectionId) {
+        // Open een inspectie (start in overzicht-modus)
+        async function inspOpenInspection(inspectionId, sectionIdx) {
             const sb = getSupabase();
             const { data: insp, error } = await sb.from('inspections')
-                .select('*, inspection_templates(name, sections)')
+                .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category)')
                 .eq('id', inspectionId)
                 .single();
 
@@ -11644,7 +11687,22 @@
             sections.forEach(s => { totalQ += (s.questions || []).length; });
 
             // Sla state op in geheugen
-            window._inspActive = { id: inspectionId, answers: JSON.parse(JSON.stringify(answers)), sections, status: insp.status, totalQ, insp };
+            window._inspActive = { id: inspectionId, answers: JSON.parse(JSON.stringify(answers)), sections, status: insp.status, totalQ, insp, view: typeof sectionIdx === 'number' ? 'section' : 'overview', activeSectionIdx: sectionIdx };
+
+            // Render juiste view
+            if (typeof sectionIdx === 'number') {
+                inspRenderSectionView(sectionIdx);
+            } else {
+                inspRenderOverview();
+            }
+        }
+
+        // Overzicht renderen — grid met alle secties
+        function inspRenderOverview() {
+            const state = window._inspActive;
+            if (!state) return;
+            const { id: inspectionId, sections, answers, insp } = state;
+            const tpl = insp.inspection_templates || {};
 
             // Bereken sectie-voortgang
             const sectionStats = sections.map((sec, si) => {
@@ -11652,17 +11710,262 @@
                 let done = 0, good = 0, bad = 0;
                 qs.forEach((q, qi) => {
                     const a = answers[`s${si}_q${qi}`];
-                    if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; }
+                    if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; const sc = Number(a.value); if (sc >= 4 && sc <= 6) bad++; }
                 });
                 return { total: qs.length, done, good, bad };
             });
 
+            const totalQ = state.totalQ;
             const totalDone = sectionStats.reduce((s, x) => s + x.done, 0);
             const totalGood = sectionStats.reduce((s, x) => s + x.good, 0);
             const totalBad = sectionStats.reduce((s, x) => s + x.bad, 0);
             const pct = totalQ > 0 ? Math.round((totalDone / totalQ) * 100) : 0;
 
+            // Sectie-cards in 2-koloms grid
+            let cardsHtml = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px">`;
+            sections.forEach((sec, si) => {
+                const st = sectionStats[si];
+                const isDone = st.done === st.total && st.total > 0;
+                const hasFail = st.bad > 0;
+                const partial = st.done > 0 && !isDone;
+                let bg, border, statusIcon, statusColor;
+                if (isDone && hasFail) { bg = '#fef2f2'; border = '#fca5a5'; statusIcon = '⚠️'; statusColor = '#dc2626'; }
+                else if (isDone) { bg = '#f0fdf4'; border = '#86efac'; statusIcon = '✅'; statusColor = '#16a34a'; }
+                else if (partial) { bg = '#fffbeb'; border = '#fde68a'; statusIcon = '⏳'; statusColor = '#d97706'; }
+                else { bg = '#f8fafc'; border = '#e2e8f0'; statusIcon = '○'; statusColor = '#94a3b8'; }
+                const sectPct = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+                cardsHtml += `
+                    <div onclick="inspOpenSectionView(${si})" style="background:${bg};border:1.5px solid ${border};border-radius:10px;padding:12px;cursor:pointer;transition:transform 0.1s;display:flex;flex-direction:column;gap:6px;min-height:100px" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <div style="display:flex;justify-content:space-between;align-items:start;gap:6px">
+                            <div style="font-weight:700;font-size:0.78rem;line-height:1.2;color:var(--text)">${escapeHtml(sec.title || 'Sectie ' + (si + 1))}</div>
+                            <span style="font-size:0.95rem;flex-shrink:0">${statusIcon}</span>
+                        </div>
+                        <div style="font-size:0.7rem;color:${statusColor};font-weight:600">${st.done}/${st.total} vragen${hasFail ? ' · ' + st.bad + ' afwijking' + (st.bad === 1 ? '' : 'en') : ''}</div>
+                        <div style="background:#fff;border-radius:3px;height:5px;overflow:hidden;margin-top:auto">
+                            <div style="background:${statusColor};width:${sectPct}%;height:100%;transition:width 0.3s"></div>
+                        </div>
+                    </div>`;
+            });
+            cardsHtml += `</div>`;
+
+            // Voortgangsblok
+            const progressHtml = `
+                <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:4px">
+                        <span style="font-weight:600;color:var(--text)">${totalDone}/${totalQ} vragen</span>
+                        <span style="display:flex;gap:8px">
+                            <span style="color:#16a34a">✓ ${totalGood}</span>
+                            <span style="color:#dc2626">✗ ${totalBad}</span>
+                            <span style="font-weight:700;color:var(--text)">${pct}%</span>
+                        </span>
+                    </div>
+                    <div style="background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden">
+                        <div style="height:100%;border-radius:4px;display:flex">
+                            <div style="background:#16a34a;width:${totalQ > 0 ? (totalGood / totalQ * 100) : 0}%;transition:width 0.3s"></div>
+                            <div style="background:#dc2626;width:${totalQ > 0 ? (totalBad / totalQ * 100) : 0}%;transition:width 0.3s"></div>
+                            <div style="background:#f59e0b;width:${totalQ > 0 ? ((totalDone - totalGood - totalBad) / totalQ * 100) : 0}%;transition:width 0.3s"></div>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Footer
+            let footerHtml = '';
+            if (insp.status === 'concept') {
+                footerHtml = `
+                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
+                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
+                        <button id="insp-finish-btn" onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem;${totalDone < totalQ ? 'opacity:0.5;cursor:not-allowed' : ''}" ${totalDone < totalQ ? 'disabled' : ''}>✓ Inspectie afronden</button>
+                    </div>`;
+            } else {
+                footerHtml = `
+                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
+                        <div style="text-align:center;color:#16a34a;font-weight:600;font-size:0.9rem;margin-bottom:8px">✅ Deze inspectie is afgerond</div>
+                        <div style="text-align:center;color:var(--muted);font-size:0.7rem;margin-bottom:12px">Wijzigingen worden automatisch opgeslagen</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+                            <button onclick="inspGeneratePDF('${insp.id}')" class="btn btn-secondary" style="padding:10px 20px;font-size:0.85rem">📄 PDF Rapport</button>
+                            <button onclick="inspCloseForm()" class="btn btn-primary" style="padding:10px 20px;font-size:0.85rem">💾 Opslaan & sluiten</button>
+                        </div>
+                    </div>`;
+            }
+
+            const modal = document.getElementById('admin-modal');
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
+                    <div style="display:flex;align-items:start;gap:12px;margin-bottom:6px">
+                        <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(tpl.name || 'Inspectie')}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${insp.inspection_number || ''}${insp.inspection_date ? ' · ' + new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}</div>
+                            <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+                                ${insp.asset ? `<span style="font-size:0.7rem;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-weight:700">${escapeHtml(insp.asset)}</span>` : ''}
+                                ${tpl.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.category)}</span>` : ''}
+                                ${tpl.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.frequency)}</span>` : ''}
+                                ${insp.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(insp.location)}</span>` : ''}
+                            </div>
+                        </div>
+                        <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
+                    </div>
+                    ${progressHtml}
+                    <div style="font-size:0.75rem;color:var(--muted);margin-top:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Selecteer een sectie</div>
+                    ${cardsHtml}
+                    ${footerHtml}
+                </div>`;
+            modal.classList.add('active');
+        }
+
+        // Open één sectie in detailweergave
+        function inspOpenSectionView(sectionIdx) {
+            if (!window._inspActive) return;
+            window._inspActive.view = 'section';
+            window._inspActive.activeSectionIdx = sectionIdx;
+            inspRenderSectionView(sectionIdx);
+        }
+
+        // Terug naar overzicht
+        function inspBackToOverview() {
+            if (!window._inspActive) return;
+            window._inspActive.view = 'overview';
+            window._inspActive.activeSectionIdx = null;
+            inspRenderOverview();
+        }
+
+        // Render één sectie (detail view)
+        function inspRenderSectionView(si) {
+            const state = window._inspActive;
+            if (!state) return;
+            const { sections, answers, insp } = state;
+            const tpl = insp.inspection_templates || {};
+            const sec = sections[si];
+            if (!sec) { inspBackToOverview(); return; }
+
+            // Bereken sectie-stats
+            const qs = sec.questions || [];
+            let done = 0, good = 0, bad = 0;
+            qs.forEach((q, qi) => {
+                const a = answers[`s${si}_q${qi}`];
+                if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; const sc = Number(a.value); if (sc >= 4 && sc <= 6) bad++; }
+            });
+            const sectPct = qs.length > 0 ? Math.round((done / qs.length) * 100) : 0;
+
+            // Voortgang andere secties (voor totaal-counter)
+            let totalDone = 0, totalQ = state.totalQ;
+            sections.forEach((s, idx) => {
+                (s.questions || []).forEach((q, qi) => {
+                    const a = answers[`s${idx}_q${qi}`];
+                    if (a && a.value !== undefined && a.value !== '') totalDone++;
+                });
+            });
+
+            // Vragen renderen
+            let questionsHtml = '';
+            qs.forEach((q, qi) => {
+                const key = `s${si}_q${qi}`;
+                const val = answers[key] || {};
+                const answered = val.value !== undefined && val.value !== '';
+                const isFout = val.value === 'fout';
+                const numScore = Number(val.value);
+                const isHogeScore = !isNaN(numScore) && numScore >= 4 && numScore <= 6;
+                const isAfwijking = isFout || isHogeScore;
+
+                let inputHtml = '';
+                if (q.type === 'goed_fout') {
+                    inputHtml = `
+                        <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">
+                            <button onclick="inspAnswer('${key}','goed')" id="insp-btn-${key}-goed" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'goed' ? '#16a34a' : 'var(--border)'};border-radius:6px;background:${val.value === 'goed' ? '#dcfce7' : 'white'};color:${val.value === 'goed' ? '#16a34a' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✓ Goed</button>
+                            <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:6px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✗ Fout</button>
+                            <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:6px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">N.v.t.</button>
+                        </div>`;
+                } else if (q.type === 'conditiescore') {
+                    const scoreLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
+                    const scoreColors = [
+                        ['#16a34a', '#dcfce7'], ['#65a30d', '#ecfccb'], ['#ca8a04', '#fef9c3'],
+                        ['#ea580c', '#ffedd5'], ['#dc2626', '#fee2e2'], ['#7f1d1d', '#fecaca']
+                    ];
+                    let btnsHtml = '';
+                    for (let s = 1; s <= 6; s++) {
+                        const [c, bg] = scoreColors[s - 1];
+                        const active = val.value === String(s);
+                        btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} — ${scoreLabels[s-1]}" style="flex:1;padding:8px 4px;border:1.5px solid ${active ? c : 'var(--border)'};border-radius:6px;background:${active ? bg : 'white'};color:${active ? c : 'var(--text)'};font-weight:700;font-size:0.85rem;cursor:pointer">${s}</button>`;
+                    }
+                    const currentLabel = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreLabels[Number(val.value) - 1] : '';
+                    inputHtml = `
+                        <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">${btnsHtml}</div>
+                        <div style="font-size:0.65rem;color:var(--muted);margin-top:3px;text-align:center">1=Uitstekend · 6=Zeer slecht (NEN 2767)${currentLabel ? ' — <strong>'+currentLabel+'</strong>' : ''}</div>`;
+                } else if (q.type === 'meting' || q.type === 'numeriek') {
+                    inputHtml = `
+                        <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+                            <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
+                            ${q.unit ? `<span style="font-size:0.85rem;color:var(--muted)">${q.unit}</span>` : ''}
+                        </div>`;
+                } else {
+                    inputHtml = `
+                        <textarea id="insp-input-${key}" onchange="inspAnswer('${key}',this.value)" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:6px;min-height:44px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
+                }
+
+                questionsHtml += `
+                    <div id="insp-q-${key}" style="background:${isAfwijking ? '#fef2f2' : (answered ? '#f0fdf4' : 'white')};border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid ${isAfwijking ? '#fecaca' : (answered ? '#bbf7d0' : 'var(--border)')};transition:all 0.2s">
+                        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:0.85rem;font-weight:600;line-height:1.3"><span style="color:var(--muted);margin-right:4px">${qi+1}.</span>${escapeHtml(q.text || 'Vraag ' + (qi + 1))}</div>
+                                ${q.component ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">${escapeHtml(q.component)}${q.discipline ? ' · ' + escapeHtml(q.discipline) : ''}</div>` : ''}
+                            </div>
+                            <div style="display:flex;gap:4px;flex-shrink:0">
+                                <label for="insp-camera-${key}" title="Foto maken met camera" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
+                                <input type="file" id="insp-camera-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                                <label for="insp-photo-${key}" title="Uit galerij/bestanden" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">🖼️</label>
+                                <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                            </div>
+                        </div>
+                        ${inputHtml}
+                        <div style="margin-top:6px">
+                            <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
+                            <div id="insp-photos-${key}" style="display:${(val.photos && val.photos.length) ? 'flex' : 'none'};gap:6px;flex-wrap:wrap;margin-top:6px">
+                                ${(val.photos || []).map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('')}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            // Navigatie tussen secties
+            const hasPrev = si > 0;
+            const hasNext = si < sections.length - 1;
+            const navHtml = `
+                <div style="display:flex;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+                    <button onclick="inspOpenSectionView(${si - 1})" ${hasPrev ? '' : 'disabled'} style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:${hasPrev ? 'white' : '#f3f4f6'};color:${hasPrev ? 'var(--text)' : '#9ca3af'};font-weight:600;font-size:0.8rem;cursor:${hasPrev ? 'pointer' : 'not-allowed'}">◀ Vorige</button>
+                    <button onclick="inspBackToOverview()" style="flex:1.5;padding:10px;border:1px solid var(--kts-blue);border-radius:8px;background:var(--kts-blue);color:white;font-weight:700;font-size:0.8rem;cursor:pointer">📋 Overzicht</button>
+                    <button onclick="inspOpenSectionView(${si + 1})" ${hasNext ? '' : 'disabled'} style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:${hasNext ? 'white' : '#f3f4f6'};color:${hasNext ? 'var(--text)' : '#9ca3af'};font-weight:600;font-size:0.8rem;cursor:${hasNext ? 'pointer' : 'not-allowed'}">Volgende ▶</button>
+                </div>`;
+
+            const modal = document.getElementById('admin-modal');
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
+                    <div style="position:sticky;top:-16px;background:white;padding:14px 16px 12px 16px;margin:-16px -16px 12px -16px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:16px">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                            <button onclick="inspBackToOverview()" title="Terug naar overzicht" style="background:#f1f5f9;border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:0.85rem;flex-shrink:0">◀</button>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(sec.title || 'Sectie ' + (si + 1))}</div>
+                                <div style="font-size:0.7rem;color:var(--muted)">${insp.asset ? escapeHtml(insp.asset) + ' · ' : ''}Sectie ${si + 1} van ${sections.length}</div>
+                            </div>
+                            <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;color:var(--muted);margin-bottom:4px">
+                            <span><strong style="color:var(--text)">${done}/${qs.length}</strong> in deze sectie · <strong style="color:var(--text)">${totalDone}/${totalQ}</strong> totaal</span>
+                            <span style="font-weight:700;color:var(--kts-blue)">${sectPct}%</span>
+                        </div>
+                        <div style="background:#e2e8f0;border-radius:4px;height:5px;overflow:hidden">
+                            <div style="background:var(--kts-blue);width:${sectPct}%;height:100%;transition:width 0.3s"></div>
+                        </div>
+                    </div>
+                    ${questionsHtml}
+                    ${navHtml}
+                </div>`;
+            modal.classList.add('active');
+        }
+
+        // Stub: oude functie blijft bestaan voor backwards compat (niet meer gebruikt)
+        function _inspOldRender_unused() {
             // Sectie-tabs bovenaan — horizontaal scrollbaar
+            const sections = []; const sectionStats = []; const totalDone = 0; const totalQ = 0; const totalGood = 0; const totalBad = 0; const pct = 0;
             let tabsHtml = `<div id="insp-section-tabs" style="display:flex;gap:4px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch">`;
             sections.forEach((sec, si) => {
                 const st = sectionStats[si];
@@ -11728,7 +12031,28 @@
                                 <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:6px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✗ Fout</button>
                                 <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:6px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">N.v.t.</button>
                             </div>`;
-                    } else if (q.type === 'meting') {
+                    } else if (q.type === 'conditiescore') {
+                        // NEN 2767 conditiescores 1 t/m 6
+                        const scoreLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
+                        const scoreColors = [
+                            ['#16a34a', '#dcfce7'], // 1 groen
+                            ['#65a30d', '#ecfccb'], // 2 lichtgroen
+                            ['#ca8a04', '#fef9c3'], // 3 geel
+                            ['#ea580c', '#ffedd5'], // 4 oranje
+                            ['#dc2626', '#fee2e2'], // 5 rood
+                            ['#7f1d1d', '#fecaca']  // 6 donkerrood
+                        ];
+                        let btnsHtml = '';
+                        for (let s = 1; s <= 6; s++) {
+                            const [c, bg] = scoreColors[s - 1];
+                            const active = val.value === String(s);
+                            btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} — ${scoreLabels[s-1]}" style="flex:1;padding:8px 4px;border:1.5px solid ${active ? c : 'var(--border)'};border-radius:6px;background:${active ? bg : 'white'};color:${active ? c : 'var(--text)'};font-weight:700;font-size:0.85rem;cursor:pointer">${s}</button>`;
+                        }
+                        const currentLabel = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreLabels[Number(val.value) - 1] : '';
+                        inputHtml = `
+                            <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">${btnsHtml}</div>
+                            <div style="font-size:0.65rem;color:var(--muted);margin-top:3px;text-align:center">1=Uitstekend · 6=Zeer slecht (NEN 2767)${currentLabel ? ' — <strong>'+currentLabel+'</strong>' : ''}</div>`;
+                    } else if (q.type === 'meting' || q.type === 'numeriek') {
                         inputHtml = `
                             <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
                                 <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
@@ -11848,16 +12172,25 @@
             inspUpdateQuestionUI(key, value);
             inspUpdateProgressUI();
 
-            // Bij 'fout' of 'nvt': klap opmerkingenveld automatisch uit en focus
-            if (value === 'fout' || value === 'nvt') {
-                const isFout = value === 'fout';
-                const accentColor = isFout ? '#dc2626' : '#6b7280';
-                const placeholder = isFout
-                    ? 'Beschrijf het probleem (verplicht bij fout)...'
-                    : 'Licht toe waarom n.v.t. (verplicht)...';
-                const hintText = isFout
-                    ? '⚠️ Voeg een opmerking en foto toe bij een fout'
-                    : 'ℹ️ Opmerking verplicht bij n.v.t.';
+            // Bepaal of dit een afwijkend antwoord is dat extra info vereist
+            const isFout = value === 'fout';
+            const isNvt = value === 'nvt';
+            const numScore = Number(value);
+            const isHogeScore = !isNaN(numScore) && numScore >= 4 && numScore <= 6;
+
+            if (value === 'fout' || value === 'nvt' || isHogeScore) {
+                const accentColor = (isFout || isHogeScore) ? '#dc2626' : '#6b7280';
+                let placeholder, hintText;
+                if (isFout) {
+                    placeholder = 'Beschrijf het probleem (verplicht bij fout)...';
+                    hintText = '⚠️ Voeg een opmerking en foto toe bij een fout';
+                } else if (isNvt) {
+                    placeholder = 'Licht toe waarom n.v.t. (verplicht)...';
+                    hintText = 'ℹ️ Opmerking verplicht bij n.v.t.';
+                } else {
+                    placeholder = `Beschrijf gebrek (verplicht bij conditie ${numScore})...`;
+                    hintText = `⚠️ Voeg een opmerking en foto toe bij conditie ${numScore}`;
+                }
 
                 const remarkEl = document.getElementById('insp-remark-' + key);
                 if (remarkEl) {
@@ -12085,7 +12418,7 @@
             if (!window._inspActive) return;
             const state = window._inspActive;
 
-            // Validatie: 'fout' vereist opmerking + foto, 'nvt' vereist alleen opmerking
+            // Validatie: fout/score 4-6 vereist opmerking + foto, n.v.t. vereist alleen opmerking
             const ontbrekend = [];
             (state.sections || []).forEach((sec, si) => {
                 (sec.questions || []).forEach((q, qi) => {
@@ -12094,15 +12427,19 @@
                     if (!a) return;
                     const heeftOpmerking = a.remark && a.remark.trim().length > 0;
                     const heeftFoto = a.photos && a.photos.length > 0;
+                    const score = Number(a.value);
+                    const isHogeScore = !isNaN(score) && score >= 4 && score <= 6;
                     if (a.value === 'fout' && (!heeftOpmerking || !heeftFoto)) {
                         ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)} [fout]${!heeftOpmerking ? ' (opmerking)' : ''}${!heeftFoto ? ' (foto)' : ''}`);
+                    } else if (isHogeScore && (!heeftOpmerking || !heeftFoto)) {
+                        ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)} [conditie ${score}]${!heeftOpmerking ? ' (opmerking)' : ''}${!heeftFoto ? ' (foto)' : ''}`);
                     } else if (a.value === 'nvt' && !heeftOpmerking) {
                         ontbrekend.push(`• ${q.text || 'Vraag ' + (qi+1)} [n.v.t.] (opmerking)`);
                     }
                 });
             });
             if (ontbrekend.length > 0) {
-                await confirmAsync('Bij foute antwoorden zijn opmerking + foto verplicht. Bij n.v.t. is een opmerking verplicht.\n\nNog te doen:\n' + ontbrekend.slice(0, 5).join('\n') + (ontbrekend.length > 5 ? `\n...en ${ontbrekend.length - 5} meer` : ''));
+                await confirmAsync('Bij fout / conditiescore 4-6 zijn opmerking + foto verplicht.\nBij n.v.t. is een opmerking verplicht.\n\nNog te doen:\n' + ontbrekend.slice(0, 5).join('\n') + (ontbrekend.length > 5 ? `\n...en ${ontbrekend.length - 5} meer` : ''));
                 return;
             }
 
@@ -12166,6 +12503,15 @@
             doc.setFontSize(11);
             doc.text(tpl.name || 'Inspectie', ml, y);
             y += 8;
+            // Asset/locatie code prominent (voor Maximo koppeling)
+            if (insp.asset) {
+                doc.setFontSize(13);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(7, 86, 127);
+                doc.text(`Asset: ${insp.asset}`, ml, y);
+                doc.setTextColor(0, 0, 0);
+                y += 7;
+            }
 
             // === META INFO ===
             doc.setFontSize(8);
@@ -12194,6 +12540,9 @@
 
             // === SAMENVATTING ===
             let totalQ = 0, totalDone = 0, totalGood = 0, totalBad = 0, totalNvt = 0;
+            // Conditiescore-tracking (1 t/m 6)
+            const condCounts = [0, 0, 0, 0, 0, 0];
+            let condSum = 0, condCount = 0;
             sections.forEach((sec, si) => {
                 (sec.questions || []).forEach((q, qi) => {
                     totalQ++;
@@ -12203,9 +12552,19 @@
                         if (a.value === 'goed') totalGood++;
                         if (a.value === 'fout') totalBad++;
                         if (a.value === 'nvt') totalNvt++;
+                        // Conditiescore alleen tellen voor vragen van type 'conditiescore'
+                        if (q.type === 'conditiescore') {
+                            const sc = Number(a.value);
+                            if (sc >= 1 && sc <= 6) {
+                                condCounts[sc - 1]++;
+                                condSum += sc;
+                                condCount++;
+                            }
+                        }
                     }
                 });
             });
+            const condAvg = condCount > 0 ? (condSum / condCount) : null;
 
             // Samenvatting in een KTS-blauw kader met percentage
             const pct = totalQ > 0 ? Math.round((totalGood / totalQ) * 100) : 0;
@@ -12247,6 +12606,53 @@
             doc.setLineWidth(0.2);
             y += summaryH + 5;
 
+            // === CONDITIESCORE OVERZICHT (alleen als er conditiescores zijn) ===
+            if (condCount > 0) {
+                checkPage(28);
+                const condH = 24;
+                doc.setFillColor(248, 250, 252);
+                doc.setDrawColor(7, 86, 127);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(ml, y - 2, uw, condH, 2, 2, 'FD');
+
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(7, 86, 127);
+                doc.text('CONDITIESCORE (NEN 2767)', ml + 3, y + 3);
+
+                // Gemiddelde rechts
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(120, 120, 120);
+                doc.text(`Gemiddeld: `, pw - mr - 22, y + 3, { align: 'right' });
+                doc.setFont('helvetica', 'bold');
+                const avgColor = condAvg <= 2.5 ? [22, 163, 74] : (condAvg <= 3.5 ? [202, 138, 4] : [220, 38, 38]);
+                doc.setTextColor(...avgColor);
+                doc.text(condAvg.toFixed(1), pw - mr - 3, y + 3, { align: 'right' });
+
+                // 6 kolommen met de score-verdeling
+                const condStatY = y + 11;
+                const condColW = uw / 6;
+                const condColors = [
+                    [22, 163, 74], [101, 163, 13], [202, 138, 4],
+                    [234, 88, 12], [220, 38, 38], [127, 29, 29]
+                ];
+                const condLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
+                for (let i = 0; i < 6; i++) {
+                    const cx = ml + condColW * i + condColW / 2;
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(120, 120, 120);
+                    doc.text(`${i + 1} · ${condLabels[i]}`, cx, condStatY, { align: 'center' });
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    doc.setTextColor(...condColors[i]);
+                    doc.text(String(condCounts[i]), cx, condStatY + 7, { align: 'center' });
+                }
+                doc.setTextColor(0, 0, 0);
+                y += condH + 5;
+            }
+
             // === SECTIES MET RESULTATEN ===
             sections.forEach((sec, si) => {
                 checkPage(20);
@@ -12254,7 +12660,13 @@
                 let secDone = 0, secGood = 0, secBad = 0;
                 (sec.questions || []).forEach((q, qi) => {
                     const a = answers[`s${si}_q${qi}`];
-                    if (a && a.value) { secDone++; if (a.value === 'goed') secGood++; if (a.value === 'fout') secBad++; }
+                    if (a && a.value) {
+                        secDone++;
+                        if (a.value === 'goed') secGood++;
+                        if (a.value === 'fout') secBad++;
+                        const sc = Number(a.value);
+                        if (!isNaN(sc) && sc >= 4 && sc <= 6) secBad++;
+                    }
                 });
                 // KTS-blauwe sectie header
                 doc.setFillColor(7, 86, 127);
@@ -12295,10 +12707,27 @@
                     const qLines = doc.splitTextToSize(q.text || 'Vraag ' + (qi + 1), uw - 30);
                     doc.text(qLines, ml + 2, y);
 
+                    // Lichtrode achtergrond bij hoge conditiescore (4-6)
+                    const numScore = Number(val);
+                    const isHogeScore = !isNaN(numScore) && numScore >= 4 && numScore <= 6;
+                    if (isHogeScore) {
+                        let estH = 6;
+                        if (q.component) estH += 4;
+                        if (remark) estH += 4;
+                        if (a.photos && a.photos.length > 0) estH += 4 + 30 + 3 + (Math.ceil(a.photos.length / 3) - 1) * 33;
+                        doc.setFillColor(254, 242, 242);
+                        doc.rect(ml, y - 3, uw, estH, 'F');
+                    }
+
                     // Resultaat rechts
                     let resultText = val || '-';
                     let resultColor = [0, 0, 0];
-                    if (val === 'goed') { resultText = '✓ GOED'; resultColor = [22, 163, 74]; }
+                    if (q.type === 'conditiescore' && numScore >= 1 && numScore <= 6) {
+                        const condLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
+                        const condColors = [[22, 163, 74], [101, 163, 13], [202, 138, 4], [234, 88, 12], [220, 38, 38], [127, 29, 29]];
+                        resultText = `${numScore} — ${condLabels[numScore - 1]}`;
+                        resultColor = condColors[numScore - 1];
+                    } else if (val === 'goed') { resultText = '✓ GOED'; resultColor = [22, 163, 74]; }
                     else if (val === 'fout') { resultText = '✗ FOUT'; resultColor = [220, 38, 38]; }
                     else if (val === 'nvt') { resultText = 'N.v.t.'; resultColor = [107, 114, 128]; }
 
@@ -12381,7 +12810,8 @@
             addPdfFooter(doc, false, insp.inspection_number || '');
 
             // Download
-            const filename = `Inspectierapport_${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
+            const assetPart = insp.asset ? `${insp.asset}_` : '';
+            const filename = `Inspectierapport_${assetPart}${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
             doc.save(filename);
             showToast('✓ PDF gedownload');
         }
