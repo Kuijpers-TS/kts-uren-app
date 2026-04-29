@@ -11878,19 +11878,25 @@
                 } else if (q.type === 'conditiescore') {
                     const scoreLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
                     const scoreColors = [
-                        ['#16a34a', '#dcfce7'], ['#65a30d', '#ecfccb'], ['#ca8a04', '#fef9c3'],
-                        ['#ea580c', '#ffedd5'], ['#dc2626', '#fee2e2'], ['#7f1d1d', '#fecaca']
+                        ['#16a34a', '#dcfce7', '#86efac'], ['#65a30d', '#ecfccb', '#bef264'], ['#ca8a04', '#fef9c3', '#fde047'],
+                        ['#ea580c', '#ffedd5', '#fdba74'], ['#dc2626', '#fee2e2', '#fca5a5'], ['#7f1d1d', '#fecaca', '#f87171']
                     ];
                     let btnsHtml = '';
                     for (let s = 1; s <= 6; s++) {
-                        const [c, bg] = scoreColors[s - 1];
+                        const [c, bgLight, bgMid] = scoreColors[s - 1];
                         const active = val.value === String(s);
-                        btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} — ${scoreLabels[s-1]}" style="flex:1;padding:8px 4px;border:1.5px solid ${active ? c : 'var(--border)'};border-radius:6px;background:${active ? bg : 'white'};color:${active ? c : 'var(--text)'};font-weight:700;font-size:0.85rem;cursor:pointer">${s}</button>`;
+                        // Niet-actief: subtiele tint zodat gradient zichtbaar is
+                        // Actief: volle kleur, witte tekst, schaduw, schaalvergroot
+                        const btnStyle = active
+                            ? `flex:1;padding:10px 4px;border:2px solid ${c};border-radius:8px;background:${c};color:white;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 8px ${c}66;transform:scale(1.05);transition:all 0.15s`
+                            : `flex:1;padding:8px 4px;border:1.5px solid ${bgMid};border-radius:6px;background:${bgLight};color:${c};font-weight:700;font-size:0.85rem;cursor:pointer;opacity:0.7;transition:all 0.15s`;
+                        btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} — ${scoreLabels[s-1]}" style="${btnStyle}">${s}</button>`;
                     }
                     const currentLabel = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreLabels[Number(val.value) - 1] : '';
+                    const currentColor = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreColors[Number(val.value) - 1][0] : 'var(--muted)';
                     inputHtml = `
-                        <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">${btnsHtml}</div>
-                        <div style="font-size:0.65rem;color:var(--muted);margin-top:3px;text-align:center">1=Uitstekend · 6=Zeer slecht (NEN 2767)${currentLabel ? ' — <strong>'+currentLabel+'</strong>' : ''}</div>`;
+                        <div style="display:flex;gap:4px;margin-top:8px;align-items:center" id="insp-btns-${key}">${btnsHtml}</div>
+                        <div style="font-size:0.7rem;margin-top:6px;text-align:center;color:${currentLabel ? currentColor : 'var(--muted)'}">${currentLabel ? '<strong>Score ' + val.value + ' — ' + currentLabel + '</strong>' : '1=Uitstekend · 6=Zeer slecht (NEN 2767)'}</div>`;
                 } else if (q.type === 'meting' || q.type === 'numeriek') {
                     inputHtml = `
                         <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
