@@ -12067,41 +12067,40 @@
                 _inspTemplates = data || [];
 
                 if (_inspTemplates.length === 0) {
+                    if (!container.classList.contains('insp-module')) container.classList.add('insp-module');
                     container.innerHTML = `
-                        <div style="text-align:center;padding:40px 20px">
-                            <div style="font-size:2rem;margin-bottom:8px">📝</div>
-                            <div style="color:var(--muted);font-size:0.85rem">Nog geen inspectie-formulieren</div>
-                            <div style="color:var(--muted);font-size:0.75rem;margin-top:4px">Klik op '+ Nieuw formulier' om te beginnen</div>
+                        <div class="insp-empty-state" style="padding:48px 20px">
+                            <div class="icon" style="font-size:32px">○</div>
+                            <div style="font-size:14px;color:var(--insp-ink-500);font-weight:500">Nog geen inspectie-formulieren</div>
+                            <div style="font-size:12px;color:var(--insp-ink-400);margin-top:6px">Klik op '+ Nieuw formulier' om te beginnen, of importeer uit Excel</div>
                         </div>`;
                     return;
                 }
 
-                container.innerHTML = _inspTemplates.map(t => {
+                // Wikkel container met insp-module class voor design-systeem
+                if (!container.classList.contains('insp-module')) container.classList.add('insp-module');
+                container.innerHTML = '<div class="insp-entry-list">' + _inspTemplates.map(t => {
                     const sections = t.sections || [];
                     const totalQuestions = sections.reduce((sum, s) => sum + (s.questions || []).length, 0);
-                    const catColors = {
-                        'commissioning': '#e0f2fe', 'onderhoud': '#d1fae5',
-                        'keuring': '#fef3c7', 'veiligheid': '#fee2e2', 'algemeen': '#f3f4f6'
-                    };
-                    const catBg = catColors[t.category] || '#f3f4f6';
+                    const statusLabel = t.is_active ? 'Actief' : 'Inactief';
+                    const statusClass = t.is_active ? 'is-afgerond' : 'is-archief';
+                    const entryClass = 'insp-entry insp-entry-clickable ' + (t.is_active ? 'is-afgerond' : 'is-archief');
                     return `
-                        <div class="entry-card" onclick="inspOpenTemplateEditor('${t.id}')" style="cursor:pointer">
-                            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+                        <div class="${entryClass}" onclick="inspOpenTemplateEditor('${t.id}')">
+                            <div class="insp-entry-head">
                                 <div style="flex:1;min-width:0">
-                                    <div style="font-weight:700;font-size:0.85rem">${t.name || 'Naamloos'}</div>
-                                    <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
-                                        ${t.location ? escapeHtml(t.location) + ' · ' : ''}${escapeHtml(t.installation || '')}
-                                    </div>
-                                    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                                        <span style="font-size:0.65rem;background:${catBg};padding:2px 8px;border-radius:4px;font-weight:600">${t.category || 'algemeen'}</span>
-                                        <span style="font-size:0.65rem;background:#f3f4f6;padding:2px 8px;border-radius:4px">${sections.length} secties · ${totalQuestions} vragen</span>
-                                        ${t.frequency ? `<span style="font-size:0.65rem;background:#ede9fe;padding:2px 8px;border-radius:4px">${escapeHtml(t.frequency)}</span>` : ''}
-                                    </div>
+                                    <div class="insp-entry-meta">${escapeHtml(t.category || 'algemeen').toUpperCase()}${t.frequency ? ' · ' + escapeHtml(t.frequency).toUpperCase() : ''}</div>
+                                    <div class="insp-entry-title">${escapeHtml(t.name || 'Naamloos')}</div>
+                                    ${t.location || t.installation ? `<div style="font-size:12px;color:var(--insp-ink-500);margin-top:4px">${t.location ? escapeHtml(t.location) : ''}${t.location && t.installation ? ' · ' : ''}${escapeHtml(t.installation || '')}</div>` : ''}
                                 </div>
-                                <div style="font-size:0.7rem;color:var(--muted);white-space:nowrap">${t.is_active ? '✅ Actief' : '⏸ Inactief'}</div>
+                                <span class="insp-status-pill ${statusClass}">${statusLabel}</span>
+                            </div>
+                            <div class="insp-entry-progress" style="margin-top:8px">
+                                <span class="insp-tag">${sections.length} sectie${sections.length === 1 ? '' : 's'}</span>
+                                <span class="insp-tag">${totalQuestions} vragen</span>
                             </div>
                         </div>`;
-                }).join('');
+                }).join('') + '</div>';
             } catch (err) {
                 container.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;font-size:0.85rem">Fout: ${err.message}</div>`;
             }
@@ -13982,58 +13981,66 @@
                 return false;
             }
 
-            // === HEADER ===
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('KUIJPERS TECHNICAL SERVICES BV', ml, y);
-            y += 5;
-            doc.setFont('helvetica', 'normal');
+            // === HEADER (compact, geen dubbele bedrijfsnaam — die zit al in voettekst) ===
+            // Klein label "INSPECTIERAPPORT" boven de titel in mono uppercase
             doc.setFontSize(8);
-            doc.text('KVK: 95498958 | BTW: NL867472888B01', ml, y);
-            y += 10;
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(7, 86, 127);
+            doc.text('INSPECTIERAPPORT', ml, y);
+            doc.setTextColor(0, 0, 0);
+            y += 6;
 
             // === TITEL ===
-            doc.setFontSize(16);
+            doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
-            doc.text('Inspectierapport', ml, y);
-            y += 8;
-            doc.setFontSize(11);
-            doc.text(tpl.name || 'Inspectie', ml, y);
-            y += 8;
+            doc.setTextColor(15, 27, 45);
+            doc.text(tpl.name || 'Inspectie', ml, y, { maxWidth: uw });
+            y += 9;
+
             // Asset/locatie code prominent (voor Maximo koppeling)
             if (insp.asset) {
-                doc.setFontSize(13);
+                doc.setFillColor(7, 86, 127);
+                doc.rect(ml, y - 5, 50, 8, 'F');
+                doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(7, 86, 127);
-                doc.text(`Asset: ${insp.asset}`, ml, y);
+                doc.setTextColor(255, 255, 255);
+                doc.text(insp.asset, ml + 3, y);
                 doc.setTextColor(0, 0, 0);
-                y += 7;
+                y += 8;
             }
 
-            // === META INFO ===
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            const meta = [
-                ['Inspectienummer', insp.inspection_number || '-'],
-                ['Datum', insp.inspection_date ? new Date(insp.inspection_date).toLocaleDateString('nl-NL') : '-'],
-                ['Status', insp.status || '-'],
-                ['Locatie', insp.location || tpl.location || '-'],
-                ['Installatie', insp.installation || tpl.installation || '-'],
-                ['Asset', insp.asset || tpl.asset || '-'],
-                ['Categorie', tpl.category || '-'],
-                ['Frequentie', tpl.frequency || '-'],
-            ];
+            // === META INFO — twee koloms compact grid ===
+            const meta = [];
+            if (insp.inspection_number) meta.push(['Nummer', insp.inspection_number]);
+            if (insp.inspection_date) meta.push(['Datum', new Date(insp.inspection_date).toLocaleDateString('nl-NL')]);
+            if (insp.location || tpl.location) meta.push(['Locatie', insp.location || tpl.location]);
+            if (tpl.category) meta.push(['Categorie', tpl.category]);
+            if (tpl.frequency) meta.push(['Frequentie', tpl.frequency]);
+            if (insp.installation || tpl.installation) meta.push(['Installatie', insp.installation || tpl.installation]);
 
-            // Meta tabel
-            doc.setDrawColor(200);
-            meta.forEach(([label, value]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, ml, y);
+            // Linker en rechter kolom
+            const metaCol1X = ml;
+            const metaCol2X = ml + uw / 2 + 4;
+            doc.setFontSize(7);
+            const startY = y;
+            meta.forEach((row, i) => {
+                const colX = i % 2 === 0 ? metaCol1X : metaCol2X;
+                const rowY = startY + Math.floor(i / 2) * 4.5;
                 doc.setFont('helvetica', 'normal');
-                doc.text(String(value), ml + 35, y);
-                y += lineH;
+                doc.setTextColor(120, 120, 120);
+                doc.text(row[0].toUpperCase(), colX, rowY);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(15, 27, 45);
+                doc.text(String(row[1]), colX + 22, rowY, { maxWidth: uw / 2 - 26 });
             });
-            y += 5;
+            doc.setTextColor(0, 0, 0);
+            y = startY + Math.ceil(meta.length / 2) * 4.5 + 5;
+
+            // Hairline scheidingslijn
+            doc.setDrawColor(231, 228, 221);
+            doc.setLineWidth(0.3);
+            doc.line(ml, y, pw - mr, y);
+            y += 8;
 
             // === SAMENVATTING ===
             let totalQ = 0, totalDone = 0, totalGood = 0, totalBad = 0, totalNvt = 0;
@@ -14069,38 +14076,39 @@
             // Samenvatting in een KTS-blauw kader met percentage
             const pct = totalQ > 0 ? Math.round((totalGood / totalQ) * 100) : 0;
             const summaryH = 26;
-            doc.setFillColor(240, 247, 252);
-            doc.setDrawColor(7, 86, 127);
-            doc.setLineWidth(0.5);
+            // Off-white achtergrond met subtle border (design-systeem look)
+            doc.setFillColor(250, 250, 247);
+            doc.setDrawColor(231, 228, 221);
+            doc.setLineWidth(0.3);
             doc.roundedRect(ml, y - 2, uw, summaryH, 2, 2, 'FD');
 
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(7, 86, 127);
-            doc.text('SAMENVATTING', ml + 3, y + 3);
+            doc.text('SAMENVATTING', ml + 4, y + 3);
 
-            // Statistieken op 1 rij: Totaal | Goed | Fout | Nvt | Score%
+            // Statistieken op 1 rij — design-kleuren (gedempt, NEN-stijl)
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
             const statY = y + 11;
             const colW = uw / 5;
             const stats = [
-                { label: 'Totaal', value: String(totalQ), color: [0, 0, 0] },
-                { label: 'Goed', value: String(totalGood), color: [22, 163, 74] },
-                { label: 'Fout', value: String(totalBad), color: [220, 38, 38] },
-                { label: 'N.v.t.', value: String(totalNvt), color: [107, 114, 128] },
-                { label: 'Score', value: pct + '%', color: pct === 100 ? [22, 163, 74] : (totalBad > 0 ? [220, 38, 38] : [7, 86, 127]) },
+                { label: 'TOTAAL', value: String(totalQ), color: [15, 27, 45] },
+                { label: 'GOED', value: String(totalGood), color: [47, 125, 79] },
+                { label: 'AFW.', value: String(totalBad), color: [160, 40, 52] },
+                { label: 'N.V.T.', value: String(totalNvt), color: [92, 102, 117] },
+                { label: 'SCORE', value: pct + '%', color: pct === 100 ? [47, 125, 79] : (totalBad > 0 ? [160, 40, 52] : [7, 86, 127]) },
             ];
             stats.forEach((s, i) => {
                 const cx = ml + colW * i + colW / 2;
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(7);
-                doc.setTextColor(120, 120, 120);
+                doc.setFontSize(6.5);
+                doc.setTextColor(138, 147, 161);
                 doc.text(s.label, cx, statY, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(11);
+                doc.setFontSize(13);
                 doc.setTextColor(...s.color);
-                doc.text(s.value, cx, statY + 7, { align: 'center' });
+                doc.text(s.value, cx, statY + 7.5, { align: 'center' });
             });
             doc.setTextColor(0, 0, 0);
             doc.setLineWidth(0.2);
@@ -14126,17 +14134,22 @@
                 doc.setTextColor(120, 120, 120);
                 doc.text(`Gemiddeld: `, pw - mr - 22, y + 3, { align: 'right' });
                 doc.setFont('helvetica', 'bold');
-                const avgColor = condAvg <= 2.5 ? [22, 163, 74] : (condAvg <= 3.5 ? [202, 138, 4] : [220, 38, 38]);
+                // Design-systeem NEN kleuren (gedempt, matchend met app)
+                const condColors = [
+                    [47, 125, 79],    // 1 — uitstekend
+                    [107, 158, 58],   // 2 — goed
+                    [184, 148, 39],   // 3 — redelijk
+                    [199, 122, 42],   // 4 — matig (afwijking)
+                    [184, 84, 50],    // 5 — slecht (afwijking)
+                    [142, 42, 46]     // 6 — zeer slecht (afwijking)
+                ];
+                const avgColor = condAvg <= 2.5 ? condColors[0] : (condAvg <= 3.5 ? condColors[2] : condColors[4]);
                 doc.setTextColor(...avgColor);
                 doc.text(condAvg.toFixed(1), pw - mr - 3, y + 3, { align: 'right' });
 
                 // 6 kolommen met de score-verdeling
                 const condStatY = y + 11;
                 const condColW = uw / 6;
-                const condColors = [
-                    [22, 163, 74], [101, 163, 13], [202, 138, 4],
-                    [234, 88, 12], [220, 38, 38], [127, 29, 29]
-                ];
                 const condLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
                 for (let i = 0; i < 6; i++) {
                     const cx = ml + condColW * i + condColW / 2;
@@ -14189,14 +14202,13 @@
                     const val = a.value || '';
                     const remark = a.remark || '';
 
-                    // Lichtrode achtergrond bij fout antwoorden
+                    // Subtiele rode tint bij fout antwoorden (design-stijl: alert-soft)
                     if (val === 'fout') {
-                        // Schat hoogte: vraag + component + opmerking + foto's
                         let estH = 6;
                         if (q.component) estH += 4;
                         if (remark) estH += 4;
                         if (a.photos && a.photos.length > 0) estH += 4 + 30 + 3 + (Math.ceil(a.photos.length / 3) - 1) * 33;
-                        doc.setFillColor(254, 242, 242);
+                        doc.setFillColor(245, 229, 229); // alert-soft uit design-tokens
                         doc.rect(ml, y - 3, uw, estH, 'F');
                     }
 
@@ -14207,7 +14219,7 @@
                     const qLines = doc.splitTextToSize(q.text || 'Vraag ' + (qi + 1), uw - 30);
                     doc.text(qLines, ml + 2, y);
 
-                    // Lichtrode achtergrond bij hoge conditiescore (4-6)
+                    // Subtiele rode tint bij hoge conditiescore (4-6)
                     const numScore = Number(val);
                     const isHogeScore = !isNaN(numScore) && numScore >= 4 && numScore <= 6;
                     if (isHogeScore) {
@@ -14215,7 +14227,7 @@
                         if (q.component) estH += 4;
                         if (remark) estH += 4;
                         if (a.photos && a.photos.length > 0) estH += 4 + 30 + 3 + (Math.ceil(a.photos.length / 3) - 1) * 33;
-                        doc.setFillColor(254, 242, 242);
+                        doc.setFillColor(245, 229, 229);
                         doc.rect(ml, y - 3, uw, estH, 'F');
                     }
 
@@ -14224,12 +14236,13 @@
                     let resultColor = [0, 0, 0];
                     if (q.type === 'conditiescore' && numScore >= 1 && numScore <= 6) {
                         const condLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
-                        const condColors = [[22, 163, 74], [101, 163, 13], [202, 138, 4], [234, 88, 12], [220, 38, 38], [127, 29, 29]];
+                        // Design-systeem NEN kleuren (gedempt)
+                        const condColors = [[47, 125, 79], [107, 158, 58], [184, 148, 39], [199, 122, 42], [184, 84, 50], [142, 42, 46]];
                         resultText = `${numScore} — ${condLabels[numScore - 1]}`;
                         resultColor = condColors[numScore - 1];
-                    } else if (val === 'goed') { resultText = '✓ GOED'; resultColor = [22, 163, 74]; }
-                    else if (val === 'fout') { resultText = '✗ FOUT'; resultColor = [220, 38, 38]; }
-                    else if (val === 'nvt') { resultText = 'N.v.t.'; resultColor = [107, 114, 128]; }
+                    } else if (val === 'goed') { resultText = '✓ GOED'; resultColor = [47, 125, 79]; }
+                    else if (val === 'fout') { resultText = '✗ FOUT'; resultColor = [160, 40, 52]; }
+                    else if (val === 'nvt') { resultText = 'N.v.t.'; resultColor = [92, 102, 117]; }
 
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(...resultColor);
