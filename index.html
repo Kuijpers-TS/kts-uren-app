@@ -13196,12 +13196,18 @@
                 const st = sectionStats[si];
                 const status = _inspGetSectionStatus(st);
                 const sectPct = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-                // Code + titel splitsen op " — " indien aanwezig
+                // Code + titel splitsen op de EERSTE " — " indien aanwezig (rest blijft samen)
                 const fullTitle = sec.title || 'Sectie ' + (si + 1);
                 let code, title;
-                const dashSplit = fullTitle.split(' — ');
-                if (dashSplit.length === 2) { code = dashSplit[0]; title = dashSplit[1]; }
-                else { code = 'SECTIE ' + (si + 1); title = fullTitle; }
+                const firstDash = fullTitle.indexOf(' — ');
+                if (firstDash > 0 && firstDash < 10) {
+                    // Korte code voor de dash (max 10 tekens) — bv "PG1", "PG2"
+                    code = fullTitle.substring(0, firstDash);
+                    title = fullTitle.substring(firstDash + 3);
+                } else {
+                    code = 'SECTIE ' + (si + 1);
+                    title = fullTitle;
+                }
                 // Count label
                 let countLabel;
                 if (status.cls === 'is-alert') {
@@ -13300,12 +13306,17 @@
             });
             const sectPct = qs.length > 0 ? Math.round((done / qs.length) * 100) : 0;
 
-            // Code + titel splitsen
+            // Code + titel splitsen op EERSTE " — "
             const fullTitle = sec.title || 'Sectie ' + (si + 1);
-            const dashSplit = fullTitle.split(' — ');
+            const firstDashIdx = fullTitle.indexOf(' — ');
             let secCode, secName;
-            if (dashSplit.length === 2) { secCode = dashSplit[0]; secName = dashSplit[1]; }
-            else { secCode = 'SECTIE ' + (si + 1); secName = fullTitle; }
+            if (firstDashIdx > 0 && firstDashIdx < 10) {
+                secCode = fullTitle.substring(0, firstDashIdx);
+                secName = fullTitle.substring(firstDashIdx + 3);
+            } else {
+                secCode = 'SECTIE ' + (si + 1);
+                secName = fullTitle;
+            }
 
             // Crumb-line: inspectie naam + asset code
             const crumbParts = [];
