@@ -1618,6 +1618,274 @@
         }
         .insp-modal-close:hover { background: var(--insp-surface); }
 
+        /* Inspectie tab containers */
+        .insp-page-section { padding: 16px 18px; }
+        .insp-page-label {
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          margin-bottom: 10px;
+          font-weight: 500;
+        }
+
+        /* Template-card (Nieuwe inspectie starten) */
+        .insp-tpl-card {
+          appearance: none;
+          width: 100%;
+          text-align: left;
+          font-family: inherit;
+          background: var(--insp-surface);
+          border: 1px solid var(--insp-line);
+          border-radius: var(--insp-radius);
+          padding: 14px 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          cursor: pointer;
+          box-shadow: var(--insp-shadow-sm);
+          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+          margin-bottom: 10px;
+          color: var(--insp-ink-900);
+        }
+        .insp-tpl-card:hover {
+          transform: translateY(-1px);
+          box-shadow: var(--insp-shadow);
+          border-color: var(--kts-blue);
+        }
+        .insp-tpl-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          background: var(--kts-blue-50, #EAF2F7);
+          color: var(--kts-blue);
+          display: grid;
+          place-items: center;
+          flex-shrink: 0;
+        }
+        .insp-tpl-icon svg { width: 18px; height: 18px; }
+        .insp-tpl-body { flex: 1; min-width: 0; }
+        .insp-tpl-name {
+          font-size: 14px;
+          font-weight: 600;
+          letter-spacing: -0.005em;
+          color: var(--insp-ink-900);
+          line-height: 1.3;
+        }
+        .insp-tpl-desc {
+          font-size: 12px;
+          color: var(--insp-ink-500);
+          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .insp-tpl-tags {
+          display: flex;
+          gap: 4px;
+          margin-top: 6px;
+          flex-wrap: wrap;
+        }
+        .insp-tag {
+          font-family: var(--insp-font-mono);
+          font-size: 10px;
+          letter-spacing: 0.05em;
+          padding: 2px 7px;
+          border-radius: 4px;
+          background: var(--insp-bg-tint);
+          color: var(--insp-ink-500);
+          border: 1px solid var(--insp-line);
+        }
+        .insp-tpl-arrow {
+          color: var(--insp-ink-300);
+          flex-shrink: 0;
+          transition: color 180ms ease, transform 180ms ease;
+        }
+        .insp-tpl-arrow svg { width: 16px; height: 16px; }
+        .insp-tpl-card:hover .insp-tpl-arrow {
+          color: var(--kts-blue);
+          transform: translateX(2px);
+        }
+
+        /* Mijn inspecties — entry */
+        .insp-entry-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .insp-entry {
+          background: var(--insp-surface);
+          border: 1px solid var(--insp-line);
+          border-radius: var(--insp-radius);
+          padding: 14px 16px;
+          position: relative;
+          box-shadow: var(--insp-shadow-sm);
+          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+        .insp-entry::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 12px; bottom: 12px;
+          width: 3px;
+          border-radius: 0 3px 3px 0;
+          background: var(--insp-ink-300);
+        }
+        .insp-entry.is-concept::before { background: var(--insp-warn); }
+        .insp-entry.is-afgerond::before { background: var(--insp-ok); }
+        .insp-entry.is-archief::before { background: var(--insp-ink-300); }
+        .insp-entry.has-deviation::before { background: var(--insp-alert); }
+        .insp-entry-clickable { cursor: pointer; }
+        .insp-entry-clickable:hover {
+          transform: translateY(-1px);
+          box-shadow: var(--insp-shadow);
+          border-color: var(--insp-line-strong);
+        }
+        .insp-entry-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 8px;
+        }
+        .insp-entry-meta {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        .insp-entry-title {
+          font-size: 14px;
+          font-weight: 600;
+          letter-spacing: -0.005em;
+          color: var(--insp-ink-900);
+          margin-top: 2px;
+          line-height: 1.3;
+        }
+        .insp-status-pill {
+          font-family: var(--insp-font-mono);
+          font-size: 10px;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          padding: 3px 8px;
+          border-radius: 999px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .insp-status-pill.is-concept {
+          background: var(--insp-warn-soft);
+          color: var(--insp-warn);
+          border: 1px solid var(--insp-warn-line);
+        }
+        .insp-status-pill.is-afgerond {
+          background: var(--insp-ok-soft);
+          color: var(--insp-ok);
+          border: 1px solid var(--insp-ok-line);
+        }
+        .insp-status-pill.is-archief {
+          background: var(--insp-bg-tint);
+          color: var(--insp-ink-500);
+          border: 1px solid var(--insp-line-strong);
+        }
+        .insp-status-pill.is-alert {
+          background: var(--insp-alert-soft);
+          color: var(--insp-alert);
+          border: 1px solid var(--insp-alert-line);
+        }
+        .insp-entry-progress {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .insp-entry-progress .bar {
+          flex: 1;
+          height: 4px;
+          background: var(--insp-bg-tint);
+          border-radius: 999px;
+          overflow: hidden;
+        }
+        .insp-entry-progress .bar-fill {
+          height: 100%;
+          background: var(--kts-blue);
+          border-radius: 999px;
+        }
+        .insp-entry-progress .pct {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-500);
+          letter-spacing: 0.04em;
+          min-width: 60px;
+          text-align: right;
+        }
+        .insp-entry-actions {
+          display: flex;
+          gap: 6px;
+          margin-top: 12px;
+          flex-wrap: wrap;
+        }
+        .insp-action-btn {
+          appearance: none;
+          font-family: var(--insp-font-sans);
+          font-size: 12px;
+          font-weight: 500;
+          padding: 7px 12px;
+          border: 1px solid var(--insp-line-strong);
+          background: var(--insp-surface);
+          color: var(--insp-ink-700);
+          border-radius: 7px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          transition: all 150ms ease;
+        }
+        .insp-action-btn:hover {
+          background: var(--insp-bg-tint);
+          border-color: var(--insp-ink-300);
+        }
+        .insp-action-btn svg { width: 13px; height: 13px; }
+        .insp-action-btn.is-danger {
+          color: var(--insp-alert);
+          border-color: var(--insp-alert-line);
+          background: var(--insp-alert-soft);
+        }
+        .insp-action-btn.is-danger:hover {
+          background: #F8D6D9;
+        }
+        .insp-empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--insp-ink-400);
+          font-size: 13px;
+        }
+        .insp-empty-state .icon {
+          font-size: 24px;
+          margin-bottom: 8px;
+          color: var(--insp-ink-300);
+        }
+
+        /* Filter dropdown — design-stijl */
+        .insp-filter-select {
+          appearance: none;
+          background: var(--insp-surface);
+          border: 1px solid var(--insp-line-strong);
+          border-radius: 8px;
+          padding: 8px 32px 8px 12px;
+          font-family: var(--insp-font-sans);
+          font-size: 13px;
+          color: var(--insp-ink-700);
+          cursor: pointer;
+          background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235C6675' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+          background-repeat: no-repeat;
+          background-position: right 8px center;
+          background-size: 14px;
+          min-height: 38px;
+        }
+
         /* Responsive */
         @media (max-width: 360px) {
           .insp-sectie-grid { grid-template-columns: 1fr; }
@@ -1905,32 +2173,32 @@
         </div>
 
         <!-- ===== INSPECTIES SCREEN (voor alle gebruikers) ===== -->
-        <div class="screen" id="screen-inspecties">
+        <div class="screen insp-module" id="screen-inspecties">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                 <h2 style="font-size:1.1rem;font-weight:700;margin:0">🔍 Inspecties</h2>
             </div>
 
             <!-- Actieve templates om nieuwe inspectie te starten -->
             <div id="insp-user-templates" style="margin-bottom:20px">
-                <div style="font-weight:600;font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Nieuwe inspectie starten</div>
-                <div id="insp-user-template-list" style="display:flex;flex-direction:column;gap:8px">
+                <div class="insp-page-label">Nieuwe inspectie starten</div>
+                <div id="insp-user-template-list">
                     <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
                 </div>
             </div>
 
             <!-- Mijn inspecties -->
             <div id="insp-user-own">
-                <div style="font-weight:600;font-size:0.8rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Mijn inspecties</div>
-                <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-                    <select id="insp-user-filter-status" onchange="inspLoadUserInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                <div class="insp-page-label">Mijn inspecties</div>
+                <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+                    <select id="insp-user-filter-status" class="insp-filter-select" onchange="inspLoadUserInspections()" style="flex:1;min-width:100px">
                         <option value="">Actieve (concept + afgerond)</option>
                         <option value="concept">Concept</option>
                         <option value="afgerond">Afgerond</option>
                         <option value="archief">Gearchiveerd</option>
                     </select>
                 </div>
-                <div id="insp-user-list" style="display:flex;flex-direction:column;gap:8px">
-                    <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen inspecties gevonden</div>
+                <div id="insp-user-list">
+                    <div class="insp-empty-state">Laden...</div>
                 </div>
             </div>
         </div>
@@ -12493,20 +12761,24 @@
                 return;
             }
 
+            // SVG icons (klein, design-stijl)
+            const clipboardIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>';
+            const arrowRight = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
             list.innerHTML = templates.map(t => `
-                <div onclick="inspStartFromTemplate('${t.id}')" style="background:white;border-radius:12px;padding:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
-                    <div style="flex:1;min-width:0">
-                        <div style="font-weight:700;font-size:0.85rem">${escapeHtml(t.name)}</div>
-                        <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.description || '')}</div>
-                        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-                            ${t.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${escapeHtml(t.category)}</span>` : ''}
-                            ${t.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${escapeHtml(t.frequency)}</span>` : ''}
-                            ${t.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(t.location)}</span>` : ''}
+                <button class="insp-tpl-card" onclick="inspStartFromTemplate('${t.id}')">
+                    <div class="insp-tpl-icon">${clipboardIcon}</div>
+                    <div class="insp-tpl-body">
+                        <div class="insp-tpl-name">${escapeHtml(t.name)}</div>
+                        ${t.description ? `<div class="insp-tpl-desc">${escapeHtml(t.description)}</div>` : ''}
+                        <div class="insp-tpl-tags">
+                            ${t.category ? `<span class="insp-tag">${escapeHtml(t.category)}</span>` : ''}
+                            ${t.frequency ? `<span class="insp-tag">${escapeHtml(t.frequency)}</span>` : ''}
+                            ${t.location ? `<span class="insp-tag">${escapeHtml(t.location)}</span>` : ''}
                         </div>
                     </div>
-                    <div style="color:var(--kts-blue);font-size:1.2rem;flex-shrink:0">▶</div>
-                </div>
+                    <div class="insp-tpl-arrow">${arrowRight}</div>
+                </button>
             `).join('');
         }
 
@@ -12534,44 +12806,79 @@
             const { data: inspections, error } = await query;
 
             if (error || !inspections || inspections.length === 0) {
-                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen inspecties gevonden</div>';
+                list.innerHTML = '<div class="insp-empty-state"><div class="icon">○</div>Geen inspecties gevonden</div>';
                 return;
             }
 
-            const statusColors = {
-                concept: { bg: '#fef3c7', color: '#92400e', label: 'Concept' },
-                afgerond: { bg: '#dcfce7', color: '#166534', label: 'Afgerond' },
-                goedgekeurd: { bg: '#dbeafe', color: '#1e40af', label: 'Goedgekeurd' }
-            };
+            // Action button SVG icons
+            const pdfIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+            const copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            const archiveIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>';
+            const undoIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>';
+            const trashIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 
-            list.innerHTML = inspections.map(ins => {
-                const sc = statusColors[ins.status] || statusColors.concept;
+            list.innerHTML = '<div class="insp-entry-list">' + inspections.map(ins => {
                 const templateName = ins.inspection_templates?.name || 'Onbekend';
                 const date = ins.inspection_date ? new Date(ins.inspection_date).toLocaleDateString('nl-NL') : '';
                 const progress = ins.total_questions > 0 ? Math.round((ins.answered_questions / ins.total_questions) * 100) : 0;
+                const failedCount = ins.failed_questions || 0;
+                const hasDeviation = failedCount > 0;
+
+                // Status pill
+                let pillClass = 'is-concept', pillLabel = 'Concept';
+                if (ins.status === 'afgerond') {
+                    if (hasDeviation) { pillClass = 'is-alert'; pillLabel = `Afgerond · ${failedCount} afw.`; }
+                    else { pillClass = 'is-afgerond'; pillLabel = 'Afgerond'; }
+                } else if (ins.status === 'archief') {
+                    pillClass = 'is-archief'; pillLabel = 'Gearchiveerd';
+                } else if (ins.status === 'goedgekeurd') {
+                    pillClass = 'is-afgerond'; pillLabel = 'Goedgekeurd';
+                }
+
+                // Entry-card status class (voor accentstreep)
+                let entryClass = 'insp-entry insp-entry-clickable is-' + (ins.status || 'concept');
+                if (hasDeviation && ins.status === 'afgerond') entryClass += ' has-deviation';
+
+                // Meta-line: nummer · datum · locatie/asset
+                const metaParts = [];
+                if (ins.inspection_number) metaParts.push(escapeHtml(ins.inspection_number));
+                if (date) metaParts.push(date);
+                if (ins.asset) metaParts.push(escapeHtml(ins.asset));
+                else if (ins.location) metaParts.push(escapeHtml(ins.location));
+                const metaLine = metaParts.join(' · ');
+
+                // Actie-knoppen
+                const showPdf = (ins.status === 'afgerond' || ins.status === 'archief');
+                const showArchive = ins.status === 'afgerond';
+                const showUnarchive = ins.status === 'archief';
+
+                const actions = [];
+                if (showPdf) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')">${pdfIcon} PDF</button>`);
+                actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspCopyForObject('${ins.id}','${ins.template_id}')" title="Kopieer voor ander object">${copyIcon} Kopieer</button>`);
+                if (showArchive) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspArchive('${ins.id}', true)">${archiveIcon} Archiveer</button>`);
+                if (showUnarchive) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspArchive('${ins.id}', false)">${undoIcon} Terug</button>`);
+                actions.push(`<button class="insp-action-btn is-danger" onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(templateName).replace(/'/g, "\\'")}')">${trashIcon} Verwijder</button>`);
+
                 return `
-                    <div onclick="inspOpenInspection('${ins.id}')" style="background:white;border-radius:12px;padding:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.06);border:2px solid transparent;transition:all 0.15s" onmouseover="this.style.borderColor='var(--kts-blue)'" onmouseout="this.style.borderColor='transparent'">
-                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
-                            <div style="font-weight:700;font-size:0.85rem">${templateName}</div>
-                            <span style="font-size:0.7rem;padding:2px 8px;border-radius:6px;background:${sc.bg};color:${sc.color};font-weight:600">${sc.label}</span>
+                    <div class="${entryClass}" onclick="inspOpenInspection('${ins.id}')">
+                        <div class="insp-entry-head">
+                            <div style="flex:1;min-width:0">
+                                ${metaLine ? `<div class="insp-entry-meta">${metaLine}</div>` : ''}
+                                <div class="insp-entry-title">${escapeHtml(templateName)}</div>
+                            </div>
+                            <span class="insp-status-pill ${pillClass}">${pillLabel}</span>
                         </div>
-                        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">${date}${ins.location ? ' — ' + ins.location : ''}${ins.inspection_number ? ' — ' + ins.inspection_number : ''}</div>
                         ${ins.total_questions > 0 ? `
-                        <div style="background:#f1f5f9;border-radius:4px;height:6px;overflow:hidden;margin-top:6px">
-                            <div style="background:var(--kts-blue);height:100%;width:${progress}%;border-radius:4px;transition:width 0.3s"></div>
-                        </div>
-                        <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${ins.answered_questions}/${ins.total_questions} vragen (${progress}%)</div>
-                        ` : ''}
-                        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-                            ${ins.status === 'afgerond' || ins.status === 'archief' ? `<button onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--text)">📄 PDF</button>` : ''}
-                            <button onclick="event.stopPropagation();inspCopyForObject('${ins.id}','${ins.template_id}')" style="padding:6px 10px;border:1px solid #bae6fd;border-radius:6px;background:#e0f2fe;color:#0369a1;font-size:0.75rem;cursor:pointer" title="Kopieer antwoorden naar nieuwe inspectie voor ander object">📑 Kopieer voor ander object</button>
-                            ${ins.status === 'afgerond' ? `<button onclick="event.stopPropagation();inspArchive('${ins.id}', true)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#f1f5f9;color:#475569;font-size:0.75rem;cursor:pointer">📦 Archiveer</button>` : ''}
-                            ${ins.status === 'archief' ? `<button onclick="event.stopPropagation();inspArchive('${ins.id}', false)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#dcfce7;color:#166534;font-size:0.75rem;cursor:pointer">↩️ Terug naar afgerond</button>` : ''}
-                            <button onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(templateName).replace(/'/g, "\\'")}')" style="padding:6px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:0.75rem;cursor:pointer">🗑️ Verwijder</button>
+                        <div class="insp-entry-progress">
+                            <div class="bar"><div class="bar-fill" style="width:${progress}%"></div></div>
+                            <div class="pct">${ins.answered_questions}/${ins.total_questions} · ${progress}%</div>
+                        </div>` : ''}
+                        <div class="insp-entry-actions">
+                            ${actions.join('')}
                         </div>
                     </div>
                 `;
-            }).join('');
+            }).join('') + '</div>';
         }
 
         // Inspectie kopiëren voor ander object (zelfde template, antwoorden mee)
