@@ -14438,9 +14438,8 @@
             // Voettekst toevoegen (paginanummers zitten daar nu in)
             addPdfFooter(doc, false, insp.inspection_number || '');
 
-            // Download
-            const assetPart = insp.asset ? `${insp.asset}_` : '';
-            const filename = `Inspectierapport_${assetPart}${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
+            // Download — asset zit al in inspection_number, dus niet dubbel toevoegen
+            const filename = `Inspectierapport_${(insp.inspection_number || 'onbekend').replace(/\//g, '-')}.pdf`;
             doc.save(filename);
             showToast('✓ PDF gedownload');
         }
