@@ -13427,6 +13427,9 @@
             // === SAMENVATTING ===
             let totalQ = 0, totalDone = 0, totalGood = 0, totalBad = 0, totalNvt = 0;
             // Conditiescore-tracking (1 t/m 6)
+            // Foto-bijlage verzamelen tijdens vraag-rendering
+            const photoBijlage = [];
+
             const condCounts = [0, 0, 0, 0, 0, 0];
             let condSum = 0, condCount = 0;
             sections.forEach((sec, si) => {
@@ -13647,29 +13650,29 @@
                         y += Math.max(remarkLines.length * 3.5, 4);
                     }
 
-                    // Foto's (max 3 per rij, 40mm breed)
+                    // Foto's: nummer toewijzen en verwijzing tonen, foto zelf in bijlage achteraan
                     if (a.photos && a.photos.length > 0) {
-                        const photoW = 40, photoH = 30, photoGap = 3;
-                        const photosPerRow = 3;
-                        // Label "Foto's:"
+                        const startNum = photoBijlage.length + 1;
+                        a.photos.forEach((ph, pi) => {
+                            photoBijlage.push({
+                                photo: ph,
+                                sectionTitle: sec.title || 'Sectie ' + (si + 1),
+                                questionText: q.text || 'Vraag ' + (qi + 1),
+                                questionNum: qi + 1,
+                                resultText: resultText,
+                                remark: remark
+                            });
+                        });
+                        const endNum = photoBijlage.length;
+                        const refText = startNum === endNum
+                            ? `Foto ${startNum} — zie bijlage`
+                            : `Foto ${startNum}–${endNum} — zie bijlage`;
                         doc.setFontSize(7);
-                        doc.setFont('helvetica', 'bold');
-                        doc.setTextColor(100, 100, 100);
-                        doc.text(`Foto's (${a.photos.length}):`, ml + 4, y);
+                        doc.setFont('helvetica', 'italic');
+                        doc.setTextColor(7, 86, 127);
+                        doc.text(refText, ml + 4, y);
                         doc.setTextColor(0, 0, 0);
                         y += 4;
-                        for (let pi = 0; pi < a.photos.length; pi++) {
-                            if (pi % photosPerRow === 0) {
-                                checkPage(photoH + 4);
-                                if (pi > 0) y += photoH + photoGap;
-                            }
-                            const col = pi % photosPerRow;
-                            const xPos = ml + 4 + col * (photoW + photoGap);
-                            try {
-                                doc.addImage(a.photos[pi], 'JPEG', xPos, y, photoW, photoH);
-                            } catch(e) { console.warn('Foto niet toegevoegd:', e); }
-                        }
-                        y += photoH + 3;
                     }
 
                     // Lijn onder vraag
@@ -13691,6 +13694,95 @@
             doc.setFont('helvetica', 'normal');
             doc.text(`Gegenereerd: ${new Date().toLocaleString('nl-NL')}`, ml, y);
             doc.text('Kuijpers Technical Services BV — KTS Uren App', ml, y + 4);
+
+            // === BIJLAGE: FOTO'S ===
+            if (photoBijlage.length > 0) {
+                doc.addPage();
+                addPdfWatermark(doc, false);
+                let by = 20;
+
+                // Bijlage titel
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(7, 86, 127);
+                doc.text('Bijlage — Foto’s', ml, by);
+                doc.setTextColor(0, 0, 0);
+                by += 6;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(120, 120, 120);
+                doc.text(`${photoBijlage.length} foto${photoBijlage.length === 1 ? '' : "'s"} — gekoppeld aan vragen in dit rapport`, ml, by);
+                doc.setTextColor(0, 0, 0);
+                by += 8;
+
+                // Eén foto per pagina, full-width met caption
+                const captionH = 22; // hoogte voor onderschrift
+                const photoMaxW = uw;
+                const photoMaxH = 297 - by - captionH - 25; // ph - top - caption - footer marge
+
+                photoBijlage.forEach((p, idx) => {
+                    if (idx > 0) {
+                        doc.addPage();
+                        addPdfWatermark(doc, false);
+                        by = 20;
+                    }
+
+                    // Foto-nummer & sectie boven de foto
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(7, 86, 127);
+                    doc.text(`Foto ${idx + 1}`, ml, by);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(100, 100, 100);
+                    const sectionLine = String(p.sectionTitle || '');
+                    doc.text(sectionLine, pw - mr, by, { align: 'right' });
+                    doc.setTextColor(0, 0, 0);
+                    by += 5;
+
+                    // Vraagtekst (eventueel multi-line)
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'bold');
+                    const qPrefix = `Vraag ${p.questionNum}: `;
+                    const qFullText = qPrefix + (p.questionText || '');
+                    const qLines = doc.splitTextToSize(qFullText, uw);
+                    doc.text(qLines, ml, by);
+                    by += qLines.length * 4 + 2;
+
+                    // Resultaat + opmerking compact
+                    if (p.resultText && p.resultText !== '-') {
+                        doc.setFontSize(8);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(100, 100, 100);
+                        let line = `Resultaat: ${p.resultText}`;
+                        if (p.remark) line += `   ·   ${p.remark.length > 80 ? p.remark.substring(0, 80) + '…' : p.remark}`;
+                        const resultLines = doc.splitTextToSize(line, uw);
+                        doc.text(resultLines, ml, by);
+                        doc.setTextColor(0, 0, 0);
+                        by += resultLines.length * 3.5 + 3;
+                    }
+
+                    // Foto: full-width, behoud aspect ratio
+                    try {
+                        const props = doc.getImageProperties(p.photo);
+                        const ratio = props.width / props.height;
+                        let imgW = photoMaxW;
+                        let imgH = imgW / ratio;
+                        const remainH = 297 - by - 18;
+                        if (imgH > remainH) {
+                            imgH = remainH;
+                            imgW = imgH * ratio;
+                        }
+                        const imgX = ml + (uw - imgW) / 2;
+                        doc.addImage(p.photo, 'JPEG', imgX, by, imgW, imgH);
+                    } catch(e) {
+                        console.warn('Foto niet toegevoegd in bijlage:', e);
+                        doc.setTextColor(150);
+                        doc.text('[foto kon niet worden weergegeven]', ml, by);
+                        doc.setTextColor(0);
+                    }
+                });
+            }
 
             // Voettekst toevoegen (paginanummers zitten daar nu in)
             addPdfFooter(doc, false, insp.inspection_number || '');
