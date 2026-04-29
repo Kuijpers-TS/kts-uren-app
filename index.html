@@ -2416,9 +2416,14 @@
 
             <!-- ===== INSPECTIE TEMPLATES TAB ===== -->
             <div id="admin-insp-templates" style="display:none">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Inspectie-formulieren</div>
-                    <button class="btn btn-primary btn-sm" onclick="inspOpenTemplateEditor()">+ Nieuw formulier</button>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem">📤 Exporteer Excel</button>
+                        <label for="insp-import-excel-input" class="btn btn-sm" style="background:#d1fae5;color:#059669;border:1px solid #a7f3d0;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center">📥 Importeer Excel</label>
+                        <input type="file" id="insp-import-excel-input" accept=".xlsx,.xls" onchange="inspImportTemplatesExcel(this)" style="display:none">
+                        <button class="btn btn-primary btn-sm" onclick="inspOpenTemplateEditor()">+ Nieuw formulier</button>
+                    </div>
                 </div>
                 <div id="insp-template-list" style="display:flex;flex-direction:column;gap:8px">
                     <div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Laden...</div>
@@ -11808,6 +11813,254 @@
         }
 
         // ----- Inspectie Template Editor -----
+        // ===== EXCEL EXPORT VAN TEMPLATES =====
+        async function inspExportTemplatesExcel() {
+            if (!window.XLSX) { showToast('⚠️ Excel library nog niet geladen'); return; }
+            const sb = getSupabase();
+            if (!sb) return;
+            const { data: tpls, error } = await sb.from('inspection_templates')
+                .select('*').order('name');
+            if (error || !tpls || tpls.length === 0) {
+                showToast('⚠️ Geen templates gevonden');
+                return;
+            }
+
+            // Sheet 1: Templates (metadata)
+            const tplRows = tpls.map(t => ({
+                'Template naam': t.name || '',
+                'Asset code (default)': t.asset || '',
+                'Categorie': t.category || '',
+                'Frequentie': t.frequency || '',
+                'Locatie': t.location || '',
+                'Beschrijving': t.description || ''
+            }));
+
+            // Sheet 2: Vragen (plat per template)
+            const qRows = [];
+            tpls.forEach(t => {
+                (t.sections || []).forEach((sec, si) => {
+                    (sec.questions || []).forEach((q, qi) => {
+                        qRows.push({
+                            'Template naam': t.name || '',
+                            'Sectie volgorde': (si + 1) * 10,
+                            'Sectie titel': sec.title || '',
+                            'Vraag volgorde': (qi + 1) * 10,
+                            'Vraagtekst': q.text || '',
+                            'Type': q.type || 'goed_fout',
+                            'Component': q.component || '',
+                            'Discipline': q.discipline || '',
+                            'Eenheid': q.unit || '',
+                            'Permit vereist': q.permit_required ? 'ja' : 'nee',
+                            'Verplicht': q.required === false ? 'nee' : 'ja'
+                        });
+                    });
+                });
+            });
+
+            // Sheet 3: Instructies
+            const instRows = [
+                { 'Instructies': 'KTS Inspectie Templates — Excel import/export' },
+                { 'Instructies': '' },
+                { 'Instructies': 'WERKWIJZE VRAGEN AANPASSEN:' },
+                { 'Instructies': '1. Open sheet \'Vragen\'' },
+                { 'Instructies': '2. Pas \'Vraagtekst\' aan, of voeg/verwijder rijen' },
+                { 'Instructies': '3. Hou \'Template naam\' en \'Sectie titel\' consistent' },
+                { 'Instructies': '4. Sectie volgorde 10/20/30 ipv 1/2/3 voor makkelijk tussenvoegen' },
+                { 'Instructies': '' },
+                { 'Instructies': 'VRAAGTYPES:' },
+                { 'Instructies': 'goed_fout — Goed/Fout/Nvt knoppen' },
+                { 'Instructies': 'conditiescore — NEN 2767 schaal 1 (uitstekend) t/m 6 (zeer slecht)' },
+                { 'Instructies': 'meting — numeriek invoerveld met eenheid' },
+                { 'Instructies': 'tekst — vrij tekstveld' },
+                { 'Instructies': '' },
+                { 'Instructies': 'IMPORT: Beheer → Formulieren → 📥 Importeren uit Excel' },
+            ];
+
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.json_to_sheet(instRows);
+            ws1['!cols'] = [{ wch: 80 }];
+            XLSX.utils.book_append_sheet(wb, ws1, 'Instructies');
+            const ws2 = XLSX.utils.json_to_sheet(tplRows);
+            ws2['!cols'] = [{ wch: 50 }, { wch: 22 }, { wch: 16 }, { wch: 16 }, { wch: 28 }, { wch: 40 }];
+            XLSX.utils.book_append_sheet(wb, ws2, 'Templates');
+            const ws3 = XLSX.utils.json_to_sheet(qRows);
+            ws3['!cols'] = [{ wch: 40 }, { wch: 8 }, { wch: 28 }, { wch: 8 }, { wch: 60 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 9 }];
+            XLSX.utils.book_append_sheet(wb, ws3, 'Vragen');
+
+            const today = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `KTS_Inspectie_Templates_${today}.xlsx`);
+            showToast('✓ Excel geexporteerd');
+        }
+
+        // ===== EXCEL IMPORT VAN TEMPLATES =====
+        async function inspImportTemplatesExcel(input) {
+            if (!window.XLSX) { showToast('⚠️ Excel library nog niet geladen'); return; }
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            try {
+                const buffer = await file.arrayBuffer();
+                const wb = XLSX.read(buffer, { type: 'array' });
+
+                // Verplichte sheets
+                if (!wb.Sheets['Templates'] || !wb.Sheets['Vragen']) {
+                    showToast('⚠️ Excel mist sheet "Templates" of "Vragen"');
+                    input.value = '';
+                    return;
+                }
+
+                const tplRows = XLSX.utils.sheet_to_json(wb.Sheets['Templates'], { defval: '' });
+                const qRows = XLSX.utils.sheet_to_json(wb.Sheets['Vragen'], { defval: '' });
+
+                if (tplRows.length === 0) {
+                    showToast('⚠️ Geen templates in Excel gevonden');
+                    input.value = '';
+                    return;
+                }
+
+                // Bouw templates op
+                const templatesByName = {};
+                tplRows.forEach(r => {
+                    const name = String(r['Template naam'] || '').trim();
+                    if (!name) return;
+                    templatesByName[name] = {
+                        name: name,
+                        asset: String(r['Asset code (default)'] || '').trim(),
+                        category: String(r['Categorie'] || '').trim(),
+                        frequency: String(r['Frequentie'] || '').trim(),
+                        location: String(r['Locatie'] || '').trim(),
+                        description: String(r['Beschrijving'] || '').trim(),
+                        sections: []
+                    };
+                });
+
+                // Voeg vragen toe, gegroepeerd per (template, sectie)
+                const sectionsByKey = {}; // key: tplName::secOrder
+                qRows.forEach(r => {
+                    const tplName = String(r['Template naam'] || '').trim();
+                    const secOrder = parseInt(r['Sectie volgorde']) || 0;
+                    const secTitle = String(r['Sectie titel'] || '').trim();
+                    const qOrder = parseInt(r['Vraag volgorde']) || 0;
+                    const qText = String(r['Vraagtekst'] || '').trim();
+                    const qType = String(r['Type'] || 'goed_fout').trim();
+                    const component = String(r['Component'] || '').trim();
+                    const discipline = String(r['Discipline'] || '').trim();
+                    const unit = String(r['Eenheid'] || '').trim();
+                    const permit = String(r['Permit vereist'] || 'nee').toLowerCase().trim();
+                    const required = String(r['Verplicht'] || 'ja').toLowerCase().trim();
+
+                    if (!tplName || !qText) return;
+                    if (!templatesByName[tplName]) {
+                        // Template ontbreekt in Templates-sheet — overslaan
+                        return;
+                    }
+
+                    const secKey = `${tplName}::${secOrder}::${secTitle}`;
+                    if (!sectionsByKey[secKey]) {
+                        sectionsByKey[secKey] = {
+                            tplName, secOrder, secTitle,
+                            questions: []
+                        };
+                    }
+                    const question = {
+                        text: qText,
+                        type: qType,
+                        component: component || undefined,
+                        discipline: discipline || undefined,
+                        permit_required: permit === 'ja',
+                        required: required !== 'nee'
+                    };
+                    if (unit) question.unit = unit;
+                    sectionsByKey[secKey].questions.push({ qOrder, question });
+                });
+
+                // Sorteer secties per template + vragen per sectie
+                const sectionsList = Object.values(sectionsByKey);
+                sectionsList.forEach(s => {
+                    s.questions.sort((a, b) => a.qOrder - b.qOrder);
+                });
+                sectionsList.sort((a, b) => a.secOrder - b.secOrder);
+
+                sectionsList.forEach(s => {
+                    if (templatesByName[s.tplName]) {
+                        templatesByName[s.tplName].sections.push({
+                            id: 's' + s.secOrder,
+                            title: s.secTitle,
+                            questions: s.questions.map(q => q.question)
+                        });
+                    }
+                });
+
+                // Check tegen bestaande templates
+                const sb = getSupabase();
+                const { data: existing } = await sb.from('inspection_templates').select('id, name');
+                const existingByName = {};
+                (existing || []).forEach(t => { existingByName[t.name] = t.id; });
+
+                const tplsArray = Object.values(templatesByName).filter(t => t.sections.length > 0);
+                if (tplsArray.length === 0) {
+                    showToast('⚠️ Geen geldige templates met vragen gevonden in Excel');
+                    input.value = '';
+                    return;
+                }
+
+                // Preview-bevestiging
+                const confirmText =
+                    `${tplsArray.length} template${tplsArray.length === 1 ? '' : 's'} importeren?\n\n` +
+                    tplsArray.map(t => {
+                        const isExisting = existingByName[t.name];
+                        const totalQ = t.sections.reduce((s, sec) => s + sec.questions.length, 0);
+                        return `${isExisting ? '↻' : '+'} ${t.name}\n   ${t.sections.length} secties, ${totalQ} vragen ${isExisting ? '[bijwerken]' : '[nieuw]'}`;
+                    }).join('\n\n') +
+                    '\n\n⚠️ Bijwerken vervangt de hele template (alle secties + vragen).';
+                const simpleConfirm = await confirmAsync(confirmText);
+                if (!simpleConfirm) {
+                    input.value = '';
+                    return;
+                }
+
+                // Upsert per template
+                let successCount = 0, errCount = 0;
+                for (const t of tplsArray) {
+                    const payload = {
+                        name: t.name,
+                        asset: t.asset || null,
+                        category: t.category || null,
+                        frequency: t.frequency || null,
+                        location: t.location || null,
+                        description: t.description || null,
+                        sections: t.sections,
+                        is_active: true
+                    };
+                    let result;
+                    if (existingByName[t.name]) {
+                        result = await sb.from('inspection_templates').update(payload).eq('id', existingByName[t.name]);
+                    } else {
+                        result = await sb.from('inspection_templates').insert(payload);
+                    }
+                    if (result.error) {
+                        console.error('Import error voor', t.name, result.error);
+                        errCount++;
+                    } else {
+                        successCount++;
+                    }
+                }
+
+                input.value = '';
+                if (errCount === 0) {
+                    showToast(`✓ ${successCount} template${successCount === 1 ? '' : 's'} geïmporteerd`);
+                } else {
+                    showToast(`⚠️ ${successCount} OK, ${errCount} fout — check console`);
+                }
+                // Lijst herladen
+                if (typeof inspLoadTemplates === 'function') inspLoadTemplates();
+            } catch (err) {
+                console.error('Import fout:', err);
+                showToast('❌ Import mislukt: ' + err.message);
+                input.value = '';
+            }
+        }
+
         function inspOpenTemplateEditor(templateId) {
             const existing = templateId ? _inspTemplates.find(t => t.id === templateId) : null;
             const sections = existing ? (existing.sections || []) : [];
