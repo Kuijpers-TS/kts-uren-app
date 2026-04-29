@@ -13669,11 +13669,22 @@
             if (!state.answers[key]) state.answers[key] = {};
             state.answers[key].value = value;
 
+            // Bewaar scroll-positie van de modal voordat we re-renderen,
+            // anders schiet de view naar boven na klik
+            const modalBody = document.querySelector('.insp-modal-body');
+            const scrollTop = modalBody ? modalBody.scrollTop : 0;
+
             // Re-render section view (nieuwe markup gebruikt aria-pressed dus full re-render is simpeler)
             if (state.view === 'section' && typeof state.activeSectionIdx === 'number') {
                 inspRenderSectionView(state.activeSectionIdx);
             } else {
                 inspRenderOverview();
+            }
+
+            // Restore scroll
+            const newBody = document.querySelector('.insp-modal-body');
+            if (newBody) {
+                newBody.scrollTop = scrollTop;
             }
 
             // Bepaal of dit een afwijkend antwoord is dat extra info vereist
@@ -13891,9 +13902,14 @@
             // In nieuwe design-systeem: re-render de sectie-view zodat thumbs en strip kloppen
             const state = window._inspActive;
             if (!state) return;
+            // Bewaar scroll-positie
+            const modalBody = document.querySelector('.insp-modal-body');
+            const scrollTop = modalBody ? modalBody.scrollTop : 0;
             if (state.view === 'section' && typeof state.activeSectionIdx === 'number') {
                 inspRenderSectionView(state.activeSectionIdx);
             }
+            const newBody = document.querySelector('.insp-modal-body');
+            if (newBody) newBody.scrollTop = scrollTop;
         }
 
         function inspAnswerRemark(key, remark) {
