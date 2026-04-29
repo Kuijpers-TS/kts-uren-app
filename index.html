@@ -15,6 +15,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- Plex fonts voor inspectie-module (sans + mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ===== DAXLINE PRO FONTS ===== */
         @font-face {
@@ -834,6 +838,802 @@
             font-weight: 600;
         }
         .admin-stat-card .stat-num { font-size: 1.2rem; font-weight: 700; display: block; }
+
+        /* ============================================================================
+           KTS Inspecties Design System v1
+           Scoped onder .insp-module — geen invloed op rest van app
+           ============================================================================ */
+        .insp-module {
+          --insp-bg: #FAFAF7;
+          --insp-bg-tint: #F4F3EE;
+          --insp-surface: #FFFFFF;
+          --insp-surface-2: #FBFBF8;
+          --insp-ink-900: #0F1B2D;
+          --insp-ink-700: #2A3441;
+          --insp-ink-500: #5C6675;
+          --insp-ink-400: #8A93A1;
+          --insp-ink-300: #B4BCC7;
+          --insp-line: #E7E4DD;
+          --insp-line-strong: #D4D0C7;
+          --insp-ok: #2F7D4F;
+          --insp-ok-soft: #EAF3EE;
+          --insp-ok-line: #C5DCCB;
+          --insp-warn: #A56A1F;
+          --insp-warn-soft: #F5EDDF;
+          --insp-warn-line: #E1CFAE;
+          --insp-alert: #A02834;
+          --insp-alert-soft: #F5E5E5;
+          --insp-alert-line: #E2C0C2;
+          --insp-idle: #8A93A1;
+          --insp-idle-soft: #EFEDE7;
+          --insp-nen-1: #2F7D4F;
+          --insp-nen-2: #6B9E3A;
+          --insp-nen-3: #B89427;
+          --insp-nen-4: #C77A2A;
+          --insp-nen-5: #B85432;
+          --insp-nen-6: #8E2A2E;
+          --insp-shadow-sm: 0 1px 2px rgba(15, 27, 45, 0.04), 0 0 0 0.5px rgba(15, 27, 45, 0.04);
+          --insp-shadow:    0 1px 3px rgba(15, 27, 45, 0.06), 0 4px 12px rgba(15, 27, 45, 0.04);
+          --insp-shadow-lg: 0 4px 8px rgba(15, 27, 45, 0.06), 0 16px 32px rgba(15, 27, 45, 0.06);
+          --insp-radius-sm: 6px;
+          --insp-radius:    10px;
+          --insp-radius-lg: 14px;
+          --insp-radius-xl: 20px;
+          --insp-font-sans: 'DaxlinePro', 'Daxline Pro', 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
+          --insp-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+          font-family: var(--insp-font-sans);
+          color: var(--insp-ink-900);
+          background: var(--insp-bg);
+          line-height: 1.5;
+          -webkit-font-smoothing: antialiased;
+        }
+        .insp-module *, .insp-module *::before, .insp-module *::after { box-sizing: border-box; }
+
+        /* Buttons */
+        .insp-btn-primary {
+          background: var(--kts-blue);
+          color: white;
+          border: none;
+          font-family: var(--insp-font-sans);
+          font-size: 14px;
+          font-weight: 500;
+          padding: 14px 18px;
+          border-radius: var(--insp-radius);
+          cursor: pointer;
+          letter-spacing: 0.005em;
+          min-height: 48px;
+          width: 100%;
+          box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.1) inset, 0 1px 2px rgba(7, 86, 127, 0.2);
+          transition: background 150ms ease;
+        }
+        .insp-btn-primary:hover { background: #044560; }
+        .insp-btn-primary:disabled {
+          background: var(--insp-ink-300);
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+        .insp-btn-ghost {
+          background: transparent;
+          color: var(--insp-ink-700);
+          border: 1px solid var(--insp-line-strong);
+          font-family: var(--insp-font-sans);
+          font-size: 13.5px;
+          font-weight: 500;
+          padding: 11px 14px;
+          border-radius: 8px;
+          cursor: pointer;
+          min-height: 44px;
+        }
+        .insp-btn-ghost:hover { background: var(--insp-bg-tint); }
+
+        /* Hero / voortgang */
+        .insp-hero {
+          padding: 22px 18px 24px;
+          background: linear-gradient(180deg, var(--insp-surface) 0%, var(--insp-surface-2) 100%);
+          border-bottom: 1px solid var(--insp-line);
+        }
+        .insp-object-line {
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          margin-bottom: 6px;
+        }
+        .insp-hero-title {
+          margin: 0 0 14px 0;
+          font-size: 22px;
+          font-weight: 600;
+          letter-spacing: -0.015em;
+          line-height: 1.25;
+          color: var(--insp-ink-900);
+        }
+        .insp-progress-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
+        }
+        .insp-pct {
+          font-family: var(--insp-font-mono);
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--insp-ink-900);
+          letter-spacing: 0.02em;
+        }
+        .insp-pct-unit { color: var(--insp-ink-400); font-weight: 400; }
+        .insp-ratio {
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.06em;
+        }
+        .insp-progressbar {
+          height: 6px;
+          background: var(--insp-bg-tint);
+          border-radius: 999px;
+          overflow: hidden;
+          position: relative;
+        }
+        .insp-progressbar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--kts-blue) 0%, #1B7BA8 100%);
+          border-radius: 999px;
+          box-shadow: 0 0 0 1px rgba(7, 86, 127, 0.1) inset;
+          transition: width 600ms cubic-bezier(.4,0,.2,1);
+        }
+        .insp-progress-stats {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-top: 14px;
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          letter-spacing: 0.04em;
+        }
+        .insp-stat {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--insp-ink-500);
+        }
+        .insp-stat strong { color: var(--insp-ink-900); font-weight: 500; }
+        .insp-stat-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .insp-stat.is-ok    .insp-stat-dot { background: var(--insp-ok); }
+        .insp-stat.is-warn  .insp-stat-dot { background: var(--insp-warn); }
+        .insp-stat.is-alert .insp-stat-dot { background: var(--insp-alert); }
+        .insp-stat.is-idle  .insp-stat-dot { background: transparent; border: 1px solid var(--insp-ink-300); }
+
+        /* Sectie-grid */
+        .insp-sectie-grid {
+          padding: 18px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+        .insp-sectie-card {
+          appearance: none;
+          text-align: left;
+          font-family: inherit;
+          width: 100%;
+          background: var(--insp-surface);
+          border: 1px solid var(--insp-line);
+          border-radius: var(--insp-radius);
+          padding: 16px 14px 14px 18px;
+          position: relative;
+          box-shadow: var(--insp-shadow-sm);
+          cursor: pointer;
+          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+          min-height: 116px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .insp-sectie-card::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 12px; bottom: 12px;
+          width: 3px;
+          border-radius: 0 3px 3px 0;
+          background: var(--insp-ink-300);
+          transition: background 180ms ease;
+        }
+        .insp-sectie-card:hover {
+          transform: translateY(-1px);
+          box-shadow: var(--insp-shadow);
+          border-color: var(--insp-line-strong);
+        }
+        .insp-sectie-card:focus-visible {
+          outline: none;
+          box-shadow: var(--insp-shadow), 0 0 0 3px rgba(7, 86, 127, 0.15);
+          border-color: var(--kts-blue);
+        }
+        .insp-sectie-card:active { transform: translateY(0) scale(0.99); }
+        .insp-sectie-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 10px;
+        }
+        .insp-sectie-code {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .insp-sectie-title {
+          margin: 2px 0 0 0;
+          font-size: 14px;
+          font-weight: 600;
+          letter-spacing: -0.005em;
+          color: var(--insp-ink-900);
+          line-height: 1.3;
+        }
+        .insp-sectie-status {
+          width: 22px; height: 22px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          flex-shrink: 0;
+          background: transparent;
+          border: 1.5px solid var(--insp-ink-300);
+        }
+        .insp-sectie-status svg { width: 12px; height: 12px; }
+        .insp-sectie-foot {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .insp-countpill {
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          color: var(--insp-ink-500);
+          letter-spacing: 0.04em;
+        }
+        .insp-countpill strong { color: var(--insp-ink-900); font-weight: 500; }
+        .insp-mini-progress {
+          flex: 1;
+          height: 3px;
+          background: var(--insp-bg-tint);
+          border-radius: 999px;
+          overflow: hidden;
+          margin-left: 8px;
+          max-width: 80px;
+        }
+        .insp-mini-progress-fill {
+          height: 100%;
+          background: var(--insp-ink-300);
+          border-radius: 999px;
+          width: 0%;
+          transition: width 400ms cubic-bezier(.4,0,.2,1);
+        }
+        .insp-sectie-card.is-ok::before { background: var(--insp-ok); }
+        .insp-sectie-card.is-ok .insp-sectie-status {
+          background: var(--insp-ok);
+          border-color: var(--insp-ok);
+          color: white;
+        }
+        .insp-sectie-card.is-ok .insp-mini-progress-fill { background: var(--insp-ok); width: 100%; }
+        .insp-sectie-card.is-alert::before { background: var(--insp-alert); }
+        .insp-sectie-card.is-alert .insp-sectie-status {
+          background: var(--insp-alert);
+          border-color: var(--insp-alert);
+          color: white;
+        }
+        .insp-sectie-card.is-alert .insp-mini-progress-fill { background: var(--insp-alert); width: 100%; }
+        .insp-sectie-card.is-alert .insp-countpill {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-alert);
+          letter-spacing: 0.05em;
+        }
+        .insp-sectie-card.is-warn::before { background: var(--insp-warn); }
+        .insp-sectie-card.is-warn .insp-sectie-status {
+          background: var(--insp-warn-soft);
+          border-color: var(--insp-warn);
+          color: var(--insp-warn);
+        }
+        .insp-sectie-card.is-warn .insp-mini-progress-fill { background: var(--insp-warn); }
+
+        .insp-overview-cta {
+          padding: 18px;
+          border-top: 1px solid var(--insp-line);
+          background: var(--insp-surface);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        /* Sticky sectie-header */
+        .insp-sectie-header {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          background: var(--insp-surface);
+          padding: 14px 18px 12px;
+          border-bottom: 1px solid var(--insp-line);
+          box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.02);
+        }
+        .insp-crumbline {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 4px;
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .insp-crumbline .insp-sep { color: var(--insp-ink-300); }
+        .insp-sectie-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .insp-sectie-header-title {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 600;
+          letter-spacing: -0.005em;
+        }
+        .insp-pos {
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          color: var(--insp-ink-500);
+          letter-spacing: 0.04em;
+          background: var(--insp-bg-tint);
+          padding: 4px 8px;
+          border-radius: 6px;
+          flex-shrink: 0;
+        }
+        .insp-pos strong { color: var(--insp-ink-900); font-weight: 500; }
+        .insp-micro-progress {
+          height: 2px;
+          background: var(--insp-bg-tint);
+          border-radius: 999px;
+          margin-top: 12px;
+          overflow: hidden;
+        }
+        .insp-micro-progress-fill {
+          height: 100%;
+          background: var(--kts-blue);
+          border-radius: 999px;
+          transition: width 400ms cubic-bezier(.4,0,.2,1);
+        }
+
+        /* Vraag-kaart */
+        .insp-vragen {
+          padding: 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .insp-vraag {
+          background: var(--insp-surface);
+          border: 1px solid var(--insp-line);
+          border-radius: var(--insp-radius-lg);
+          box-shadow: var(--insp-shadow-sm);
+          overflow: hidden;
+        }
+        .insp-vraag-head { padding: 16px 16px 10px; }
+        .insp-vraag-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+          gap: 8px;
+        }
+        .insp-qnum {
+          font-family: var(--insp-font-mono);
+          font-size: 11px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.08em;
+        }
+        .insp-component-tag {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-500);
+          letter-spacing: 0.05em;
+          background: var(--insp-bg-tint);
+          padding: 3px 7px;
+          border-radius: 4px;
+          border: 1px solid var(--insp-line);
+        }
+        .insp-qtext {
+          margin: 0;
+          font-size: 15.5px;
+          font-weight: 500;
+          color: var(--insp-ink-900);
+          letter-spacing: -0.005em;
+          line-height: 1.4;
+        }
+        .insp-answer-zone {
+          padding: 12px 16px 16px;
+          background: var(--insp-surface-2);
+          border-top: 1px solid var(--insp-line);
+        }
+
+        /* Triplet */
+        .insp-triplet {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+        }
+        .insp-triplet button {
+          appearance: none;
+          border: 1px solid var(--insp-line-strong);
+          background: var(--insp-surface);
+          font-family: var(--insp-font-sans);
+          font-size: 13.5px;
+          font-weight: 500;
+          color: var(--insp-ink-700);
+          padding: 12px 8px;
+          border-radius: 9px;
+          cursor: pointer;
+          min-height: 44px;
+          transition: all 140ms ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+        .insp-triplet button:hover {
+          border-color: var(--insp-ink-300);
+          background: var(--insp-bg-tint);
+        }
+        .insp-triplet button[data-state="ok"][aria-pressed="true"] {
+          background: var(--insp-ok);
+          border-color: var(--insp-ok);
+          color: white;
+          box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 1px 2px rgba(47, 125, 79, 0.3);
+        }
+        .insp-triplet button[data-state="alert"][aria-pressed="true"] {
+          background: var(--insp-alert);
+          border-color: var(--insp-alert);
+          color: white;
+          box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 1px 2px rgba(160, 40, 52, 0.3);
+        }
+        .insp-triplet button[data-state="nvt"][aria-pressed="true"] {
+          background: var(--insp-ink-700);
+          border-color: var(--insp-ink-700);
+          color: white;
+        }
+
+        /* NEN 2767 */
+        .insp-nen { display: flex; flex-direction: column; gap: 12px; }
+        .insp-nen-track {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 4px;
+          background: var(--insp-surface);
+          padding: 4px;
+          border-radius: var(--insp-radius);
+          border: 1px solid var(--insp-line-strong);
+          box-shadow: 0 1px 2px rgba(15, 27, 45, 0.05) inset;
+        }
+        .insp-nen-cell {
+          appearance: none;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          height: 44px;
+          border-radius: 7px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1px;
+          font-family: var(--insp-font-mono);
+          color: var(--insp-ink-500);
+          transition: all 180ms cubic-bezier(.4,0,.2,1);
+        }
+        .insp-nen-cell .insp-nen-num { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+        .insp-nen-cell .insp-nen-tick { width: 14px; height: 2px; border-radius: 999px; background: currentColor; opacity: 0.35; }
+        .insp-nen-cell[data-score="1"] { color: var(--insp-nen-1); }
+        .insp-nen-cell[data-score="2"] { color: var(--insp-nen-2); }
+        .insp-nen-cell[data-score="3"] { color: var(--insp-nen-3); }
+        .insp-nen-cell[data-score="4"] { color: var(--insp-nen-4); }
+        .insp-nen-cell[data-score="5"] { color: var(--insp-nen-5); }
+        .insp-nen-cell[data-score="6"] { color: var(--insp-nen-6); }
+        .insp-nen-cell:hover { background: var(--insp-bg-tint); }
+        .insp-nen-cell[aria-pressed="true"] {
+          transform: translateY(-1px);
+          box-shadow: 0 1px 2px rgba(15, 27, 45, 0.08), 0 4px 8px rgba(15, 27, 45, 0.08);
+        }
+        .insp-nen-cell[aria-pressed="true"][data-score="1"] { background: var(--insp-nen-1); }
+        .insp-nen-cell[aria-pressed="true"][data-score="2"] { background: var(--insp-nen-2); }
+        .insp-nen-cell[aria-pressed="true"][data-score="3"] { background: var(--insp-nen-3); }
+        .insp-nen-cell[aria-pressed="true"][data-score="4"] { background: var(--insp-nen-4); }
+        .insp-nen-cell[aria-pressed="true"][data-score="5"] { background: var(--insp-nen-5); }
+        .insp-nen-cell[aria-pressed="true"][data-score="6"] { background: var(--insp-nen-6); }
+        .insp-nen-cell[aria-pressed="true"] .insp-nen-num { color: white; }
+        .insp-nen-cell[aria-pressed="true"] .insp-nen-tick { opacity: 0; }
+        .insp-nen-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 4px;
+          font-size: 12.5px;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .insp-nen-scale {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        .insp-nen-selected {
+          color: var(--insp-ink-700);
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .insp-nen-selected-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .insp-nen-deviation {
+          font-family: var(--insp-font-mono);
+          font-size: 10px;
+          color: var(--insp-alert);
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          padding: 2px 6px;
+          background: var(--insp-alert-soft);
+          border: 1px solid var(--insp-alert-line);
+          border-radius: 4px;
+          margin-left: 4px;
+        }
+
+        /* Meting */
+        .insp-meting {
+          display: flex;
+          align-items: stretch;
+          border: 1px solid var(--insp-line-strong);
+          border-radius: var(--insp-radius);
+          overflow: hidden;
+          background: var(--insp-surface);
+          height: 48px;
+        }
+        .insp-meting input {
+          flex: 1;
+          border: none;
+          padding: 0 14px;
+          font-family: var(--insp-font-mono);
+          font-size: 16px;
+          color: var(--insp-ink-900);
+          background: transparent;
+          outline: none;
+          letter-spacing: 0.02em;
+        }
+        .insp-meting-unit {
+          display: grid;
+          place-items: center;
+          padding: 0 16px;
+          background: var(--insp-bg-tint);
+          border-left: 1px solid var(--insp-line);
+          font-family: var(--insp-font-mono);
+          font-size: 13px;
+          color: var(--insp-ink-500);
+          letter-spacing: 0.04em;
+        }
+        .insp-meting:focus-within {
+          border-color: var(--kts-blue);
+          box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.08);
+        }
+
+        /* Vraag-extras */
+        .insp-vraag-extras {
+          padding: 12px 16px 16px;
+          border-top: 1px dashed var(--insp-line-strong);
+          background: var(--insp-surface);
+        }
+        .insp-extras-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+          gap: 8px;
+        }
+        .insp-label-tiny {
+          font-family: var(--insp-font-mono);
+          font-size: 10.5px;
+          color: var(--insp-ink-400);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .insp-photo-actions { display: flex; gap: 6px; }
+        .insp-photo-btn {
+          width: 32px; height: 32px;
+          border: 1px solid var(--insp-line-strong);
+          background: var(--insp-surface);
+          border-radius: 8px;
+          display: grid;
+          place-items: center;
+          color: var(--insp-ink-700);
+          cursor: pointer;
+          transition: all 150ms ease;
+          padding: 0;
+        }
+        .insp-photo-btn:hover {
+          background: var(--insp-bg-tint);
+          border-color: var(--insp-ink-300);
+        }
+        .insp-photo-btn svg { width: 16px; height: 16px; }
+        .insp-notes-input {
+          width: 100%;
+          border: 1px solid var(--insp-line);
+          background: var(--insp-surface-2);
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-family: var(--insp-font-sans);
+          font-size: 13.5px;
+          color: var(--insp-ink-900);
+          resize: vertical;
+          min-height: 40px;
+          outline: none;
+          transition: border-color 150ms ease, background 150ms ease;
+          line-height: 1.5;
+        }
+        .insp-notes-input:focus {
+          border-color: var(--kts-blue);
+          background: var(--insp-surface);
+          box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.08);
+        }
+        .insp-notes-input::placeholder { color: var(--insp-ink-400); }
+        .insp-notes-input.is-required { border-bottom: 2px solid var(--insp-alert); }
+        .insp-photo-strip {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 6px;
+          margin-top: 10px;
+        }
+        .insp-photo-thumb {
+          aspect-ratio: 1;
+          border-radius: 8px;
+          position: relative;
+          overflow: hidden;
+          cursor: pointer;
+          box-shadow: 0 1px 2px rgba(15, 27, 45, 0.1);
+          background-size: cover;
+          background-position: center;
+        }
+        .insp-photo-thumb::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 8px;
+          box-shadow: inset 0 0 0 1px rgba(15, 27, 45, 0.08);
+          pointer-events: none;
+        }
+        .insp-photo-thumb.is-add {
+          background: var(--insp-surface);
+          border: 1.5px dashed var(--insp-line-strong);
+          color: var(--insp-ink-400);
+          display: grid;
+          place-items: center;
+          box-shadow: none;
+          padding: 0;
+        }
+        .insp-photo-thumb.is-add::after { display: none; }
+        .insp-photo-thumb.is-add svg { width: 20px; height: 20px; }
+        .insp-photo-thumb.is-add:hover {
+          border-color: var(--kts-blue);
+          color: var(--kts-blue);
+        }
+        .insp-photo-remove {
+          position: absolute;
+          top: 4px; right: 4px;
+          width: 22px; height: 22px;
+          border-radius: 50%;
+          background: rgba(15, 27, 45, 0.8);
+          color: white;
+          border: none;
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+          z-index: 2;
+          padding: 0;
+        }
+        .insp-photo-remove svg { width: 10px; height: 10px; }
+
+        /* Bottom-nav */
+        .insp-vraag-nav {
+          position: sticky;
+          bottom: 0;
+          background: var(--insp-surface);
+          border-top: 1px solid var(--insp-line);
+          padding: 10px 14px 12px;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+          z-index: 4;
+        }
+        .insp-nav-btn {
+          appearance: none;
+          border: 1px solid var(--insp-line);
+          background: var(--insp-surface);
+          font-family: var(--insp-font-sans);
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--insp-ink-700);
+          padding: 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-height: 44px;
+        }
+        .insp-nav-btn:hover { background: var(--insp-bg-tint); }
+        .insp-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .insp-nav-btn.is-center {
+          background: var(--insp-ink-900);
+          color: white;
+          border-color: var(--insp-ink-900);
+        }
+        .insp-nav-btn.is-center:hover { background: #0A1628; }
+        .insp-nav-btn svg { width: 14px; height: 14px; }
+
+        /* Modal-content overrides voor inspecties (volle width, geen padding-shift) */
+        .modal-content.insp-modal-content {
+          padding: 0;
+          background: var(--insp-bg);
+          border-radius: 16px;
+          overflow: hidden;
+          max-width: 480px;
+          width: 100%;
+          max-height: 92vh;
+          display: flex;
+          flex-direction: column;
+        }
+        .insp-modal-body {
+          flex: 1;
+          overflow-y: auto;
+          background: var(--insp-bg);
+        }
+        .insp-modal-close {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(8px);
+          border: 1px solid var(--insp-line);
+          cursor: pointer;
+          font-size: 16px;
+          color: var(--insp-ink-700);
+          z-index: 10;
+          display: grid;
+          place-items: center;
+        }
+        .insp-modal-close:hover { background: var(--insp-surface); }
+
+        /* Responsive */
+        @media (max-width: 360px) {
+          .insp-sectie-grid { grid-template-columns: 1fr; }
+          .insp-progress-stats { gap: 10px; }
+          .insp-vragen { padding: 14px; }
+          .insp-hero { padding: 18px 14px 20px; }
+        }
+        @media (min-width: 768px) {
+          .insp-sectie-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 24px;
+          }
+          .insp-vragen { padding: 24px; }
+          .insp-hero { padding: 28px 24px; }
+        }
     </style>
 </head>
 <body>
@@ -11698,19 +12498,45 @@
         }
 
         // Overzicht renderen — grid met alle secties
+        // SVG-icon helpers (Plex-stijl)
+        function _inspIconCheck() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>'; }
+        function _inspIconAlert() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>'; }
+        function _inspIconClock() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'; }
+        function _inspIconCamera() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'; }
+        function _inspIconGallery() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>'; }
+        function _inspIconArrowLeft() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'; }
+        function _inspIconArrowRight() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>'; }
+        function _inspIconPlus() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'; }
+        function _inspIconClose() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'; }
+
+        // Bereken sectie-status in nieuw design-systeem
+        function _inspGetSectionStatus(stats) {
+            if (stats.total === 0 || stats.done === 0) return { cls: '', icon: null };
+            if (stats.done < stats.total) return { cls: 'is-warn', icon: _inspIconClock() };
+            // Alle vragen beantwoord
+            if (stats.bad > 0) return { cls: 'is-alert', icon: _inspIconAlert() };
+            return { cls: 'is-ok', icon: _inspIconCheck() };
+        }
+
         function inspRenderOverview() {
             const state = window._inspActive;
             if (!state) return;
-            const { id: inspectionId, sections, answers, insp } = state;
+            const { sections, answers, insp } = state;
             const tpl = insp.inspection_templates || {};
 
-            // Bereken sectie-voortgang
+            // Bereken sectie-voortgang (afwijking = fout OF conditiescore 4-6)
             const sectionStats = sections.map((sec, si) => {
                 const qs = sec.questions || [];
                 let done = 0, good = 0, bad = 0;
                 qs.forEach((q, qi) => {
                     const a = answers[`s${si}_q${qi}`];
-                    if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; const sc = Number(a.value); if (sc >= 4 && sc <= 6) bad++; }
+                    if (a && a.value !== undefined && a.value !== '') {
+                        done++;
+                        if (a.value === 'goed') good++;
+                        if (a.value === 'fout') bad++;
+                        const sc = Number(a.value);
+                        if (!isNaN(sc) && sc >= 4 && sc <= 6) bad++;
+                    }
                 });
                 return { total: qs.length, done, good, bad };
             });
@@ -11719,96 +12545,110 @@
             const totalDone = sectionStats.reduce((s, x) => s + x.done, 0);
             const totalGood = sectionStats.reduce((s, x) => s + x.good, 0);
             const totalBad = sectionStats.reduce((s, x) => s + x.bad, 0);
+            // Voor stats: bezig = secties met done > 0 maar niet compleet, open = secties met done == 0
+            const sectionsWarn = sectionStats.filter(s => s.done > 0 && s.done < s.total).length;
+            const sectionsIdle = sectionStats.filter(s => s.done === 0).length;
+            const sectionsOk = sectionStats.filter(s => s.done === s.total && s.bad === 0 && s.total > 0).length;
+            const sectionsAlert = sectionStats.filter(s => s.done === s.total && s.bad > 0 && s.total > 0).length;
             const pct = totalQ > 0 ? Math.round((totalDone / totalQ) * 100) : 0;
+            const remaining = totalQ - totalDone;
 
-            // Sectie-cards in 2-koloms grid
-            let cardsHtml = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px">`;
-            sections.forEach((sec, si) => {
-                const st = sectionStats[si];
-                const isDone = st.done === st.total && st.total > 0;
-                const hasFail = st.bad > 0;
-                const partial = st.done > 0 && !isDone;
-                let bg, border, statusIcon, statusColor;
-                if (isDone && hasFail) { bg = '#fef2f2'; border = '#fca5a5'; statusIcon = '⚠️'; statusColor = '#dc2626'; }
-                else if (isDone) { bg = '#f0fdf4'; border = '#86efac'; statusIcon = '✅'; statusColor = '#16a34a'; }
-                else if (partial) { bg = '#fffbeb'; border = '#fde68a'; statusIcon = '⏳'; statusColor = '#d97706'; }
-                else { bg = '#f8fafc'; border = '#e2e8f0'; statusIcon = '○'; statusColor = '#94a3b8'; }
-                const sectPct = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-                cardsHtml += `
-                    <div onclick="inspOpenSectionView(${si})" style="background:${bg};border:1.5px solid ${border};border-radius:10px;padding:12px;cursor:pointer;transition:transform 0.1s;display:flex;flex-direction:column;gap:6px;min-height:100px" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                        <div style="display:flex;justify-content:space-between;align-items:start;gap:6px">
-                            <div style="font-weight:700;font-size:0.78rem;line-height:1.2;color:var(--text)">${escapeHtml(sec.title || 'Sectie ' + (si + 1))}</div>
-                            <span style="font-size:0.95rem;flex-shrink:0">${statusIcon}</span>
-                        </div>
-                        <div style="font-size:0.7rem;color:${statusColor};font-weight:600">${st.done}/${st.total} vragen${hasFail ? ' · ' + st.bad + ' afwijking' + (st.bad === 1 ? '' : 'en') : ''}</div>
-                        <div style="background:#fff;border-radius:3px;height:5px;overflow:hidden;margin-top:auto">
-                            <div style="background:${statusColor};width:${sectPct}%;height:100%;transition:width 0.3s"></div>
-                        </div>
-                    </div>`;
-            });
-            cardsHtml += `</div>`;
+            // Object label (asset code prominent)
+            const objectParts = [];
+            if (insp.asset) objectParts.push(escapeHtml(insp.asset));
+            if (insp.location) objectParts.push(escapeHtml(insp.location));
+            if (insp.inspection_number) objectParts.push(escapeHtml(insp.inspection_number));
+            const objectLabel = objectParts.join(' · ') || escapeHtml(tpl.name || 'Inspectie');
 
-            // Voortgangsblok
-            const progressHtml = `
-                <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px">
-                    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:4px">
-                        <span style="font-weight:600;color:var(--text)">${totalDone}/${totalQ} vragen</span>
-                        <span style="display:flex;gap:8px">
-                            <span style="color:#16a34a">✓ ${totalGood}</span>
-                            <span style="color:#dc2626">✗ ${totalBad}</span>
-                            <span style="font-weight:700;color:var(--text)">${pct}%</span>
-                        </span>
+            // Hero
+            const heroHtml = `
+                <div class="insp-hero">
+                    <div class="insp-object-line">${objectLabel}</div>
+                    <h1 class="insp-hero-title">${totalDone} van ${totalQ} vragen beantwoord</h1>
+                    <div class="insp-progress-row">
+                        <div class="insp-pct">${pct}<span class="insp-pct-unit">%</span></div>
+                        <div class="insp-ratio">${remaining} RESTEREND</div>
                     </div>
-                    <div style="background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden">
-                        <div style="height:100%;border-radius:4px;display:flex">
-                            <div style="background:#16a34a;width:${totalQ > 0 ? (totalGood / totalQ * 100) : 0}%;transition:width 0.3s"></div>
-                            <div style="background:#dc2626;width:${totalQ > 0 ? (totalBad / totalQ * 100) : 0}%;transition:width 0.3s"></div>
-                            <div style="background:#f59e0b;width:${totalQ > 0 ? ((totalDone - totalGood - totalBad) / totalQ * 100) : 0}%;transition:width 0.3s"></div>
-                        </div>
+                    <div class="insp-progressbar">
+                        <div class="insp-progressbar-fill" style="width:${pct}%"></div>
+                    </div>
+                    <div class="insp-progress-stats">
+                        <div class="insp-stat is-ok"><span class="insp-stat-dot"></span><strong>${totalGood}</strong> goed</div>
+                        <div class="insp-stat is-alert"><span class="insp-stat-dot"></span><strong>${totalBad}</strong> afw.</div>
+                        <div class="insp-stat is-warn"><span class="insp-stat-dot"></span><strong>${sectionsWarn}</strong> bezig</div>
+                        <div class="insp-stat is-idle"><span class="insp-stat-dot"></span><strong>${sectionsIdle}</strong> open</div>
                     </div>
                 </div>`;
 
-            // Footer
-            let footerHtml = '';
+            // Sectie-cards
+            let cardsHtml = `<div class="insp-sectie-grid">`;
+            sections.forEach((sec, si) => {
+                const st = sectionStats[si];
+                const status = _inspGetSectionStatus(st);
+                const sectPct = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+                // Code + titel splitsen op " — " indien aanwezig
+                const fullTitle = sec.title || 'Sectie ' + (si + 1);
+                let code, title;
+                const dashSplit = fullTitle.split(' — ');
+                if (dashSplit.length === 2) { code = dashSplit[0]; title = dashSplit[1]; }
+                else { code = 'SECTIE ' + (si + 1); title = fullTitle; }
+                // Count label
+                let countLabel;
+                if (status.cls === 'is-alert') {
+                    countLabel = `<strong>${st.bad}</strong> AFWIJKING${st.bad === 1 ? '' : 'EN'}`;
+                } else {
+                    countLabel = `<strong>${st.done}</strong>/${st.total}`;
+                }
+                const fillStyle = status.cls === 'is-warn' ? `style="width:${sectPct}%"` : '';
+                cardsHtml += `
+                    <button class="insp-sectie-card ${status.cls}" data-section-id="${si}" onclick="inspOpenSectionView(${si})">
+                        <div class="insp-sectie-head">
+                            <div>
+                                <div class="insp-sectie-code">${escapeHtml(code)}</div>
+                                <h3 class="insp-sectie-title">${escapeHtml(title)}</h3>
+                            </div>
+                            <div class="insp-sectie-status">${status.icon || ''}</div>
+                        </div>
+                        <div class="insp-sectie-foot">
+                            <div class="insp-countpill">${countLabel}</div>
+                            <div class="insp-mini-progress">
+                                <div class="insp-mini-progress-fill" ${fillStyle}></div>
+                            </div>
+                        </div>
+                    </button>`;
+            });
+            cardsHtml += `</div>`;
+
+            // CTA
+            let ctaHtml = '';
             if (insp.status === 'concept') {
-                footerHtml = `
-                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
-                        <button id="insp-finish-btn" onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem;${totalDone < totalQ ? 'opacity:0.5;cursor:not-allowed' : ''}" ${totalDone < totalQ ? 'disabled' : ''}>✓ Inspectie afronden</button>
+                const allDone = totalDone >= totalQ;
+                const ctaLabel = allDone ? 'Inspectie afronden' : `Inspectie afronden  ·  ${remaining} ${remaining === 1 ? 'vraag' : 'vragen'} open`;
+                ctaHtml = `
+                    <div class="insp-overview-cta">
+                        <button id="insp-finish-btn" class="insp-btn-primary" onclick="inspFinish()" ${allDone ? '' : 'disabled'}>${ctaLabel}</button>
                     </div>`;
             } else {
-                footerHtml = `
-                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        <div style="text-align:center;color:#16a34a;font-weight:600;font-size:0.9rem;margin-bottom:8px">✅ Deze inspectie is afgerond</div>
-                        <div style="text-align:center;color:var(--muted);font-size:0.7rem;margin-bottom:12px">Wijzigingen worden automatisch opgeslagen</div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
-                            <button onclick="inspGeneratePDF('${insp.id}')" class="btn btn-secondary" style="padding:10px 20px;font-size:0.85rem">📄 PDF Rapport</button>
-                            <button onclick="inspCloseForm()" class="btn btn-primary" style="padding:10px 20px;font-size:0.85rem">💾 Opslaan & sluiten</button>
+                ctaHtml = `
+                    <div class="insp-overview-cta">
+                        <div style="text-align:center;color:var(--insp-ok);font-weight:600;font-size:14px;margin-bottom:4px;font-family:var(--insp-font-sans)">Inspectie afgerond</div>
+                        <div style="text-align:center;color:var(--insp-ink-400);font-size:11px;margin-bottom:8px;font-family:var(--insp-font-mono);letter-spacing:0.06em;text-transform:uppercase">Wijzigingen automatisch opgeslagen</div>
+                        <div style="display:flex;gap:8px">
+                            <button class="insp-btn-ghost" style="flex:1" onclick="inspGeneratePDF('${insp.id}')">PDF Rapport</button>
+                            <button class="insp-btn-primary" style="flex:1" onclick="inspCloseForm()">Sluiten</button>
                         </div>
                     </div>`;
             }
 
             const modal = document.getElementById('admin-modal');
             modal.innerHTML = `
-                <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
-                    <div style="display:flex;align-items:start;gap:12px;margin-bottom:6px">
-                        <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
-                        <div style="flex:1;min-width:0">
-                            <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(tpl.name || 'Inspectie')}</div>
-                            <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${insp.inspection_number || ''}${insp.inspection_date ? ' · ' + new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}</div>
-                            <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-                                ${insp.asset ? `<span style="font-size:0.7rem;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-weight:700">${escapeHtml(insp.asset)}</span>` : ''}
-                                ${tpl.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.category)}</span>` : ''}
-                                ${tpl.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.frequency)}</span>` : ''}
-                                ${insp.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(insp.location)}</span>` : ''}
-                            </div>
-                        </div>
-                        <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
+                <div class="modal-content insp-modal-content insp-module">
+                    <button class="insp-modal-close" onclick="inspCloseForm()" aria-label="Sluiten">${_inspIconClose()}</button>
+                    <div class="insp-modal-body">
+                        ${heroHtml}
+                        ${cardsHtml}
+                        ${ctaHtml}
                     </div>
-                    ${progressHtml}
-                    <div style="font-size:0.75rem;color:var(--muted);margin-top:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Selecteer een sectie</div>
-                    ${cardsHtml}
-                    ${footerHtml}
                 </div>`;
             modal.classList.add('active');
         }
@@ -11830,6 +12670,9 @@
         }
 
         // Render één sectie (detail view)
+        // NEN labels (gedeeld)
+        const _INSP_NEN_LABELS = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
+
         function inspRenderSectionView(si) {
             const state = window._inspActive;
             if (!state) return;
@@ -11838,132 +12681,174 @@
             const sec = sections[si];
             if (!sec) { inspBackToOverview(); return; }
 
-            // Bereken sectie-stats
+            // Sectie-stats
             const qs = sec.questions || [];
-            let done = 0, good = 0, bad = 0;
+            let done = 0;
             qs.forEach((q, qi) => {
                 const a = answers[`s${si}_q${qi}`];
-                if (a && a.value !== undefined && a.value !== '') { done++; if (a.value === 'goed') good++; if (a.value === 'fout') bad++; const sc = Number(a.value); if (sc >= 4 && sc <= 6) bad++; }
+                if (a && a.value !== undefined && a.value !== '') done++;
             });
             const sectPct = qs.length > 0 ? Math.round((done / qs.length) * 100) : 0;
 
-            // Voortgang andere secties (voor totaal-counter)
-            let totalDone = 0, totalQ = state.totalQ;
-            sections.forEach((s, idx) => {
-                (s.questions || []).forEach((q, qi) => {
-                    const a = answers[`s${idx}_q${qi}`];
-                    if (a && a.value !== undefined && a.value !== '') totalDone++;
-                });
-            });
+            // Code + titel splitsen
+            const fullTitle = sec.title || 'Sectie ' + (si + 1);
+            const dashSplit = fullTitle.split(' — ');
+            let secCode, secName;
+            if (dashSplit.length === 2) { secCode = dashSplit[0]; secName = dashSplit[1]; }
+            else { secCode = 'SECTIE ' + (si + 1); secName = fullTitle; }
+
+            // Crumb-line: inspectie naam + asset code
+            const crumbParts = [];
+            if (insp.asset) crumbParts.push(escapeHtml(insp.asset));
+            else if (tpl.name) crumbParts.push(escapeHtml(tpl.name));
+            crumbParts.push(escapeHtml(secCode));
+
+            // Sticky header
+            const headerHtml = `
+                <div class="insp-sectie-header">
+                    <div class="insp-crumbline">
+                        ${crumbParts.map((p, i) => i > 0 ? `<span class="insp-sep">/</span><span>${p}</span>` : `<span>${p}</span>`).join('')}
+                    </div>
+                    <div class="insp-sectie-header-row">
+                        <h2 class="insp-sectie-header-title">${escapeHtml(secName)}</h2>
+                        <div class="insp-pos"><strong>${done}</strong> / ${qs.length}</div>
+                    </div>
+                    <div class="insp-micro-progress">
+                        <div class="insp-micro-progress-fill" style="width:${sectPct}%"></div>
+                    </div>
+                </div>`;
 
             // Vragen renderen
-            let questionsHtml = '';
+            let questionsHtml = '<div class="insp-vragen">';
             qs.forEach((q, qi) => {
                 const key = `s${si}_q${qi}`;
                 const val = answers[key] || {};
-                const answered = val.value !== undefined && val.value !== '';
-                const isFout = val.value === 'fout';
                 const numScore = Number(val.value);
                 const isHogeScore = !isNaN(numScore) && numScore >= 4 && numScore <= 6;
-                const isAfwijking = isFout || isHogeScore;
+                const isAfwijking = val.value === 'fout' || isHogeScore;
+                const requiresNote = isAfwijking || val.value === 'nvt';
 
-                let inputHtml = '';
+                // Antwoord-component op basis van type
+                let answerHtml = '';
                 if (q.type === 'goed_fout') {
-                    inputHtml = `
-                        <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">
-                            <button onclick="inspAnswer('${key}','goed')" id="insp-btn-${key}-goed" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'goed' ? '#16a34a' : 'var(--border)'};border-radius:6px;background:${val.value === 'goed' ? '#dcfce7' : 'white'};color:${val.value === 'goed' ? '#16a34a' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✓ Goed</button>
-                            <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:6px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✗ Fout</button>
-                            <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:6px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">N.v.t.</button>
+                    answerHtml = `
+                        <div class="insp-triplet" role="radiogroup" aria-label="Antwoord">
+                            <button data-state="ok" aria-pressed="${val.value === 'goed' ? 'true' : 'false'}" onclick="inspAnswer('${key}','goed')">${val.value === 'goed' ? _inspIconCheck() : ''} Goed</button>
+                            <button data-state="alert" aria-pressed="${val.value === 'fout' ? 'true' : 'false'}" onclick="inspAnswer('${key}','fout')">Fout</button>
+                            <button data-state="nvt" aria-pressed="${val.value === 'nvt' ? 'true' : 'false'}" onclick="inspAnswer('${key}','nvt')">N.v.t.</button>
                         </div>`;
                 } else if (q.type === 'conditiescore') {
-                    const scoreLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
-                    const scoreColors = [
-                        ['#16a34a', '#dcfce7', '#86efac'], ['#65a30d', '#ecfccb', '#bef264'], ['#ca8a04', '#fef9c3', '#fde047'],
-                        ['#ea580c', '#ffedd5', '#fdba74'], ['#dc2626', '#fee2e2', '#fca5a5'], ['#7f1d1d', '#fecaca', '#f87171']
-                    ];
-                    let btnsHtml = '';
+                    let cellsHtml = '';
                     for (let s = 1; s <= 6; s++) {
-                        const [c, bgLight, bgMid] = scoreColors[s - 1];
-                        const active = val.value === String(s);
-                        // Niet-actief: subtiele tint zodat gradient zichtbaar is
-                        // Actief: volle kleur, witte tekst, schaduw, schaalvergroot
-                        const btnStyle = active
-                            ? `flex:1;padding:10px 4px;border:2px solid ${c};border-radius:8px;background:${c};color:white;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 8px ${c}66;transform:scale(1.05);transition:all 0.15s`
-                            : `flex:1;padding:8px 4px;border:1.5px solid ${bgMid};border-radius:6px;background:${bgLight};color:${c};font-weight:700;font-size:0.85rem;cursor:pointer;opacity:0.7;transition:all 0.15s`;
-                        btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} — ${scoreLabels[s-1]}" style="${btnStyle}">${s}</button>`;
+                        const pressed = val.value === String(s) ? 'true' : 'false';
+                        cellsHtml += `<button class="insp-nen-cell" data-score="${s}" aria-pressed="${pressed}" onclick="inspAnswer('${key}','${s}')" title="${s} — ${_INSP_NEN_LABELS[s-1]}"><span class="insp-nen-num">${s}</span><span class="insp-nen-tick"></span></button>`;
                     }
-                    const currentLabel = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreLabels[Number(val.value) - 1] : '';
-                    const currentColor = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreColors[Number(val.value) - 1][0] : 'var(--muted)';
-                    inputHtml = `
-                        <div style="display:flex;gap:4px;margin-top:8px;align-items:center" id="insp-btns-${key}">${btnsHtml}</div>
-                        <div style="font-size:0.7rem;margin-top:6px;text-align:center;color:${currentLabel ? currentColor : 'var(--muted)'}">${currentLabel ? '<strong>Score ' + val.value + ' — ' + currentLabel + '</strong>' : '1=Uitstekend · 6=Zeer slecht (NEN 2767)'}</div>`;
+                    let selectedHtml = '';
+                    if (val.value && Number(val.value) >= 1 && Number(val.value) <= 6) {
+                        const score = Number(val.value);
+                        const lbl = _INSP_NEN_LABELS[score - 1];
+                        const isDeviation = score >= 4;
+                        selectedHtml = `
+                            <span class="insp-nen-selected">
+                                <span class="insp-nen-selected-dot" style="background: var(--insp-nen-${score})"></span>
+                                ${score} — ${lbl}
+                                ${isDeviation ? '<span class="insp-nen-deviation">Afwijking</span>' : ''}
+                            </span>`;
+                    }
+                    answerHtml = `
+                        <div class="insp-nen">
+                            <div class="insp-nen-track" role="radiogroup" aria-label="Conditiescore">${cellsHtml}</div>
+                            <div class="insp-nen-meta">
+                                <span class="insp-nen-scale">1 GOED → 6 SLECHT</span>
+                                ${selectedHtml}
+                            </div>
+                        </div>`;
                 } else if (q.type === 'meting' || q.type === 'numeriek') {
-                    inputHtml = `
-                        <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-                            <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
-                            ${q.unit ? `<span style="font-size:0.85rem;color:var(--muted)">${q.unit}</span>` : ''}
+                    const unit = q.unit ? escapeHtml(q.unit) : '';
+                    answerHtml = `
+                        <div class="insp-meting">
+                            <input type="text" inputmode="decimal" id="insp-input-${key}" value="${val.value ? escapeHtml(String(val.value)) : ''}" placeholder="…" onchange="inspAnswer('${key}',this.value)">
+                            ${unit ? `<div class="insp-meting-unit">${unit}</div>` : ''}
                         </div>`;
                 } else {
-                    inputHtml = `
-                        <textarea id="insp-input-${key}" onchange="inspAnswer('${key}',this.value)" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:6px;min-height:44px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
+                    answerHtml = `<textarea class="insp-notes-input" id="insp-input-${key}" style="min-height:80px" placeholder="…" onchange="inspAnswer('${key}',this.value)">${val.value ? escapeHtml(String(val.value)) : ''}</textarea>`;
                 }
 
+                // Extras label
+                const photoCount = (val.photos || []).length;
+                const hasNote = val.remark && val.remark.trim().length > 0;
+                let extrasLabel;
+                if (photoCount === 0 && !hasNote) extrasLabel = 'Geen foto · geen opmerking';
+                else {
+                    const parts = [];
+                    if (photoCount > 0) parts.push(`${photoCount} foto${photoCount === 1 ? '' : "'s"}`);
+                    if (hasNote) parts.push('opmerking');
+                    extrasLabel = parts.join(' · ');
+                }
+                if (requiresNote && !hasNote) extrasLabel = '⚠ Opmerking vereist bij afwijking';
+
+                // Foto thumbs
+                let thumbsHtml = '';
+                (val.photos || []).forEach((ph, pi) => {
+                    thumbsHtml += `<div class="insp-photo-thumb" style="background-image:url('${ph}')" data-photo-id="${pi}"><button class="insp-photo-remove" aria-label="Foto verwijderen" onclick="event.stopPropagation();inspRemovePhoto('${key}',${pi})">${_inspIconClose()}</button></div>`;
+                });
+
+                // Notes input
+                const notesPlaceholder = requiresNote ? 'Opmerking vereist bij afwijking…' : 'Opmerking…';
+                const notesClass = (requiresNote && !hasNote) ? 'insp-notes-input is-required' : 'insp-notes-input';
+
+                // Component-tag
+                const componentTag = q.component ? `<span class="insp-component-tag">${escapeHtml(q.component)}${q.discipline ? ' · ' + escapeHtml(q.discipline) : ''}</span>` : '';
+
                 questionsHtml += `
-                    <div id="insp-q-${key}" style="background:${isAfwijking ? '#fef2f2' : (answered ? '#f0fdf4' : 'white')};border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid ${isAfwijking ? '#fecaca' : (answered ? '#bbf7d0' : 'var(--border)')};transition:all 0.2s">
-                        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
-                            <div style="flex:1;min-width:0">
-                                <div style="font-size:0.85rem;font-weight:600;line-height:1.3"><span style="color:var(--muted);margin-right:4px">${qi+1}.</span>${escapeHtml(q.text || 'Vraag ' + (qi + 1))}</div>
-                                ${q.component ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">${escapeHtml(q.component)}${q.discipline ? ' · ' + escapeHtml(q.discipline) : ''}</div>` : ''}
+                    <article class="insp-vraag" data-question-id="${key}">
+                        <div class="insp-vraag-head">
+                            <div class="insp-vraag-meta">
+                                <span class="insp-qnum">VRAAG ${String(qi + 1).padStart(2, '0')} / ${String(qs.length).padStart(2, '0')}</span>
+                                ${componentTag}
                             </div>
-                            <div style="display:flex;gap:4px;flex-shrink:0">
-                                <label for="insp-camera-${key}" title="Foto maken met camera" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
-                                <input type="file" id="insp-camera-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
-                                <label for="insp-photo-${key}" title="Uit galerij/bestanden" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">🖼️</label>
-                                <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                            <h3 class="insp-qtext">${escapeHtml(q.text || 'Vraag ' + (qi + 1))}</h3>
+                        </div>
+                        <div class="insp-answer-zone">${answerHtml}</div>
+                        <div class="insp-vraag-extras">
+                            <div class="insp-extras-toolbar">
+                                <span class="insp-label-tiny">${extrasLabel}</span>
+                                <div class="insp-photo-actions">
+                                    <label for="insp-camera-${key}" class="insp-photo-btn" title="Foto maken">${_inspIconCamera()}</label>
+                                    <input type="file" id="insp-camera-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                                    <label for="insp-photo-${key}" class="insp-photo-btn" title="Uit galerij">${_inspIconGallery()}</label>
+                                    <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
+                                </div>
+                            </div>
+                            <textarea id="insp-remark-${key}" class="${notesClass}" placeholder="${notesPlaceholder}" onchange="inspAnswerRemark('${key}',this.value)">${val.remark ? escapeHtml(val.remark) : ''}</textarea>
+                            <div id="insp-photos-${key}" class="insp-photo-strip" style="${(photoCount > 0 || true) ? '' : 'display:none'}">
+                                ${thumbsHtml}
+                                <label for="insp-photo-${key}" class="insp-photo-thumb is-add" title="Foto toevoegen">${_inspIconPlus()}</label>
                             </div>
                         </div>
-                        ${inputHtml}
-                        <div style="margin-top:6px">
-                            <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
-                            <div id="insp-photos-${key}" style="display:${(val.photos && val.photos.length) ? 'flex' : 'none'};gap:6px;flex-wrap:wrap;margin-top:6px">
-                                ${(val.photos || []).map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('')}
-                            </div>
-                        </div>
-                    </div>`;
+                    </article>`;
             });
+            questionsHtml += '</div>';
 
             // Navigatie tussen secties
             const hasPrev = si > 0;
             const hasNext = si < sections.length - 1;
             const navHtml = `
-                <div style="display:flex;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
-                    <button onclick="inspOpenSectionView(${si - 1})" ${hasPrev ? '' : 'disabled'} style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:${hasPrev ? 'white' : '#f3f4f6'};color:${hasPrev ? 'var(--text)' : '#9ca3af'};font-weight:600;font-size:0.8rem;cursor:${hasPrev ? 'pointer' : 'not-allowed'}">◀ Vorige</button>
-                    <button onclick="inspBackToOverview()" style="flex:1.5;padding:10px;border:1px solid var(--kts-blue);border-radius:8px;background:var(--kts-blue);color:white;font-weight:700;font-size:0.8rem;cursor:pointer">📋 Overzicht</button>
-                    <button onclick="inspOpenSectionView(${si + 1})" ${hasNext ? '' : 'disabled'} style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:${hasNext ? 'white' : '#f3f4f6'};color:${hasNext ? 'var(--text)' : '#9ca3af'};font-weight:600;font-size:0.8rem;cursor:${hasNext ? 'pointer' : 'not-allowed'}">Volgende ▶</button>
+                <div class="insp-vraag-nav">
+                    <button class="insp-nav-btn" onclick="inspOpenSectionView(${si - 1})" ${hasPrev ? '' : 'disabled'}>${_inspIconArrowLeft()} Vorige</button>
+                    <button class="insp-nav-btn is-center" onclick="inspBackToOverview()">Overzicht</button>
+                    <button class="insp-nav-btn" onclick="inspOpenSectionView(${si + 1})" ${hasNext ? '' : 'disabled'}>Volgende ${_inspIconArrowRight()}</button>
                 </div>`;
 
             const modal = document.getElementById('admin-modal');
             modal.innerHTML = `
-                <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
-                    <div style="position:sticky;top:-16px;background:white;padding:14px 16px 12px 16px;margin:-16px -16px 12px -16px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:16px">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                            <button onclick="inspBackToOverview()" title="Terug naar overzicht" style="background:#f1f5f9;border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:0.85rem;flex-shrink:0">◀</button>
-                            <div style="flex:1;min-width:0">
-                                <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(sec.title || 'Sectie ' + (si + 1))}</div>
-                                <div style="font-size:0.7rem;color:var(--muted)">${insp.asset ? escapeHtml(insp.asset) + ' · ' : ''}Sectie ${si + 1} van ${sections.length}</div>
-                            </div>
-                            <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;color:var(--muted);margin-bottom:4px">
-                            <span><strong style="color:var(--text)">${done}/${qs.length}</strong> in deze sectie · <strong style="color:var(--text)">${totalDone}/${totalQ}</strong> totaal</span>
-                            <span style="font-weight:700;color:var(--kts-blue)">${sectPct}%</span>
-                        </div>
-                        <div style="background:#e2e8f0;border-radius:4px;height:5px;overflow:hidden">
-                            <div style="background:var(--kts-blue);width:${sectPct}%;height:100%;transition:width 0.3s"></div>
-                        </div>
+                <div class="modal-content insp-modal-content insp-module">
+                    <button class="insp-modal-close" onclick="inspCloseForm()" aria-label="Sluiten">${_inspIconClose()}</button>
+                    <div class="insp-modal-body">
+                        ${headerHtml}
+                        ${questionsHtml}
+                        ${navHtml}
                     </div>
-                    ${questionsHtml}
-                    ${navHtml}
                 </div>`;
             modal.classList.add('active');
         }
@@ -12174,9 +13059,12 @@
             if (!state.answers[key]) state.answers[key] = {};
             state.answers[key].value = value;
 
-            // UI lokaal bijwerken (geen full reload)
-            inspUpdateQuestionUI(key, value);
-            inspUpdateProgressUI();
+            // Re-render section view (nieuwe markup gebruikt aria-pressed dus full re-render is simpeler)
+            if (state.view === 'section' && typeof state.activeSectionIdx === 'number') {
+                inspRenderSectionView(state.activeSectionIdx);
+            } else {
+                inspRenderOverview();
+            }
 
             // Bepaal of dit een afwijkend antwoord is dat extra info vereist
             const isFout = value === 'fout';
@@ -12390,20 +13278,12 @@
 
         // Update alleen foto-container van een vraag zonder hele modal te re-renderen
         function inspUpdatePhotoUI(key) {
+            // In nieuwe design-systeem: re-render de sectie-view zodat thumbs en strip kloppen
             const state = window._inspActive;
             if (!state) return;
-            const photos = (state.answers[key] && state.answers[key].photos) || [];
-            const container = document.getElementById('insp-photos-' + key);
-            if (container) {
-                container.style.display = photos.length ? 'flex' : 'none';
-                container.innerHTML = photos.map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('');
+            if (state.view === 'section' && typeof state.activeSectionIdx === 'number') {
+                inspRenderSectionView(state.activeSectionIdx);
             }
-            // Update foto-knoppen achtergrond (blauw als foto's aanwezig)
-            const photoBtn = document.querySelector(`label[for="insp-photo-${key}"]`);
-            const cameraBtn = document.querySelector(`label[for="insp-camera-${key}"]`);
-            const bg = photos.length ? '#dbeafe' : 'white';
-            if (photoBtn) photoBtn.style.background = bg;
-            if (cameraBtn) cameraBtn.style.background = bg;
         }
 
         function inspAnswerRemark(key, remark) {
