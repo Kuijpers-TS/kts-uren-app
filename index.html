@@ -12364,9 +12364,31 @@
         // Start nieuwe inspectie vanuit een template
         async function inspStartFromTemplate(templateId, copyFromInspectionId) {
             const sb = getSupabase();
-            if (!currentUser || !currentProject) {
-                showToast('⚠️ Selecteer eerst een project');
+            if (!currentUser) {
+                showToast('⚠️ Niet ingelogd');
                 return;
+            }
+            // Auto-laad project als nog niet gezet (engineers die direct naar inspecties gaan)
+            if (!currentProject) {
+                try {
+                    // Probeer eerst projecten waar gebruiker aan is toegewezen
+                    const { data: userProjects } = await sb.from('user_projects')
+                        .select('project_id, projects(*)')
+                        .eq('user_id', currentUser.id);
+                    if (userProjects && userProjects.length > 0) {
+                        currentProject = userProjects[0].projects;
+                    } else {
+                        // Fallback: pak eerste actieve project
+                        const { data: anyProj } = await sb.from('projects')
+                            .select('*').eq('status', 'active').limit(1);
+                        if (anyProj && anyProj.length > 0) currentProject = anyProj[0];
+                    }
+                } catch(e) { console.warn('Project auto-load mislukt:', e); }
+
+                if (!currentProject) {
+                    showToast('⚠️ Selecteer eerst een project bovenin de app');
+                    return;
+                }
             }
 
             // Haal template op
