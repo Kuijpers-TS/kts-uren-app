@@ -1,0 +1,1033 @@
+/* =============================================================================
+   KTS Uren App — Design System v1  (Fase 1: Foundations)
+   =============================================================================
+   Productie-CSS met de gedeelde basis voor de hele app (uren, beheer,
+   inspecties). Plak dit als <style> blok in index.html, direct NA het
+   bestaande <style> blok dat het inspecties-design bevat.
+
+   Conventies:
+   - Tokens onder :root — overlapt met inspecties-design (mag, identiek)
+   - App-componenten met `.app-` prefix om naast bestaande styles te kunnen
+   - Inspecties-componenten houden hun `.insp-` prefix (al geïmplementeerd)
+   - Touch-targets ≥ 44px overal
+   - Werkt op iOS Safari, Android Chrome, desktop Chrome/Edge
+
+   Belangrijk: de tokens in dit bestand zijn IDENTIEK aan inspecties-design.css.
+   Als beide bestanden zijn geladen overschrijft de laatste — geen probleem,
+   want de waardes matchen. Wel de Plex font-link in <head> hoeft maar
+   één keer geladen te worden.
+   ============================================================================= */
+
+
+/* =============================================================================
+   1. DESIGN TOKENS
+   =============================================================================
+   Dezelfde tokens als inspecties-design.css. Hier voor de zekerheid herhaald
+   zodat dit bestand zelfstandig werkt als het voor inspecties wordt geladen.
+   ============================================================================= */
+
+:root {
+  /* --- KTS Brand --- */
+  --kts-blue: #07567F;
+  --kts-blue-700: #044560;
+  --kts-blue-900: #0A1628;
+  --kts-blue-50: #EAF2F7;
+  --kts-blue-100: #D5E5EE;
+
+  /* --- Surfaces — warm off-white --- */
+  --app-bg: #FAFAF7;
+  --app-bg-tint: #F4F3EE;
+  --app-bg-deep: #EFEDE6;
+  --app-surface: #FFFFFF;
+  --app-surface-2: #FBFBF8;
+
+  /* --- Tekst hiërarchie --- */
+  --app-ink-900: #0F1B2D;
+  --app-ink-700: #2A3441;
+  --app-ink-500: #5C6675;
+  --app-ink-400: #8A93A1;
+  --app-ink-300: #B4BCC7;
+  --app-ink-200: #DDE2EA;
+
+  /* --- Hairlines & dividers --- */
+  --app-line: #E7E4DD;
+  --app-line-strong: #D4D0C7;
+
+  /* --- Status (gedempt) --- */
+  --app-ok: #2F7D4F;
+  --app-ok-soft: #EAF3EE;
+  --app-ok-line: #C5DCCB;
+
+  --app-warn: #A56A1F;
+  --app-warn-soft: #F5EDDF;
+  --app-warn-line: #E1CFAE;
+
+  --app-alert: #A02834;
+  --app-alert-soft: #F5E5E5;
+  --app-alert-line: #E2C0C2;
+
+  --app-info: #07567F;
+  --app-info-soft: #EAF2F7;
+  --app-info-line: #C9DCE6;
+
+  --app-idle: #8A93A1;
+  --app-idle-soft: #EFEDE7;
+
+  /* --- Schaduwen --- */
+  --app-shadow-sm: 0 1px 2px rgba(15, 27, 45, 0.04), 0 0 0 0.5px rgba(15, 27, 45, 0.04);
+  --app-shadow:    0 1px 3px rgba(15, 27, 45, 0.06), 0 4px 12px rgba(15, 27, 45, 0.04);
+  --app-shadow-lg: 0 4px 8px rgba(15, 27, 45, 0.06), 0 16px 32px rgba(15, 27, 45, 0.06);
+
+  /* --- Geometry --- */
+  --app-r-sm: 6px;
+  --app-r:    10px;
+  --app-r-lg: 14px;
+  --app-r-xl: 20px;
+
+  /* --- Type stacks --- */
+  --app-font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --app-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+
+/* =============================================================================
+   2. SCOPE & RESET
+   =============================================================================
+   Wikkel de hele app HTML in <div class="app-scope">…</div>. Dit scopt
+   typografie en kleuren zonder de huidige login-overlay te raken (die
+   stond niet in scope).
+
+   Voor inspecties die al `.insp-module` heeft: die mag binnen
+   `.app-scope` zitten — geen conflict.
+   ============================================================================= */
+
+.app-scope {
+  font-family: var(--app-font-sans);
+  color: var(--app-ink-900);
+  background: var(--app-bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+}
+.app-scope *, .app-scope *::before, .app-scope *::after { box-sizing: border-box; }
+
+
+/* =============================================================================
+   3. BUTTONS
+   =============================================================================
+   Vier varianten + sm + icon. Alle minimum 44px touch target (sm = 36px,
+   alleen voor secundaire desktop-acties).
+
+   <button class="app-btn app-btn-primary">Versturen</button>
+   <button class="app-btn app-btn-primary app-btn-sm">Versturen</button>
+   <button class="app-btn app-btn-ghost app-btn-icon" aria-label="Bewerken">
+     <svg>…</svg>
+   </button>
+   ============================================================================= */
+
+.app-btn {
+  appearance: none;
+  border: none;
+  font-family: var(--app-font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: var(--app-r);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  letter-spacing: 0.005em;
+  transition: all 150ms ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.app-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.app-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.app-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.25);
+}
+
+/* Primary — KTS-blauw, voor de hoofdactie van een scherm */
+.app-btn-primary {
+  background: var(--kts-blue);
+  color: white;
+  box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.1) inset, 0 1px 2px rgba(7, 86, 127, 0.2);
+}
+.app-btn-primary:hover:not(:disabled) { background: var(--kts-blue-700); }
+.app-btn-primary:disabled {
+  background: var(--app-ink-300);
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* Secondary — donker, voor "doorgaan" of bevestigen niet-finale acties */
+.app-btn-secondary {
+  background: var(--app-ink-900);
+  color: white;
+}
+.app-btn-secondary:hover:not(:disabled) { background: var(--kts-blue-900); }
+
+/* Ghost — wit met border, voor secundaire acties */
+.app-btn-ghost {
+  background: var(--app-surface);
+  color: var(--app-ink-700);
+  border: 1px solid var(--app-line-strong);
+}
+.app-btn-ghost:hover:not(:disabled) {
+  background: var(--app-bg-tint);
+  border-color: var(--app-ink-300);
+}
+
+/* Danger — voor verwijderen, afkeuren */
+.app-btn-danger {
+  background: var(--app-surface);
+  color: var(--app-alert);
+  border: 1px solid var(--app-alert-line);
+}
+.app-btn-danger:hover:not(:disabled) {
+  background: var(--app-alert-soft);
+}
+/* Solid danger — voor bevestigde delete in confirm-dialogen */
+.app-btn-danger.is-solid {
+  background: var(--app-alert);
+  color: white;
+  border-color: var(--app-alert);
+}
+.app-btn-danger.is-solid:hover:not(:disabled) {
+  background: #832029;
+}
+
+/* Sizes */
+.app-btn-sm {
+  font-size: 12.5px;
+  padding: 8px 12px;
+  min-height: 36px;
+}
+.app-btn-lg {
+  font-size: 15px;
+  padding: 14px 20px;
+  min-height: 50px;
+}
+
+/* Icon-only — vierkant */
+.app-btn-icon {
+  width: 36px;
+  padding: 0;
+  min-height: 36px;
+}
+.app-btn-icon.app-btn-lg {
+  width: 50px;
+  min-height: 50px;
+}
+
+/* Volle breedte (handig op telefoon-CTA's) */
+.app-btn-block {
+  width: 100%;
+}
+
+
+/* =============================================================================
+   4. FORM — INPUTS & LABELS
+   =============================================================================
+   <div class="app-form-row">
+     <div class="app-label-line">
+       <label class="app-label">Projectnaam <span class="app-req">*</span></label>
+       <span class="app-hint">VERPLICHT</span>
+     </div>
+     <input type="text" class="app-input">
+     <div class="app-error">Dit veld is verplicht</div>  // optioneel
+   </div>
+
+   Voor 2-koloms layout binnen één row:
+   <div class="app-form-row is-grid">
+     <div>…input 1…</div>
+     <div>…input 2…</div>
+   </div>
+   ============================================================================= */
+
+.app-form-row {
+  margin-bottom: 14px;
+}
+.app-form-row:last-child { margin-bottom: 0; }
+.app-form-row.is-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.app-form-row.is-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .app-form-row.is-grid,
+  .app-form-row.is-grid-3 { grid-template-columns: 1fr; }
+}
+
+.app-label-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+.app-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--app-ink-700);
+  letter-spacing: 0;
+}
+.app-label .app-req {
+  color: var(--app-alert);
+  margin-left: 2px;
+}
+.app-hint {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app-input,
+.app-select,
+.app-textarea {
+  width: 100%;
+  border: 1px solid var(--app-line-strong);
+  background: var(--app-surface);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-family: var(--app-font-sans);
+  font-size: 13.5px;
+  color: var(--app-ink-900);
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  min-height: 44px;
+}
+.app-input:focus,
+.app-select:focus,
+.app-textarea:focus {
+  border-color: var(--kts-blue);
+  box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.08);
+}
+.app-input::placeholder,
+.app-textarea::placeholder {
+  color: var(--app-ink-400);
+}
+.app-input:disabled,
+.app-select:disabled,
+.app-textarea:disabled {
+  background: var(--app-bg-tint);
+  color: var(--app-ink-400);
+  cursor: not-allowed;
+}
+
+/* Mono input — voor codes, bedragen, getallen */
+.app-input.is-mono {
+  font-family: var(--app-font-mono);
+  letter-spacing: 0.02em;
+}
+
+.app-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.app-input.has-error,
+.app-select.has-error,
+.app-textarea.has-error {
+  border-color: var(--app-alert);
+  box-shadow: 0 0 0 3px rgba(160, 40, 52, 0.08);
+}
+
+.app-error {
+  font-size: 12px;
+  color: var(--app-alert);
+  margin-top: 4px;
+}
+
+/* Select — eigen chevron */
+.app-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235C6675' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px;
+}
+
+/* Input met prefix/suffix (bv. €, of 'u') */
+.app-input-group {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--app-surface);
+  min-height: 44px;
+}
+.app-input-group:focus-within {
+  border-color: var(--kts-blue);
+  box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.08);
+}
+.app-input-group input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0 12px;
+  font-family: var(--app-font-mono);
+  font-size: 14px;
+  color: var(--app-ink-900);
+  background: transparent;
+  letter-spacing: 0.02em;
+}
+.app-input-group .app-affix {
+  display: grid;
+  place-items: center;
+  padding: 0 14px;
+  background: var(--app-bg-tint);
+  border-left: 1px solid var(--app-line);
+  font-family: var(--app-font-mono);
+  font-size: 13px;
+  color: var(--app-ink-500);
+  letter-spacing: 0.04em;
+}
+.app-input-group .app-affix.is-prefix {
+  border-left: none;
+  border-right: 1px solid var(--app-line);
+}
+
+
+/* =============================================================================
+   5. FORM — SWITCH & CHECKBOX & RADIO
+   =============================================================================
+   Switch:
+   <div class="app-switch-row">
+     <div class="app-switch-text">
+       <div class="app-switch-title">Notificaties via e-mail</div>
+       <div class="app-switch-desc">Bij goedkeuring of afwijzing</div>
+     </div>
+     <button class="app-switch is-on" aria-pressed="true" role="switch"></button>
+   </div>
+
+   Checkbox:
+   <label class="app-check is-checked">
+     <span class="app-checkbox"><svg>…check…</svg></span>
+     <span>Standaard project</span>
+   </label>
+   ============================================================================= */
+
+.app-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-surface);
+}
+.app-switch-text { flex: 1; min-width: 0; }
+.app-switch-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--app-ink-900);
+}
+.app-switch-desc {
+  font-size: 12px;
+  color: var(--app-ink-500);
+  margin-top: 1px;
+}
+
+.app-switch {
+  appearance: none;
+  border: none;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  background: var(--app-ink-300);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 200ms ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+.app-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 200ms ease;
+  box-shadow: 0 1px 2px rgba(15, 27, 45, 0.2);
+}
+.app-switch.is-on,
+.app-switch[aria-pressed="true"] { background: var(--kts-blue); }
+.app-switch.is-on::after,
+.app-switch[aria-pressed="true"]::after { transform: translateX(16px); }
+.app-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Checkbox */
+.app-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 0;
+  user-select: none;
+}
+.app-check input[type="checkbox"] { display: none; }
+.app-checkbox {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--app-line-strong);
+  border-radius: 4px;
+  background: var(--app-surface);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+}
+.app-checkbox svg {
+  width: 12px; height: 12px;
+  color: white;
+  opacity: 0;
+}
+.app-check.is-checked .app-checkbox,
+.app-check input:checked + .app-checkbox {
+  background: var(--kts-blue);
+  border-color: var(--kts-blue);
+}
+.app-check.is-checked .app-checkbox svg,
+.app-check input:checked + .app-checkbox svg {
+  opacity: 1;
+}
+.app-check span:not(.app-checkbox) {
+  font-size: 13.5px;
+  color: var(--app-ink-700);
+}
+
+/* Radio — zelfde structuur, ronde versie */
+.app-radio {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--app-line-strong);
+  border-radius: 50%;
+  background: var(--app-surface);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+}
+.app-radio::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: white;
+  opacity: 0;
+}
+.app-check.is-checked .app-radio {
+  background: var(--kts-blue);
+  border-color: var(--kts-blue);
+}
+.app-check.is-checked .app-radio::after { opacity: 1; }
+
+
+/* =============================================================================
+   6. STATUS-PILLEN
+   =============================================================================
+   Compact, voor in lijsten en kaarten.
+
+   <span class="app-pill is-ok"><span class="app-pdot"></span>Goedgekeurd</span>
+
+   Varianten: is-ok / is-warn / is-alert / is-info / is-idle
+   ============================================================================= */
+
+.app-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.app-pill .app-pdot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.app-pill.is-ok    { background: var(--app-ok-soft);    color: var(--app-ok);     border-color: var(--app-ok-line); }
+.app-pill.is-ok    .app-pdot { background: var(--app-ok); }
+.app-pill.is-warn  { background: var(--app-warn-soft);  color: var(--app-warn);   border-color: var(--app-warn-line); }
+.app-pill.is-warn  .app-pdot { background: var(--app-warn); }
+.app-pill.is-alert { background: var(--app-alert-soft); color: var(--app-alert);  border-color: var(--app-alert-line); }
+.app-pill.is-alert .app-pdot { background: var(--app-alert); }
+.app-pill.is-info  { background: var(--app-info-soft);  color: var(--kts-blue);   border-color: var(--app-info-line); }
+.app-pill.is-info  .app-pdot { background: var(--kts-blue); }
+.app-pill.is-idle  { background: var(--app-idle-soft);  color: var(--app-ink-500); border-color: var(--app-line-strong); }
+.app-pill.is-idle  .app-pdot { background: var(--app-ink-400); }
+
+
+/* =============================================================================
+   7. MODAL
+   =============================================================================
+   Generieke modal-template. Gebruikt voor alle admin-flows
+   (project, persoon, gebruiker, tarief, week-defaults, wachtwoord, confirm).
+
+   <div class="app-modal-backdrop">
+     <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+       <div class="app-modal-header">
+         <div>
+           <div class="app-modal-subtitle">Beheer  /  Projecten</div>
+           <h3 class="app-modal-title" id="modal-title">Project bewerken</h3>
+         </div>
+         <button class="app-modal-close" aria-label="Sluiten">
+           <svg>…X…</svg>
+         </button>
+       </div>
+       <div class="app-modal-body">
+         …form rows…
+       </div>
+       <div class="app-modal-footer">
+         <button class="app-btn app-btn-ghost app-btn-sm">Annuleren</button>
+         <button class="app-btn app-btn-primary app-btn-sm">Opslaan</button>
+       </div>
+     </div>
+   </div>
+   ============================================================================= */
+
+.app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 27, 45, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: app-modal-fade-in 180ms ease;
+}
+@keyframes app-modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.app-modal {
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-r-lg);
+  box-shadow: var(--app-shadow-lg);
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: app-modal-slide-in 220ms cubic-bezier(.4,0,.2,1);
+}
+@keyframes app-modal-slide-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Variant: smal — voor confirm-dialogen */
+.app-modal.is-narrow { max-width: 420px; }
+/* Variant: breed — voor lange forms (bv. project met veel velden) */
+.app-modal.is-wide { max-width: 720px; }
+
+.app-modal-header {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--app-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.app-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: 0;
+  color: var(--app-ink-900);
+  line-height: 1.3;
+}
+.app-modal-subtitle {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.app-modal-close {
+  appearance: none;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-ink-500);
+  cursor: pointer;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.app-modal-close:hover {
+  background: var(--app-bg-tint);
+  color: var(--app-ink-900);
+}
+.app-modal-close svg { width: 14px; height: 14px; }
+
+.app-modal-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.app-modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--app-line);
+  background: var(--app-surface-2);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Body-scroll-lock indien vereist (op de <body>): */
+.app-no-scroll { overflow: hidden; }
+
+
+/* =============================================================================
+   8. TOAST
+   =============================================================================
+   Dark-on-light toast met gekleurde icon-bullet. Stack rechtsonder.
+
+   <div class="app-toast-stack">
+     <div class="app-toast is-ok">
+       <div class="app-toast-icon"><svg>…check…</svg></div>
+       <div class="app-toast-text">
+         <span class="app-toast-strong">Weekstaat goedgekeurd</span>
+         <span class="app-toast-desc">Jan Pieterse · WK 17 · 40,5 u</span>
+       </div>
+       <button class="app-toast-close" aria-label="Sluiten"><svg>…X…</svg></button>
+     </div>
+   </div>
+   ============================================================================= */
+
+.app-toast-stack {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  pointer-events: none;
+}
+.app-toast {
+  background: var(--app-ink-900);
+  color: white;
+  padding: 12px 14px;
+  border-radius: var(--app-r);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--app-shadow-lg);
+  max-width: 380px;
+  font-size: 13px;
+  pointer-events: auto;
+  animation: app-toast-in 240ms cubic-bezier(.4,0,.2,1);
+}
+@keyframes app-toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.app-toast.is-leaving {
+  animation: app-toast-out 200ms cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes app-toast-out {
+  to { opacity: 0; transform: translateX(20px); }
+}
+
+.app-toast-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  color: white;
+}
+.app-toast-icon svg { width: 12px; height: 12px; }
+.app-toast.is-ok    .app-toast-icon { background: var(--app-ok); }
+.app-toast.is-warn  .app-toast-icon { background: var(--app-warn); }
+.app-toast.is-alert .app-toast-icon { background: var(--app-alert); }
+.app-toast.is-info  .app-toast-icon { background: var(--kts-blue); }
+
+.app-toast-text { flex: 1; min-width: 0; }
+.app-toast-strong {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 1px;
+  line-height: 1.3;
+}
+.app-toast-desc {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  display: block;
+  line-height: 1.4;
+}
+.app-toast-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  border-radius: 4px;
+  transition: color 150ms ease, background 150ms ease;
+}
+.app-toast-close:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+.app-toast-close svg { width: 12px; height: 12px; }
+
+/* Op telefoon: toast vol breedte onderaan */
+@media (max-width: 480px) {
+  .app-toast-stack {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+  .app-toast { max-width: none; }
+}
+
+
+/* =============================================================================
+   9. EMPTY STATE
+   =============================================================================
+   Voor lege lijsten ("nog geen projecten", "geen weekstaten gevonden").
+
+   <div class="app-empty">
+     <div class="app-empty-icon"><svg>…icon…</svg></div>
+     <h3 class="app-empty-title">Nog geen weekstaten</h3>
+     <p class="app-empty-desc">Begin met het invullen van je eerste week.</p>
+     <button class="app-btn app-btn-primary app-btn-sm">Nieuwe weekstaat</button>
+   </div>
+   ============================================================================= */
+
+.app-empty {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--app-surface);
+  border: 1px dashed var(--app-line-strong);
+  border-radius: var(--app-r-lg);
+}
+.app-empty-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--app-bg-tint);
+  border: 1px solid var(--app-line);
+  display: grid; place-items: center;
+  margin: 0 auto 16px;
+  color: var(--app-ink-400);
+}
+.app-empty-icon svg { width: 24px; height: 24px; }
+.app-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.005em;
+}
+.app-empty-desc {
+  font-size: 13.5px;
+  color: var(--app-ink-500);
+  margin: 0 auto 20px;
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+
+/* =============================================================================
+   10. CONFIRM-DIALOG (variant van modal)
+   =============================================================================
+   Voor "weet je het zeker"-vragen. Gebruikt .app-modal.is-narrow met deze
+   body-styling.
+
+   <div class="app-confirm-body">
+     <div class="app-confirm-icon is-alert"><svg>…!…</svg></div>
+     <h3 class="app-confirm-title">Project verwijderen?</h3>
+     <p class="app-confirm-desc">Deze actie kan niet ongedaan gemaakt worden.</p>
+   </div>
+   ============================================================================= */
+
+.app-confirm-body {
+  text-align: center;
+  padding: 24px 22px 8px;
+}
+.app-confirm-icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  margin: 0 auto 14px;
+}
+.app-confirm-icon svg { width: 22px; height: 22px; }
+.app-confirm-icon.is-alert {
+  background: var(--app-alert-soft);
+  color: var(--app-alert);
+  border: 1px solid var(--app-alert-line);
+}
+.app-confirm-icon.is-warn {
+  background: var(--app-warn-soft);
+  color: var(--app-warn);
+  border: 1px solid var(--app-warn-line);
+}
+.app-confirm-icon.is-info {
+  background: var(--app-info-soft);
+  color: var(--kts-blue);
+  border: 1px solid var(--app-info-line);
+}
+.app-confirm-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.005em;
+}
+.app-confirm-desc {
+  font-size: 13.5px;
+  color: var(--app-ink-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+
+/* =============================================================================
+   11. UTILITIES (klein, alleen wat we nodig hebben)
+   ============================================================================= */
+
+.app-mono {
+  font-family: var(--app-font-mono);
+  letter-spacing: 0.02em;
+}
+.app-meta {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.app-divider {
+  height: 1px;
+  background: var(--app-line);
+  margin: 16px 0;
+}
+.app-divider-dashed {
+  height: 1px;
+  border-top: 1px dashed var(--app-line-strong);
+  margin: 16px 0;
+}
+
+
+/* =============================================================================
+   12. SVG-ICONEN — copy-paste inventaris
+   =============================================================================
+   Alle iconen 24x24 viewBox, stroke="currentColor", stroke-width="2".
+   Pas stroke-width aan naar 2.5 of 3 voor kleinere iconen of meer nadruk.
+
+   X / SLUITEN:
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+     <path d="M18 6L6 18M6 6l12 12"/>
+   </svg>
+
+   VINKJE:
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+     <path d="M5 12l5 5L20 7"/>
+   </svg>
+
+   WAARSCHUWING (driehoek):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+     <path d="M12 9v4M12 17h.01"/>
+     <path d="M12 3l10 18H2L12 3z"/>
+   </svg>
+
+   INFO (cirkel + i):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <circle cx="12" cy="12" r="9"/>
+     <path d="M12 8v4M12 16h.01"/>
+   </svg>
+
+   POTLOOD (bewerken):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+   </svg>
+
+   PRULLENBAK:
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>
+     <path d="M10 11v6M14 11v6"/>
+   </svg>
+
+   OOG (bekijken):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+     <circle cx="12" cy="12" r="3"/>
+   </svg>
+
+   DOCUMENT (PDF):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
+     <path d="M14 2v6h6"/>
+   </svg>
+
+   DOWNLOAD:
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+     <path d="M7 10l5 5 5-5M12 15V3"/>
+   </svg>
+
+   ZOEKEN:
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <circle cx="11" cy="11" r="7"/>
+     <path d="M21 21l-4.35-4.35"/>
+   </svg>
+
+   PLUS:
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <line x1="12" y1="5" x2="12" y2="19"/>
+     <line x1="5" y1="12" x2="19" y2="12"/>
+   </svg>
+
+   PIJL LINKS / RECHTS / OMHOOG / OMLAAG:
+   <path d="M15 18l-6-6 6-6"/>   ← chevron links
+   <path d="M9 18l6-6-6-6"/>     ← chevron rechts
+   <path d="M18 15l-6-6-6 6"/>   ← chevron omhoog
+   <path d="M6 9l6 6 6-6"/>      ← chevron omlaag
+
+   GEAR (instellingen):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <circle cx="12" cy="12" r="3"/>
+     <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+   </svg>
+
+   USER (avatar fallback):
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+     <circle cx="12" cy="8" r="4"/>
+     <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+   </svg>
+   ============================================================================= */

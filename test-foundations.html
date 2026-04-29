@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KTS Uren App — Foundations test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app-design.css">
+<style>
+  /* Inline app-design.css zou er normaal als externe link in zitten,
+     maar omdat dit een losse test-pagina is, halen we de definitieve
+     versie uit index.html. Voor lokale ontwikkeling kun je hieronder
+     het volledige CSS-blok plakken — voor nu lezen we de live versie
+     in via fetch zodat alle wijzigingen direct doorkomen. */
+  body { margin:0; }
+  .test-section {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+  .test-h1 {
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:28px;
+    font-weight:600;
+    letter-spacing:-0.015em;
+    margin: 0 0 8px;
+    color:#0F1B2D;
+  }
+  .test-sub {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:#8A93A1;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    margin-bottom: 32px;
+  }
+  .test-block {
+    background: #fff;
+    border: 1px solid #E7E4DD;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .test-block-title {
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:18px;
+    font-weight:600;
+    color:#0F1B2D;
+    margin: 0 0 6px;
+  }
+  .test-block-desc {
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:13px;
+    color:#5C6675;
+    margin: 0 0 20px;
+  }
+  .test-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+  .test-row + .test-row { margin-top: 0; }
+  .test-label {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    color:#8A93A1;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    min-width: 90px;
+  }
+</style>
+</head>
+<body class="app-scope">
+
+<div class="test-section">
+  <div class="test-sub">FASE 1 — FOUNDATIONS</div>
+  <h1 class="test-h1">KTS Uren App design system</h1>
+  <p class="test-block-desc" style="margin-bottom:32px;max-width:600px">Deze pagina toont alle foundation-componenten uit <code>app-design.css</code>. Op telefoon en desktop test je hier het visuele resultaat. Niets op deze pagina doet iets in productie — het is een review-tool.</p>
+
+  <!-- ===== KNOPPEN ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">1. Knoppen</h2>
+    <p class="test-block-desc">4 varianten + grootte-modifiers + icon + block + disabled</p>
+
+    <div class="test-row"><span class="test-label">Varianten</span>
+      <button class="app-btn app-btn-primary">Primary</button>
+      <button class="app-btn app-btn-secondary">Secondary</button>
+      <button class="app-btn app-btn-ghost">Ghost</button>
+      <button class="app-btn app-btn-danger">Danger</button>
+      <button class="app-btn app-btn-danger is-solid">Danger solid</button>
+    </div>
+
+    <div class="test-row"><span class="test-label">Maten</span>
+      <button class="app-btn app-btn-primary app-btn-sm">Sm</button>
+      <button class="app-btn app-btn-primary">Default</button>
+      <button class="app-btn app-btn-primary app-btn-lg">Lg</button>
+    </div>
+
+    <div class="test-row"><span class="test-label">Icoon</span>
+      <button class="app-btn app-btn-primary">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Versturen
+      </button>
+      <button class="app-btn app-btn-ghost app-btn-icon" aria-label="Bewerken">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button class="app-btn app-btn-ghost app-btn-icon" aria-label="Verwijderen">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>
+      </button>
+    </div>
+
+    <div class="test-row"><span class="test-label">Block</span>
+      <button class="app-btn app-btn-primary app-btn-block" style="max-width:320px">Volle breedte (mobiel)</button>
+    </div>
+
+    <div class="test-row"><span class="test-label">Disabled</span>
+      <button class="app-btn app-btn-primary" disabled>Versturen</button>
+      <button class="app-btn app-btn-ghost" disabled>Annuleren</button>
+    </div>
+  </div>
+
+  <!-- ===== FORM INPUTS ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">2. Form inputs</h2>
+    <p class="test-block-desc">Tekst / mono / select / textarea / input-group / fout-state</p>
+
+    <div class="app-form-row">
+      <div class="app-label-line">
+        <label class="app-label">Projectnaam <span class="app-req">*</span></label>
+        <span class="app-hint">VERPLICHT</span>
+      </div>
+      <input type="text" class="app-input" placeholder="Bijv. Afsluitdijk Levvel">
+    </div>
+
+    <div class="app-form-row">
+      <div class="app-label-line">
+        <label class="app-label">Projectcode</label>
+        <span class="app-hint">OPTIONEEL</span>
+      </div>
+      <input type="text" class="app-input is-mono" value="P-2024-031">
+    </div>
+
+    <div class="app-form-row">
+      <div class="app-label-line">
+        <label class="app-label">E-mail</label>
+      </div>
+      <input type="email" class="app-input has-error" value="bart@invalid">
+      <div class="app-error">Ongeldig e-mailadres</div>
+    </div>
+
+    <div class="app-form-row">
+      <div class="app-label-line">
+        <label class="app-label">Status</label>
+      </div>
+      <select class="app-select">
+        <option>Actief</option>
+        <option>Op pauze</option>
+        <option>Afgerond</option>
+      </select>
+    </div>
+
+    <div class="app-form-row">
+      <div class="app-label-line">
+        <label class="app-label">Werkomschrijving</label>
+      </div>
+      <textarea class="app-textarea" placeholder="Wat is er gedaan…"></textarea>
+    </div>
+
+    <div class="app-form-row">
+      <div class="app-label-line">
+        <label class="app-label">Tarief</label>
+      </div>
+      <div class="app-input-group">
+        <span class="app-affix is-prefix">€</span>
+        <input type="text" inputmode="decimal" value="87,50">
+        <span class="app-affix">/ uur</span>
+      </div>
+    </div>
+
+    <div class="app-form-row is-grid">
+      <div>
+        <div class="app-label-line"><label class="app-label">Tarief</label></div>
+        <input type="text" class="app-input is-mono" value="€ 87,50">
+      </div>
+      <div>
+        <div class="app-label-line"><label class="app-label">Status</label></div>
+        <select class="app-select"><option>Actief</option></select>
+      </div>
+    </div>
+
+    <div class="app-form-row">
+      <div class="app-label-line"><label class="app-label">Disabled veld</label></div>
+      <input type="text" class="app-input" value="Niet bewerkbaar" disabled>
+    </div>
+  </div>
+
+  <!-- ===== SWITCHES & CHECKBOXES ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">3. Switches &amp; checkboxes</h2>
+    <p class="test-block-desc">Aan/uit-keuzes met label-row</p>
+
+    <div class="app-switch-row">
+      <div class="app-switch-text">
+        <div class="app-switch-title">Notificaties via e-mail</div>
+        <div class="app-switch-desc">Bij goedkeuring of afwijzing weekstaat</div>
+      </div>
+      <button class="app-switch is-on" role="switch" aria-pressed="true" aria-label="Notificaties via e-mail" onclick="this.classList.toggle('is-on');this.setAttribute('aria-pressed',this.classList.contains('is-on'))"></button>
+    </div>
+
+    <div class="app-switch-row">
+      <div class="app-switch-text">
+        <div class="app-switch-title">Reminder bij ontbrekende uren</div>
+        <div class="app-switch-desc">Krijg vrijdag 16:00 een herinnering</div>
+      </div>
+      <button class="app-switch" role="switch" aria-pressed="false" aria-label="Reminder bij ontbrekende uren" onclick="this.classList.toggle('is-on');this.setAttribute('aria-pressed',this.classList.contains('is-on'))"></button>
+    </div>
+
+    <label class="app-check is-checked">
+      <input type="checkbox" checked onchange="this.closest('.app-check').classList.toggle('is-checked',this.checked)">
+      <span class="app-checkbox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+      </span>
+      <span>Standaardproject voor deze medewerker</span>
+    </label>
+
+    <label class="app-check" style="margin-top:8px">
+      <input type="checkbox" onchange="this.closest('.app-check').classList.toggle('is-checked',this.checked)">
+      <span class="app-checkbox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+      </span>
+      <span>Toon ook gearchiveerde projecten</span>
+    </label>
+  </div>
+
+  <!-- ===== STATUS PILLS ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">4. Status-pillen</h2>
+    <p class="test-block-desc">5 varianten voor consistente status-communicatie</p>
+    <div class="test-row">
+      <span class="app-pill is-ok"><span class="app-pdot"></span>Goedgekeurd</span>
+      <span class="app-pill is-warn"><span class="app-pdot"></span>Open</span>
+      <span class="app-pill is-alert"><span class="app-pdot"></span>Afgekeurd</span>
+      <span class="app-pill is-info"><span class="app-pdot"></span>Verstuurd</span>
+      <span class="app-pill is-idle"><span class="app-pdot"></span>Concept</span>
+    </div>
+  </div>
+
+  <!-- ===== EMPTY STATE ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">5. Empty state</h2>
+    <p class="test-block-desc">Patroon: icoon + titel + beschrijving + actie</p>
+    <div class="app-empty">
+      <div class="app-empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <h3 class="app-empty-title">Nog geen weekstaten</h3>
+      <p class="app-empty-desc">Begin met het invullen van je eerste week om hier een overzicht te zien.</p>
+      <button class="app-btn app-btn-primary app-btn-sm">Nieuwe weekstaat</button>
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">6. Toasts</h2>
+    <p class="test-block-desc">Klik om te triggeren — verschijnen rechtsonder, verdwijnen na 5 sec</p>
+    <div class="test-row">
+      <button class="app-btn app-btn-ghost app-btn-sm" onclick="appToast({type:'ok',title:'Weekstaat goedgekeurd',desc:'Jan Pieterse · WK 17 · 40,5 u'})">OK toast</button>
+      <button class="app-btn app-btn-ghost app-btn-sm" onclick="appToast({type:'warn',title:'Vergeet de pauze niet',desc:'Vrijdag 12:00 - 12:30 ontbreekt nog',duration:8000})">Warn toast</button>
+      <button class="app-btn app-btn-ghost app-btn-sm" onclick="appToast({type:'alert',title:'Versturen mislukt',desc:'Geen verbinding met server. Probeer opnieuw.',duration:0})">Alert toast (manueel sluiten)</button>
+      <button class="app-btn app-btn-ghost app-btn-sm" onclick="appToast({type:'info',title:'Auto-opgeslagen',desc:'Je wijzigingen zijn bewaard'})">Info toast</button>
+    </div>
+  </div>
+
+  <!-- ===== MODALS ===== -->
+  <div class="test-block">
+    <h2 class="test-block-title">7. Modals &amp; confirm-dialog</h2>
+    <p class="test-block-desc">3 maten + confirm-dialoog voor verwijderen</p>
+    <div class="test-row">
+      <button class="app-btn app-btn-primary app-btn-sm" onclick="document.getElementById('demo-modal-default').classList.add('is-open');document.body.classList.add('app-no-scroll')">Standaard (560px)</button>
+      <button class="app-btn app-btn-ghost app-btn-sm" onclick="document.getElementById('demo-modal-narrow').classList.add('is-open');document.body.classList.add('app-no-scroll')">Smal (420px)</button>
+      <button class="app-btn app-btn-ghost app-btn-sm" onclick="document.getElementById('demo-modal-wide').classList.add('is-open');document.body.classList.add('app-no-scroll')">Breed (720px)</button>
+      <button class="app-btn app-btn-danger app-btn-sm" onclick="document.getElementById('demo-modal-confirm').classList.add('is-open');document.body.classList.add('app-no-scroll')">Confirm (verwijderen)</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast stack (één per pagina) -->
+<div class="app-toast-stack" id="toast-stack"></div>
+
+<!-- Standaard modal -->
+<div class="app-modal-backdrop" id="demo-modal-default" role="dialog" aria-modal="true" data-close-on-backdrop>
+  <div class="app-modal" aria-labelledby="modal-default-title">
+    <div class="app-modal-header">
+      <div>
+        <div class="app-modal-subtitle">Beheer  /  Projecten</div>
+        <h3 class="app-modal-title" id="modal-default-title">Project bewerken</h3>
+      </div>
+      <button class="app-modal-close" aria-label="Sluiten" data-close-modal>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="app-modal-body">
+      <div class="app-form-row">
+        <div class="app-label-line">
+          <label class="app-label">Projectnaam <span class="app-req">*</span></label>
+        </div>
+        <input type="text" class="app-input" value="Afsluitdijk Levvel">
+      </div>
+      <div class="app-form-row">
+        <div class="app-label-line">
+          <label class="app-label">Projectcode</label>
+        </div>
+        <input type="text" class="app-input is-mono" value="P-2024-031">
+      </div>
+      <div class="app-form-row">
+        <div class="app-label-line">
+          <label class="app-label">Status</label>
+        </div>
+        <select class="app-select"><option>Actief</option><option>Op pauze</option><option>Afgerond</option></select>
+      </div>
+    </div>
+    <div class="app-modal-footer">
+      <button class="app-btn app-btn-ghost app-btn-sm" data-close-modal>Annuleren</button>
+      <button class="app-btn app-btn-primary app-btn-sm" data-close-modal onclick="appToast({type:'ok',title:'Project opgeslagen'})">Wijzigingen opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Smalle modal -->
+<div class="app-modal-backdrop" id="demo-modal-narrow" role="dialog" aria-modal="true" data-close-on-backdrop>
+  <div class="app-modal is-narrow">
+    <div class="app-modal-header">
+      <div>
+        <h3 class="app-modal-title">Naam wijzigen</h3>
+      </div>
+      <button class="app-modal-close" aria-label="Sluiten" data-close-modal>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="app-modal-body">
+      <div class="app-form-row">
+        <div class="app-label-line"><label class="app-label">Volledige naam</label></div>
+        <input type="text" class="app-input" value="Mark Kuijpers">
+      </div>
+    </div>
+    <div class="app-modal-footer">
+      <button class="app-btn app-btn-ghost app-btn-sm" data-close-modal>Annuleren</button>
+      <button class="app-btn app-btn-primary app-btn-sm" data-close-modal>Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brede modal -->
+<div class="app-modal-backdrop" id="demo-modal-wide" role="dialog" aria-modal="true" data-close-on-backdrop>
+  <div class="app-modal is-wide">
+    <div class="app-modal-header">
+      <div>
+        <div class="app-modal-subtitle">Beheer  /  Personen &amp; bedrijven</div>
+        <h3 class="app-modal-title">Bedrijf bewerken</h3>
+      </div>
+      <button class="app-modal-close" aria-label="Sluiten" data-close-modal>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="app-modal-body">
+      <div class="app-form-row is-grid">
+        <div>
+          <div class="app-label-line"><label class="app-label">Bedrijfsnaam</label></div>
+          <input type="text" class="app-input" value="Levvel MTC B.V.">
+        </div>
+        <div>
+          <div class="app-label-line"><label class="app-label">KvK</label></div>
+          <input type="text" class="app-input is-mono" value="64543523">
+        </div>
+      </div>
+      <div class="app-form-row is-grid">
+        <div>
+          <div class="app-label-line"><label class="app-label">Adres</label></div>
+          <input type="text" class="app-input" value="H.J. Nederhorststraat 1">
+        </div>
+        <div>
+          <div class="app-label-line"><label class="app-label">Postcode &amp; plaats</label></div>
+          <input type="text" class="app-input" value="2801 SC Gouda">
+        </div>
+      </div>
+      <div class="app-form-row">
+        <div class="app-label-line"><label class="app-label">Contactpersoon</label></div>
+        <input type="text" class="app-input" value="Bas Prins">
+      </div>
+      <div class="app-form-row">
+        <div class="app-label-line"><label class="app-label">E-mail</label></div>
+        <input type="email" class="app-input" value="bas.prins@bam.com">
+      </div>
+    </div>
+    <div class="app-modal-footer">
+      <button class="app-btn app-btn-ghost app-btn-sm" data-close-modal>Annuleren</button>
+      <button class="app-btn app-btn-primary app-btn-sm" data-close-modal>Wijzigingen opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="app-modal-backdrop" id="demo-modal-confirm" role="dialog" aria-modal="true" data-close-on-backdrop>
+  <div class="app-modal is-narrow">
+    <div class="app-confirm-body">
+      <div class="app-confirm-icon is-alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </div>
+      <h3 class="app-confirm-title">Project verwijderen?</h3>
+      <p class="app-confirm-desc">Deze actie kan niet ongedaan worden gemaakt. Alle gerelateerde uren en kosten blijven behouden, maar worden ontkoppeld van dit project.</p>
+    </div>
+    <div class="app-modal-footer">
+      <button class="app-btn app-btn-ghost app-btn-sm" data-close-modal>Annuleren</button>
+      <button class="app-btn app-btn-danger is-solid app-btn-sm" data-close-modal onclick="appToast({type:'ok',title:'Project verwijderd'})">Ja, verwijderen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === Toast helper ===
+  function appToast({type='info', title, desc, duration=5000}) {
+    const stack = document.getElementById('toast-stack');
+    const toast = document.createElement('div');
+    toast.className = `app-toast is-${type}`;
+    toast.setAttribute('role', 'status');
+    const icons = {
+      ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>',
+      warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+    toast.innerHTML = `
+      <div class="app-toast-icon">${icons[type] || icons.info}</div>
+      <div class="app-toast-text">
+        <span class="app-toast-strong">${title}</span>
+        ${desc ? `<span class="app-toast-desc">${desc}</span>` : ''}
+      </div>
+      <button class="app-toast-close" aria-label="Sluiten">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    `;
+    stack.appendChild(toast);
+    let timer = duration > 0 ? setTimeout(() => dismissToast(toast), duration) : null;
+    toast.querySelector('.app-toast-close').onclick = () => { if (timer) clearTimeout(timer); dismissToast(toast); };
+  }
+  function dismissToast(toast) {
+    toast.classList.add('is-leaving');
+    setTimeout(() => toast.remove(), 200);
+  }
+
+  // === Modal close helpers ===
+  function closeModal(modal) {
+    modal.classList.remove('is-open');
+    if (!document.querySelector('.app-modal-backdrop.is-open')) {
+      document.body.classList.remove('app-no-scroll');
+    }
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.matches('[data-close-modal]') || e.target.closest('[data-close-modal]')) {
+      const modal = e.target.closest('.app-modal-backdrop');
+      if (modal) closeModal(modal);
+    }
+    // Backdrop click (alleen als element met data-close-on-backdrop)
+    if (e.target.matches('.app-modal-backdrop[data-close-on-backdrop]')) {
+      closeModal(e.target);
+    }
+  });
+  // ESC key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const open = document.querySelector('.app-modal-backdrop.is-open');
+      if (open) closeModal(open);
+    }
+  });
+</script>
+
+</body>
+</html>
