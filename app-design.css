@@ -1034,3 +1034,816 @@
      <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
    </svg>
    ============================================================================= */
+
+
+/* =============================================================================
+   FASE 2 — APP-CHROME & HOOFD-FLOWS
+   =============================================================================
+   Header, bottom-nav, project-selector, week-nav, week-summary, day-cards,
+   status-banner, beheer-grid (tiles) en weekstaten-lijst (admin-toolbar +
+   list-rows). Allemaal mobile-first, desktop schaalt mee.
+   ============================================================================= */
+
+
+/* ---------- 9. HEADER ------------------------------------------------------ */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-line);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.app-gear-sm {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--kts-blue);
+  color: #fff;
+  font-family: var(--app-font-mono);
+  font-weight: 700;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+.app-brand-name {
+  font-size: 13.5px;
+  color: var(--app-ink-700);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-brand-name strong {
+  font-weight: 600;
+  color: var(--app-ink-900);
+}
+.app-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--app-line);
+  border-radius: 999px;
+  background: var(--app-surface);
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.app-user-pill:hover { border-color: var(--app-line-strong); background: var(--app-bg-tint); }
+.app-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--kts-blue);
+  color: #fff;
+  font-family: var(--app-font-mono);
+  font-weight: 700;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-avatar.is-lg {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+.app-uname {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--app-ink-700);
+  letter-spacing: -0.005em;
+}
+
+
+/* ---------- 10. BOTTOM-NAV ------------------------------------------------- */
+
+.app-bottom-nav {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--app-surface);
+  border-top: 1px solid var(--app-line);
+  padding: 4px 4px env(safe-area-inset-bottom, 4px);
+  z-index: 50;
+}
+.app-navitem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px 6px;
+  min-height: 56px;
+  background: none;
+  border: 0;
+  font-family: var(--app-font-sans);
+  color: var(--app-ink-400);
+  cursor: pointer;
+  transition: color 120ms;
+}
+.app-navitem svg { width: 22px; height: 22px; }
+.app-navitem .app-nav-label {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.app-navitem.is-active { color: var(--kts-blue); }
+.app-navitem.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--kts-blue);
+}
+.app-navitem:hover:not(.is-active) { color: var(--app-ink-700); }
+.app-nav-badge {
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 18px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--app-alert);
+  color: #fff;
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--app-surface);
+}
+
+
+/* ---------- 11. PROJECT-SELECTOR BAR --------------------------------------- */
+
+.app-proj-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-line);
+  cursor: pointer;
+  transition: background 120ms;
+  width: 100%;
+  text-align: left;
+  font-family: var(--app-font-sans);
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+.app-proj-bar:hover { background: var(--app-bg-tint); }
+.app-proj-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--app-bg-tint);
+  color: var(--kts-blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-proj-icon svg { width: 16px; height: 16px; }
+.app-proj-meta {
+  flex: 1;
+  min-width: 0;
+}
+.app-pcode {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+.app-pname {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.005em;
+}
+.app-proj-chevron {
+  color: var(--app-ink-400);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.app-proj-chevron svg { width: 16px; height: 16px; }
+
+
+/* ---------- 12. WEEK NAV --------------------------------------------------- */
+
+.app-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+}
+.app-week-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-ink-700);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+  flex-shrink: 0;
+}
+.app-week-arrow:hover {
+  background: var(--app-bg-tint);
+  border-color: var(--app-line-strong);
+}
+.app-week-arrow:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.app-week-arrow svg { width: 16px; height: 16px; }
+.app-week-info {
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+}
+.app-week-num {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.app-week-range {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+  margin-top: 1px;
+}
+
+
+/* ---------- 13. WEEK SUMMARY ----------------------------------------------- */
+
+.app-week-summary {
+  background: linear-gradient(135deg, var(--app-surface) 0%, var(--app-bg-tint) 100%);
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-r-lg);
+  padding: 18px;
+  margin: 0 16px 12px;
+}
+.app-ws-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.app-label-tiny {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.app-ws-total {
+  font-family: var(--app-font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--app-ink-900);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum';
+}
+.app-ws-total .app-unit {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--app-ink-500);
+  margin-left: 2px;
+}
+.app-ws-ratio {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: right;
+}
+.app-ws-ratio strong {
+  color: var(--app-ink-900);
+  font-weight: 700;
+  font-size: 14px;
+}
+.app-ws-progress {
+  height: 6px;
+  background: var(--app-ink-200);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.app-ws-fill {
+  height: 100%;
+  background: var(--kts-blue);
+  border-radius: 999px;
+  transition: width 240ms ease;
+}
+.app-ws-fill.is-over { background: var(--app-warn); }
+.app-ws-fill.is-complete { background: var(--app-ok); }
+
+
+/* ---------- 14. DAY CARDS -------------------------------------------------- */
+
+.app-days {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+.app-day-card {
+  position: relative;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-r);
+  padding: 12px 14px 12px 18px;
+  cursor: pointer;
+  transition: border-color 140ms, box-shadow 140ms, transform 80ms;
+  min-height: 56px;
+  overflow: hidden;
+}
+.app-day-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background 140ms;
+}
+.app-day-card:hover:not(.is-locked) {
+  border-color: var(--app-line-strong);
+  box-shadow: var(--app-shadow-sm);
+}
+.app-day-card:active:not(.is-locked) { transform: translateY(1px); }
+
+.app-day-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.app-day-info {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.app-dnum {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.app-dname {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+}
+.app-dhrs {
+  font-family: var(--app-font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+  font-feature-settings: 'tnum';
+  flex-shrink: 0;
+}
+.app-dhrs .app-unit {
+  font-weight: 400;
+  color: var(--app-ink-500);
+  margin-left: 2px;
+}
+.app-day-times {
+  margin-top: 4px;
+  font-family: var(--app-font-mono);
+  font-size: 11.5px;
+  color: var(--app-ink-500);
+  letter-spacing: 0.01em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.app-day-pause { color: var(--app-ink-400); }
+.app-day-work {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--app-ink-700);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.app-dev-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--app-warn-soft);
+  color: var(--app-warn);
+  border: 1px solid var(--app-warn-line);
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+/* states */
+.app-day-card.is-empty {
+  background: var(--app-surface-2);
+  border-style: dashed;
+  border-color: var(--app-ink-200);
+}
+.app-day-card.is-empty .app-dname { color: var(--app-ink-500); font-weight: 500; }
+.app-day-card.is-empty .app-dhrs { color: var(--app-ink-300); font-weight: 500; }
+
+.app-day-card.is-filled::before { background: var(--app-ok); }
+.app-day-card.is-deviation::before { background: var(--app-warn); }
+.app-day-card.is-off {
+  background: var(--app-surface-2);
+  border-style: dashed;
+  border-color: var(--app-ink-200);
+}
+.app-day-card.is-off::before { background: var(--app-ink-200); }
+.app-day-card.is-off .app-dname { color: var(--app-ink-400); font-weight: 500; }
+.app-day-card.is-off .app-dhrs { color: var(--app-ink-300); }
+
+.app-day-card.is-locked {
+  background: var(--app-bg-tint);
+  cursor: default;
+  opacity: 0.85;
+}
+
+
+/* ---------- 15. STATUS BANNER ---------------------------------------------- */
+
+.app-status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--app-r);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 0 16px 12px;
+  border: 1px solid;
+}
+.app-status-banner svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.app-status-banner strong { font-weight: 600; }
+.app-status-banner.is-info {
+  background: var(--app-info-soft);
+  color: var(--app-info);
+  border-color: var(--app-info-line);
+}
+.app-status-banner.is-warn {
+  background: var(--app-warn-soft);
+  color: var(--app-warn);
+  border-color: var(--app-warn-line);
+}
+.app-status-banner.is-ok {
+  background: var(--app-ok-soft);
+  color: var(--app-ok);
+  border-color: var(--app-ok-line);
+}
+.app-status-banner.is-alert {
+  background: var(--app-alert-soft);
+  color: var(--app-alert);
+  border-color: var(--app-alert-line);
+}
+
+
+/* ---------- 16. BEHEER-GRID (TILES) ---------------------------------------- */
+
+.app-admin-section-label {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 16px 16px 8px;
+}
+.app-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+@media (min-width: 720px) {
+  .app-admin-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+}
+.app-tile {
+  position: relative;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-r);
+  padding: 16px 14px;
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 140ms, box-shadow 140ms, transform 80ms;
+  text-align: left;
+  font-family: var(--app-font-sans);
+  color: inherit;
+}
+.app-tile:hover {
+  border-color: var(--app-line-strong);
+  box-shadow: var(--app-shadow);
+  transform: translateY(-1px);
+}
+.app-tile:active { transform: translateY(0); }
+.app-tile-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--app-bg-tint);
+  color: var(--kts-blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-tile-icon svg { width: 18px; height: 18px; }
+.app-tile-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+}
+.app-tile-meta {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  margin-top: auto;
+}
+.app-tile-meta strong {
+  font-weight: 500;
+  color: var(--app-ink-700);
+}
+.app-tile-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--app-alert);
+  color: #fff;
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.app-tile-badge.is-warn { background: var(--app-warn); }
+.app-tile-badge.is-info { background: var(--app-info); }
+.app-tile-badge.is-ok { background: var(--app-ok); }
+
+
+/* ---------- 17. ADMIN TOOLBAR + LIST --------------------------------------- */
+
+.app-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-line);
+}
+.app-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+}
+.app-search svg {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--app-ink-400);
+  pointer-events: none;
+}
+.app-search input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px 0 36px;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  background: var(--app-surface-2);
+  font-family: var(--app-font-sans);
+  font-size: 13px;
+  color: var(--app-ink-900);
+  outline: none;
+  transition: border-color 120ms, background 120ms;
+}
+.app-search input::placeholder { color: var(--app-ink-400); }
+.app-search input:focus {
+  border-color: var(--kts-blue);
+  background: var(--app-surface);
+  box-shadow: 0 0 0 3px var(--app-info-soft);
+}
+.app-filter-select {
+  height: 38px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  background: var(--app-surface) url("data:image/svg+xml;charset=UTF-8,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%235C6675' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 16px;
+  font-family: var(--app-font-sans);
+  font-size: 13px;
+  color: var(--app-ink-900);
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 120ms;
+  min-width: 140px;
+}
+.app-filter-select:focus { border-color: var(--kts-blue); }
+
+.app-list-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-r);
+  overflow: hidden;
+  margin: 0 16px 16px;
+}
+.app-list-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  padding: 14px 14px 14px 18px;
+  border-bottom: 1px solid var(--app-line);
+  transition: background 120ms;
+}
+.app-list-row:last-child { border-bottom: 0; }
+.app-list-row:hover { background: var(--app-surface-2); }
+.app-list-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+}
+.app-list-row.is-ok::before { background: var(--app-ok); }
+.app-list-row.is-warn::before { background: var(--app-warn); }
+.app-list-row.is-alert::before { background: var(--app-alert); }
+.app-list-row.is-info::before { background: var(--app-info); }
+.app-list-row.is-idle::before { background: var(--app-ink-200); }
+
+.app-list-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.app-list-person-text { min-width: 0; }
+.app-list-pname {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-list-prole {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.app-list-text {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--app-ink-700);
+  line-height: 1.4;
+}
+.app-list-code {
+  display: block;
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.app-list-hrs {
+  font-family: var(--app-font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+  font-feature-settings: 'tnum';
+  text-align: right;
+}
+.app-list-hrs .app-unit { font-weight: 400; color: var(--app-ink-500); }
+.app-list-time {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.app-list-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.app-iconbtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-ink-500);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.app-iconbtn:hover {
+  background: var(--app-bg-tint);
+  border-color: var(--app-line-strong);
+  color: var(--app-ink-900);
+}
+.app-iconbtn.is-danger:hover {
+  background: var(--app-alert-soft);
+  border-color: var(--app-alert-line);
+  color: var(--app-alert);
+}
+.app-iconbtn svg { width: 16px; height: 16px; }
+
+@media (min-width: 720px) {
+  .app-list-row {
+    grid-template-columns: 220px 1fr 90px 110px 130px auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .app-list-text { grid-column: auto; }
+}

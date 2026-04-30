@@ -281,6 +281,442 @@
     </div>
   </div>
 
+  <!-- =====================================================================
+       FASE 2 — APP-CHROME & HOOFD-FLOWS
+       ===================================================================== -->
+  <div class="test-sub" style="margin: 48px 0 8px">FASE 2 — APP CHROME &amp; FLOWS</div>
+  <h2 class="test-h1" style="font-size:22px; margin-bottom:24px">Header, navigatie &amp; uren-flow</h2>
+
+  <!-- 8. HEADER -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 0">
+      <h2 class="test-block-title">8. Header</h2>
+      <p class="test-block-desc">Sticky bovenbalk: brand-block + user-pill</p>
+    </div>
+    <div class="app-header" style="border-top:1px solid #E7E4DD">
+      <div class="app-brand">
+        <div class="app-gear-sm">K</div>
+        <div class="app-brand-name"><strong>Kuijpers</strong> · TS</div>
+      </div>
+      <button class="app-user-pill" type="button">
+        <div class="app-avatar">MK</div>
+        <span class="app-uname">Mark</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 9. BOTTOM NAV -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">9. Bottom-nav</h2>
+      <p class="test-block-desc">4 hoofdtabs — actieve tab heeft blauwe underline</p>
+    </div>
+    <div class="app-bottom-nav" style="position:static">
+      <button class="app-navitem is-active" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="app-nav-label">Uren</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="app-nav-label">Inspecties</span>
+        <span class="app-nav-badge">3</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
+        <span class="app-nav-label">Kosten</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <span class="app-nav-label">Profiel</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 10. PROJECT SELECTOR -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">10. Project-selector bar</h2>
+      <p class="test-block-desc">Tikbare bar boven de uren-tab — opent project-keuze modal</p>
+    </div>
+    <button class="app-proj-bar" type="button">
+      <div class="app-proj-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4 8 4v14"/><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+      </div>
+      <div class="app-proj-meta">
+        <div class="app-pcode">P-2024-031</div>
+        <div class="app-pname">Afsluitdijk Levvel — pompgemaal Den Oever</div>
+      </div>
+      <div class="app-proj-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </button>
+  </div>
+
+  <!-- 11. WEEK NAV + WEEK SUMMARY -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">11. Week-nav + week-summary</h2>
+      <p class="test-block-desc">Navigeren tussen weken, totaal-card met progress-bar</p>
+    </div>
+    <div class="app-week-nav" style="border-top:1px solid #E7E4DD">
+      <button class="app-week-arrow" aria-label="Vorige week">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="app-week-info">
+        <div class="app-week-num">WEEK 18</div>
+        <div class="app-week-range">28 apr — 4 mei</div>
+      </div>
+      <button class="app-week-arrow" aria-label="Volgende week">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div style="background:#FAFAF7; padding:12px 0">
+      <div class="app-week-summary">
+        <div class="app-ws-row">
+          <div>
+            <div class="app-label-tiny">Totaal deze week</div>
+            <div class="app-ws-total">17,5<span class="app-unit">u</span></div>
+          </div>
+          <div class="app-ws-ratio"><strong>2</strong> / 5 werkdagen</div>
+        </div>
+        <div class="app-ws-progress"><div class="app-ws-fill" style="width:43%"></div></div>
+      </div>
+      <div class="app-week-summary" style="margin-top:8px">
+        <div class="app-ws-row">
+          <div>
+            <div class="app-label-tiny">Totaal deze week</div>
+            <div class="app-ws-total">40,0<span class="app-unit">u</span></div>
+          </div>
+          <div class="app-ws-ratio"><strong>5</strong> / 5 werkdagen</div>
+        </div>
+        <div class="app-ws-progress"><div class="app-ws-fill is-complete" style="width:100%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12. DAY CARDS -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">12. Day-cards</h2>
+      <p class="test-block-desc">5 states: empty (dashed), filled (groen), deviation (oranje), off (weekend), locked (vergrendeld)</p>
+    </div>
+    <div style="background:#FAFAF7; padding:0">
+      <div class="app-days">
+        <div class="app-day-card is-filled">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">28-04</span>
+              <span class="app-dname">Maandag</span>
+            </div>
+            <div class="app-dhrs">8,0<span class="app-unit">u</span></div>
+          </div>
+          <div class="app-day-times">
+            <span>07:30 → 16:30</span>
+            <span class="app-day-pause">· 30 min pauze</span>
+          </div>
+          <div class="app-day-work">Inspectie pompgemaal — startbeurt en functietest van pompen</div>
+        </div>
+
+        <div class="app-day-card is-deviation">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">29-04</span>
+              <span class="app-dname">Dinsdag</span>
+              <span class="app-dev-tag">Afwijkend</span>
+            </div>
+            <div class="app-dhrs">9,5<span class="app-unit">u</span></div>
+          </div>
+          <div class="app-day-times">
+            <span>07:00 → 17:30</span>
+            <span class="app-day-pause">· 60 min pauze</span>
+          </div>
+          <div class="app-day-work">Storingsoproep — kompressor zonder druk, hervat na vervanging filter</div>
+        </div>
+
+        <div class="app-day-card is-empty">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">30-04</span>
+              <span class="app-dname">Woensdag</span>
+            </div>
+            <div class="app-dhrs">— u</div>
+          </div>
+        </div>
+
+        <div class="app-day-card is-empty">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">01-05</span>
+              <span class="app-dname">Donderdag</span>
+            </div>
+            <div class="app-dhrs">— u</div>
+          </div>
+        </div>
+
+        <div class="app-day-card is-empty">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">02-05</span>
+              <span class="app-dname">Vrijdag</span>
+            </div>
+            <div class="app-dhrs">— u</div>
+          </div>
+        </div>
+
+        <div class="app-day-card is-off">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">03-05</span>
+              <span class="app-dname">Zaterdag</span>
+            </div>
+            <div class="app-dhrs">— u</div>
+          </div>
+        </div>
+
+        <div class="app-day-card is-locked">
+          <div class="app-day-top">
+            <div class="app-day-info">
+              <span class="app-dnum">04-05</span>
+              <span class="app-dname">Zondag</span>
+            </div>
+            <div class="app-dhrs">— u</div>
+          </div>
+          <div class="app-day-times" style="color:#8A93A1">
+            <span>Vergrendeld — week is verstuurd</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. STATUS BANNER -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">13. Status-banner</h2>
+      <p class="test-block-desc">In-flow notificaties — info, warning, ok, alert</p>
+    </div>
+    <div style="background:#FAFAF7; padding:12px 0">
+      <div class="app-status-banner is-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span><strong>Lege week.</strong> Tik op een dag om uren toe te voegen.</span>
+      </div>
+      <div class="app-status-banner is-warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span><strong>Vrijdag ontbreekt nog.</strong> Vul deze dag aan voor je verstuurt.</span>
+      </div>
+      <div class="app-status-banner is-ok">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+        <span><strong>Verstuurd</strong> — wacht op goedkeuring van Bart de Jong.</span>
+      </div>
+      <div class="app-status-banner is-alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span><strong>Afgekeurd door Bart.</strong> Bekijk opmerkingen en pas aan voor je opnieuw verstuurt.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14. BEHEER GRID -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">14. Beheer-grid (tiles)</h2>
+      <p class="test-block-desc">2-koloms op mobiel, 4-koloms op desktop. Badge rechtsboven voor open items.</p>
+    </div>
+    <div style="background:#FAFAF7; padding:0">
+      <div class="app-admin-section-label">Dagelijks gebruikt</div>
+      <div class="app-admin-grid">
+        <button class="app-tile" type="button">
+          <span class="app-tile-badge">3</span>
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="app-tile-title">Weekstaten</div>
+          <div class="app-tile-meta"><strong>3</strong> wachten op goedkeuring</div>
+        </button>
+        <button class="app-tile" type="button">
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4 8 4v14"/><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+          </div>
+          <div class="app-tile-title">Projecten</div>
+          <div class="app-tile-meta"><strong>12</strong> actief</div>
+        </button>
+        <button class="app-tile" type="button">
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          </div>
+          <div class="app-tile-title">Personen</div>
+          <div class="app-tile-meta"><strong>8</strong> medewerkers</div>
+        </button>
+        <button class="app-tile" type="button">
+          <span class="app-tile-badge is-warn">!</span>
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="app-tile-title">Inspecties</div>
+          <div class="app-tile-meta"><strong>1</strong> openstaand</div>
+        </button>
+      </div>
+
+      <div class="app-admin-section-label">Beheer</div>
+      <div class="app-admin-grid">
+        <button class="app-tile" type="button">
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="17" cy="17" r="4"/></svg>
+          </div>
+          <div class="app-tile-title">Tarieven</div>
+          <div class="app-tile-meta">Geldig vanaf <strong>01-01-2026</strong></div>
+        </button>
+        <button class="app-tile" type="button">
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="app-tile-title">Werktijden</div>
+          <div class="app-tile-meta">Standaard 07:30 → 16:30</div>
+        </button>
+        <button class="app-tile" type="button">
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <div class="app-tile-title">Bedrijven</div>
+          <div class="app-tile-meta"><strong>6</strong> opdrachtgevers</div>
+        </button>
+        <button class="app-tile" type="button">
+          <div class="app-tile-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <div class="app-tile-title">Instellingen</div>
+          <div class="app-tile-meta">Logo, e-mail, exports</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15. WEEKSTATEN LIJST -->
+  <div class="test-block" style="padding:0; overflow:hidden">
+    <div style="padding:24px 24px 16px">
+      <h2 class="test-block-title">15. Weekstaten-lijst</h2>
+      <p class="test-block-desc">Toolbar met zoeken en filter, list-rows met status-streep links + actie-knoppen rechts</p>
+    </div>
+    <div style="background:#FAFAF7; padding:0">
+      <div class="app-admin-toolbar">
+        <div class="app-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" placeholder="Zoek op naam, project of week…">
+        </div>
+        <select class="app-filter-select">
+          <option>Alle statussen</option>
+          <option>Verstuurd</option>
+          <option>Goedgekeurd</option>
+          <option>Afgekeurd</option>
+        </select>
+        <button class="app-btn app-btn-ghost app-btn-sm">Exporteren</button>
+      </div>
+      <div class="app-list-card">
+        <div class="app-list-row is-warn">
+          <div class="app-list-person">
+            <div class="app-avatar app-avatar-lg" style="width:32px;height:32px;font-size:12px">JP</div>
+            <div class="app-list-person-text">
+              <div class="app-list-pname">Jan Pieterse</div>
+              <div class="app-list-prole">Servicemonteur · WTB</div>
+            </div>
+          </div>
+          <div class="app-list-text">
+            <span class="app-list-code">WK 17 · 21–27 APR</span>
+            Afsluitdijk Levvel — pompgemaal Den Oever
+          </div>
+          <div class="app-list-hrs">40,5<span class="app-unit">u</span></div>
+          <div><span class="app-pill is-warn"><span class="app-pdot"></span>Open</span></div>
+          <div class="app-list-time">26 APR 18:04</div>
+          <div class="app-list-actions">
+            <button class="app-iconbtn" aria-label="Bekijken">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="app-iconbtn" aria-label="PDF">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+            </button>
+            <button class="app-iconbtn" aria-label="Goedkeuren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="app-list-row is-ok">
+          <div class="app-list-person">
+            <div class="app-avatar app-avatar-lg" style="width:32px;height:32px;font-size:12px">RM</div>
+            <div class="app-list-person-text">
+              <div class="app-list-pname">Rob Meeuwissen</div>
+              <div class="app-list-prole">Projectleider · WTB</div>
+            </div>
+          </div>
+          <div class="app-list-text">
+            <span class="app-list-code">WK 17 · 21–27 APR</span>
+            Renovatie sluiscomplex IJmuiden
+          </div>
+          <div class="app-list-hrs">38,0<span class="app-unit">u</span></div>
+          <div><span class="app-pill is-ok"><span class="app-pdot"></span>Goedgekeurd</span></div>
+          <div class="app-list-time">25 APR 17:12</div>
+          <div class="app-list-actions">
+            <button class="app-iconbtn" aria-label="Bekijken">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="app-iconbtn" aria-label="PDF">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="app-list-row is-alert">
+          <div class="app-list-person">
+            <div class="app-avatar app-avatar-lg" style="width:32px;height:32px;font-size:12px">BK</div>
+            <div class="app-list-person-text">
+              <div class="app-list-pname">Bart Krijnen</div>
+              <div class="app-list-prole">Servicemonteur · E</div>
+            </div>
+          </div>
+          <div class="app-list-text">
+            <span class="app-list-code">WK 16 · 14–20 APR</span>
+            Onderhoud RWZI Apeldoorn
+          </div>
+          <div class="app-list-hrs">42,0<span class="app-unit">u</span></div>
+          <div><span class="app-pill is-alert"><span class="app-pdot"></span>Afgekeurd</span></div>
+          <div class="app-list-time">22 APR 09:33</div>
+          <div class="app-list-actions">
+            <button class="app-iconbtn" aria-label="Bekijken">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="app-iconbtn is-danger" aria-label="Verwijderen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="app-list-row is-info">
+          <div class="app-list-person">
+            <div class="app-avatar app-avatar-lg" style="width:32px;height:32px;font-size:12px">MK</div>
+            <div class="app-list-person-text">
+              <div class="app-list-pname">Mark Kuijpers</div>
+              <div class="app-list-prole">Eigenaar</div>
+            </div>
+          </div>
+          <div class="app-list-text">
+            <span class="app-list-code">WK 17 · 21–27 APR</span>
+            Diverse projecten
+          </div>
+          <div class="app-list-hrs">36,5<span class="app-unit">u</span></div>
+          <div><span class="app-pill is-info"><span class="app-pdot"></span>Verstuurd</span></div>
+          <div class="app-list-time">26 APR 22:18</div>
+          <div class="app-list-actions">
+            <button class="app-iconbtn" aria-label="Bekijken">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="app-iconbtn" aria-label="PDF">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Toast stack (één per pagina) -->
