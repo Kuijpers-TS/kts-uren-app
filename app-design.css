@@ -614,9 +614,12 @@
   background: rgba(15, 27, 45, 0.45);
   backdrop-filter: blur(2px);
   z-index: 100;
-  display: grid;
+  display: none;
   place-items: center;
   padding: 16px;
+}
+.app-modal-backdrop.is-open {
+  display: grid;
   animation: app-modal-fade-in 180ms ease;
 }
 @keyframes app-modal-fade-in {
