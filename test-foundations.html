@@ -305,11 +305,17 @@
     </div>
   </div>
 
-  <!-- 9. BOTTOM NAV -->
+  <!-- 9. BOTTOM NAV — 3 varianten -->
   <div class="test-block" style="padding:0; overflow:hidden">
     <div style="padding:24px 24px 16px">
-      <h2 class="test-block-title">9. Bottom-nav</h2>
-      <p class="test-block-desc">4 hoofdtabs — actieve tab heeft blauwe underline</p>
+      <h2 class="test-block-title">9. Bottom-nav — 3 varianten</h2>
+      <p class="test-block-desc">Vergelijk hieronder de keuze A / B / C voor de productie-app. Actieve tab heeft blauwe underline.</p>
+    </div>
+
+    <!-- VARIANT A — concept: 4 tabs -->
+    <div style="padding:8px 24px 4px;background:#FBFBF8">
+      <div class="app-label-tiny" style="margin-bottom:6px">Optie A — concept (4 tabs)</div>
+      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Uren / Inspecties / Kosten / Profiel. Profiel-tab vervangt de user-pill in de header. Overzicht en Admin verstopt achter Profiel of binnen Uren-tab.</div>
     </div>
     <div class="app-bottom-nav" style="position:static">
       <button class="app-navitem is-active" type="button">
@@ -328,6 +334,64 @@
       <button class="app-navitem" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
         <span class="app-nav-label">Profiel</span>
+      </button>
+    </div>
+
+    <!-- VARIANT B — huidige 5 tabs met nieuwe styling -->
+    <div style="padding:24px 24px 4px;background:#FBFBF8;border-top:1px solid #E7E4DD">
+      <div class="app-label-tiny" style="margin-bottom:6px">Optie B — huidige layout (5 tabs, nieuwe styling)</div>
+      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Uren / Extra / Overzicht / Inspecties / Admin. Identiek aan productie nu, alleen visuele upgrade. Niets in de flow verandert.</div>
+    </div>
+    <div class="app-bottom-nav" style="position:static; grid-template-columns: repeat(5, 1fr);">
+      <button class="app-navitem is-active" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="app-nav-label">Uren</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
+        <span class="app-nav-label">Extra</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+        <span class="app-nav-label">Overzicht</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="app-nav-label">Inspecties</span>
+        <span class="app-nav-badge">3</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="app-nav-label">Admin</span>
+      </button>
+    </div>
+
+    <!-- VARIANT C — 5 tabs met vernieuwde labels/iconen -->
+    <div style="padding:24px 24px 4px;background:#FBFBF8;border-top:1px solid #E7E4DD">
+      <div class="app-label-tiny" style="margin-bottom:6px">Optie C — 5 tabs met opgeschoonde namen</div>
+      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Uren / Kosten / Overzicht / Inspecties / Beheer. "Extra" → "Kosten" (duidelijker), "Admin" → "Beheer" (consistenter met spec). Zelfde flow als nu.</div>
+    </div>
+    <div class="app-bottom-nav" style="position:static; grid-template-columns: repeat(5, 1fr);">
+      <button class="app-navitem is-active" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="app-nav-label">Uren</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
+        <span class="app-nav-label">Kosten</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+        <span class="app-nav-label">Overzicht</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="app-nav-label">Inspecties</span>
+        <span class="app-nav-badge">3</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span class="app-nav-label">Beheer</span>
       </button>
     </div>
   </div>
