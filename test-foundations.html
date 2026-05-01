@@ -309,13 +309,42 @@
   <div class="test-block" style="padding:0; overflow:hidden">
     <div style="padding:24px 24px 16px">
       <h2 class="test-block-title">9. Bottom-nav (gekozen)</h2>
-      <p class="test-block-desc">Uren / Kosten* / Inspecties* / Overzicht. Profiel-zaken (werkweek, wachtwoord, beheer, uitloggen) blijven in de user-pill in de header. <code>*</code> = optioneel zichtbaar afhankelijk van rechten.</p>
+      <p class="test-block-desc">Uren / Kosten* / Overzicht / Inspecties* / Profiel. Profiel wordt een hub-tab voor account &amp; instellingen — user-pill in de header verdwijnt. <code>*</code> = optioneel zichtbaar afhankelijk van rechten.</p>
     </div>
 
-    <!-- 4 tabs (volledig: gebruiker met alle rechten) -->
+    <!-- 5 tabs (volledig) -->
     <div style="padding:8px 24px 4px;background:#FBFBF8">
-      <div class="app-label-tiny" style="margin-bottom:6px">Volledige nav (admin / alle rechten)</div>
-      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Alle 4 tabs zichtbaar.</div>
+      <div class="app-label-tiny" style="margin-bottom:6px">Volledige nav (alle rechten)</div>
+      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">5 tabs zichtbaar. Op kleine telefoons (≤340px) wordt het krap; iconen blijven 22×22, labels schalen.</div>
+    </div>
+    <div class="app-bottom-nav" style="position:static; grid-template-columns: repeat(5, 1fr);">
+      <button class="app-navitem is-active" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="app-nav-label">Uren</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
+        <span class="app-nav-label">Kosten</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+        <span class="app-nav-label">Overzicht</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="app-nav-label">Inspecties</span>
+        <span class="app-nav-badge">3</span>
+      </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <span class="app-nav-label">Profiel</span>
+      </button>
+    </div>
+
+    <!-- 4 tabs (zonder inspecties-recht) -->
+    <div style="padding:24px 24px 4px;background:#FBFBF8;border-top:1px solid #E7E4DD">
+      <div class="app-label-tiny" style="margin-bottom:6px">Zonder inspecties-recht</div>
+      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Inspecties-tab verborgen, grid past zich aan naar 4 kolommen.</div>
     </div>
     <div class="app-bottom-nav" style="position:static">
       <button class="app-navitem is-active" type="button">
@@ -327,20 +356,19 @@
         <span class="app-nav-label">Kosten</span>
       </button>
       <button class="app-navitem" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span class="app-nav-label">Inspecties</span>
-        <span class="app-nav-badge">3</span>
-      </button>
-      <button class="app-navitem" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
         <span class="app-nav-label">Overzicht</span>
       </button>
+      <button class="app-navitem" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <span class="app-nav-label">Profiel</span>
+      </button>
     </div>
 
-    <!-- 3 tabs (zonder inspecties-recht) -->
+    <!-- 3 tabs (basis-gebruiker, zonder kosten + inspecties) -->
     <div style="padding:24px 24px 4px;background:#FBFBF8;border-top:1px solid #E7E4DD">
-      <div class="app-label-tiny" style="margin-bottom:6px">Zonder inspecties-recht</div>
-      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Inspecties-tab verborgen, grid past zich automatisch aan naar 3 kolommen.</div>
+      <div class="app-label-tiny" style="margin-bottom:6px">Basis-gebruiker (zonder kosten of inspecties)</div>
+      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Minimale layout: Uren / Overzicht / Profiel.</div>
     </div>
     <div class="app-bottom-nav" style="position:static; grid-template-columns: repeat(3, 1fr);">
       <button class="app-navitem is-active" type="button">
@@ -348,28 +376,12 @@
         <span class="app-nav-label">Uren</span>
       </button>
       <button class="app-navitem" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
-        <span class="app-nav-label">Kosten</span>
-      </button>
-      <button class="app-navitem" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
         <span class="app-nav-label">Overzicht</span>
       </button>
-    </div>
-
-    <!-- 2 tabs (alleen uren-gebruiker) -->
-    <div style="padding:24px 24px 4px;background:#FBFBF8;border-top:1px solid #E7E4DD">
-      <div class="app-label-tiny" style="margin-bottom:6px">Alleen uren (basis-gebruiker zonder kosten of inspecties)</div>
-      <div style="font-size:12px;color:#5C6675;margin-bottom:8px">Minimale layout: alleen Uren en Overzicht. Iedereen ziet zijn eigen totalen.</div>
-    </div>
-    <div class="app-bottom-nav" style="position:static; grid-template-columns: repeat(2, 1fr);">
-      <button class="app-navitem is-active" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span class="app-nav-label">Uren</span>
-      </button>
       <button class="app-navitem" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
-        <span class="app-nav-label">Overzicht</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <span class="app-nav-label">Profiel</span>
       </button>
     </div>
   </div>
