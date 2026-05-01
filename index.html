@@ -3069,14 +3069,18 @@
 /* ---------- 10. BOTTOM-NAV ------------------------------------------------- */
 
 .app-bottom-nav {
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   background: var(--app-surface);
   border-top: 1px solid var(--app-line);
   padding: 4px 4px env(safe-area-inset-bottom, 4px);
-  z-index: 50;
+  z-index: 100;
+  max-width: 480px;
+  margin: 0 auto;
 }
 .app-navitem {
   position: relative;
@@ -3100,10 +3104,13 @@
   font-weight: 500;
   letter-spacing: 0.01em;
 }
-.app-navitem.is-active { color: var(--kts-blue); }
-.app-navitem.is-active::after {
+.app-navitem.is-active,
+.app-navitem.active { color: var(--kts-blue); font-weight: 500; }
+.app-navitem.is-active::after,
+.app-navitem.active::after {
   content: "";
   position: absolute;
+  top: auto;
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
@@ -3112,7 +3119,7 @@
   border-radius: 999px;
   background: var(--kts-blue);
 }
-.app-navitem:hover:not(.is-active) { color: var(--app-ink-700); }
+.app-navitem:hover:not(.is-active):not(.active) { color: var(--app-ink-700); }
 .app-nav-badge {
   position: absolute;
   top: 6px;
@@ -4696,7 +4703,7 @@
                     </div>
                 </button>
 
-                <button class="app-action-row" type="button" id="pf-admin-row" style="display:none" onclick="goToAdmin()">
+                <button class="app-action-row" type="button" id="pf-admin-row" style="display:none" onclick="switchScreen('administratie')">
                     <div class="app-action-row-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                     </div>
@@ -4878,29 +4885,27 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- BOTTOM NAV -->
-    <div class="bottom-nav">
-        <div class="bottom-nav-inner">
-            <div class="nav-item active" onclick="switchScreen('uren', event)">
-                <div class="nav-icon">⏱️</div>
-                Uren
-            </div>
-            <div class="nav-item" id="nav-kosten" onclick="switchScreen('kosten', event)">
-                <div class="nav-icon">🧾</div>
-                Extra
-            </div>
-            <div class="nav-item" onclick="switchScreen('overzicht', event)">
-                <div class="nav-icon">📊</div>
-                Overzicht
-            </div>
-            <div class="nav-item" id="nav-inspecties" onclick="switchScreen('inspecties', event)">
-                <div class="nav-icon">🔍</div>
-                Inspecties
-            </div>
-            <div class="nav-item" id="nav-administratie" style="display:none" onclick="switchScreen('administratie', event)">
-                <div class="nav-icon">📋</div>
-                Admin
-            </div>
-        </div>
+    <div class="bottom-nav app-bottom-nav" style="grid-template-columns: repeat(5, 1fr)">
+        <button class="nav-item app-navitem active" type="button" onclick="switchScreen('uren', event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="app-nav-label">Uren</span>
+        </button>
+        <button class="nav-item app-navitem" type="button" id="nav-kosten" onclick="switchScreen('kosten', event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
+            <span class="app-nav-label">Kosten</span>
+        </button>
+        <button class="nav-item app-navitem" type="button" onclick="switchScreen('overzicht', event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+            <span class="app-nav-label">Overzicht</span>
+        </button>
+        <button class="nav-item app-navitem" type="button" id="nav-inspecties" onclick="switchScreen('inspecties', event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="app-nav-label">Inspecties</span>
+        </button>
+        <button class="nav-item app-navitem" type="button" onclick="switchScreen('profiel', event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <span class="app-nav-label">Profiel</span>
+        </button>
     </div>
 
     <script>

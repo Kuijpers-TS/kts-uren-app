@@ -1132,14 +1132,18 @@
 /* ---------- 10. BOTTOM-NAV ------------------------------------------------- */
 
 .app-bottom-nav {
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   background: var(--app-surface);
   border-top: 1px solid var(--app-line);
   padding: 4px 4px env(safe-area-inset-bottom, 4px);
-  z-index: 50;
+  z-index: 100;
+  max-width: 480px;
+  margin: 0 auto;
 }
 .app-navitem {
   position: relative;
@@ -1163,10 +1167,13 @@
   font-weight: 500;
   letter-spacing: 0.01em;
 }
-.app-navitem.is-active { color: var(--kts-blue); }
-.app-navitem.is-active::after {
+.app-navitem.is-active,
+.app-navitem.active { color: var(--kts-blue); font-weight: 500; }
+.app-navitem.is-active::after,
+.app-navitem.active::after {
   content: "";
   position: absolute;
+  top: auto;
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
@@ -1175,7 +1182,7 @@
   border-radius: 999px;
   background: var(--kts-blue);
 }
-.app-navitem:hover:not(.is-active) { color: var(--app-ink-700); }
+.app-navitem:hover:not(.is-active):not(.active) { color: var(--app-ink-700); }
 .app-nav-badge {
   position: absolute;
   top: 6px;
@@ -1272,9 +1279,9 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid var(--app-line);
-  background: var(--app-surface);
-  color: var(--app-ink-700);
+  border: 1px solid var(--kts-blue);
+  background: var(--kts-blue);
+  color: #fff;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1282,14 +1289,14 @@
   flex-shrink: 0;
 }
 .app-week-arrow:hover {
-  background: var(--app-bg-tint);
-  border-color: var(--app-line-strong);
+  background: var(--kts-blue-700);
+  border-color: var(--kts-blue-700);
 }
 .app-week-arrow:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
-.app-week-arrow svg { width: 16px; height: 16px; }
+.app-week-arrow svg { width: 16px; height: 16px; stroke-width: 2.5; }
 .app-week-info {
   text-align: center;
   flex: 1;
