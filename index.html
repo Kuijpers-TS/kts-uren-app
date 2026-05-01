@@ -2991,6 +2991,7 @@
   gap: 12px;
   padding: 12px 16px;
   background: var(--app-surface);
+  color: var(--app-ink-900);
   border-bottom: 1px solid var(--app-line);
   position: sticky;
   top: 0;
@@ -3148,6 +3149,7 @@
   padding: 12px 16px;
   background: var(--app-surface-2);
   border-bottom: 1px solid var(--app-line);
+  border-radius: 0;
   cursor: pointer;
   transition: background 120ms;
   width: 100%;
@@ -3181,6 +3183,8 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 1px;
+  margin-top: 0;
+  opacity: 1;
 }
 .app-pname {
   font-size: 13.5px;
@@ -4080,38 +4084,36 @@
     <!-- WATERMERK (zichtbaar op alle pagina's behalve login) -->
     <div class="watermark" id="watermark"></div>
 
-    <!-- HEADER (full-width blauw) -->
-    <div class="header">
-        <div class="header-inner">
-            <div class="header-top">
-                <div class="logo"><img src="tandwiel-wit-v2.png" alt="KTS"><span>Kuijpers</span><span style="margin:0 2px">|</span><span>Technical Services</span></div>
-                <div class="user-badge" onclick="toggleUserMenu()" style="position:relative"><span id="user-badge-name">👤 M. Kuijpers</span>
-                    <div id="user-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:220px;overflow:hidden;z-index:200">
-                        <div id="user-menu-name" style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--text);font-weight:600"></div>
-                        <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-                            <span style="font-size:0.75rem;color:var(--muted);font-weight:600">Tekstgrootte</span>
-                            <div style="display:flex;gap:4px">
-                                <button onclick="event.stopPropagation();setZoom('klein')" id="zoom-btn-klein" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--border);background:white;cursor:pointer;font-size:0.65rem;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center" title="Klein">A</button>
-                                <button onclick="event.stopPropagation();setZoom('normaal')" id="zoom-btn-normaal" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--kts-blue);background:#e0f2fe;cursor:pointer;font-size:0.8rem;font-weight:700;color:var(--kts-blue);display:flex;align-items:center;justify-content:center" title="Normaal">A</button>
-                                <button onclick="event.stopPropagation();setZoom('groot')" id="zoom-btn-groot" style="width:32px;height:32px;border-radius:8px;border:2px solid var(--border);background:white;cursor:pointer;font-size:1rem;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center" title="Groot">A</button>
-                            </div>
-                        </div>
-                        <div id="admin-menu-item" onclick="goToAdmin()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);display:none" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">⚙️ Beheer</div>
-                        <div onclick="openWeekDefaults()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🕐 Mijn werkweek</div>
-                        <div onclick="openChangePassword()" style="padding:12px 16px;font-size:0.85rem;color:var(--kts-blue);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">🔑 Wachtwoord wijzigen</div>
-                        <div onclick="doLogout()" style="padding:12px 16px;font-size:0.85rem;color:#ef4444;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">🚪 Uitloggen</div>
-                    </div>
-                </div>
-            </div>
-            <div class="project-selector" onclick="openProjectSwitcher()">
-                <div>
-                    <div class="project-name">Commissioning Platform X</div>
-                    <div class="project-meta">Shell · Rotterdam · IO-2026-0042</div>
-                </div>
-                <span style="opacity:0.5">▾</span>
-            </div>
+    <!-- HEADER (Fase 2: simpel, brand links — gebruiker zit nu in Profiel-tab) -->
+    <div class="header app-header">
+        <div class="app-brand">
+            <img src="tandwiel-wit-v2.png" alt="KTS" style="width:26px;height:26px;display:block">
+            <div class="app-brand-name"><strong>Kuijpers</strong> · Technical Services</div>
+        </div>
+        <!-- Verborgen placeholders voor backwards-compat met JS-code die nog naar deze IDs zoekt -->
+        <span id="user-badge-name" style="display:none"></span>
+        <div id="user-menu" style="display:none">
+            <span id="user-menu-name"></span>
+            <button id="zoom-btn-klein" style="display:none"></button>
+            <button id="zoom-btn-normaal" style="display:none"></button>
+            <button id="zoom-btn-groot" style="display:none"></button>
+            <div id="admin-menu-item" style="display:none"></div>
         </div>
     </div>
+
+    <!-- PROJECT-SELECTOR BAR (los, onder header) -->
+    <button class="app-proj-bar project-selector" type="button" onclick="openProjectSwitcher()">
+        <div class="app-proj-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4 8 4v14"/><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+        </div>
+        <div class="app-proj-meta">
+            <div class="app-pcode project-meta">—</div>
+            <div class="app-pname project-name">Geen project</div>
+        </div>
+        <div class="app-proj-chevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+    </button>
 
     <!-- CONTENT -->
     <div class="app-content">

@@ -1054,6 +1054,7 @@
   gap: 12px;
   padding: 12px 16px;
   background: var(--app-surface);
+  color: var(--app-ink-900);
   border-bottom: 1px solid var(--app-line);
   position: sticky;
   top: 0;
@@ -1211,6 +1212,7 @@
   padding: 12px 16px;
   background: var(--app-surface-2);
   border-bottom: 1px solid var(--app-line);
+  border-radius: 0;
   cursor: pointer;
   transition: background 120ms;
   width: 100%;
@@ -1244,6 +1246,8 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 1px;
+  margin-top: 0;
+  opacity: 1;
 }
 .app-pname {
   font-size: 13.5px;
