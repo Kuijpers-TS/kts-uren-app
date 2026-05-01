@@ -4855,13 +4855,26 @@
                     </div>
                 </button>
 
-                <button class="app-action-row" type="button" id="pf-admin-row" style="display:none" onclick="switchScreen('administratie')">
+                <button class="app-action-row" type="button" id="pf-beheer-row" style="display:none" onclick="goToAdmin()">
                     <div class="app-action-row-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                     </div>
                     <div class="app-action-row-text">
                         <div class="app-action-row-title">Beheer</div>
                         <div class="app-action-row-desc">Projecten, personen, tarieven</div>
+                    </div>
+                    <div class="app-action-row-chevron">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                </button>
+
+                <button class="app-action-row" type="button" id="pf-administratie-row" style="display:none" onclick="switchScreen('administratie')">
+                    <div class="app-action-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="13" y2="18"/></svg>
+                    </div>
+                    <div class="app-action-row-text">
+                        <div class="app-action-row-title">Administratie</div>
+                        <div class="app-action-row-desc">Bankuploads, facturen, transacties</div>
                     </div>
                     <div class="app-action-row-chevron">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -7938,8 +7951,13 @@
             if (metaEl) metaEl.textContent = roleLabel;
             const emailEl = document.getElementById('pf-email');
             if (emailEl) emailEl.textContent = currentUser.email || '';
-            // Beheer-rij alleen tonen voor admins of gebruikers met administratie-recht
-            const adminRow = document.getElementById('pf-admin-row');
+            // Beheer-rij (screen-admin: tegels projecten/personen/tarieven) — alleen admin
+            const beheerRow = document.getElementById('pf-beheer-row');
+            if (beheerRow) {
+                beheerRow.style.display = currentUser.role === 'admin' ? '' : 'none';
+            }
+            // Administratie-rij (screen-administratie: bankuploads/facturen) — admin OF allow_administratie
+            const adminRow = document.getElementById('pf-administratie-row');
             if (adminRow) {
                 const showAdmin = currentUser.role === 'admin' || currentUser.allow_administratie;
                 adminRow.style.display = showAdmin ? '' : 'none';
