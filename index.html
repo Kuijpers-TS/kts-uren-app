@@ -3799,6 +3799,158 @@
   }
   .app-list-text { grid-column: auto; }
 }
+
+
+/* ---------- 18. PROFILE HEADER + ACTION LIST ------------------------------- */
+
+.app-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 16px;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-line);
+}
+.app-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--kts-blue);
+  color: #fff;
+  font-family: var(--app-font-mono);
+  font-weight: 700;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-profile-info { flex: 1; min-width: 0; }
+.app-profile-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-profile-meta {
+  font-size: 12.5px;
+  color: var(--app-ink-500);
+  margin-top: 2px;
+}
+.app-profile-code {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  color: var(--app-ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.app-action-list {
+  background: var(--app-surface);
+  border-top: 1px solid var(--app-line);
+  border-bottom: 1px solid var(--app-line);
+  margin-bottom: 12px;
+}
+.app-action-section-label {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--app-ink-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 16px 16px 6px;
+}
+.app-action-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-surface);
+  font-family: var(--app-font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms;
+  color: inherit;
+  min-height: 56px;
+}
+.app-action-row:last-child { border-bottom: 0; }
+.app-action-row:hover { background: var(--app-bg-tint); }
+.app-action-row:active { background: var(--app-bg-deep); }
+.app-action-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--app-bg-tint);
+  color: var(--kts-blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-action-row-icon svg { width: 18px; height: 18px; }
+.app-action-row-text { flex: 1; min-width: 0; }
+.app-action-row-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-ink-900);
+  letter-spacing: -0.005em;
+}
+.app-action-row-desc {
+  font-size: 12px;
+  color: var(--app-ink-500);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-action-row-chevron {
+  color: var(--app-ink-300);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+.app-action-row-chevron svg { width: 16px; height: 16px; }
+
+.app-action-row.is-danger .app-action-row-icon {
+  background: var(--app-alert-soft);
+  color: var(--app-alert);
+}
+.app-action-row.is-danger .app-action-row-title { color: var(--app-alert); }
+
+.app-zoom-control {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.app-zoom-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-ink-700);
+  font-family: var(--app-font-sans);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 120ms;
+  display: grid;
+  place-items: center;
+}
+.app-zoom-btn:hover { background: var(--app-bg-tint); }
+.app-zoom-btn.is-active {
+  border-color: var(--kts-blue);
+  background: var(--app-info-soft);
+  color: var(--kts-blue);
+}
+.app-zoom-btn-sm  { font-size: 10px; }
+.app-zoom-btn-md  { font-size: 13px; }
+.app-zoom-btn-lg  { font-size: 16px; }
     </style>
 </head>
 <body>
