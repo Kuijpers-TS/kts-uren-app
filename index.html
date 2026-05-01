@@ -3247,6 +3247,14 @@
   letter-spacing: -0.005em;
   margin-top: 1px;
 }
+.app-week-total {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--app-ink-500);
+  letter-spacing: 0;
+  margin-top: 3px;
+}
 
 
 /* ---------- 13. WEEK SUMMARY ----------------------------------------------- */
@@ -3959,13 +3967,17 @@
                     <span id="clock-label">⏱️ Inklokken</span>
                 </button>
             </div>
-            <div class="week-nav">
-                <button id="week-prev-btn" onclick="changeWeek(-1)">◀</button>
-                <div style="text-align:center">
-                    <div class="week-label" id="week-label">Laden...</div>
-                    <div class="week-total" id="week-total">Totaal: 0,0 uur</div>
+            <div class="app-week-nav">
+                <button id="week-prev-btn" class="app-week-arrow" aria-label="Vorige week" onclick="changeWeek(-1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="app-week-info">
+                    <div class="app-week-range" id="week-label">Laden...</div>
+                    <div class="app-week-total" id="week-total">Totaal: 0,0 uur</div>
                 </div>
-                <button id="week-next-btn" onclick="changeWeek(1)">▶</button>
+                <button id="week-next-btn" class="app-week-arrow" aria-label="Volgende week" onclick="changeWeek(1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
             </div>
 
 
@@ -3981,13 +3993,17 @@
 
         <!-- ===== EXTRA KOSTEN SCREEN ===== -->
         <div class="screen" id="screen-kosten">
-            <div class="week-nav">
-                <button id="kosten-prev-btn" onclick="changeWeek(-1)">◀</button>
-                <div style="text-align:center">
-                    <div class="week-label" id="kosten-week-label">Laden...</div>
-                    <div class="week-total" id="kosten-week-total"></div>
+            <div class="app-week-nav">
+                <button id="kosten-prev-btn" class="app-week-arrow" aria-label="Vorige week" onclick="changeWeek(-1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="app-week-info">
+                    <div class="app-week-range" id="kosten-week-label">Laden...</div>
+                    <div class="app-week-total" id="kosten-week-total"></div>
                 </div>
-                <button id="kosten-next-btn" onclick="changeWeek(1)">▶</button>
+                <button id="kosten-next-btn" class="app-week-arrow" aria-label="Volgende week" onclick="changeWeek(1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                 <h2 style="font-size:1.1rem;font-weight:700">Extra kosten</h2>
@@ -4011,13 +4027,17 @@
 
         <!-- ===== OVERZICHT SCREEN ===== -->
         <div class="screen" id="screen-overzicht">
-            <div class="week-nav" style="margin-bottom:16px">
-                <button id="month-prev-btn" onclick="changeMonth(-1)">◀</button>
-                <div style="text-align:center">
-                    <div class="week-label" id="month-label">Laden...</div>
-                    <div class="week-total" id="month-total"></div>
+            <div class="app-week-nav" style="margin-bottom:16px">
+                <button id="month-prev-btn" class="app-week-arrow" aria-label="Vorige maand" onclick="changeMonth(-1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="app-week-info">
+                    <div class="app-week-range" id="month-label">Laden...</div>
+                    <div class="app-week-total" id="month-total"></div>
                 </div>
-                <button id="month-next-btn" onclick="changeMonth(1)">▶</button>
+                <button id="month-next-btn" class="app-week-arrow" aria-label="Volgende maand" onclick="changeMonth(1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
             </div>
 
             <div class="stats-grid" id="overview-stats">
