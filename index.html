@@ -4255,13 +4255,17 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
                 </button>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h2 style="font-size:1.1rem;font-weight:700">Extra kosten</h2>
-                <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Toevoegen</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px;gap:8px">
+                <div class="app-action-section-label" style="padding:0">Extra kosten</div>
+                <button class="btn btn-primary btn-sm app-btn app-btn-primary app-btn-sm" onclick="openExpenseModal()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Toevoegen
+                </button>
             </div>
 
-            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:0.8rem;color:#1d4ed8">
-                Hier voeg je extra kosten toe zoals materialen, gereedschap, parkeren, etc. Hotel staat bij de dagkaarten (tab Uren).
+            <div class="app-status-banner is-info">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Hier voeg je extra kosten toe zoals materialen, gereedschap, parkeren, etc. Hotel staat bij de dagkaarten (tab Uren).</span>
             </div>
 
             <div id="expense-list"></div>
@@ -4269,8 +4273,9 @@
             <div class="week-summary" style="margin-top:16px" id="expense-summary"></div>
 
             <div style="margin-top:16px" id="save-kosten-btn-wrap">
-                <button class="btn btn-primary btn-block" onclick="saveWeek('kosten')">
-                    💾 Week opslaan
+                <button class="btn btn-primary btn-block app-btn app-btn-primary app-btn-block app-btn-lg" onclick="saveWeek('kosten')">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Week opslaan
                 </button>
             </div>
         </div>
@@ -6165,18 +6170,33 @@
 
         // ===== EXPENSE RENDER =====
         function renderExpenses() {
-            document.getElementById('expense-list').innerHTML = expEntries.map(e => `
-                <div class="entry-card">
-                    <div class="entry-details">
-                        <div class="entry-route">${e.icon} ${escapeHtml(e.desc)}</div>
-                        <div class="entry-meta">${e.date} · ${e.catLabel}</div>
+            const listEl = document.getElementById('expense-list');
+            if (!expEntries || expEntries.length === 0) {
+                listEl.innerHTML = `
+                <div class="app-empty">
+                    <div class="app-empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4.5h9L18 2"/><path d="M3 6h18l-2 14a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6z"/></svg>
                     </div>
-                    <div style="display:flex;align-items:center;gap:8px">
-                        <div class="entry-amount">${fmtEuro(e.amount)}</div>
-                        <span class="entry-delete" onclick="deleteExpense(${e.id})">×</span>
-                    </div>
-                </div>
-            `).join('');
+                    <div class="app-empty-title">Nog geen kosten</div>
+                    <div class="app-empty-desc">Voeg materialen, gereedschap of parkeerkosten toe via de + knop.</div>
+                </div>`;
+            } else {
+                const rowsHtml = expEntries.map(e => `
+                    <div class="app-action-row" style="cursor:default">
+                        <div class="app-action-row-icon">
+                            <span style="font-size:18px;line-height:1">${e.icon}</span>
+                        </div>
+                        <div class="app-action-row-text">
+                            <div class="app-action-row-title">${escapeHtml(e.desc)}</div>
+                            <div class="app-action-row-desc">${e.date} · ${e.catLabel}</div>
+                        </div>
+                        <div style="font-family:var(--app-font-mono);font-weight:700;font-size:14px;color:var(--app-ink-900);font-feature-settings:'tnum'">${fmtEuro(e.amount)}</div>
+                        <button class="app-iconbtn is-danger" type="button" onclick="deleteExpense(${e.id})" aria-label="Verwijderen" title="Verwijderen">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>
+                        </button>
+                    </div>`).join('');
+                listEl.innerHTML = `<div class="app-list-card" style="margin:0 0 12px">${rowsHtml}</div>`;
+            }
 
             const totals = {};
             let total = 0;
