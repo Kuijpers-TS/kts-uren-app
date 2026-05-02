@@ -2023,3 +2023,94 @@
 .app-zoom-btn-sm  { font-size: 10px; }
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
+
+
+/* ---------- 19. WEEK-ROW (overzicht-tab) ----------------------------------- */
+/* Compacte clickable rij voor week-overzicht in screen-overzicht.
+   Toont: weeknummer (mono) + datumrange + uren + status-pill + chevron.
+   ============================================================================ */
+
+.app-week-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px 12px 18px;
+  background: var(--app-surface);
+  border: 0;
+  border-bottom: 1px solid var(--app-line);
+  font-family: var(--app-font-sans);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background 120ms;
+}
+.app-week-row-range { flex: 1; min-width: 0; }
+.app-week-row:last-child { border-bottom: 0; }
+.app-week-row:hover { background: var(--app-bg-tint); }
+.app-week-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+}
+.app-week-row.is-ok::before     { background: var(--app-ok); }
+.app-week-row.is-warn::before   { background: var(--app-warn); }
+.app-week-row.is-info::before   { background: var(--app-info); }
+.app-week-row.is-alert::before  { background: var(--app-alert); }
+.app-week-row.is-idle::before   { background: var(--app-ink-200); }
+.app-week-row.is-current        { background: var(--app-info-soft); }
+.app-week-row.is-current::before { background: var(--kts-blue); }
+
+.app-week-row-code {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-ink-700);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.app-week-row.is-current .app-week-row-code { color: var(--kts-blue); }
+.app-week-row-range {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--app-ink-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-week-row.is-current .app-week-row-range { font-weight: 600; color: var(--app-ink-900); }
+.app-week-row-hours {
+  font-family: var(--app-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-ink-900);
+  font-feature-settings: 'tnum';
+  white-space: nowrap;
+}
+.app-week-row-hours.is-empty { color: var(--app-ink-300); font-weight: 400; }
+.app-week-row-chevron {
+  color: var(--app-ink-300);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-week-row-chevron svg { width: 14px; height: 14px; }
+.app-week-row-pdf {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--kts-blue);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.app-week-row-pdf:hover { background: var(--kts-blue-700); }
+.app-week-row-pdf svg { width: 14px; height: 14px; }

@@ -3955,6 +3955,94 @@
 .app-zoom-btn-sm  { font-size: 10px; }
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
+
+
+/* ---------- 19. WEEK-ROW (overzicht-tab) ----------------------------------- */
+
+.app-week-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px 12px 18px;
+  background: var(--app-surface);
+  border: 0;
+  border-bottom: 1px solid var(--app-line);
+  font-family: var(--app-font-sans);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background 120ms;
+}
+.app-week-row-range { flex: 1; min-width: 0; }
+.app-week-row:last-child { border-bottom: 0; }
+.app-week-row:hover { background: var(--app-bg-tint); }
+.app-week-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+}
+.app-week-row.is-ok::before     { background: var(--app-ok); }
+.app-week-row.is-warn::before   { background: var(--app-warn); }
+.app-week-row.is-info::before   { background: var(--app-info); }
+.app-week-row.is-alert::before  { background: var(--app-alert); }
+.app-week-row.is-idle::before   { background: var(--app-ink-200); }
+.app-week-row.is-current        { background: var(--app-info-soft); }
+.app-week-row.is-current::before { background: var(--kts-blue); }
+
+.app-week-row-code {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-ink-700);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.app-week-row.is-current .app-week-row-code { color: var(--kts-blue); }
+.app-week-row-range {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--app-ink-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-week-row.is-current .app-week-row-range { font-weight: 600; color: var(--app-ink-900); }
+.app-week-row-hours {
+  font-family: var(--app-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-ink-900);
+  font-feature-settings: 'tnum';
+  white-space: nowrap;
+}
+.app-week-row-hours.is-empty { color: var(--app-ink-300); font-weight: 400; }
+.app-week-row-chevron {
+  color: var(--app-ink-300);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.app-week-row-chevron svg { width: 14px; height: 14px; }
+.app-week-row-pdf {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--kts-blue);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.app-week-row-pdf:hover { background: var(--kts-blue-700); }
+.app-week-row-pdf svg { width: 14px; height: 14px; }
     </style>
 </head>
 <body>
@@ -4210,8 +4298,8 @@
                 <!-- Wordt dynamisch gevuld -->
             </div>
 
-            <div class="week-summary">
-                <div class="summary-title">Status per week</div>
+            <div class="app-action-section-label" style="padding:0 0 8px">Status per week</div>
+            <div class="app-list-card" id="week-status-list-wrapper" style="margin:0 0 16px">
                 <div id="week-status-list">
                     <!-- Dynamisch gevuld door renderOverview -->
                 </div>
@@ -8382,12 +8470,12 @@
             const weekListEl = document.getElementById('week-status-list');
             let weekRows = '';
 
-            // Status-configuratie: label, kleur, CSS class
+            // Status-configuratie: label, oude CSS class + Fase 2 pill/row variant
             const STATUS_CONFIG = {
-                concept:     { label: 'Concept',     class: 'status-draft' },
-                opgeslagen:  { label: 'Opgeslagen',  class: 'status-saved' },
-                ondertekend: { label: 'Ondertekend', class: 'status-signed' },
-                verstuurd:   { label: 'Verstuurd',   class: 'status-approved' }
+                concept:     { label: 'Concept',     class: 'status-draft',    pill: 'is-idle',  row: 'is-idle' },
+                opgeslagen:  { label: 'Opgeslagen',  class: 'status-saved',    pill: 'is-warn',  row: 'is-warn' },
+                ondertekend: { label: 'Ondertekend', class: 'status-signed',   pill: 'is-info',  row: 'is-info' },
+                verstuurd:   { label: 'Verstuurd',   class: 'status-approved', pill: 'is-ok',    row: 'is-ok' }
             };
 
             // Check welke weken al op een inkooporder staan
@@ -8440,41 +8528,49 @@
 
                 // Status badge bepalen
                 const dbStatus = weekStatuses[wn];
-                let statusBadges = '';
-
-                if (dbStatus && STATUS_CONFIG[dbStatus]) {
-                    const cfg = STATUS_CONFIG[dbStatus];
-                    statusBadges = '<span class="status-badge ' + cfg.class + '">' + cfg.label + '</span>';
-                }
-
-                // Inkooporder badge
-                if (inkooporderWeken.has(wn)) {
-                    statusBadges += '<span class="status-badge" style="background:#dbeafe;color:#1e40af;font-size:0.65rem">📋 IO</span>';
-                }
-
-                if (weekHours > 0) {
-                    statusBadges = '<span style="font-size:0.75rem;color:var(--muted);font-weight:600">' + fmt(weekHours) + ' u</span>' + statusBadges;
-                }
-
-                if (isCurrent && !dbStatus) {
-                    statusBadges = '<span class="status-badge status-draft">Huidig</span>';
-                }
+                const cfg = dbStatus && STATUS_CONFIG[dbStatus] ? STATUS_CONFIG[dbStatus] : null;
 
                 // Bereken offset in weken ten opzichte van currentWeekMonday
                 const diffDays = Math.round((weekStart.getTime() - currentWeekMonday.getTime()) / (1000*60*60*24));
                 const weekOffset = Math.round(diffDays / 7);
 
-                const downloadIcon = dbStatus === 'verstuurd' ? `<span onclick="event.stopPropagation();goToWeekAndDownload(${weekOffset})" style="cursor:pointer;font-size:0.85rem;padding:4px 8px;background:var(--kts-blue);color:white;border-radius:6px;white-space:nowrap;font-weight:600" title="Download weekstaat PDF">📄</span>` : '';
+                // Row state-class (kleur van linker streep)
+                let rowState = '';
+                if (isCurrent) rowState = 'is-current';
+                else if (cfg) rowState = cfg.row;
+
+                // Status pill
+                let pillHtml = '';
+                if (cfg) {
+                    pillHtml = `<span class="app-pill ${cfg.pill}"><span class="app-pdot"></span>${cfg.label}</span>`;
+                } else if (isCurrent) {
+                    pillHtml = `<span class="app-pill is-info"><span class="app-pdot"></span>Huidig</span>`;
+                }
+
+                // Inkooporder pill
+                const ioPill = inkooporderWeken.has(wn)
+                    ? `<span class="app-pill is-info" style="margin-left:4px"><span class="app-pdot"></span>IO</span>`
+                    : '';
+
+                // Uren tekst
+                const hoursClass = weekHours > 0 ? '' : 'is-empty';
+                const hoursText = weekHours > 0 ? `${fmt(weekHours)}<span style="opacity:0.6"> u</span>` : '— u';
+
+                // PDF-knop bij verstuurde weken (vervangt chevron)
+                const trailingEl = dbStatus === 'verstuurd'
+                    ? `<button class="app-week-row-pdf" onclick="event.stopPropagation();goToWeekAndDownload(${weekOffset})" type="button" aria-label="Download weekstaat PDF" title="Download PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg></button>`
+                    : `<span class="app-week-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>`;
+
+                const rangeText = `${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]}`;
 
                 weekRows += `
-                    <div class="summary-row" style="cursor:pointer;padding:10px 0;${isCurrent ? 'background:#f0f9ff;margin:0 -14px;padding:10px 14px;border-radius:8px' : ''}" onclick="goToWeek(${weekOffset})">
-                        <span style="${isCurrent ? 'font-weight:700;color:var(--kts-blue)' : ''}">${label}</span>
-                        <span style="display:flex;align-items:center;gap:6px">
-                            ${statusBadges}
-                            ${downloadIcon}
-                            <span style="color:var(--muted);font-size:0.75rem">→</span>
-                        </span>
-                    </div>`;
+                    <button class="app-week-row ${rowState}" type="button" onclick="goToWeek(${weekOffset})">
+                        <span class="app-week-row-code">WK ${wn}</span>
+                        <span class="app-week-row-range">${rangeText}${ioPill}</span>
+                        <span class="app-week-row-hours ${hoursClass}">${hoursText}</span>
+                        ${pillHtml}
+                        ${trailingEl}
+                    </button>`;
 
                 weekStart.setDate(weekStart.getDate() + 7);
             }
