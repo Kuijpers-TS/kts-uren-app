@@ -3358,8 +3358,9 @@
 }
 
 /* Bij dual-class .day-card.app-day-card (productie): geen container-padding,
-   want .day-header en .day-form hebben hun eigen padding */
+   children hebben elk hun eigen padding voor consistente edge-spacing. */
 .day-card.app-day-card { padding: 0; }
+.day-card.app-day-card .app-day-top { padding: 14px 16px; }
 .day-card.app-day-card .app-day-times,
 .day-card.app-day-card .app-day-work,
 .day-card.app-day-card .day-badges { padding-left: 18px; padding-right: 16px; }
