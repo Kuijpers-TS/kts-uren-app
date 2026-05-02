@@ -1541,6 +1541,15 @@
   opacity: 0.85;
 }
 
+/* Bij dual-class .day-card.app-day-card (productie): geen container-padding,
+   want .day-header en .day-form hebben hun eigen padding */
+.day-card.app-day-card { padding: 0; }
+.day-card.app-day-card .app-day-times,
+.day-card.app-day-card .app-day-work,
+.day-card.app-day-card .day-badges { padding-left: 18px; padding-right: 16px; }
+.day-card.app-day-card .app-day-times { padding-bottom: 4px; }
+.day-card.app-day-card .day-badges { padding-bottom: 12px; }
+
 
 /* ---------- 15. STATUS BANNER ---------------------------------------------- */
 
