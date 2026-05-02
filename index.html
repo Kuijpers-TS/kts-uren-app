@@ -4449,59 +4449,95 @@
                 </div>
             </div>
 
-            <!-- Tegels grid -->
-            <div id="admin-tiles" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-                <div class="admin-tile" onclick="switchAdminTab('dashboard')" style="background:var(--kts-blue);box-shadow:0 1px 4px rgba(0,0,0,0.12);grid-column:1/-1">
-                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📊</div>
-                    <div><div style="font-weight:700;font-size:0.85rem;color:white">Dashboard</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.7)">Omzet, uren, projecten & status</div></div>
+            <!-- Tegels grid (Fase 2 styling) -->
+            <div id="admin-tiles" style="margin-bottom:16px">
+                <div class="app-admin-section-label" style="padding:0 0 8px">Algemeen</div>
+                <div class="app-admin-grid" style="padding:0 0 4px">
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('dashboard')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+                        </div>
+                        <div class="app-tile-title">Dashboard</div>
+                        <div class="app-tile-meta">Omzet, uren &amp; status</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('projecten')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4 8 4v14"/><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+                        </div>
+                        <div class="app-tile-title">Projecten</div>
+                        <div class="app-tile-meta">Beheer projecten</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('personen')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                        </div>
+                        <div class="app-tile-title">Personen &amp; bedrijven</div>
+                        <div class="app-tile-meta">ZZP, klanten, KTS</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('gebruikers')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                        </div>
+                        <div class="app-tile-title">Gebruikers</div>
+                        <div class="app-tile-meta">Rechten &amp; instellingen</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('tarieven')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        </div>
+                        <div class="app-tile-title">Tarieven</div>
+                        <div class="app-tile-meta">Uurtarieven &amp; toeslagen</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('bedrijf')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                        </div>
+                        <div class="app-tile-title">Algemene instellingen</div>
+                        <div class="app-tile-meta">Opslagmappen &amp; meer</div>
+                    </button>
                 </div>
-                <div class="admin-tile" onclick="switchAdminTab('projecten')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Projecten</div><div style="font-size:0.7rem;color:var(--muted)">Beheer projecten</div></div>
+
+                <div class="app-admin-section-label" style="padding:16px 0 8px">Documentatie</div>
+                <div class="app-admin-grid" style="padding:0 0 4px">
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('weekstaten')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
+                        <div class="app-tile-title">Weekstaten</div>
+                        <div class="app-tile-meta">Overzicht &amp; goedkeuring</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('inkooporders')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                        </div>
+                        <div class="app-tile-title">Inkooporders</div>
+                        <div class="app-tile-meta">IO's genereren</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('facturen')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                        </div>
+                        <div class="app-tile-title">Facturen</div>
+                        <div class="app-tile-meta">Facturen genereren</div>
+                    </button>
                 </div>
-                <div class="admin-tile" onclick="switchAdminTab('personen')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏢</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Personen & Bedrijven</div><div style="font-size:0.7rem;color:var(--muted)">ZZP, klanten, KTS</div></div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('gebruikers')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">👥</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Gebruikers</div><div style="font-size:0.7rem;color:var(--muted)">Rechten & instellingen</div></div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('tarieven')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">💰</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Tarieven</div><div style="font-size:0.7rem;color:var(--muted)">Uurtarieven & toeslagen</div></div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('bedrijf')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">⚙️</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Algemene instellingen</div><div style="font-size:0.7rem;color:var(--muted)">Opslagmappen & meer</div></div>
-                </div>
-                <!-- Scheiding: Documentatie -->
-                <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
-                    <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Documentatie</div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('weekstaten')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📑</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Weekstaten</div><div style="font-size:0.7rem;color:var(--muted)">Overzicht & goedkeuring</div></div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('inkooporders')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Inkooporders</div><div style="font-size:0.7rem;color:var(--muted)">IO's genereren</div></div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('facturen')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🧾</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Facturen</div><div style="font-size:0.7rem;color:var(--muted)">Facturen genereren</div></div>
-                </div>
-                <!-- Scheiding: Inspecties -->
-                <div style="grid-column:1/-1;border-top:2px solid var(--border);margin-top:4px;padding-top:10px">
-                    <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Inspecties</div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('insp-templates')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📝</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Formulieren</div><div style="font-size:0.7rem;color:var(--muted)">Inspectie-templates beheren</div></div>
-                </div>
-                <div class="admin-tile" onclick="switchAdminTab('insp-overzicht')">
-                    <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🔍</div>
-                    <div><div style="font-weight:700;font-size:0.85rem">Inspecties</div><div style="font-size:0.7rem;color:var(--muted)">Overzicht & rapporten</div></div>
+
+                <div class="app-admin-section-label" style="padding:16px 0 8px">Inspecties</div>
+                <div class="app-admin-grid" style="padding:0">
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('insp-templates')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><path d="M8 16l3 3 5-5"/></svg>
+                        </div>
+                        <div class="app-tile-title">Formulieren</div>
+                        <div class="app-tile-meta">Inspectie-templates</div>
+                    </button>
+                    <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('insp-overzicht')">
+                        <div class="app-tile-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        </div>
+                        <div class="app-tile-title">Inspecties</div>
+                        <div class="app-tile-meta">Overzicht &amp; rapporten</div>
+                    </button>
                 </div>
             </div>
             <!-- Terugknop (verborgen totdat een sectie geopend is) -->
