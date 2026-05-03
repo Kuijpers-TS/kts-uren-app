@@ -1249,6 +1249,7 @@ async function generateFactuurV2(data) {
     // ============================================================
     // BETAAL-VERZOEK (compact, 2 regels onderaan, links)
     // ============================================================
+    y += 12; // 3 witregels lucht voor het betaal-verzoek
     doc.setFontSize(9);
     doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink900);
