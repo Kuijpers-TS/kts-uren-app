@@ -1037,39 +1037,49 @@ async function generateFactuurV2(data) {
     y += 6;
 
     // ============================================================
-    // INFO BAR: 4 cellen (zelfde stijl als inkooporder)
-    // FACTUURNUMMER | FACTUURDATUM | VERVALDATUM | PROJECT
+    // INFO BAR: 4 cellen met variabele breedte
+    // FACTUURNUMMER (30) | FACTUURDATUM (30) | VERVALDATUM (30) | PROJECT (rest)
+    // Project krijgt de meeste ruimte want die naam kan lang zijn.
     // ============================================================
     const infoCells = [
-        { label: 'FACTUURNUMMER', value: data.factuurNum },
-        { label: 'FACTUURDATUM',  value: data.factuurDatum },
-        { label: 'VERVALDATUM',   value: data.vervaldatum },
-        { label: 'PROJECT',       value: data.project }
+        { label: 'FACTUURNUMMER', value: data.factuurNum,    w: 30 },
+        { label: 'FACTUURDATUM',  value: data.factuurDatum,  w: 30 },
+        { label: 'VERVALDATUM',   value: data.vervaldatum,   w: 30 },
+        { label: 'PROJECT',       value: data.project,       w: uw - 90 }
     ];
-    const infoW = uw / 4;
     const infoH = 14;
-    infoCells.forEach((c, i) => {
-        const cx = ml + i * infoW;
+    let icx = ml;
+    infoCells.forEach((c) => {
         doc.setFillColor(248, 248, 244);
-        doc.rect(cx, y, infoW, infoH, 'F');
+        doc.rect(icx, y, c.w, infoH, 'F');
         doc.setDrawColor(...lineColLight);
         doc.setLineWidth(0.15);
-        doc.rect(cx, y, infoW, infoH);
+        doc.rect(icx, y, c.w, infoH);
         doc.setFontSize(7);
         doc.setFont(pdfFont, 'normal');
         doc.setTextColor(...ink400);
-        doc.text(c.label, cx + 3, y + 4);
-        doc.setFontSize(c.label === 'PROJECT' ? 9 : 11);
+        doc.text(c.label, icx + 3, y + 4);
         doc.setFont(pdfFont, 'bold');
         doc.setTextColor(...ink900);
-        // Project kan langer zijn — wrap if needed
         const value = String(c.value);
-        if (c.label === 'PROJECT' && doc.getTextWidth(value) > infoW - 6) {
-            const wrapped = doc.splitTextToSize(value, infoW - 6);
-            doc.text(wrapped[0], cx + 3, y + 11);
+        if (c.label === 'PROJECT') {
+            // Project kan lang zijn — fit met dynamische font-size of 2 regels
+            doc.setFontSize(10);
+            const maxWidth = c.w - 6;
+            if (doc.getTextWidth(value) <= maxWidth) {
+                doc.text(value, icx + 3, y + 11);
+            } else {
+                // 2-regel layout
+                doc.setFontSize(9);
+                const wrapped = doc.splitTextToSize(value, maxWidth);
+                doc.text(wrapped[0], icx + 3, y + 9);
+                if (wrapped[1]) doc.text(wrapped[1], icx + 3, y + 13);
+            }
         } else {
-            doc.text(value, cx + 3, y + 11);
+            doc.setFontSize(11);
+            doc.text(value, icx + 3, y + 11);
         }
+        icx += c.w;
     });
     y += infoH + 4;
 
