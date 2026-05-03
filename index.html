@@ -53,10 +53,13 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { font-size: var(--zoom, 16px); }
-        html.zoom-klein { --zoom: 14px; }
-        html.zoom-normaal { --zoom: 16px; }
-        html.zoom-groot { --zoom: 19px; }
+        html { font-size: 16px; }
+        /* Zoom schaalt ALLES (px én rem) consistent — werkt voor zowel oude rem-based
+           content als de Fase 2 px-based components. CSS zoom is breed ondersteund
+           in moderne browsers (Chrome, Safari, Firefox 126+, Edge). */
+        html.zoom-klein   body { zoom: 0.875; }      /* 14/16 */
+        html.zoom-normaal body { zoom: 1.0; }
+        html.zoom-groot   body { zoom: 1.1875; }     /* 19/16 */
         :root {
             --kts-blue: #07567F;
             --kts-dark: #043B56;
