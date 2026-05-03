@@ -242,7 +242,7 @@ async function generateWeekstaatV2(data) {
     // TABEL: Dag | Datum | Begin | Eind | Pauze | Uren | Omschrijving | Locatie | Km
     // ============================================================
     // Tabel moet onder zowel info-bar (links) als logo+adres (rechts) starten
-    y = Math.max(y + 12, headerEndY + 4);
+    y = Math.max(y + 8, headerEndY + 4);
     const cols = [
         { key:'day',     label:'DAG',          w: 22 },
         { key:'date',    label:'DATUM',        w: 22 },
@@ -342,7 +342,7 @@ async function generateWeekstaatV2(data) {
     // ============================================================
     // SUMMARY BLOCK (KPI-strip) + OPMERKINGEN
     // ============================================================
-    y += 6;
+    y += 4;
 
     // KPI-strip: 5 cellen naast elkaar (Reguliere | Zat | Zon | Km | TOTAAL)
     // 5x 24mm = 120mm breed
@@ -413,9 +413,9 @@ async function generateWeekstaatV2(data) {
     // ============================================================
     // HANDTEKENINGEN (onderaan, 2 boxen naast elkaar)
     // ============================================================
-    y += 8;
+    y += 4;
     const sigBoxW = (uw - 6) / 2;
-    const sigBoxH = 22;
+    const sigBoxH = 32; // hoger voor handtekening (was 22)
     // Box 1: Opdrachtnemer
     doc.setDrawColor(...lineCol);
     doc.setLineWidth(0.2);
