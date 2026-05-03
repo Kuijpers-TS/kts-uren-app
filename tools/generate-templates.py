@@ -1,6 +1,6 @@
 """
 Generates Excel templates voor weekstaat, inkooporder en factuur
-matching de PDF-designs (KTS huisstijl Rev A).
+matching de PDF-designs (KTS huisstijl Rev A) — Rev 2 (preciezere match).
 
 Output: templates/KTS-{Weekstaat,Inkooporder,Factuur}-template-RevA.xlsx
 """
@@ -12,16 +12,18 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.utils import get_column_letter
 
-KTS_BLUE = "07567F"
-KTS_BLUE_LIGHT = "EAF2F7"
-INK_900 = "0F1B2D"
-INK_500 = "5C6675"
-INK_400 = "8A93A1"
-LIGHT_BG = "F8F8F4"
+# === KTS Huisstijl Rev A kleuren ===
+KTS_BLUE   = "07567F"
+INK_900    = "0F1B2D"
+INK_700    = "2A3441"
+INK_500    = "5C6675"
+INK_400    = "8A93A1"
+INK_300    = "B4BCC7"
+LIGHT_BG   = "F8F8F4"   # cream achtergrond voor info-cellen
+WEEKEND_BG = "F5F0E6"   # zandkleur weekend tint
 LINE_LIGHT = "DCDCDC"
-WEEKEND_BG = "F5F0E6"
 
-# Logo paden (Windows-compatible). Probeer eerst lokale kopie, anders huisstijl-bron.
+# === Logo + tandwiel paden ===
 LOGO_PATH = None
 for p in [
     'tools/_K_logo_temp.png',
@@ -31,6 +33,16 @@ for p in [
         LOGO_PATH = p
         break
 
+TANDWIEL_PATH = None
+for p in [
+    'tools/_tandwiel_temp.png',
+    'tandwiel-wit-v2.png'
+]:
+    if os.path.exists(p):
+        TANDWIEL_PATH = p
+        break
+
+# === Helpers ===
 def thin_border(color=LINE_LIGHT):
     s = Side(border_style="thin", color=color)
     return Border(left=s, right=s, top=s, bottom=s)
@@ -40,6 +52,9 @@ def header_fill():
 
 def soft_fill():
     return PatternFill(start_color=LIGHT_BG, end_color=LIGHT_BG, fill_type="solid")
+
+def weekend_fill():
+    return PatternFill(start_color=WEEKEND_BG, end_color=WEEKEND_BG, fill_type="solid")
 
 def set_print_a4(ws, landscape=False):
     ws.page_setup.paperSize = ws.PAPERSIZE_A4
@@ -52,8 +67,50 @@ def set_print_a4(ws, landscape=False):
     ws.page_margins.top = 0.4
     ws.page_margins.bottom = 0.4
 
+def add_logo_at(ws, anchor, height_px=70):
+    """Voeg KTS-logo toe op gegeven anchor cell. Aspect ratio behouden (1.5:1)."""
+    if not LOGO_PATH or not os.path.exists(LOGO_PATH):
+        return
+    try:
+        img = XLImage(LOGO_PATH)
+        # K-logo is 2400x1604 (1.5:1 ratio)
+        img.width = int(height_px * 1.5)
+        img.height = height_px
+        ws.add_image(img, anchor)
+    except Exception as e:
+        print(f'  logo embed faal: {e}')
+
+def add_tandwiel_at(ws, anchor, height_px=24):
+    """Voeg klein tandwiel-icoontje toe naast de titel (zoals in PDF)."""
+    if not TANDWIEL_PATH or not os.path.exists(TANDWIEL_PATH):
+        return
+    try:
+        img = XLImage(TANDWIEL_PATH)
+        img.width = height_px
+        img.height = height_px
+        ws.add_image(img, anchor)
+    except Exception as e:
+        print(f'  tandwiel embed faal: {e}')
+
+def set_cell(ws, ref, value, font_kwargs=None, fill=None, align=None, border=None, num_format=None):
+    """Helper: set cell met optionele styling"""
+    c = ws[ref] if isinstance(ref, str) else ws.cell(row=ref[0], column=ref[1])
+    c.value = value
+    if font_kwargs:
+        c.font = Font(**font_kwargs)
+    if fill:
+        c.fill = fill
+    if align:
+        c.alignment = align
+    if border:
+        c.border = border
+    if num_format:
+        c.number_format = num_format
+    return c
+
 # =============================================================
 # 1. WEEKSTAAT — landscape A4
+#    Layout 1-op-1 met generateWeekstaatV2() PDF-design
 # =============================================================
 def make_weekstaat():
     wb = Workbook()
@@ -61,148 +118,189 @@ def make_weekstaat():
     ws.title = "Weekstaat"
     set_print_a4(ws, landscape=True)
 
-    widths = [11, 12, 11, 11, 9, 12, 36, 18, 8]
+    # Kolombreedtes (units = ~7px elk)
+    # PDF: DAG 22mm/DATUM 22/BEGIN 18/EIND 18/PAUZE 16/UREN 20/WERK 98/LOC 42/KM 17 = 273mm
+    # Ratio behouden: 273 → ~140 column units totaal voor A4 landscape
+    widths = [11, 11, 9, 9, 8, 10, 50, 22, 9]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    if LOGO_PATH and os.path.exists(LOGO_PATH):
-        try:
-            img = XLImage(LOGO_PATH)
-            img.width = 110
-            img.height = 73
-            ws.add_image(img, 'H1')
-        except Exception as e:
-            print('  logo embed faal:', e)
+    # ====== HEADER ROW: tandwiel + URENSTAAT (links) | logo + adres (rechts) ======
+    # Tandwiel-icoon op A1 (klein)
+    add_tandwiel_at(ws, 'A1', height_px=22)
+    # Titel URENSTAAT in A1, met whitespace voor icoon
+    ws['A1'] = "  URENSTAAT"
+    ws['A1'].font = Font(name='Calibri', size=22, bold=True, color=KTS_BLUE)
+    ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[1].height = 36
 
-    ws['A1'] = "URENSTAAT"
-    ws['A1'].font = Font(name='Calibri', size=24, bold=True, color=KTS_BLUE)
-    ws.row_dimensions[1].height = 32
+    # Logo rechtsboven (kolommen H-I)
+    add_logo_at(ws, 'H1', height_px=60)
 
-    ws['F4'] = "Nieuwboerweg 2A, 1738BB Waarland"
-    ws['F4'].font = Font(name='Calibri', size=9, color=INK_500)
-    ws['F4'].alignment = Alignment(horizontal='right')
-    ws.merge_cells('F4:I4')
-    ws['F5'] = "+31 6 5123 9050  -  info@kuijpers-ts.nl"
-    ws['F5'].font = Font(name='Calibri', size=9, color=INK_500)
-    ws['F5'].alignment = Alignment(horizontal='right')
+    # Adres rechts onder logo (rij 5-6)
+    set_cell(ws, 'F5', "Nieuwboerweg 2A, 1738BB Waarland",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500},
+        align=Alignment(horizontal='right'))
     ws.merge_cells('F5:I5')
+    set_cell(ws, 'F6', "+31 6 5123 9050  ·  info@kuijpers-ts.nl",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells('F6:I6')
 
-    label_font = Font(name='Calibri', size=8, color=INK_400)
-    value_font = Font(name='Calibri', size=12, bold=True, color=INK_900)
+    # ====== INFO BAR LINKS: NAAM | PERIODE  (rij 3-4)  ======
+    set_cell(ws, 'A3', "NAAM",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400})
+    set_cell(ws, 'D3', "PERIODE",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400})
 
-    ws['A4'] = "NAAM"
-    ws['A4'].font = label_font
-    ws['A5'] = "[Vul je naam in]"
-    ws['A5'].font = value_font
-    ws.merge_cells('A5:C5')
+    set_cell(ws, 'A4', "[Vul je naam in]",
+        font_kwargs={'name':'Calibri','size':12,'bold':True,'color':INK_900})
+    ws.merge_cells('A4:C4')
+    set_cell(ws, 'D4', "Week XX · 2026",
+        font_kwargs={'name':'Calibri','size':12,'bold':True,'color':INK_900})
+    ws.merge_cells('D4:E4')
 
-    ws['D4'] = "PERIODE"
-    ws['D4'].font = label_font
-    ws['D5'] = "Week XX - 2026"
-    ws['D5'].font = value_font
-    ws.merge_cells('D5:E5')
+    # PROJECT | OPDRACHTGEVER  (rij 6-7)
+    set_cell(ws, 'A6', "PROJECT",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400})
+    set_cell(ws, 'D6', "OPDRACHTGEVER",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400})
 
-    ws['A7'] = "PROJECT"
-    ws['A7'].font = label_font
-    ws['A8'] = "[Projectnaam]"
-    ws['A8'].font = Font(name='Calibri', size=11, bold=True, color=INK_900)
-    ws.merge_cells('A8:C8')
+    set_cell(ws, 'A7', "[Projectnaam]",
+        font_kwargs={'name':'Calibri','size':11,'bold':True,'color':INK_900})
+    ws.merge_cells('A7:C7')
+    set_cell(ws, 'D7', "[Klantnaam]",
+        font_kwargs={'name':'Calibri','size':11,'bold':True,'color':INK_900})
+    ws.merge_cells('D7:E7')
 
-    ws['D7'] = "OPDRACHTGEVER"
-    ws['D7'].font = label_font
-    ws['D8'] = "[Klantnaam]"
-    ws['D8'].font = Font(name='Calibri', size=11, bold=True, color=INK_900)
-    ws.merge_cells('D8:E8')
-
-    headers = ["DAG", "DATUM", "BEGINTIJD", "EINDTIJD", "PAUZE", "GEW. UREN", "WERKZAAMHEDEN", "LOCATIE", "KM"]
-    header_row = 10
-    for col, h in enumerate(headers, start=1):
-        c = ws.cell(row=header_row, column=col, value=h)
+    # ====== TABEL HEADER (rij 9) ======
+    headers = [
+        ("DAG",          'left'),
+        ("DATUM",        'center'),
+        ("BEGINTIJD",    'center'),
+        ("EINDTIJD",     'center'),
+        ("PAUZE",        'center'),
+        ("GEW. UREN",    'center'),
+        ("WERKZAAMHEDEN",'left'),
+        ("LOCATIE",      'left'),
+        ("KM",           'center')
+    ]
+    HEADER_ROW = 9
+    for col, (h, align) in enumerate(headers, start=1):
+        c = ws.cell(row=HEADER_ROW, column=col, value=h)
         c.font = Font(name='Calibri', size=9, bold=True, color="FFFFFF")
         c.fill = header_fill()
-        c.alignment = Alignment(
-            horizontal='center' if h not in ['DAG', 'WERKZAAMHEDEN', 'LOCATIE'] else 'left',
-            vertical='center'
-        )
+        c.alignment = Alignment(horizontal=align, vertical='center')
         c.border = thin_border()
-    ws.row_dimensions[header_row].height = 22
+    ws.row_dimensions[HEADER_ROW].height = 22
 
-    days = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag']
+    # ====== DAG-RIJEN (rij 10-16, 7 dagen) ======
+    days = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag']
     for i, day in enumerate(days):
-        row = header_row + 1 + i
-        ws.cell(row=row, column=1, value=day).font = Font(name='Calibri', size=10, color=INK_900)
-        ws.cell(row=row, column=1).alignment = Alignment(horizontal='left', vertical='center')
-        for col in range(1, 10):
+        row = HEADER_ROW + 1 + i
+        is_weekend = i >= 5
+        # DAG cel (links uitgelijnd)
+        c = ws.cell(row=row, column=1, value=day)
+        c.font = Font(name='Calibri', size=10, color=INK_900)
+        c.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+        # Borders + alignment per kolom
+        for col, (_, align) in enumerate(headers, start=1):
             cell = ws.cell(row=row, column=col)
             cell.border = thin_border()
-            if col not in [1, 7, 8]:
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-            else:
-                cell.alignment = Alignment(horizontal='left', vertical='center')
-        if i >= 5:
-            for col in range(1, 10):
-                ws.cell(row=row, column=col).fill = PatternFill(start_color=WEEKEND_BG, end_color=WEEKEND_BG, fill_type="solid")
-        ws.row_dimensions[row].height = 20
+            cell.alignment = Alignment(horizontal=align, vertical='center',
+                                       indent=1 if align == 'left' else 0)
+            if is_weekend:
+                cell.fill = weekend_fill()
+            cell.font = cell.font.copy() if cell.value else Font(name='Calibri', size=10, color=INK_900)
+        ws.row_dimensions[row].height = 22
 
-    sum_row = header_row + 1 + 7 + 1
-    val_row = sum_row + 1
+    # ====== KPI-STRIP (rij 18-19) ======
+    KPI_LABEL_ROW = HEADER_ROW + 9   # rij 18
+    KPI_VAL_ROW   = KPI_LABEL_ROW + 1
 
-    kpi_labels = ["REGULIER MA-VR", "ZATERDAG", "ZONDAG/FEEST", "REIS KM", "TOTAAL TE FACTUREREN"]
-    for col, lab in enumerate(kpi_labels, start=1):
-        c = ws.cell(row=sum_row, column=col, value=lab)
-        c.font = Font(name='Calibri', size=8, color="FFFFFF" if col == 5 else INK_400, bold=(col == 5))
-        c.fill = header_fill() if col == 5 else soft_fill()
-        c.alignment = Alignment(horizontal='center', vertical='center')
-        c.border = thin_border()
-
-    formulas = [
-        f"=SUM(F{header_row+1}:F{header_row+5})",
-        f"=F{header_row+6}",
-        f"=F{header_row+7}",
-        f"=SUM(I{header_row+1}:I{header_row+7})",
-        f"=SUM(F{header_row+1}:F{header_row+7})"
+    kpi_data = [
+        ("REGULIER MA-VR", f"=SUM(F{HEADER_ROW+1}:F{HEADER_ROW+5})", False),
+        ("ZATERDAG",       f"=F{HEADER_ROW+6}",                     False),
+        ("ZONDAG/FEEST",   f"=F{HEADER_ROW+7}",                     False),
+        ("REIS KM",        f"=SUM(I{HEADER_ROW+1}:I{HEADER_ROW+7})",False),
+        ("TOTAAL TE FACTUREREN", f"=SUM(F{HEADER_ROW+1}:F{HEADER_ROW+7})", True),
     ]
-    for col, f in enumerate(formulas, start=1):
-        c = ws.cell(row=val_row, column=col, value=f)
-        c.font = Font(name='Calibri', size=20, bold=True, color="FFFFFF" if col == 5 else INK_900)
-        c.fill = header_fill() if col == 5 else soft_fill()
-        c.alignment = Alignment(horizontal='center', vertical='center')
-        c.border = thin_border()
+    # KPIs occuperen kolommen 1-5 elk 1 kolom (samen 5 kolommen)
+    for i, (label, formula, accent) in enumerate(kpi_data):
+        col = i + 1
+        # Label cel
+        lc = ws.cell(row=KPI_LABEL_ROW, column=col, value=label)
+        lc.font = Font(name='Calibri', size=8, bold=accent,
+                       color="FFFFFF" if accent else INK_400)
+        lc.fill = header_fill() if accent else soft_fill()
+        lc.alignment = Alignment(horizontal='center', vertical='center')
+        lc.border = thin_border()
+        # Value cel
+        vc = ws.cell(row=KPI_VAL_ROW, column=col, value=formula)
+        vc.font = Font(name='Calibri', size=20, bold=True,
+                       color="FFFFFF" if accent else INK_900)
+        vc.fill = header_fill() if accent else soft_fill()
+        vc.alignment = Alignment(horizontal='center', vertical='center')
+        vc.border = thin_border()
+    ws.row_dimensions[KPI_LABEL_ROW].height = 16
+    ws.row_dimensions[KPI_VAL_ROW].height = 32
 
-    ws.row_dimensions[sum_row].height = 14
-    ws.row_dimensions[val_row].height = 28
+    # ====== OPMERKINGEN (rechts naast KPI-strip, kolommen 6-9) ======
+    set_cell(ws, (KPI_LABEL_ROW, 6), "OPMERKINGEN",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400},
+        fill=soft_fill(),
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+    ws.merge_cells(start_row=KPI_LABEL_ROW, start_column=6,
+                   end_row=KPI_LABEL_ROW, end_column=9)
+    # Borders + soft fill voor opmerkingen-area
+    for col in range(6, 10):
+        ws.cell(row=KPI_LABEL_ROW, column=col).border = thin_border()
+        ws.cell(row=KPI_LABEL_ROW, column=col).fill = soft_fill()
+        ws.cell(row=KPI_VAL_ROW, column=col).border = thin_border()
+        ws.cell(row=KPI_VAL_ROW, column=col).fill = soft_fill()
+    ws.merge_cells(start_row=KPI_VAL_ROW, start_column=6,
+                   end_row=KPI_VAL_ROW, end_column=9)
+    ws.cell(row=KPI_VAL_ROW, column=6).alignment = Alignment(
+        horizontal='left', vertical='top', wrap_text=True, indent=1)
 
-    ws.cell(row=sum_row, column=7, value="OPMERKINGEN").font = Font(name='Calibri', size=8, color=INK_400)
-    ws.cell(row=sum_row, column=7).fill = soft_fill()
-    ws.cell(row=sum_row, column=7).alignment = Alignment(horizontal='left')
-    for r in [sum_row, val_row]:
-        for col in range(7, 10):
-            ws.cell(row=r, column=col).fill = soft_fill()
-            ws.cell(row=r, column=col).border = thin_border()
-    ws.merge_cells(start_row=sum_row, start_column=7, end_row=sum_row, end_column=9)
-    ws.merge_cells(start_row=val_row, start_column=7, end_row=val_row, end_column=9)
-    ws.cell(row=val_row, column=7).alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+    # ====== HANDTEKENING-BOXEN (2 onder elkaar of naast elkaar) ======
+    SIG_LABEL_ROW = KPI_VAL_ROW + 2
+    set_cell(ws, (SIG_LABEL_ROW, 1), "HANDTEKENING OPDRACHTNEMER",
+        font_kwargs={'name':'Calibri','size':8,'bold':True,'color':INK_400},
+        align=Alignment(horizontal='left', indent=1))
+    ws.merge_cells(start_row=SIG_LABEL_ROW, start_column=1,
+                   end_row=SIG_LABEL_ROW, end_column=4)
+    set_cell(ws, (SIG_LABEL_ROW, 6), "HANDTEKENING OPDRACHTGEVER",
+        font_kwargs={'name':'Calibri','size':8,'bold':True,'color':INK_400},
+        align=Alignment(horizontal='left', indent=1))
+    ws.merge_cells(start_row=SIG_LABEL_ROW, start_column=6,
+                   end_row=SIG_LABEL_ROW, end_column=9)
 
-    sig_row = val_row + 2
-    ws.cell(row=sig_row, column=1, value="HANDTEKENING OPDRACHTNEMER").font = Font(name='Calibri', size=8, bold=True, color=INK_400)
-    ws.cell(row=sig_row, column=6, value="HANDTEKENING OPDRACHTGEVER").font = Font(name='Calibri', size=8, bold=True, color=INK_400)
-    ws.merge_cells(start_row=sig_row, start_column=1, end_row=sig_row, end_column=5)
-    ws.merge_cells(start_row=sig_row, start_column=6, end_row=sig_row, end_column=9)
-
-    for r in range(sig_row, sig_row + 4):
-        for col_range in [(1, 5), (6, 9)]:
+    # Box-rijen (3 rows hoog)
+    for r in range(SIG_LABEL_ROW, SIG_LABEL_ROW + 4):
+        for col_range in [(1, 4), (6, 9)]:
             for col in range(col_range[0], col_range[1] + 1):
                 ws.cell(row=r, column=col).border = thin_border()
-        if r > sig_row:
-            ws.row_dimensions[r].height = 22
+        if r > SIG_LABEL_ROW:
+            ws.row_dimensions[r].height = 24
 
-    foot_row = sig_row + 5
-    ws.cell(row=foot_row, column=1, value="Op deze opdracht zijn de Algemene Voorwaarden Detachering 2026 van Kuijpers Technical Services BV van toepassing.").font = Font(name='Calibri', size=7, color=INK_400)
-    ws.merge_cells(start_row=foot_row, start_column=1, end_row=foot_row, end_column=9)
+    # ====== FOOTER ======
+    FOOT_ROW = SIG_LABEL_ROW + 5
+    set_cell(ws, (FOOT_ROW, 1),
+        "Op deze opdracht zijn de Algemene Voorwaarden Detachering 2026 van Kuijpers Technical Services BV van toepassing.",
+        font_kwargs={'name':'Calibri','size':7,'color':INK_400})
+    ws.merge_cells(start_row=FOOT_ROW, start_column=1,
+                   end_row=FOOT_ROW, end_column=7)
+    set_cell(ws, (FOOT_ROW, 8), "KvK 93410557  ·  BTW NL866385368B01",
+        font_kwargs={'name':'Calibri','size':7,'color':INK_400},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells(start_row=FOOT_ROW, start_column=8,
+                   end_row=FOOT_ROW, end_column=9)
 
     out = 'templates/KTS-Weekstaat-template-RevA.xlsx'
     wb.save(out)
-    print('  Weekstaat:', out)
+    print(f'  Weekstaat: {out}')
+
 
 # =============================================================
 # 2. INKOOPORDER — portrait A4
@@ -213,182 +311,281 @@ def make_inkooporder():
     ws.title = "Inkooporder"
     set_print_a4(ws, landscape=False)
 
-    widths = [4, 24, 18, 14, 14, 16, 18]  # 7 kolommen
+    # PDF: 7 cols voor info-bar + items-tabel
+    # Items: ITEM# 18 / OMSCHR 92 / AANT 18 / PRIJS 28 / TOTAAL 30 = 186mm
+    widths = [8, 30, 18, 14, 16, 22, 8]   # 7 kolommen
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    # Title
-    ws['A1'] = "INKOOPORDER"
-    ws['A1'].font = Font(name='Calibri', size=24, bold=True, color=KTS_BLUE)
-    ws.row_dimensions[1].height = 32
+    # ====== HEADER: tandwiel + INKOOPORDER (links), logo + adres (rechts) ======
+    add_tandwiel_at(ws, 'A1', height_px=22)
+    ws['A1'] = "  INKOOPORDER"
+    ws['A1'].font = Font(name='Calibri', size=22, bold=True, color=KTS_BLUE)
+    ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[1].height = 36
+    ws.merge_cells('A1:D1')
 
-    # Logo + adres rechts
-    if LOGO_PATH and os.path.exists(LOGO_PATH):
-        try:
-            img = XLImage(LOGO_PATH)
-            img.width = 95
-            img.height = 63
-            ws.add_image(img, 'F1')
-        except Exception:
-            pass
+    # Logo rechtsboven (kolommen E-G)
+    add_logo_at(ws, 'F1', height_px=56)
 
-    ws['F4'] = "Nieuwboerweg 2A, 1738BB Waarland"
-    ws['F4'].font = Font(name='Calibri', size=9, color=INK_500)
-    ws['F4'].alignment = Alignment(horizontal='right')
-    ws.merge_cells('F4:G4')
-    ws['F5'] = "+31 6 5123 9050  -  info@kuijpers-ts.nl"
-    ws['F5'].font = Font(name='Calibri', size=9, color=INK_500)
-    ws['F5'].alignment = Alignment(horizontal='right')
-    ws.merge_cells('F5:G5')
+    # Adres rechts onder logo
+    set_cell(ws, 'E5', "Nieuwboerweg 2A, 1738BB Waarland",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells('E5:G5')
+    set_cell(ws, 'E6', "+31 6 5123 9050  ·  info@kuijpers-ts.nl",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells('E6:G6')
 
-    # Info-bar 4 cellen rij 7
-    info_row = 7
-    info_data = [
-        ("PROJECT", "[Projectcode]"),
-        ("SCHEIDINGSTEKEN", "-"),
-        ("DATUM", "[DD-MM-JJJJ]"),
-        ("PO-NUMMER", "[Auto]")
+    # ====== INFO BAR: 4 cellen (rij 8-9) ======
+    INFO_ROW = 8
+    info_cells = [
+        ("PROJECT",         "[Projectcode]", 1, 2),
+        ("SCHEIDINGSTEKEN", "-",            3, 3),
+        ("DATUM",           "[DD-MM-JJJJ]", 4, 5),
+        ("PO-NUMMER",       "[Auto]",       6, 7),
     ]
-    cols_per_cell = [(1, 2), (3, 3), (4, 5), (6, 7)]
-    for (start_col, end_col), (lbl, val) in zip(cols_per_cell, info_data):
-        ws.cell(row=info_row, column=start_col, value=lbl).font = Font(name='Calibri', size=8, color=INK_400)
-        ws.cell(row=info_row + 1, column=start_col, value=val).font = Font(name='Calibri', size=11, bold=True, color=INK_900)
-        for r in range(info_row, info_row + 2):
-            for col in range(start_col, end_col + 1):
+    for label, value, sc, ec in info_cells:
+        set_cell(ws, (INFO_ROW, sc), label,
+            font_kwargs={'name':'Calibri','size':8,'color':INK_400},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1))
+        set_cell(ws, (INFO_ROW + 1, sc), value,
+            font_kwargs={'name':'Calibri','size':11,'bold':True,'color':INK_900},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1))
+        if sc != ec:
+            ws.merge_cells(start_row=INFO_ROW, start_column=sc, end_row=INFO_ROW, end_column=ec)
+            ws.merge_cells(start_row=INFO_ROW + 1, start_column=sc, end_row=INFO_ROW + 1, end_column=ec)
+        for r in [INFO_ROW, INFO_ROW + 1]:
+            for col in range(sc, ec + 1):
                 ws.cell(row=r, column=col).fill = soft_fill()
                 ws.cell(row=r, column=col).border = thin_border()
-                ws.cell(row=r, column=col).alignment = Alignment(horizontal='left', vertical='center')
-        if start_col != end_col:
-            ws.merge_cells(start_row=info_row, start_column=start_col, end_row=info_row, end_column=end_col)
-            ws.merge_cells(start_row=info_row + 1, start_column=start_col, end_row=info_row + 1, end_column=end_col)
-    ws.row_dimensions[info_row].height = 12
-    ws.row_dimensions[info_row + 1].height = 22
+    ws.row_dimensions[INFO_ROW].height = 14
+    ws.row_dimensions[INFO_ROW + 1].height = 22
 
-    # Leverancier + Leveradres blokken
-    block_row = info_row + 3
-    ws.cell(row=block_row, column=1, value="LEVERANCIER").font = Font(name='Calibri', size=9, bold=True, color="FFFFFF")
-    ws.cell(row=block_row, column=4, value="LEVERADRES").font = Font(name='Calibri', size=9, bold=True, color="FFFFFF")
+    # ====== LEVERANCIER + LEVERADRES blokken (rij 11+) ======
+    BLOCK_HEADER = INFO_ROW + 3
+    # Leverancier header (links, kolommen 1-3)
+    set_cell(ws, (BLOCK_HEADER, 1), "LEVERANCIER",
+        font_kwargs={'name':'Calibri','size':9,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+    ws.merge_cells(start_row=BLOCK_HEADER, start_column=1,
+                   end_row=BLOCK_HEADER, end_column=3)
     for col in range(1, 4):
-        ws.cell(row=block_row, column=col).fill = header_fill()
-        ws.cell(row=block_row, column=col).alignment = Alignment(horizontal='left', vertical='center')
-    ws.merge_cells(start_row=block_row, start_column=1, end_row=block_row, end_column=3)
+        ws.cell(row=BLOCK_HEADER, column=col).fill = header_fill()
+        ws.cell(row=BLOCK_HEADER, column=col).border = thin_border()
+    # Leveradres header (rechts, kolommen 4-7)
+    set_cell(ws, (BLOCK_HEADER, 4), "LEVERADRES",
+        font_kwargs={'name':'Calibri','size':9,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+    ws.merge_cells(start_row=BLOCK_HEADER, start_column=4,
+                   end_row=BLOCK_HEADER, end_column=7)
     for col in range(4, 8):
-        ws.cell(row=block_row, column=col).fill = header_fill()
-        ws.cell(row=block_row, column=col).alignment = Alignment(horizontal='left', vertical='center')
-    ws.merge_cells(start_row=block_row, start_column=4, end_row=block_row, end_column=7)
-    ws.row_dimensions[block_row].height = 18
+        ws.cell(row=BLOCK_HEADER, column=col).fill = header_fill()
+        ws.cell(row=BLOCK_HEADER, column=col).border = thin_border()
+    ws.row_dimensions[BLOCK_HEADER].height = 18
 
-    # Block content (5 regels)
-    leverancier = [
+    # Block content
+    leverancier_data = [
         ("[Bedrijfsnaam leverancier]", True),
         ("[Contactpersoon]", False),
         ("[Adres]", False),
         ("[Postcode + plaats]", False),
-        ("[Telefoon  -  E-mail]", False)
+        ("[Telefoon]", False),
+        ("[E-mail]", False),
     ]
-    leveradres = [
+    leveradres_data = [
         ("Kuijpers Technical Services BV", True),
         ("Crediteurenadministratie", False),
         ("Nieuwboerweg 2A", False),
         ("1738BB, Waarland", False),
-        ("+31 6 5123 9050  -  info@kuijpers-ts.nl", False)
+        ("+31 6 5123 9050", False),
+        ("info@kuijpers-ts.nl", False),
     ]
-    for i, ((l_text, l_bold), (r_text, r_bold)) in enumerate(zip(leverancier, leveradres)):
-        r = block_row + 1 + i
-        ws.cell(row=r, column=1, value=l_text).font = Font(name='Calibri', size=9, bold=l_bold, color=INK_900 if l_bold else INK_500)
+    for i, ((lev_text, lev_bold), (lvr_text, lvr_bold)) in enumerate(zip(leverancier_data, leveradres_data)):
+        r = BLOCK_HEADER + 1 + i
+        # Leverancier (kolommen 1-3)
+        set_cell(ws, (r, 1), lev_text,
+            font_kwargs={'name':'Calibri','size':9,'bold':lev_bold,
+                         'color':INK_900 if lev_bold else INK_500},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1))
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=3)
-        ws.cell(row=r, column=4, value=r_text).font = Font(name='Calibri', size=9, bold=r_bold, color=INK_900 if r_bold else INK_500)
+        # Leveradres (kolommen 4-7)
+        set_cell(ws, (r, 4), lvr_text,
+            font_kwargs={'name':'Calibri','size':9,'bold':lvr_bold,
+                         'color':INK_900 if lvr_bold else INK_500},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1))
         ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=7)
+        # Borders + soft fill
         for col in range(1, 8):
             ws.cell(row=r, column=col).fill = soft_fill()
             ws.cell(row=r, column=col).border = thin_border()
         ws.row_dimensions[r].height = 16
 
-    # Items tabel
-    item_header_row = block_row + 7
-    item_headers = ["ITEM #", "OMSCHRIJVING", "AANTAL", "EENHEID", "PRIJS / STUK", "TOTAAL"]
-    item_cols_widths = [(1, 1), (2, 3), (4, 4), (5, 5), (6, 6), (7, 7)]
-    for col_idx, ((s, e), h) in enumerate(zip(item_cols_widths, item_headers)):
-        c = ws.cell(row=item_header_row, column=s, value=h)
+    # ====== ITEMS TABEL ======
+    ITEMS_HEADER_ROW = BLOCK_HEADER + 8
+    item_headers = [
+        ("ITEM #",       1, 1, 'center'),
+        ("OMSCHRIJVING", 2, 3, 'left'),
+        ("AANTAL",       4, 4, 'center'),
+        ("PRIJS / STUK", 5, 5, 'right'),
+        ("TOTAAL",       6, 7, 'right'),
+    ]
+    for label, sc, ec, align in item_headers:
+        c = ws.cell(row=ITEMS_HEADER_ROW, column=sc, value=label)
         c.font = Font(name='Calibri', size=9, bold=True, color="FFFFFF")
         c.fill = header_fill()
-        c.alignment = Alignment(horizontal='center', vertical='center')
-        if s != e:
-            ws.merge_cells(start_row=item_header_row, start_column=s, end_row=item_header_row, end_column=e)
-        for col in range(s, e + 1):
-            ws.cell(row=item_header_row, column=col).border = thin_border()
-            ws.cell(row=item_header_row, column=col).fill = header_fill()
-    ws.row_dimensions[item_header_row].height = 20
+        c.alignment = Alignment(horizontal=align, vertical='center',
+                                indent=1 if align == 'left' else 0)
+        if sc != ec:
+            ws.merge_cells(start_row=ITEMS_HEADER_ROW, start_column=sc,
+                           end_row=ITEMS_HEADER_ROW, end_column=ec)
+        for col in range(sc, ec + 1):
+            ws.cell(row=ITEMS_HEADER_ROW, column=col).fill = header_fill()
+            ws.cell(row=ITEMS_HEADER_ROW, column=col).border = thin_border()
+    ws.row_dimensions[ITEMS_HEADER_ROW].height = 22
 
-    # 8 lege regels
+    # 8 lege rijen (2-regel desc support via wrap_text + extra hoogte)
     for i in range(1, 9):
-        r = item_header_row + i
-        ws.cell(row=r, column=1, value=i).alignment = Alignment(horizontal='center')
-        # totaal-formule = aantal * prijs
-        ws.cell(row=r, column=7, value=f"=IFERROR(D{r}*F{r},\"\")").alignment = Alignment(horizontal='right')
-        ws.cell(row=r, column=7).number_format = '#,##0.00 €'
-        ws.cell(row=r, column=6).number_format = '#,##0.00 €'
+        r = ITEMS_HEADER_ROW + i
+        # ITEM #
+        ws.cell(row=r, column=1, value=i).font = Font(name='Calibri', size=10, color=INK_500)
+        ws.cell(row=r, column=1).alignment = Alignment(horizontal='center', vertical='center')
+        # OMSCHRIJVING (kolommen 2-3, merged, wrap_text)
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+        ws.cell(row=r, column=2).alignment = Alignment(
+            horizontal='left', vertical='center', wrap_text=True, indent=1)
+        ws.cell(row=r, column=2).font = Font(name='Calibri', size=10, color=INK_900)
+        # AANTAL
+        ws.cell(row=r, column=4).alignment = Alignment(horizontal='center', vertical='center')
+        # PRIJS
+        ws.cell(row=r, column=5).number_format = '€ #,##0.00'
+        ws.cell(row=r, column=5).alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        # TOTAAL (kolommen 6-7, merged, formule)
+        ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
+        ws.cell(row=r, column=6, value=f"=IFERROR(D{r}*E{r},\"\")").number_format = '€ #,##0.00'
+        ws.cell(row=r, column=6).alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        ws.cell(row=r, column=6).font = Font(name='Calibri', size=10, bold=True, color=INK_900)
         for col in range(1, 8):
             ws.cell(row=r, column=col).border = thin_border()
-            ws.cell(row=r, column=col).font = Font(name='Calibri', size=10)
-            if col == 1:
-                ws.cell(row=r, column=col).font = Font(name='Calibri', size=10, color=INK_500)
-        ws.row_dimensions[r].height = 22
+        ws.row_dimensions[r].height = 24  # ruimte voor 2-regel desc
 
-    # Totalen blok rechts
-    tot_start_row = item_header_row + 9
-    ws.cell(row=tot_start_row, column=5, value="Subtotaal").font = Font(name='Calibri', size=10, color=INK_500)
-    sub_formula = f"=SUM(G{item_header_row+1}:G{item_header_row+8})"
-    ws.cell(row=tot_start_row, column=7, value=sub_formula).font = Font(name='Calibri', size=10, bold=True, color=INK_900)
-    ws.cell(row=tot_start_row, column=7).number_format = '#,##0.00 €'
-    ws.cell(row=tot_start_row, column=7).alignment = Alignment(horizontal='right')
+    # ====== OPMERKINGEN-BLOK + TOTALEN-BLOK ======
+    BOT_HEADER = ITEMS_HEADER_ROW + 9 + 1   # + 8 items + 1 spacer
 
-    ws.cell(row=tot_start_row + 1, column=5, value="BTW (21%)").font = Font(name='Calibri', size=10, color=INK_500)
-    ws.cell(row=tot_start_row + 1, column=7, value=f"=G{tot_start_row}*0.21").font = Font(name='Calibri', size=10, bold=True, color=INK_900)
-    ws.cell(row=tot_start_row + 1, column=7).number_format = '#,##0.00 €'
-    ws.cell(row=tot_start_row + 1, column=7).alignment = Alignment(horizontal='right')
-
-    ws.cell(row=tot_start_row + 2, column=5, value="Transport").font = Font(name='Calibri', size=10, color=INK_500)
-    ws.cell(row=tot_start_row + 2, column=7, value=0).number_format = '#,##0.00 €'
-
-    ws.cell(row=tot_start_row + 3, column=5, value="Overige").font = Font(name='Calibri', size=10, color=INK_500)
-    ws.cell(row=tot_start_row + 3, column=7, value=0).number_format = '#,##0.00 €'
-
-    # TOTAAL band
-    total_row = tot_start_row + 4
-    ws.cell(row=total_row, column=5, value="TOTAAL").font = Font(name='Calibri', size=11, bold=True, color="FFFFFF")
-    ws.cell(row=total_row, column=7, value=f"=G{tot_start_row}+G{tot_start_row+1}+G{tot_start_row+2}+G{tot_start_row+3}").font = Font(name='Calibri', size=14, bold=True, color="FFFFFF")
-    ws.cell(row=total_row, column=7).number_format = '#,##0.00 €'
-    ws.cell(row=total_row, column=7).alignment = Alignment(horizontal='right', vertical='center')
-    ws.cell(row=total_row, column=5).alignment = Alignment(horizontal='left', vertical='center')
-    ws.cell(row=total_row, column=5).fill = header_fill()
-    ws.cell(row=total_row, column=6).fill = header_fill()
-    ws.cell(row=total_row, column=7).fill = header_fill()
-    ws.row_dimensions[total_row].height = 24
-
-    # Opmerkingen links
-    ws.cell(row=tot_start_row, column=1, value="OPMERKINGEN OF SPECIALE INSTRUCTIES").font = Font(name='Calibri', size=8, bold=True, color="FFFFFF")
+    # Opmerkingen header (links, kolommen 1-4)
+    set_cell(ws, (BOT_HEADER, 1), "OPMERKINGEN OF SPECIALE INSTRUCTIES",
+        font_kwargs={'name':'Calibri','size':8,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+    ws.merge_cells(start_row=BOT_HEADER, start_column=1, end_row=BOT_HEADER, end_column=4)
     for col in range(1, 5):
-        ws.cell(row=tot_start_row, column=col).fill = header_fill()
-    ws.merge_cells(start_row=tot_start_row, start_column=1, end_row=tot_start_row, end_column=4)
-    ws.cell(row=tot_start_row + 1, column=1, value="[Vul opmerkingen in...]").font = Font(name='Calibri', size=10, color=INK_500)
-    ws.merge_cells(start_row=tot_start_row + 1, start_column=1, end_row=tot_start_row + 3, end_column=4)
-    ws.cell(row=tot_start_row + 1, column=1).alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
-    # Soft fill alleen voor de inhoud-rijen (niet voor de blauwe header)
-    for r in range(tot_start_row + 1, total_row):
+        ws.cell(row=BOT_HEADER, column=col).fill = header_fill()
+        ws.cell(row=BOT_HEADER, column=col).border = thin_border()
+    ws.row_dimensions[BOT_HEADER].height = 18
+
+    # Opmerkingen body (3 rijen)
+    for i in range(1, 4):
+        r = BOT_HEADER + i
         for col in range(1, 5):
             ws.cell(row=r, column=col).fill = soft_fill()
-    ws.cell(row=total_row, column=1, value="BETALINGSTERMIJN").font = Font(name='Calibri', size=8, color=INK_400)
-    ws.cell(row=total_row, column=2, value="30 dagen na factuurdatum").font = Font(name='Calibri', size=10, bold=True, color=INK_900)
+            ws.cell(row=r, column=col).border = thin_border()
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=4)
+        if i == 1:
+            ws.cell(row=r, column=1, value="[Vul opmerkingen in...]")
+            ws.cell(row=r, column=1).font = Font(name='Calibri', size=10, color=INK_500)
+            ws.cell(row=r, column=1).alignment = Alignment(horizontal='left', vertical='top', wrap_text=True, indent=1)
+        ws.row_dimensions[r].height = 16
 
-    # Footer
-    foot_row = total_row + 3
-    ws.cell(row=foot_row, column=1, value="Op deze inkooporder zijn de Algemene Voorwaarden 2026 van Kuijpers Technical Services BV van toepassing.").font = Font(name='Calibri', size=7, color=INK_400)
-    ws.merge_cells(start_row=foot_row, start_column=1, end_row=foot_row, end_column=7)
+    # Betalingstermijn onderaan opmerkingen
+    BETALING_ROW = BOT_HEADER + 4
+    for col in range(1, 5):
+        ws.cell(row=BETALING_ROW, column=col).fill = soft_fill()
+        ws.cell(row=BETALING_ROW, column=col).border = thin_border()
+    ws.merge_cells(start_row=BETALING_ROW, start_column=1, end_row=BETALING_ROW, end_column=4)
+    set_cell(ws, (BETALING_ROW, 1), "BETALINGSTERMIJN",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400},
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+    BETALING_VAL_ROW = BETALING_ROW + 1
+    for col in range(1, 5):
+        ws.cell(row=BETALING_VAL_ROW, column=col).fill = soft_fill()
+        ws.cell(row=BETALING_VAL_ROW, column=col).border = thin_border()
+    ws.merge_cells(start_row=BETALING_VAL_ROW, start_column=1, end_row=BETALING_VAL_ROW, end_column=4)
+    set_cell(ws, (BETALING_VAL_ROW, 1), "30 dagen na factuurdatum",
+        font_kwargs={'name':'Calibri','size':10,'bold':True,'color':INK_900},
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+
+    # Totalen-blok (rechts, kolommen 5-7)
+    sub_formula = f"=SUM(F{ITEMS_HEADER_ROW+1}:F{ITEMS_HEADER_ROW+8})"
+    tot_rows = [
+        ("Subtotaal",          sub_formula),
+        ("BTW (21%)",          f"=F{BOT_HEADER}*0.21"),  # placeholder; gefixed na adjustment
+        ("Transport",          0),
+        ("Overige",            0),
+    ]
+    for i, (label, formula) in enumerate(tot_rows):
+        r = BOT_HEADER + i
+        set_cell(ws, (r, 5), label,
+            font_kwargs={'name':'Calibri','size':10,'color':INK_500},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1))
+        # Set formule met juiste row-referentie
+        if i == 0:
+            ws.cell(row=r, column=6, value=sub_formula)
+        elif i == 1:
+            ws.cell(row=r, column=6, value=f"=F{BOT_HEADER}*0.21")
+        else:
+            ws.cell(row=r, column=6, value=formula)
+        ws.cell(row=r, column=6).number_format = '€ #,##0.00'
+        ws.cell(row=r, column=6).alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        ws.cell(row=r, column=6).font = Font(name='Calibri', size=10, bold=True, color=INK_900)
+        ws.cell(row=r, column=6).fill = soft_fill()
+        ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
+        for col in range(5, 8):
+            ws.cell(row=r, column=col).fill = soft_fill()
+            ws.cell(row=r, column=col).border = thin_border()
+        ws.row_dimensions[r].height = 18
+
+    # TOTAAL-band (rechts onderaan)
+    TOT_BAND_ROW = BOT_HEADER + 4
+    set_cell(ws, (TOT_BAND_ROW, 5), "TOTAAL",
+        font_kwargs={'name':'Calibri','size':12,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='left', vertical='center', indent=1))
+    set_cell(ws, (TOT_BAND_ROW, 6),
+        f"=F{BOT_HEADER}+F{BOT_HEADER+1}+F{BOT_HEADER+2}+F{BOT_HEADER+3}",
+        font_kwargs={'name':'Calibri','size':14,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='right', vertical='center', indent=1),
+        num_format='€ #,##0.00')
+    ws.merge_cells(start_row=TOT_BAND_ROW, start_column=6,
+                   end_row=TOT_BAND_ROW, end_column=7)
+    for col in range(5, 8):
+        ws.cell(row=TOT_BAND_ROW, column=col).fill = header_fill()
+        ws.cell(row=TOT_BAND_ROW, column=col).border = thin_border()
+    ws.row_dimensions[TOT_BAND_ROW].height = 26
+
+    # ====== FOOTER ======
+    FOOT_ROW = TOT_BAND_ROW + 3
+    set_cell(ws, (FOOT_ROW, 1),
+        "Op deze inkooporder zijn de Algemene Voorwaarden 2026 van Kuijpers Technical Services BV van toepassing.",
+        font_kwargs={'name':'Calibri','size':7,'color':INK_400})
+    ws.merge_cells(start_row=FOOT_ROW, start_column=1, end_row=FOOT_ROW, end_column=4)
+    set_cell(ws, (FOOT_ROW, 5), "KvK 93410557  ·  BTW NL866385368B01",
+        font_kwargs={'name':'Calibri','size':7,'color':INK_400},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells(start_row=FOOT_ROW, start_column=5, end_row=FOOT_ROW, end_column=7)
 
     out = 'templates/KTS-Inkooporder-template-RevA.xlsx'
     wb.save(out)
-    print('  Inkooporder:', out)
+    print(f'  Inkooporder: {out}')
+
 
 # =============================================================
 # 3. FACTUUR — portrait A4
@@ -399,159 +596,217 @@ def make_factuur():
     ws.title = "Factuur"
     set_print_a4(ws, landscape=False)
 
-    widths = [22, 28, 12, 14, 16, 18, 8]
+    # PDF: PERIODE 28 / OMSCHR 78 / AANT 22 / TARIEF 22 / SUBTOT 24 / BTW 12 = 186mm
+    widths = [13, 32, 11, 11, 13, 8, 4]   # 7 kolommen incl spacer
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    # Title
-    ws['A1'] = "FACTUUR"
-    ws['A1'].font = Font(name='Calibri', size=24, bold=True, color=KTS_BLUE)
-    ws.row_dimensions[1].height = 32
+    # ====== HEADER: tandwiel + FACTUUR (links) | logo + adres (rechts) ======
+    add_tandwiel_at(ws, 'A1', height_px=22)
+    ws['A1'] = "  FACTUUR"
+    ws['A1'].font = Font(name='Calibri', size=22, bold=True, color=KTS_BLUE)
+    ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[1].height = 36
+    ws.merge_cells('A1:D1')
 
-    # Logo + adres rechts
-    if LOGO_PATH and os.path.exists(LOGO_PATH):
-        try:
-            img = XLImage(LOGO_PATH)
-            img.width = 95
-            img.height = 63
-            ws.add_image(img, 'F1')
-        except Exception:
-            pass
+    add_logo_at(ws, 'F1', height_px=56)
 
-    ws['F4'] = "Nieuwboerweg 2A, 1738BB Waarland"
-    ws['F4'].font = Font(name='Calibri', size=9, color=INK_500)
-    ws['F4'].alignment = Alignment(horizontal='right')
-    ws.merge_cells('F4:G4')
-    ws['F5'] = "+31 6 5123 9050  -  info@kuijpers-ts.nl"
-    ws['F5'].font = Font(name='Calibri', size=9, color=INK_500)
-    ws['F5'].alignment = Alignment(horizontal='right')
-    ws.merge_cells('F5:G5')
+    set_cell(ws, 'E5', "Nieuwboerweg 2A, 1738BB Waarland",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells('E5:G5')
+    set_cell(ws, 'E6', "+31 6 5123 9050  ·  info@kuijpers-ts.nl",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells('E6:G6')
 
-    # Klant blok onder titel (links)
-    ws['A4'] = "AAN"
-    ws['A4'].font = Font(name='Calibri', size=8, color=INK_400)
-    ws['A5'] = "[Klantnaam]"
-    ws['A5'].font = Font(name='Calibri', size=12, bold=True, color=INK_900)
-    ws['A6'] = "[t.a.v. crediteurenadministratie]"
-    ws['A6'].font = Font(name='Calibri', size=10, color=INK_500)
-    ws['A7'] = "[invoices@klant.nl]"
-    ws['A7'].font = Font(name='Calibri', size=10, color=INK_500)
-    ws['A8'] = "[Postbus / Adres]"
-    ws['A8'].font = Font(name='Calibri', size=10, color=INK_500)
-    ws['A9'] = "[Postcode plaats]"
-    ws['A9'].font = Font(name='Calibri', size=10, color=INK_500)
-    for r in range(5, 10):
+    # ====== KLANT-BLOK (onder titel, links) ======
+    set_cell(ws, 'A4', "AAN",
+        font_kwargs={'name':'Calibri','size':8,'color':INK_400})
+    set_cell(ws, 'A5', "[Klantnaam B.V.]",
+        font_kwargs={'name':'Calibri','size':12,'bold':True,'color':INK_900})
+    ws.merge_cells('A5:C5')
+    klant_lines = [
+        "[t.a.v. crediteurenadministratie]",
+        "[invoices@klant.nl]",
+        "[Postbus 800]",
+        "[2800 AB Gouda]",
+    ]
+    for i, line in enumerate(klant_lines):
+        r = 6 + i
+        set_cell(ws, (r, 1), line,
+            font_kwargs={'name':'Calibri','size':10,'color':INK_500})
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=3)
 
-    # Info-bar 4 cellen
-    info_row = 11
-    info_data = [
-        ("FACTUURNUMMER", "[2026-XX]", 1, 2),
-        ("FACTUURDATUM", "[DD-MM-JJJJ]", 3, 4),
-        ("VERVALDATUM", "[DD-MM-JJJJ]", 5, 5),
-        ("PROJECT", "[Projectnaam]", 6, 7)
+    # ====== INFO BAR: 4 cellen (rij 11-12) ======
+    INFO_ROW = 11
+    info_cells = [
+        ("FACTUURNUMMER", "[2026-XX]",     1, 2),
+        ("FACTUURDATUM",  "[DD-MM-JJJJ]",  3, 3),
+        ("VERVALDATUM",   "[DD-MM-JJJJ]",  4, 4),
+        ("PROJECT",       "[Projectnaam]", 5, 7),
     ]
-    for lbl, val, sc, ec in info_data:
-        ws.cell(row=info_row, column=sc, value=lbl).font = Font(name='Calibri', size=8, color=INK_400)
-        ws.cell(row=info_row + 1, column=sc, value=val).font = Font(name='Calibri', size=11, bold=True, color=INK_900)
+    for label, value, sc, ec in info_cells:
+        set_cell(ws, (INFO_ROW, sc), label,
+            font_kwargs={'name':'Calibri','size':8,'color':INK_400},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1))
+        font_size = 10 if label == 'PROJECT' else 11
+        set_cell(ws, (INFO_ROW + 1, sc), value,
+            font_kwargs={'name':'Calibri','size':font_size,'bold':True,'color':INK_900},
+            fill=soft_fill(),
+            align=Alignment(horizontal='left', vertical='center', indent=1, wrap_text=True))
         if sc != ec:
-            ws.merge_cells(start_row=info_row, start_column=sc, end_row=info_row, end_column=ec)
-            ws.merge_cells(start_row=info_row + 1, start_column=sc, end_row=info_row + 1, end_column=ec)
-        for r in [info_row, info_row + 1]:
+            ws.merge_cells(start_row=INFO_ROW, start_column=sc, end_row=INFO_ROW, end_column=ec)
+            ws.merge_cells(start_row=INFO_ROW + 1, start_column=sc, end_row=INFO_ROW + 1, end_column=ec)
+        for r in [INFO_ROW, INFO_ROW + 1]:
             for col in range(sc, ec + 1):
                 ws.cell(row=r, column=col).fill = soft_fill()
                 ws.cell(row=r, column=col).border = thin_border()
-                ws.cell(row=r, column=col).alignment = Alignment(horizontal='left', vertical='center')
-    ws.row_dimensions[info_row].height = 12
-    ws.row_dimensions[info_row + 1].height = 22
+    ws.row_dimensions[INFO_ROW].height = 14
+    ws.row_dimensions[INFO_ROW + 1].height = 22
 
-    # Project-info compact (klein)
-    proj_row = info_row + 3
-    proj_lines = [
-        ("Projectnummer", "[Nummer]"),
-        ("Opdrachtnummer", "[Nummer]"),
-        ("PO-nummer", "[Nummer]"),
-        ("Loonheffingennummer KTDS Holding B.V.", "866381557L01"),
-        ("Loonheffingennummer Kuijpers TD Holding B.V.", "866381594L01")
+    # ====== PROJECT-INFO compact + Loonheffingen ======
+    PROJ_ROW = INFO_ROW + 3
+    proj_info = [
+        ("Projectnummer",   "[Nummer]", False),
+        ("Opdrachtnummer",  "[Nummer]", False),
+        ("PO-nummer",       "[Nummer]", False),
     ]
-    for i, (lbl, val) in enumerate(proj_lines):
-        r = proj_row + i
-        sz = 10 if i < 3 else 8
-        ws.cell(row=r, column=1, value=lbl).font = Font(name='Calibri', size=sz, color=INK_500 if i < 3 else INK_400)
-        ws.cell(row=r, column=3, value=val).font = Font(name='Calibri', size=sz, bold=(i < 3), color=INK_900 if i < 3 else INK_500)
+    for i, (lbl, val, _) in enumerate(proj_info):
+        r = PROJ_ROW + i
+        set_cell(ws, (r, 1), lbl,
+            font_kwargs={'name':'Calibri','size':9,'color':INK_500})
+        set_cell(ws, (r, 3), val,
+            font_kwargs={'name':'Calibri','size':9,'color':INK_900})
         ws.row_dimensions[r].height = 14
 
-    # Items tabel
-    items_header_row = proj_row + len(proj_lines) + 2
-    item_headers = ["PERIODE", "OMSCHRIJVING", "AANTAL", "EENHEID", "TARIEF", "SUBTOTAAL", "BTW%"]
-    for col, h in enumerate(item_headers, start=1):
-        c = ws.cell(row=items_header_row, column=col, value=h)
+    # Loonheffingennummers (klein, niet-bold)
+    LOON_ROW = PROJ_ROW + 3
+    loon_lines = [
+        ("Loonheffingennummer KTDS Holding B.V.",         "866381557L01"),
+        ("Loonheffingennummer Kuijpers TD Holding B.V.",  "866381594L01"),
+    ]
+    for i, (lbl, val) in enumerate(loon_lines):
+        r = LOON_ROW + i
+        set_cell(ws, (r, 1), lbl,
+            font_kwargs={'name':'Calibri','size':8,'color':INK_400})
+        set_cell(ws, (r, 4), val,
+            font_kwargs={'name':'Calibri','size':8,'color':INK_500})
+        ws.row_dimensions[r].height = 12
+
+    # ====== ITEMS TABEL ======
+    ITEMS_HEADER_ROW = LOON_ROW + 3
+    item_headers = [
+        ("PERIODE",      'left'),
+        ("OMSCHRIJVING", 'left'),
+        ("AANTAL",       'right'),
+        ("TARIEF",       'right'),
+        ("SUBTOTAAL",    'right'),
+        ("BTW %",        'right'),
+    ]
+    for col, (h, align) in enumerate(item_headers, start=1):
+        c = ws.cell(row=ITEMS_HEADER_ROW, column=col, value=h)
         c.font = Font(name='Calibri', size=9, bold=True, color="FFFFFF")
         c.fill = header_fill()
-        c.alignment = Alignment(horizontal='center', vertical='center')
+        c.alignment = Alignment(horizontal=align, vertical='center',
+                                indent=1 if align == 'left' else 0)
         c.border = thin_border()
-    ws.row_dimensions[items_header_row].height = 20
+    ws.row_dimensions[ITEMS_HEADER_ROW].height = 22
 
-    # 6 lege rows
+    # 6 lege rijen
     for i in range(1, 7):
-        r = items_header_row + i
-        ws.cell(row=r, column=6, value=f"=IFERROR(C{r}*E{r},\"\")").alignment = Alignment(horizontal='right')
-        ws.cell(row=r, column=6).number_format = '#,##0.00 €'
-        ws.cell(row=r, column=5).number_format = '#,##0.00 €'
-        ws.cell(row=r, column=7, value=21).alignment = Alignment(horizontal='right')
-        for col in range(1, 8):
-            ws.cell(row=r, column=col).border = thin_border()
-            ws.cell(row=r, column=col).font = Font(name='Calibri', size=10)
+        r = ITEMS_HEADER_ROW + i
+        # SUBTOTAAL formule
+        ws.cell(row=r, column=5, value=f"=IFERROR(C{r}*D{r},\"\")")
+        ws.cell(row=r, column=5).number_format = '€ #,##0.00'
+        ws.cell(row=r, column=5).alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        ws.cell(row=r, column=5).font = Font(name='Calibri', size=10, bold=True, color=INK_900)
+        # TARIEF format
+        ws.cell(row=r, column=4).number_format = '€ #,##0.00'
+        # BTW% default 21
+        ws.cell(row=r, column=6, value=21).alignment = Alignment(horizontal='right', vertical='center', indent=1)
+        # Borders + alignment per kolom
+        for col, (_, align) in enumerate(item_headers, start=1):
+            cell = ws.cell(row=r, column=col)
+            cell.border = thin_border()
+            if not cell.alignment.horizontal:
+                cell.alignment = Alignment(horizontal=align, vertical='center',
+                                           indent=1 if align == 'left' else 0,
+                                           wrap_text=(col == 2))
+            cell.font = cell.font.copy() if cell.value else Font(name='Calibri', size=10, color=INK_900)
         ws.row_dimensions[r].height = 22
 
-    # Totalen rechts
-    tot_row = items_header_row + 8
-    ws.cell(row=tot_row, column=5, value="Subtotaal excl. BTW").font = Font(name='Calibri', size=10, color=INK_500)
-    sub_formula = f"=SUM(F{items_header_row+1}:F{items_header_row+6})"
-    ws.cell(row=tot_row, column=6, value=sub_formula).font = Font(name='Calibri', size=10, bold=True, color=INK_900)
-    ws.cell(row=tot_row, column=6).number_format = '#,##0.00 €'
-    ws.cell(row=tot_row, column=6).alignment = Alignment(horizontal='right')
-    ws.merge_cells(start_row=tot_row, start_column=6, end_row=tot_row, end_column=7)
+    # ====== TOTALEN-BLOK rechts onderaan ======
+    TOT_ROW = ITEMS_HEADER_ROW + 8
+    sub_formula = f"=SUM(E{ITEMS_HEADER_ROW+1}:E{ITEMS_HEADER_ROW+6})"
 
-    ws.cell(row=tot_row + 1, column=5, value="BTW 21%").font = Font(name='Calibri', size=10, color=INK_500)
-    ws.cell(row=tot_row + 1, column=6, value=f"=F{tot_row}*0.21").font = Font(name='Calibri', size=10, bold=True, color=INK_900)
-    ws.cell(row=tot_row + 1, column=6).number_format = '#,##0.00 €'
-    ws.cell(row=tot_row + 1, column=6).alignment = Alignment(horizontal='right')
-    ws.merge_cells(start_row=tot_row + 1, start_column=6, end_row=tot_row + 1, end_column=7)
+    set_cell(ws, (TOT_ROW, 4), "Subtotaal excl. BTW",
+        font_kwargs={'name':'Calibri','size':10,'color':INK_500},
+        align=Alignment(horizontal='right', indent=1))
+    set_cell(ws, (TOT_ROW, 5), sub_formula,
+        font_kwargs={'name':'Calibri','size':10,'bold':True,'color':INK_900},
+        align=Alignment(horizontal='right', indent=1),
+        num_format='€ #,##0.00')
 
-    total_row = tot_row + 2
-    ws.cell(row=total_row, column=5, value="TOTAAL TE BETALEN").font = Font(name='Calibri', size=11, bold=True, color="FFFFFF")
-    ws.cell(row=total_row, column=6, value=f"=F{tot_row}+F{tot_row+1}").font = Font(name='Calibri', size=14, bold=True, color="FFFFFF")
-    ws.cell(row=total_row, column=6).number_format = '#,##0.00 €'
-    ws.cell(row=total_row, column=6).alignment = Alignment(horizontal='right', vertical='center')
-    ws.cell(row=total_row, column=5).alignment = Alignment(horizontal='left', vertical='center')
-    for col in [5, 6, 7]:
-        ws.cell(row=total_row, column=col).fill = header_fill()
-    ws.merge_cells(start_row=total_row, start_column=6, end_row=total_row, end_column=7)
-    ws.row_dimensions[total_row].height = 24
+    set_cell(ws, (TOT_ROW + 1, 4), "BTW 21%",
+        font_kwargs={'name':'Calibri','size':10,'color':INK_500},
+        align=Alignment(horizontal='right', indent=1))
+    set_cell(ws, (TOT_ROW + 1, 5), f"=E{TOT_ROW}*0.21",
+        font_kwargs={'name':'Calibri','size':10,'bold':True,'color':INK_900},
+        align=Alignment(horizontal='right', indent=1),
+        num_format='€ #,##0.00')
 
-    # Betaal-verzoek + IBAN
-    pay_row = total_row + 3
-    ws.cell(row=pay_row, column=1, value="Wij verzoeken u vriendelijk het totaalbedrag uiterlijk vervaldatum over te maken,").font = Font(name='Calibri', size=10, color=INK_900)
-    ws.merge_cells(start_row=pay_row, start_column=1, end_row=pay_row, end_column=7)
-    ws.cell(row=pay_row + 1, column=1, value="onder vermelding van het factuurnummer, naar onderstaande bankrekening:").font = Font(name='Calibri', size=10, color=INK_900)
-    ws.merge_cells(start_row=pay_row + 1, start_column=1, end_row=pay_row + 1, end_column=7)
-    ws.cell(row=pay_row + 3, column=1, value="IBAN  NL61 BUNQ 2113 3747 30").font = Font(name='Calibri', size=11, bold=True, color=KTS_BLUE)
-    ws.merge_cells(start_row=pay_row + 3, start_column=1, end_row=pay_row + 3, end_column=7)
-    ws.cell(row=pay_row + 4, column=1, value="t.n.v. Kuijpers Technical Services BV  -  BIC: BUNQNL2A").font = Font(name='Calibri', size=9, color=INK_500)
-    ws.merge_cells(start_row=pay_row + 4, start_column=1, end_row=pay_row + 4, end_column=7)
+    # TOTAAL TE BETALEN band
+    TOT_BAND = TOT_ROW + 2
+    set_cell(ws, (TOT_BAND, 4), "TOTAAL TE BETALEN",
+        font_kwargs={'name':'Calibri','size':11,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='right', vertical='center', indent=1))
+    set_cell(ws, (TOT_BAND, 5), f"=E{TOT_ROW}+E{TOT_ROW+1}",
+        font_kwargs={'name':'Calibri','size':14,'bold':True,'color':"FFFFFF"},
+        fill=header_fill(),
+        align=Alignment(horizontal='right', vertical='center', indent=1),
+        num_format='€ #,##0.00')
+    for col in range(4, 7):
+        ws.cell(row=TOT_BAND, column=col).fill = header_fill()
+    ws.row_dimensions[TOT_BAND].height = 26
 
-    # Footer
-    foot_row = pay_row + 6
-    ws.cell(row=foot_row, column=1, value="Op deze factuur zijn de Algemene Voorwaarden 2026 van Kuijpers Technical Services BV van toepassing.").font = Font(name='Calibri', size=7, color=INK_400)
-    ws.merge_cells(start_row=foot_row, start_column=1, end_row=foot_row, end_column=7)
+    # ====== BETAAL-VERZOEK + IBAN ======
+    PAY_ROW = TOT_BAND + 4
+    set_cell(ws, (PAY_ROW, 1),
+        "Wij verzoeken u vriendelijk het totaalbedrag uiterlijk vervaldatum over te maken,",
+        font_kwargs={'name':'Calibri','size':10,'color':INK_900})
+    ws.merge_cells(start_row=PAY_ROW, start_column=1, end_row=PAY_ROW, end_column=7)
+    set_cell(ws, (PAY_ROW + 1, 1),
+        "onder vermelding van het factuurnummer, naar onderstaande bankrekening:",
+        font_kwargs={'name':'Calibri','size':10,'color':INK_900})
+    ws.merge_cells(start_row=PAY_ROW + 1, start_column=1, end_row=PAY_ROW + 1, end_column=7)
+    set_cell(ws, (PAY_ROW + 3, 1), "IBAN  NL61 BUNQ 2113 3747 30",
+        font_kwargs={'name':'Calibri','size':12,'bold':True,'color':KTS_BLUE})
+    ws.merge_cells(start_row=PAY_ROW + 3, start_column=1, end_row=PAY_ROW + 3, end_column=7)
+    set_cell(ws, (PAY_ROW + 4, 1), "t.n.v. Kuijpers Technical Services BV  ·  BIC: BUNQNL2A",
+        font_kwargs={'name':'Calibri','size':9,'color':INK_500})
+    ws.merge_cells(start_row=PAY_ROW + 4, start_column=1, end_row=PAY_ROW + 4, end_column=7)
+
+    # ====== FOOTER ======
+    FOOT_ROW = PAY_ROW + 7
+    set_cell(ws, (FOOT_ROW, 1),
+        "Op deze factuur zijn de Algemene Voorwaarden 2026 van Kuijpers Technical Services BV van toepassing.",
+        font_kwargs={'name':'Calibri','size':7,'color':INK_400})
+    ws.merge_cells(start_row=FOOT_ROW, start_column=1, end_row=FOOT_ROW, end_column=4)
+    set_cell(ws, (FOOT_ROW, 5), "KvK 93410557  ·  BTW NL866385368B01",
+        font_kwargs={'name':'Calibri','size':7,'color':INK_400},
+        align=Alignment(horizontal='right'))
+    ws.merge_cells(start_row=FOOT_ROW, start_column=5, end_row=FOOT_ROW, end_column=7)
 
     out = 'templates/KTS-Factuur-template-RevA.xlsx'
     wb.save(out)
-    print('  Factuur:', out)
+    print(f'  Factuur: {out}')
+
 
 if __name__ == '__main__':
-    print('Genereren KTS Excel templates (huisstijl Rev A):')
+    print('Genereren KTS Excel templates Rev A (preciezere PDF-match):')
     make_weekstaat()
     make_inkooporder()
     make_factuur()
