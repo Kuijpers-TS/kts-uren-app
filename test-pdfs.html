@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KTS PDF design test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app-design.css">
+<style>
+  body { margin: 0; padding: 32px 24px; font-family: 'IBM Plex Sans', sans-serif; background: #FAFAF7; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.015em; color: #0F1B2D; margin: 0 0 8px; }
+  .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A93A1; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 32px; }
+  .card { background: #fff; border: 1px solid #E7E4DD; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .card h2 { font-size: 17px; font-weight: 600; color: #0F1B2D; margin: 0 0 6px; }
+  .card .desc { font-size: 13px; color: #5C6675; margin: 0 0 16px; line-height: 1.5; }
+  .card .meta { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #8A93A1; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A93A1; padding: 8px 12px; background: #F4F3EE; border-radius: 6px; margin-top: 10px; }
+  .status.ok { color: #2F7D4F; background: #EAF3EE; }
+  .status.err { color: #A02834; background: #F5E5E5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sub">PDF DESIGN TEST · KTS UREN APP</div>
+  <h1>PDF templates op huisstijl</h1>
+  <p style="font-size:14px;color:#5C6675;line-height:1.5;margin-bottom:32px;max-width:600px">Klik op een knop om een voorbeeld-PDF te genereren met sample-data. De ontwerpen volgen exact de xlsx-templates uit <code>/templates</code>. Iteraties worden hieronder gelogd.</p>
+
+  <div class="card">
+    <div class="meta">1 — WEEKSTAAT</div>
+    <h2>Urenstaat / Weekstaat</h2>
+    <p class="desc">Sample: Mark Kuijpers, week 19-2026, project DBFM Afsluitdijk (Levvel MTC B.V.), 5 werkdagen × 8 uur, 96 km/dag, met opmerking en handtekening.</p>
+    <div class="actions">
+      <button class="app-btn app-btn-primary" onclick="testWeekstaat()">Genereer voorbeeld-weekstaat</button>
+      <button class="app-btn app-btn-ghost" onclick="testWeekstaatEmpty()">Lege weekstaat (nog geen uren)</button>
+    </div>
+    <div id="status-weekstaat" class="status">Klaar om te genereren.</div>
+  </div>
+
+  <div class="card">
+    <div class="meta">2 — INKOOPORDER</div>
+    <h2>Inkooporder</h2>
+    <p class="desc">Sample: KTS118-23012026, leverancier Futura Composites BV, 4× KTS118-02-03 à €1.048,13.</p>
+    <div class="actions">
+      <button class="app-btn app-btn-primary" onclick="testInkooporder()" disabled>Genereer voorbeeld-inkooporder</button>
+    </div>
+    <div id="status-inkooporder" class="status">Komt na review weekstaat.</div>
+  </div>
+
+  <div class="card">
+    <div class="meta">3 — FACTUUR</div>
+    <h2>Factuur</h2>
+    <p class="desc">Sample: Factuur 2026-12 aan Levvel MTC B.V., 2 regels (Mark + Leon, december 2025), incl. BTW-totalen.</p>
+    <div class="actions">
+      <button class="app-btn app-btn-primary" onclick="testFactuur()" disabled>Genereer voorbeeld-factuur</button>
+    </div>
+    <div id="status-factuur" class="status">Komt na review weekstaat + inkooporder.</div>
+  </div>
+</div>
+
+<!-- jsPDF + KTS-images + Daxline fonts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="kts-pdf-images.js"></script>
+<script src="daxline-pdf-fonts.js"></script>
+
+<script>
+// =============================================================
+// SAMPLE DATA — WEEKSTAAT (week 19, 2026, Mark Kuijpers)
+// =============================================================
+const SAMPLE_WEEKSTAAT = {
+    user: {
+        name: 'Mark Kuijpers',
+        email: 'm.kuijpers@kuijpers-ts.nl',
+        role: 'admin',
+        company: 'Kuijpers Technical Services BV'
+    },
+    project: {
+        name: 'DBFM Afsluitdijk — Onderhoudsfase',
+        project_code: 'AFSL2026',
+        location: 'Den Oever',
+        client_name: 'Levvel MTC B.V.',
+        client_address_line1: 'H.J. Nederhorststraat 1',
+        client_address_line2: '2801 SC Gouda'
+    },
+    weekNumber: 19,
+    year: 2026,
+    monday: new Date('2026-05-04T00:00:00'), // ma 4 mei 2026
+    days: [
+        { day:'Maandag',   date:'04-05-2026', start:'07:00', end:'16:00', breakMin:60, hours:8, desc:'Cold commissioning voorbereiding pompgemaal', location:'Den Oever',          km:96 },
+        { day:'Dinsdag',   date:'05-05-2026', start:'07:00', end:'16:00', breakMin:60, hours:8, desc:'IO-loop checks + vendor overleg',              location:'Den Oever',          km:96 },
+        { day:'Woensdag',  date:'06-05-2026', start:'07:00', end:'16:00', breakMin:60, hours:8, desc:'Functietest pompen — opname runlist',          location:'Den Oever',          km:96 },
+        { day:'Donderdag', date:'07-05-2026', start:'07:00', end:'17:00', breakMin:60, hours:9, desc:'Storingsoproep — kompressor zonder druk',      location:'Den Oever',          km:96 },
+        { day:'Vrijdag',   date:'08-05-2026', start:'07:00', end:'15:30', breakMin:60, hours:7.5, desc:'Inspectie afronding + rapportage',           location:'Waarland (kantoor)', km:0 },
+        { day:'Zaterdag',  date:'09-05-2026', start:'',      end:'',      breakMin:0,  hours:0, desc:'',                                              location:'',                   km:0 },
+        { day:'Zondag',    date:'10-05-2026', start:'',      end:'',      breakMin:0,  hours:0, desc:'',                                              location:'',                   km:0 }
+    ],
+    opmerkingen: 'Storingsoproep donderdag 16:00–17:00 in overleg met Bart. Vendor heeft filter vervangen, getest en akkoord bevonden.',
+    sign: {
+        zzpName: 'Mark Kuijpers',
+        clientName: 'Bas Prins (Levvel MTC)',
+        zzpDate: '08-05-2026',
+        clientDate: '08-05-2026'
+    }
+};
+
+const SAMPLE_WEEKSTAAT_EMPTY = JSON.parse(JSON.stringify(SAMPLE_WEEKSTAAT));
+SAMPLE_WEEKSTAAT_EMPTY.days = SAMPLE_WEEKSTAAT_EMPTY.days.map(d => ({...d, start:'', end:'', breakMin:0, hours:0, desc:'', location:'', km:0}));
+SAMPLE_WEEKSTAAT_EMPTY.opmerkingen = '';
+SAMPLE_WEEKSTAAT_EMPTY.sign = { zzpName:'', clientName:'', zzpDate:'', clientDate:'' };
+
+// =============================================================
+// HELPERS
+// =============================================================
+function fmtNum(n) {
+    if (n === 0 || n == null) return '0';
+    const r = Math.round(n * 10) / 10;
+    return r.toFixed(1).replace('.', ',');
+}
+function fmtKm(n) {
+    if (!n) return '';
+    return n.toLocaleString('nl-NL') + ' km';
+}
+function logStatus(id, msg, type = '') {
+    const el = document.getElementById('status-' + id);
+    el.className = 'status' + (type ? ' ' + type : '');
+    el.textContent = msg;
+}
+
+// =============================================================
+// WEEKSTAAT V2 — design volgt KTS_urenstaat_sjabloon.xlsx
+// =============================================================
+async function generateWeekstaatV2(data) {
+    if (!window.jspdf) throw new Error('jsPDF niet geladen');
+    const pdfImages = window.KTS_PDF_IMAGES || {};
+    const KTS_LOGO_B64 = pdfImages.logo || null;
+    const TANDWIEL = pdfImages.tandwiel || null;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // Fonts
+    const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
+
+    // Constants
+    const pw = 297, ph = 210, ml = 12, mr = 12, mt = 12, uw = pw - ml - mr;
+    const ktsBlue = [7, 86, 127];
+    const ink900 = [15, 27, 45];
+    const ink500 = [92, 102, 117];
+    const ink400 = [138, 147, 161];
+    const lineCol = [180, 180, 180];
+    const lineColLight = [220, 220, 220];
+
+    // Watermark (light tandwiel center)
+    if (TANDWIEL) {
+        try {
+            const wmSize = 100;
+            doc.saveGraphicsState && doc.saveGraphicsState();
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
+            doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
+            doc.restoreGraphicsState && doc.restoreGraphicsState();
+        } catch (e) {}
+    }
+
+    // ============================================================
+    // HEADER ROW (3 colommen): URENSTAAT title | empty | KTS adres
+    // ============================================================
+    let y = mt;
+
+    // Left: tandwiel + URENSTAAT
+    doc.setFontSize(20);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ktsBlue);
+    const titleY = y + 5;
+    if (TANDWIEL) {
+        try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - 6, 8, 8); } catch (e) {}
+    }
+    doc.text('URENSTAAT', ml + (TANDWIEL ? 11 : 0), titleY);
+
+    // Right: KTS logo + adres (rechts gecentreerd)
+    const rightBlockW = 70;
+    const rightBlockX = pw - mr - rightBlockW;
+    if (KTS_LOGO_B64) {
+        const logoH = 14;
+        try { doc.addImage(KTS_LOGO_B64, 'PNG', rightBlockX, y, rightBlockW * 0.6, logoH); } catch (e) {}
+    }
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink500);
+    const addrLines = [
+        'Nieuwboerweg 2A, 1738BB Waarland',
+        '+31 6 5106 3555  ·  +31 6 5123 9050',
+        'info@kuijpers-ts.nl'
+    ];
+    let addrY = y + 16;
+    addrLines.forEach(line => {
+        doc.text(line, pw - mr, addrY, { align: 'right' });
+        addrY += 3.6;
+    });
+
+    // ============================================================
+    // PERSON / PROJECT INFO BAR (twee rijen, 3 kolommen)
+    // ============================================================
+    y = mt + 28;
+    const colA = ml, colB = ml + 95, colC = ml + 195;
+    const labelGap = 24;
+
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink400);
+    doc.text('NAAM', colA, y);
+    doc.text('PERIODE', colB, y);
+
+    doc.setFontSize(11);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink900);
+    doc.text(data.user.name, colA, y + 5);
+    doc.text(`Week ${data.weekNumber}  ·  ${data.year}`, colB, y + 5);
+
+    y += 10;
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink400);
+    doc.text('PROJECT', colA, y);
+    doc.text('OPDRACHTGEVER', colB, y);
+
+    doc.setFontSize(10);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink900);
+    doc.text(data.project.name + (data.project.project_code ? ` (${data.project.project_code})` : ''), colA, y + 5, { maxWidth: 90 });
+    doc.text(data.project.client_name || '', colB, y + 5, { maxWidth: 90 });
+
+    // ============================================================
+    // TABEL: Dag | Datum | Begin | Eind | Pauze | Uren | Omschrijving | Locatie | Km
+    // ============================================================
+    y += 12;
+    const cols = [
+        { key:'day',     label:'DAG',          w: 22 },
+        { key:'date',    label:'DATUM',        w: 22 },
+        { key:'start',   label:'BEGINTIJD',    w: 18 },
+        { key:'end',     label:'EINDTIJD',     w: 18 },
+        { key:'breakMin',label:'PAUZE',        w: 16 },
+        { key:'hours',   label:'GEW. UREN',    w: 20 },
+        { key:'desc',    label:'WERKZAAMHEDEN',w: 78 },
+        { key:'location',label:'LOCATIE',      w: 42 },
+        { key:'km',      label:'KM',           w: 17 },
+    ];
+    const totalW = cols.reduce((s,c)=>s+c.w,0); // = 253, well within 273
+    const tableX = ml;
+    const headerH = 7;
+    const rowH = 10;
+
+    // Header row
+    doc.setFillColor(...ktsBlue);
+    doc.rect(tableX, y, totalW, headerH, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'bold');
+    let cx = tableX;
+    cols.forEach(c => {
+        doc.text(c.label, cx + c.w / 2, y + 4.5, { align: 'center' });
+        cx += c.w;
+    });
+
+    // Data rows
+    y += headerH;
+    doc.setTextColor(...ink900);
+    doc.setFont(pdfFont, 'normal');
+    doc.setFontSize(9);
+
+    let totalHours = 0, totalKm = 0, weekdayHours = 0, satHours = 0, sunHours = 0;
+    data.days.forEach((d, idx) => {
+        const rowTop = y;
+        const isWeekend = idx >= 5;
+        // Alternating row bg
+        if (idx % 2 === 1 && !isWeekend) {
+            doc.setFillColor(248, 248, 244);
+            doc.rect(tableX, y, totalW, rowH, 'F');
+        }
+        if (isWeekend) {
+            doc.setFillColor(245, 240, 230); // licht oranje weekend tint
+            doc.rect(tableX, y, totalW, rowH, 'F');
+        }
+        // Border bottom
+        doc.setDrawColor(...lineColLight);
+        doc.setLineWidth(0.15);
+        doc.line(tableX, y + rowH, tableX + totalW, y + rowH);
+
+        cx = tableX;
+        cols.forEach(c => {
+            let v = d[c.key];
+            if (c.key === 'breakMin' && v) v = v + ' min';
+            if (c.key === 'hours' && v) v = fmtNum(v) + ' u';
+            if (c.key === 'km' && v) v = v + ' km';
+            if (!v && v !== 0) v = '';
+            const align = (['hours','km','breakMin'].includes(c.key)) ? 'right' : 'left';
+            const tx = align === 'right' ? cx + c.w - 2 : cx + 2;
+            const ty = y + rowH / 2 + 1.5;
+            // Truncate long text
+            let txt = String(v);
+            if (c.key === 'desc' && txt.length > 60) txt = txt.substring(0, 57) + '...';
+            if (c.key === 'location' && txt.length > 32) txt = txt.substring(0, 29) + '...';
+            doc.text(txt, tx, ty, { align });
+            cx += c.w;
+        });
+
+        totalHours += d.hours || 0;
+        totalKm += d.km || 0;
+        if (idx === 5) satHours += d.hours || 0;
+        else if (idx === 6) sunHours += d.hours || 0;
+        else weekdayHours += d.hours || 0;
+
+        y += rowH;
+    });
+
+    // Vertical lines
+    doc.setDrawColor(...lineColLight);
+    doc.setLineWidth(0.15);
+    cx = tableX;
+    for (let i = 0; i <= cols.length; i++) {
+        doc.line(cx, y - rowH * data.days.length - headerH, cx, y);
+        if (i < cols.length) cx += cols[i].w;
+    }
+    // Outer border
+    doc.setDrawColor(...lineCol);
+    doc.setLineWidth(0.3);
+    doc.rect(tableX, y - rowH * data.days.length - headerH, totalW, headerH + rowH * data.days.length);
+
+    // ============================================================
+    // SUMMARY BLOCK + OPMERKINGEN + HANDTEKENINGEN
+    // ============================================================
+    y += 6;
+
+    // Left: Summary table
+    const sumX = ml;
+    const sumW = 110;
+    const sumLabelW = 70;
+    const sumLines = [
+        ['Reguliere uren (ma–vr)', fmtNum(weekdayHours) + ' u'],
+        ['Zaterdaguren',           fmtNum(satHours) + ' u'],
+        ['Zondag-/feestdaguren',   fmtNum(sunHours) + ' u'],
+        ['Reis kilometers',        totalKm + ' km'],
+    ];
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink500);
+    sumLines.forEach((row, i) => {
+        doc.text(row[0], sumX, y + 4 + i * 5);
+        doc.setFont(pdfFont, 'bold');
+        doc.setTextColor(...ink900);
+        doc.text(row[1], sumX + sumLabelW + 30, y + 4 + i * 5, { align: 'right' });
+        doc.setFont(pdfFont, 'normal');
+        doc.setTextColor(...ink500);
+    });
+    // Totaal te factureren uren — bold band
+    const totalY = y + 4 + sumLines.length * 5 + 2;
+    doc.setFillColor(...ktsBlue);
+    doc.rect(sumX, totalY - 4, sumW, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont(pdfFont, 'bold');
+    doc.text('TOTAAL TE FACTUREREN UREN', sumX + 2, totalY + 0.5);
+    doc.text(fmtNum(totalHours) + ' uur', sumX + sumW - 2, totalY + 0.5, { align: 'right' });
+
+    // Right: Opmerkingen
+    const opmX = ml + 120;
+    const opmW = pw - mr - opmX;
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink400);
+    doc.text('OPMERKINGEN', opmX, y);
+    doc.setFont(pdfFont, 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...ink900);
+    if (data.opmerkingen) {
+        const lines = doc.splitTextToSize(data.opmerkingen, opmW);
+        lines.slice(0, 4).forEach((line, i) => doc.text(line, opmX, y + 5 + i * 4));
+    }
+    // Border around opmerkingen-area
+    doc.setDrawColor(...lineColLight);
+    doc.rect(opmX - 1, y + 1, opmW + 1, 22);
+
+    // ============================================================
+    // HANDTEKENINGEN (onderaan, 2 boxen naast elkaar)
+    // ============================================================
+    y += 30;
+    const sigBoxW = (uw - 6) / 2;
+    const sigBoxH = 22;
+    // Box 1: Opdrachtnemer
+    doc.setDrawColor(...lineCol);
+    doc.setLineWidth(0.2);
+    doc.rect(ml, y, sigBoxW, sigBoxH);
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink400);
+    doc.text('HANDTEKENING OPDRACHTNEMER', ml + 2, y + 3.5);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink900);
+    doc.setFontSize(9);
+    doc.text(data.sign.zzpName || data.user.name, ml + 2, y + sigBoxH - 2);
+    if (data.sign.zzpDate) doc.text(data.sign.zzpDate, ml + sigBoxW - 2, y + sigBoxH - 2, { align: 'right' });
+
+    // Box 2: Opdrachtgever
+    doc.rect(ml + sigBoxW + 6, y, sigBoxW, sigBoxH);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink400);
+    doc.setFontSize(8);
+    doc.text('HANDTEKENING OPDRACHTGEVER', ml + sigBoxW + 8, y + 3.5);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink900);
+    doc.setFontSize(9);
+    doc.text(data.sign.clientName || '', ml + sigBoxW + 8, y + sigBoxH - 2);
+    if (data.sign.clientDate) doc.text(data.sign.clientDate, ml + uw - 2, y + sigBoxH - 2, { align: 'right' });
+
+    // ============================================================
+    // FOOTER (AV verwijzing + paginanummer)
+    // ============================================================
+    doc.setFontSize(7);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink400);
+    const footerY = ph - 5;
+    doc.text('Op deze opdracht zijn de Algemene Voorwaarden Detachering 2026 van Kuijpers Technical Services BV van toepassing.', ml, footerY);
+    doc.text('KvK 93410557  ·  BTW NL866385368B01', pw - mr, footerY, { align: 'right' });
+
+    // Save
+    const wn = String(data.weekNumber).padStart(2, '0');
+    const slug = (data.user.name || '').trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '');
+    const fileName = `KTS-Weekstaat_${data.year}-W${wn}_${slug}.pdf`;
+    doc.save(fileName);
+    return fileName;
+}
+
+// =============================================================
+// BUTTON HANDLERS
+// =============================================================
+async function testWeekstaat() {
+    try {
+        logStatus('weekstaat', 'Genereren...');
+        const fn = await generateWeekstaatV2(SAMPLE_WEEKSTAAT);
+        logStatus('weekstaat', '✓ Gedownload: ' + fn, 'ok');
+    } catch (e) {
+        console.error(e);
+        logStatus('weekstaat', '✗ Fout: ' + e.message, 'err');
+    }
+}
+async function testWeekstaatEmpty() {
+    try {
+        logStatus('weekstaat', 'Genereren (lege weekstaat)...');
+        const fn = await generateWeekstaatV2(SAMPLE_WEEKSTAAT_EMPTY);
+        logStatus('weekstaat', '✓ Gedownload: ' + fn, 'ok');
+    } catch (e) {
+        console.error(e);
+        logStatus('weekstaat', '✗ Fout: ' + e.message, 'err');
+    }
+}
+function testInkooporder() { logStatus('inkooporder', 'Komt na review weekstaat.'); }
+function testFactuur() { logStatus('factuur', 'Komt na review weekstaat.'); }
+</script>
+</body>
+</html>
