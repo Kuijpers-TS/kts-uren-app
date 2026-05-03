@@ -60,6 +60,14 @@
         html.zoom-klein   body { zoom: 0.875; }      /* 14/16 */
         html.zoom-normaal body { zoom: 1.0; }
         html.zoom-groot   body { zoom: 1.1875; }     /* 19/16 */
+        /* Login-overlay actief → body-scroll vergrendelen (voorkomt iOS/Android
+           rubber-band scrolling waardoor app-content kort zichtbaar werd) */
+        html.login-active, html.login-active body {
+            overflow: hidden !important;
+            height: 100% !important;
+            position: fixed !important;
+            width: 100% !important;
+        }
         :root {
             --kts-blue: #07567F;
             --kts-dark: #043B56;
@@ -20024,6 +20032,26 @@
                 console.log('Service Worker geregistreerd');
             }).catch(err => console.warn('SW registratie mislukt:', err));
         }
+
+        // ===== LOGIN-OVERLAY SCROLL LOCK =====
+        // Houdt html.login-active class gesynchroniseerd met overlay-zichtbaarheid.
+        // Voorkomt dat app-content kort doorscrollt op iOS/Android tijdens login.
+        (function() {
+            function syncLoginLock() {
+                const ov = document.getElementById('login-overlay');
+                if (!ov) return;
+                const isVisible = ov.style.display !== 'none' && getComputedStyle(ov).display !== 'none';
+                document.documentElement.classList.toggle('login-active', isVisible);
+            }
+            // Initial sync na page load
+            syncLoginLock();
+            // Observe style/class changes op de overlay — vangt alle 5 toggle-call-sites
+            const ov = document.getElementById('login-overlay');
+            if (ov) {
+                const observer = new MutationObserver(syncLoginLock);
+                observer.observe(ov, { attributes: true, attributeFilter: ['style', 'class'] });
+            }
+        })();
     </script>
 
     </div><!-- /.app-scope -->
