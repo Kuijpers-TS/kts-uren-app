@@ -180,15 +180,16 @@ async function generateWeekstaatV2(data) {
     }
     doc.text('URENSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
-    // Right: KTS logo + adres (logo aspect ratio 204:200 = 1.02 — bijna vierkant)
-    // Logo 22mm breed × 21.6mm hoog (intrinsieke verhouding behouden)
-    const logoW = 22;
-    const logoH = logoW * (200 / 204); // = 21.57mm
+    // Right: KTS logo + adres (zoveel mogelijk rechts-boven, tekst gecentreerd)
+    // Logo 44mm breed × 43.14mm hoog (aspect 204:200 = 1.02 behouden)
+    const logoW = 44;
+    const logoH = logoW * (200 / 204); // = 43.14mm
     const logoX = pw - mr - logoW;
+    const logoCenterX = logoX + logoW / 2;
     if (KTS_LOGO_B64) {
-        try { doc.addImage(KTS_LOGO_B64, 'PNG', logoX, y - 1, logoW, logoH); } catch (e) {}
+        try { doc.addImage(KTS_LOGO_B64, 'PNG', logoX, y - 2, logoW, logoH); } catch (e) {}
     }
-    // Adres rechts ONDER het logo
+    // Adres GECENTREERD onder het logo
     doc.setFontSize(8);
     doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink500);
@@ -196,16 +197,18 @@ async function generateWeekstaatV2(data) {
         'Nieuwboerweg 2A, 1738BB Waarland',
         '+31 6 5123 9050  ·  info@kuijpers-ts.nl'
     ];
-    let addrY = y + logoH + 3;
+    let addrY = y + logoH + 1;
     addrLines.forEach(line => {
-        doc.text(line, pw - mr, addrY, { align: 'right' });
+        doc.text(line, logoCenterX, addrY, { align: 'center' });
         addrY += 3.6;
     });
+    const headerEndY = addrY; // bottom of header block
 
     // ============================================================
     // PERSON / PROJECT INFO BAR (twee rijen, 3 kolommen)
     // ============================================================
-    y = mt + 36;
+    // Dynamisch positioneren onder header-block (logo + adres)
+    y = Math.max(headerEndY + 4, mt + 38);
     const colA = ml, colB = ml + 95, colC = ml + 195;
     const labelGap = 24;
 
@@ -254,7 +257,7 @@ async function generateWeekstaatV2(data) {
     const headerH = 7;
     const rowH = 10;
 
-    // Header row
+    // Header row — DAG links, rest center
     doc.setFillColor(...ktsBlue);
     doc.rect(tableX, y, totalW, headerH, 'F');
     doc.setTextColor(255, 255, 255);
@@ -262,7 +265,9 @@ async function generateWeekstaatV2(data) {
     doc.setFont(pdfFont, 'bold');
     let cx = tableX;
     cols.forEach(c => {
-        doc.text(c.label, cx + c.w / 2, y + 4.5, { align: 'center' });
+        const align = c.key === 'day' ? 'left' : 'center';
+        const hx = align === 'left' ? cx + 2 : cx + c.w / 2;
+        doc.text(c.label, hx, y + 4.5, { align });
         cx += c.w;
     });
 
@@ -297,8 +302,9 @@ async function generateWeekstaatV2(data) {
             if (c.key === 'hours' && v) v = fmtNum(v) + ' u';
             if (c.key === 'km' && v) v = v + ' km';
             if (!v && v !== 0) v = '';
-            const align = (['hours','km','breakMin'].includes(c.key)) ? 'right' : 'left';
-            const tx = align === 'right' ? cx + c.w - 2 : cx + 2;
+            // DAG links, rest gecentreerd in cel
+            const align = c.key === 'day' ? 'left' : 'center';
+            const tx = align === 'left' ? cx + 2 : cx + c.w / 2;
             const ty = y + rowH / 2 + 1.5;
             // Truncate long text
             let txt = String(v);
