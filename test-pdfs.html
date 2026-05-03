@@ -1011,9 +1011,9 @@ async function generateFactuurV2(data) {
     const headerEndY = addrY;
 
     // ============================================================
-    // KLANT-BLOK (onder titel, links)
+    // KLANT-BLOK (onder titel, links — onafhankelijk van logo rechts)
     // ============================================================
-    y = Math.max(titleY + 8, headerEndY + 4);
+    y = titleY + 8;
     doc.setFontSize(7);
     doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink400);
