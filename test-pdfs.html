@@ -43,7 +43,7 @@
   <div class="card">
     <div class="meta">2 — INKOOPORDER</div>
     <h2>Inkooporder</h2>
-    <p class="desc">Sample: KTS118-23012026, leverancier Futura Composites BV, 4× KTS118-02-03 à €1.048,13.</p>
+    <p class="desc">Sample: gegenereerd uit de voorbeeld-weekstaat hierboven. Leverancier = Mark Kuijpers (zzp), leveradres = KTS BV. Items per uren-type: regulier ma–vr (40,5 u × €100), reis km (384 × €0,21).</p>
     <div class="actions">
       <button class="app-btn app-btn-primary" onclick="testInkooporder()">Genereer voorbeeld-inkooporder</button>
     </div>
@@ -484,37 +484,62 @@ async function testWeekstaatEmpty() {
     }
 }
 // =============================================================
-// SAMPLE DATA — INKOOPORDER (KTS118 → Futura Composites BV)
+// SAMPLE DATA — INKOOPORDER (op basis van weekstaat-uren)
+// Leverancier = zzp/medewerker, Leveradres = KTS
 // =============================================================
 const SAMPLE_INKOOPORDER = {
-    project: { code: 'KTS118' },
+    project: { code: SAMPLE_WEEKSTAAT.project.project_code },
     separator: '-',
-    date: '03-05-2026',
-    poNumber: 'KTS118-03052026',
+    date: '08-05-2026',
+    poNumber: SAMPLE_WEEKSTAAT.project.project_code + '-08052026',
     leverancier: {
-        company: 'Futura Composites BV',
-        contact: 'Frank van Duin',
-        address1: 'Marconistraat 40',
-        address2: '1704RG, Heerhugowaard',
-        phone: '+31 6 3462 9294',
-        email: 'f.vanduin@futuracomposites.com'
+        company: SAMPLE_WEEKSTAAT.user.name,
+        contact: 'zzp / freelance',
+        address1: '— privé/zzp adres —',
+        address2: '',
+        phone: '+31 6 5123 9050',
+        email: SAMPLE_WEEKSTAAT.user.email
     },
     leveradres: {
-        contact: 'Mark Kuijpers',
         company: 'Kuijpers Technical Services BV',
+        contact: 'Crediteurenadministratie',
         address1: 'Nieuwboerweg 2A',
         address2: '1738BB, Waarland',
         phone: '+31 6 5123 9050',
         email: 'info@kuijpers-ts.nl'
     },
-    items: [
-        { nr: 1, code: 'KTS118-02-03', desc: 'Volgens offerte WhatsApp dd 16-01-2026', qty: 4, price: 1048.125 }
-    ],
+    weekContext: {
+        weekNumber: SAMPLE_WEEKSTAAT.weekNumber,
+        year: SAMPLE_WEEKSTAAT.year,
+        projectName: SAMPLE_WEEKSTAAT.project.name
+    },
+    // Items per uren-type — alleen regels met aantal > 0 worden getoond
+    items: (function() {
+        const days = SAMPLE_WEEKSTAAT.days;
+        const weekday = days.slice(0, 5).reduce((s,d) => s + (d.hours || 0), 0);
+        const sat = days[5].hours || 0;
+        const sun = days[6].hours || 0;
+        const km = days.reduce((s,d) => s + (d.km || 0), 0);
+        const tariefRegulier = 100;
+        const tariefZat = tariefRegulier * 1.5;
+        const tariefZon = tariefRegulier * 2.0;
+        const tariefKm = 0.21;
+        const wn = SAMPLE_WEEKSTAAT.weekNumber;
+        const yr = SAMPLE_WEEKSTAAT.year;
+        const pn = SAMPLE_WEEKSTAAT.project.name;
+        const result = [];
+        let nr = 1;
+        if (weekday > 0) result.push({ nr: nr++, desc: `Reguliere uren ma–vr · week ${wn}/${yr} · ${pn}`, qty: weekday, unit: 'u', price: tariefRegulier });
+        if (sat > 0)     result.push({ nr: nr++, desc: `Zaterdaguren (toeslag 50%) · week ${wn}/${yr}`,    qty: sat,     unit: 'u', price: tariefZat });
+        if (sun > 0)     result.push({ nr: nr++, desc: `Zondag-/feestdaguren (toeslag 100%) · week ${wn}/${yr}`, qty: sun, unit: 'u', price: tariefZon });
+        if (km > 0)      result.push({ nr: nr++, desc: `Reis kilometers · week ${wn}/${yr}`,                qty: km,      unit: 'km', price: tariefKm });
+        return result;
+    })(),
     btwPct: 21,
     transport: 0,
     overige: 0,
-    opmerkingen: 'Levering binnen 4 weken vanaf orderdatum, liefst zo snel mogelijk.',
-    paymentTerm: '30 dagen na levering'
+    opmerkingen: 'Inzet conform goedgekeurde weekstaat. Zie bijlage: KTS-Weekstaat_2026-W19_Mark-Kuijpers.pdf',
+    paymentTerm: '30 dagen na factuurdatum'
 };
 
 // =============================================================
@@ -723,8 +748,8 @@ async function generateInkooporderV2(data) {
             itemCols.forEach(c => {
                 let v = '';
                 if (c.key === 'nr')    v = item.nr;
-                if (c.key === 'desc')  v = item.code + (item.desc ? '   ' + item.desc : '');
-                if (c.key === 'qty')   v = item.qty;
+                if (c.key === 'desc')  v = item.desc || (item.code || '');
+                if (c.key === 'qty')   v = (item.qty != null ? item.qty.toLocaleString('nl-NL') : '') + (item.unit ? ' ' + item.unit : '');
                 if (c.key === 'price') v = fmtEuro(item.price);
                 if (c.key === 'total') v = fmtEuro(total);
                 const tx = c.align === 'left' ? cx + 2 : c.align === 'right' ? cx + c.w - 2 : cx + c.w / 2;
@@ -732,7 +757,7 @@ async function generateInkooporderV2(data) {
                 doc.setFont(pdfFont, c.key === 'total' ? 'bold' : 'normal');
                 doc.setTextColor(...ink900);
                 let txt = String(v);
-                if (c.key === 'desc' && txt.length > 60) txt = txt.substring(0, 57) + '...';
+                if (c.key === 'desc' && txt.length > 78) txt = txt.substring(0, 75) + '...';
                 doc.text(txt, tx, y + itemRowH / 2 + 1.5, { align: c.align });
                 cx += c.w;
             });
