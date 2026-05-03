@@ -5782,6 +5782,29 @@
         }
         function fmtDecimal(n) { return n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function fmtEuro(n) { return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        // ===== PDF BESTANDSNAAM HELPERS =====
+        // Conventie: KTS-<Type>_<Jaar>-W<Week>_<context>.pdf
+        function ktsSlug(s) {
+            return (s || '').trim()
+                .replace(/[^a-zA-Z0-9-_ ]/g, '')   // strip rare chars
+                .replace(/\s+/g, '-')               // spaces → dash
+                .replace(/-+/g, '-');               // collapse dashes
+        }
+        function ktsWeekstaatName(year, week, userName) {
+            const slug = ktsSlug(userName);
+            const wk = String(week).padStart(2, '0');
+            return `KTS-Weekstaat_${year}-W${wk}${slug ? '_' + slug : ''}.pdf`;
+        }
+        function ktsInkooporderName(year, week, projCode) {
+            const code = ktsSlug(projCode);
+            const wk = String(week).padStart(2, '0');
+            return `KTS-Inkooporder_${year}-W${wk}${code ? '_' + code : ''}.pdf`;
+        }
+        function ktsFactuurName(factuurNum, clientName) {
+            const slug = ktsSlug(clientName);
+            return `KTS-Factuur_${factuurNum}${slug ? '_' + slug : ''}.pdf`;
+        }
         function todayLabel() {
             const d = new Date();
             const days = ['zo','ma','di','wo','do','vr','za'];
@@ -7236,7 +7259,7 @@
             if (doc) {
                 const projCode = currentProject ? currentProject.project_code : 'KTS';
                 const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
-                const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userName ? '_' + userName : ''}.pdf`;
+                const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName);
                 const saved = await savePdfToFolder(doc, fileName, 'weekstaten');
                 if (!saved) doc.save(fileName);
                 showToast(saved ? '✓ Weekstaat opgeslagen in map' : '✓ Weekstaat gedownload');
@@ -7247,7 +7270,7 @@
             const ioNum = await getNextDocumentNumber('inkooporder');
             const doc = generateInkooporder(ioNum);
             if (doc) {
-                const fileName = `Inkooporder_${ioNum}_Week${currentWeekNumber}_${currentYear}.pdf`;
+                const fileName = ktsInkooporderName(currentYear, currentWeekNumber, currentProject ? currentProject.code : '');
                 const saved = await savePdfToFolder(doc, fileName, 'inkooporders');
                 if (!saved) doc.save(fileName);
                 showToast(saved ? '✓ Inkooporder opgeslagen in map' : '✓ Inkooporder gedownload (concept — nog niet opgeslagen)');
@@ -7466,7 +7489,7 @@
                         if (weekstaat) {
                             const projCode = currentProject ? currentProject.project_code : 'KTS';
                             const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
-                            const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userName ? '_' + userName : ''}.pdf`;
+                            const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName);
                             const wsSaved = await savePdfToFolder(weekstaat, fileName, 'weekstaten');
                             if (!wsSaved) weekstaat.save(fileName);
 
@@ -7502,7 +7525,7 @@
 
                     const projCode = currentProject ? currentProject.project_code : 'KTS';
                     const userNameSlug = currentUser ? currentUser.name.replace(/\s+/g, '_') : '';
-                    const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}${userNameSlug ? '_' + userNameSlug : ''}.pdf`;
+                    const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userNameSlug);
 
                     // 4. Download PDF lokaal
                     const wsSaved = await savePdfToFolder(weekstaat, fileName, 'weekstaten');
@@ -7599,7 +7622,7 @@
                 const weekstaat = await generateWeekstaat();
                 if (!weekstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
-                const fileName = `Weekstaat_${projCode}_Week${currentWeekNumber}_${currentYear}_${userName.replace(/\s+/g,'_')}.pdf`;
+                const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName);
 
                 // 5. Download PDF lokaal (ZZP'er heeft geen OneDrive toegang)
                 weekstaat.save(fileName);
@@ -7841,7 +7864,7 @@
             addPdfFooter(doc, false);
 
             // Opslaan
-            const fileName = `Factuur_${factuurNum}_${clientName.replace(/[^a-zA-Z0-9]/g,'_')}_${monthName}_${year}.pdf`;
+            const fileName = ktsFactuurName(factuurNum, clientName);
             const savedCF = await savePdfToFolder(doc, fileName, 'facturen');
             if (!savedCF) doc.save(fileName);
 
@@ -13691,7 +13714,7 @@
 
                     const userName = targetUser.name || 'Onbekend';
                     const pCode = targetProject.project_code || projCode;
-                    const fileName = `Weekstaat_${pCode}_Week${weekNumber}_${year}_${userName.replace(/\s+/g,'_')}.pdf`;
+                    const fileName = ktsWeekstaatName(year, weekNumber, userName);
 
                     // Download lokaal
                     weekstaat.save(fileName);
@@ -14029,7 +14052,7 @@
                     const { data: fnData, error: fnErr } = await sb.functions.invoke('send-weekstaat-confirmation', {
                         body: {
                             pdfBase64: pdfBase64,
-                            fileName: pdfFileName || `Weekstaat_${pCode}_Week${weekNumber}_${year}_${uSlug}.pdf`,
+                            fileName: pdfFileName || ktsWeekstaatName(year, weekNumber, uSlug),
                             recipientEmail: email,
                             recipientName: name,
                             userName: userName,
