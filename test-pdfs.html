@@ -257,7 +257,8 @@ async function generateWeekstaatV2(data) {
     const headerH = 7;
     const rowH = 10;
 
-    // Header row — DAG links, rest center
+    // Header row — DAG/WERKZAAMHEDEN/LOCATIE links, rest center
+    const LEFT_ALIGN_KEYS = ['day', 'desc', 'location'];
     doc.setFillColor(...ktsBlue);
     doc.rect(tableX, y, totalW, headerH, 'F');
     doc.setTextColor(255, 255, 255);
@@ -265,7 +266,7 @@ async function generateWeekstaatV2(data) {
     doc.setFont(pdfFont, 'bold');
     let cx = tableX;
     cols.forEach(c => {
-        const align = c.key === 'day' ? 'left' : 'center';
+        const align = LEFT_ALIGN_KEYS.includes(c.key) ? 'left' : 'center';
         const hx = align === 'left' ? cx + 2 : cx + c.w / 2;
         doc.text(c.label, hx, y + 4.5, { align });
         cx += c.w;
@@ -302,8 +303,8 @@ async function generateWeekstaatV2(data) {
             if (c.key === 'hours' && v) v = fmtNum(v) + ' u';
             if (c.key === 'km' && v) v = v + ' km';
             if (!v && v !== 0) v = '';
-            // DAG links, rest gecentreerd in cel
-            const align = c.key === 'day' ? 'left' : 'center';
+            // DAG/WERKZAAMHEDEN/LOCATIE links, rest gecentreerd in cel
+            const align = LEFT_ALIGN_KEYS.includes(c.key) ? 'left' : 'center';
             const tx = align === 'left' ? cx + 2 : cx + c.w / 2;
             const ty = y + rowH / 2 + 1.5;
             // Truncate long text
