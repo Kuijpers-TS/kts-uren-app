@@ -157,7 +157,7 @@ async function generateWeekstaatV2(data) {
         try {
             const wmSize = 250;
             doc.saveGraphicsState && doc.saveGraphicsState();
-            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.05 }));
             doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
             doc.restoreGraphicsState && doc.restoreGraphicsState();
         } catch (e) {}
@@ -575,7 +575,7 @@ async function generateInkooporderV2(data) {
         try {
             const wmSize = 180;
             doc.saveGraphicsState && doc.saveGraphicsState();
-            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.05 }));
             doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
             doc.restoreGraphicsState && doc.restoreGraphicsState();
         } catch (e) {}
@@ -966,7 +966,7 @@ async function generateFactuurV2(data) {
         try {
             const wmSize = 180;
             doc.saveGraphicsState && doc.saveGraphicsState();
-            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.05 }));
             doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
             doc.restoreGraphicsState && doc.restoreGraphicsState();
         } catch (e) {}
