@@ -248,11 +248,11 @@ async function generateWeekstaatV2(data) {
         { key:'end',     label:'EINDTIJD',     w: 18 },
         { key:'breakMin',label:'PAUZE',        w: 16 },
         { key:'hours',   label:'GEW. UREN',    w: 20 },
-        { key:'desc',    label:'WERKZAAMHEDEN',w: 78 },
+        { key:'desc',    label:'WERKZAAMHEDEN',w: 98 },
         { key:'location',label:'LOCATIE',      w: 42 },
         { key:'km',      label:'KM',           w: 17 },
     ];
-    const totalW = cols.reduce((s,c)=>s+c.w,0); // = 253, well within 273
+    const totalW = cols.reduce((s,c)=>s+c.w,0); // = 273 = full uw (page minus margins)
     const tableX = ml;
     const headerH = 7;
     const rowH = 10;
@@ -308,7 +308,7 @@ async function generateWeekstaatV2(data) {
             const ty = y + rowH / 2 + 1.5;
             // Truncate long text
             let txt = String(v);
-            if (c.key === 'desc' && txt.length > 60) txt = txt.substring(0, 57) + '...';
+            if (c.key === 'desc' && txt.length > 78) txt = txt.substring(0, 75) + '...';
             if (c.key === 'location' && txt.length > 32) txt = txt.substring(0, 29) + '...';
             doc.text(txt, tx, ty, { align });
             cx += c.w;
