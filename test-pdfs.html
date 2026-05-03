@@ -586,23 +586,9 @@ async function generateInkooporderV2(data) {
     });
     const headerEndY = addrY;
 
-    // --- KTS NAW (links onder titel) ---
-    doc.setFontSize(8);
-    doc.setFont(pdfFont, 'normal');
-    doc.setTextColor(...ink500);
-    const kvkLines = [
-        'Kuijpers Technical Services BV',
-        'Nieuwboerweg 2A, 1738BB Waarland',
-        'KvK: 93410557  ·  BTW: NL866385368B01'
-    ];
-    let kvkY = mt + 14;
-    kvkLines.forEach(line => {
-        doc.text(line, ml, kvkY);
-        kvkY += 3.6;
-    });
-
     // --- INFO BAR: 4 cells (Project | Scheidingsteken | Datum | PO-Nummer) ---
-    y = Math.max(kvkY + 4, headerEndY + 4);
+    // KTS NAW staat al rechts onder logo + in footer — niet dupliceren
+    y = headerEndY + 4;
     const infoW = uw / 4;
     const infoH = 14;
     const infoCells = [
