@@ -594,19 +594,24 @@ async function generateInkooporderV2(data) {
     }
     doc.text('INKOOPORDER', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
-    // Logo rechts (zelfde size als weekstaat)
+    // Logo rechts — gecentreerd boven de adres-tekst eronder
     const logoW = 30.8;
     const logoH = logoW * (200 / 204);
-    const logoX = pw - mr - logoW;
-    const logoCenterX = logoX + logoW / 2;
+    const addrLines = ['Nieuwboerweg 2A, 1738BB Waarland', '+31 6 5123 9050  ·  info@kuijpers-ts.nl'];
+    // Eerst font instellen voor breedte-meting
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    const widestW = Math.max(...addrLines.map(line => doc.getTextWidth(line)));
+    const textRightX = pw - mr;
+    const textLeftX = textRightX - widestW;
+    const textCenterX = (textLeftX + textRightX) / 2;
+    const logoX = textCenterX - logoW / 2;
     if (KTS_LOGO_B64) {
         try { doc.addImage(KTS_LOGO_B64, 'PNG', logoX, y - 2, logoW, logoH); } catch (e) {}
     }
-    doc.setFontSize(8);
-    doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink500);
     let addrY = y + logoH + 4;
-    ['Nieuwboerweg 2A, 1738BB Waarland', '+31 6 5123 9050  ·  info@kuijpers-ts.nl'].forEach(line => {
+    addrLines.forEach(line => {
         doc.text(line, pw - mr, addrY, { align: 'right' });
         addrY += 3.6;
     });
