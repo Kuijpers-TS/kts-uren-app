@@ -181,9 +181,9 @@ async function generateWeekstaatV2(data) {
     doc.text('URENSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
     // Right: KTS logo + adres (zoveel mogelijk rechts-boven, tekst gecentreerd)
-    // Logo 44mm breed × 43.14mm hoog (aspect 204:200 = 1.02 behouden)
-    const logoW = 44;
-    const logoH = logoW * (200 / 204); // = 43.14mm
+    // Logo 30.8mm breed × 30.2mm hoog (aspect 204:200 = 1.02 behouden, 0.7x)
+    const logoW = 30.8;
+    const logoH = logoW * (200 / 204); // = 30.21mm
     const logoX = pw - mr - logoW;
     const logoCenterX = logoX + logoW / 2;
     if (KTS_LOGO_B64) {
@@ -354,7 +354,7 @@ async function generateWeekstaatV2(data) {
         { label: 'TOTAAL TE FACTUREREN', value: fmtNum(totalHours), unit: 'uur', accent: true },
     ];
     const kpiW = 24;
-    const kpiH = 18;
+    const kpiH = 26; // hoger voor meer presence + matcht opmerkingen-vak
     const kpiTotalW = kpiW * kpis.length; // 120mm
     let kx = ml;
     kpis.forEach((k, i) => {
@@ -369,36 +369,38 @@ async function generateWeekstaatV2(data) {
             doc.rect(kx, y, kpiW, kpiH);
         }
         // Label boven (mono caps klein)
-        doc.setFontSize(6.5);
-        doc.setFont(pdfFont, 'normal');
-        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink400));
-        doc.text(k.label, kx + kpiW / 2, y + 4, { align: 'center', maxWidth: kpiW - 2 });
-        // Waarde groot bold
-        doc.setFontSize(15);
-        doc.setFont(pdfFont, 'bold');
-        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink900));
-        doc.text(k.value, kx + kpiW / 2, y + 12, { align: 'center' });
-        // Unit klein ernaast (rechts)
         doc.setFontSize(7);
         doc.setFont(pdfFont, 'normal');
+        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink400));
+        doc.text(k.label, kx + kpiW / 2, y + 5, { align: 'center', maxWidth: kpiW - 2 });
+        // Waarde groot bold
+        doc.setFontSize(20);
+        doc.setFont(pdfFont, 'bold');
+        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink900));
+        doc.text(k.value, kx + kpiW / 2, y + 18, { align: 'center' });
+        // Unit klein onder
+        doc.setFontSize(8);
+        doc.setFont(pdfFont, 'normal');
         doc.setTextColor(...(k.accent ? [255, 255, 255] : ink500));
-        doc.text(k.unit, kx + kpiW / 2, y + 16, { align: 'center' });
+        doc.text(k.unit, kx + kpiW / 2, y + 23, { align: 'center' });
         kx += kpiW;
     });
 
-    // Right: Opmerkingen blok (naast KPI-strip)
+    // Right: Opmerkingen blok (zelfde hoogte als KPI-strip)
     const opmX = ml + kpiTotalW + 6;
     const opmW = pw - mr - opmX;
+    doc.setFillColor(248, 248, 244);
+    doc.rect(opmX, y, opmW, kpiH, 'F');
     doc.setFontSize(7);
     doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink400);
-    doc.text('OPMERKINGEN', opmX + 2, y + 4);
+    doc.text('OPMERKINGEN', opmX + 3, y + 5);
     doc.setFont(pdfFont, 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...ink900);
     if (data.opmerkingen) {
-        const lines = doc.splitTextToSize(data.opmerkingen, opmW - 4);
-        lines.slice(0, 3).forEach((line, i) => doc.text(line, opmX + 2, y + 9 + i * 3.5));
+        const lines = doc.splitTextToSize(data.opmerkingen, opmW - 6);
+        lines.slice(0, 5).forEach((line, i) => doc.text(line, opmX + 3, y + 11 + i * 3.8));
     }
     // Border around opmerkingen-area
     doc.setDrawColor(...lineColLight);
