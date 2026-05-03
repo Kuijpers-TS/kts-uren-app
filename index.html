@@ -4094,7 +4094,10 @@
             <div class="clock-btn-wrap" id="clock-wrap">
                 <button class="clock-btn" id="clock-btn" onclick="toggleClock()">
                     <span class="clock-dot"></span>
-                    <span id="clock-label">⏱️ Inklokken</span>
+                    <span id="clock-label" style="display:inline-flex;align-items:center;gap:6px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Inklokken
+                    </span>
                 </button>
             </div>
             <div class="app-week-nav">
@@ -4115,8 +4118,9 @@
             <div id="days-container"></div>
 
             <div style="margin-top:16px" id="save-uren-btn-wrap">
-                <button class="btn btn-primary btn-block" onclick="saveWeek('uren')" style="padding:14px 20px;border-radius:12px;font-size:0.9rem;letter-spacing:0.3px">
-                    💾 Week opslaan
+                <button class="btn btn-primary btn-block app-btn app-btn-primary app-btn-block app-btn-lg" onclick="saveWeek('uren')">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Week opslaan
                 </button>
             </div>
         </div>
@@ -4192,13 +4196,15 @@
             </div>
 
             <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px" id="week-action-btns">
-                <button class="btn btn-primary btn-block" id="sign-week-btn" onclick="openSignatureModal()" style="padding:14px;font-size:0.95rem">
-                    ✍️ Week <span id="sign-week-num"></span> ondertekenen & versturen
+                <button class="btn btn-primary btn-block app-btn app-btn-primary app-btn-block app-btn-lg" id="sign-week-btn" onclick="openSignatureModal()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Week <span id="sign-week-num"></span> ondertekenen &amp; versturen
                 </button>
             </div>
             <div style="margin-top:10px;display:none" id="download-weekstaat-btn-wrap">
-                <button class="btn btn-block" id="download-weekstaat-btn" onclick="downloadWeekstaat()" style="padding:14px;font-size:0.95rem;background:var(--kts-blue);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer">
-                    📄 Weekstaat PDF downloaden
+                <button class="btn btn-block app-btn app-btn-primary app-btn-block app-btn-lg" id="download-weekstaat-btn" onclick="downloadWeekstaat()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Weekstaat PDF downloaden
                 </button>
             </div>
 
@@ -4218,7 +4224,10 @@
         <!-- ===== INSPECTIES SCREEN (voor alle gebruikers) ===== -->
         <div class="screen insp-module" id="screen-inspecties">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h2 style="font-size:1.1rem;font-weight:700;margin:0">🔍 Inspecties</h2>
+                <h2 style="font-size:1.1rem;font-weight:700;margin:0;display:flex;align-items:center;gap:8px">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Inspecties
+                </h2>
             </div>
 
             <!-- Actieve templates om nieuwe inspectie te starten -->
@@ -4248,18 +4257,24 @@
 
         <!-- ===== ADMINISTRATIE SCREEN ===== -->
         <div class="screen" id="screen-administratie">
-            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">📋 Administratie</h2>
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="13" y2="18"/></svg>
+                Administratie
+            </h2>
 
             <!-- Mappen kiezen -->
             <div style="margin-bottom:16px">
-                <div class="admin-folder-btn" id="admin-invoices-folder-btn" onclick="adminPickFolder('invoices')">
-                    📂 <span id="admin-invoices-folder-label">Facturen-map kiezen...</span>
+                <div class="admin-folder-btn" id="admin-invoices-folder-btn" onclick="adminPickFolder('invoices')" style="display:flex;align-items:center;gap:8px">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    <span id="admin-invoices-folder-label">Facturen-map kiezen...</span>
                 </div>
-                <div class="admin-folder-btn" id="admin-transactions-folder-btn" onclick="adminPickFolder('transactions')">
-                    📂 <span id="admin-transactions-folder-label">Transacties-map kiezen...</span>
+                <div class="admin-folder-btn" id="admin-transactions-folder-btn" onclick="adminPickFolder('transactions')" style="display:flex;align-items:center;gap:8px">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    <span id="admin-transactions-folder-label">Transacties-map kiezen...</span>
                 </div>
-                <div class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')">
-                    📂 <span id="admin-export-folder-label">Export-map kiezen...</span>
+                <div class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')" style="display:flex;align-items:center;gap:8px">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    <span id="admin-export-folder-label">Export-map kiezen...</span>
                 </div>
                 <div style="margin-top:8px">
                     <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:4px">Volledig pad facturen-map (voor export links):</label>
@@ -4272,7 +4287,10 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.9rem">Rekeningen</div>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-sm btn-secondary" onclick="adminRescanInvoices()" title="Facturen opnieuw scannen">🔄 Scan</button>
+                        <button class="btn btn-sm btn-secondary" onclick="adminRescanInvoices()" title="Facturen opnieuw scannen" style="display:inline-flex;align-items:center;gap:6px">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                            Scan
+                        </button>
                     </div>
                 </div>
                 <div id="admin-accounts-list" style="margin-bottom:16px">
@@ -4280,8 +4298,14 @@
                         Nog geen transactieoverzichten ingeladen.<br>Kies een <b>Transacties-map</b> hierboven om bankafschriften in te laden.
                     </div>
                 </div>
-                <button class="btn btn-block btn-secondary" onclick="adminExportAll()" style="margin-bottom:12px">📥 Exporteer koppelingen</button>
-                <button class="btn btn-block btn-secondary" onclick="adminImportJson()" style="font-size:0.8rem">📤 Importeer eerder geëxporteerde JSON</button>
+                <button class="btn btn-block btn-secondary app-btn app-btn-secondary app-btn-block" onclick="adminExportAll()" style="margin-bottom:12px">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Exporteer koppelingen
+                </button>
+                <button class="btn btn-block btn-secondary app-btn app-btn-secondary app-btn-block app-btn-sm" onclick="adminImportJson()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Importeer eerder geëxporteerde JSON
+                </button>
             </div>
 
             <!-- Uploads per rekening view -->
@@ -4413,7 +4437,10 @@
         <!-- ===== ADMIN SCREEN (alleen voor admin) ===== -->
         <div class="screen" id="screen-admin">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h2 style="font-size:1.1rem;font-weight:700;margin:0">⚙️ Beheer</h2>
+                <h2 style="font-size:1.1rem;font-weight:700;margin:0;display:flex;align-items:center;gap:8px">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                    Beheer
+                </h2>
                 <div style="display:flex;align-items:center;gap:8px">
                     <span id="env-label" style="font-size:0.7rem;font-weight:700;padding:3px 8px;border-radius:6px;background:#dcfce7;color:#16a34a">PRODUCTIE</span>
                     <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
@@ -4524,7 +4551,10 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Dashboard</div>
                     <div style="display:flex;gap:6px;align-items:center">
-                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem" onclick="exportDashboardExcel()">📥 Excel</button>
+                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="exportDashboardExcel()">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Excel
+                        </button>
                         <select id="dashboard-month-filter" onchange="loadDashboard()" style="padding:6px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem"></select>
                     </div>
                 </div>
@@ -4562,7 +4592,10 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Projecten</div>
                     <div style="display:flex;gap:6px">
-                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem" onclick="document.getElementById('import-file-project').click()">📥 Excel Import</button>
+                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="document.getElementById('import-file-project').click()">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Excel Import
+                        </button>
                         <button class="btn btn-primary btn-sm" onclick="openAdminModal('project')">+ Nieuw project</button>
                     </div>
                     <input type="file" id="import-file-project" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('project', this)">
@@ -4576,7 +4609,10 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & Bedrijven</div>
                     <div style="display:flex;gap:6px">
-                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem" onclick="document.getElementById('import-file-persoon').click()">📥 Excel Import</button>
+                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="document.getElementById('import-file-persoon').click()">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Excel Import
+                        </button>
                         <button class="btn btn-primary btn-sm" onclick="openAdminModal('persoon')">+ Nieuw</button>
                     </div>
                     <input type="file" id="import-file-persoon" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('persoon', this)">
@@ -4653,7 +4689,10 @@
                 <div id="io-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
                     <div id="io-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
-                    <button class="btn btn-primary" onclick="generateIOPDF()" style="width:100%;margin-top:16px">📄 Genereer IO PDF</button>
+                    <button class="btn btn-primary app-btn app-btn-primary app-btn-block app-btn-lg" onclick="generateIOPDF()" style="margin-top:16px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+                        Genereer Inkooporder PDF
+                    </button>
                 </div>
 
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
@@ -4706,7 +4745,10 @@
                         <input type="text" id="inv-custom-number" placeholder="Bijv. 2026-01" style="width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;font-weight:600;box-sizing:border-box">
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Pas het nummer aan als je zelf een andere nummering hanteert</div>
                     </div>
-                    <button class="btn btn-primary" onclick="generateInvoicePDF()" style="width:100%;margin-top:12px">🧾 Genereer Factuur PDF</button>
+                    <button class="btn btn-primary app-btn app-btn-primary app-btn-block app-btn-lg" onclick="generateInvoicePDF()" style="margin-top:12px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                        Genereer Factuur PDF
+                    </button>
                 </div>
 
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
@@ -4721,19 +4763,31 @@
             <div id="admin-bedrijf" style="display:none">
                 <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Algemene instellingen</div>
                 <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:12px">📂 Opslagmappen (OneDrive)</div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                        Opslagmappen (OneDrive)
+                    </div>
                     <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px">Kies per documenttype een map. PDF's worden automatisch daar opgeslagen i.p.v. als download.</div>
                     <div style="display:flex;flex-direction:column;gap:8px">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <button class="btn btn-sm" onclick="chooseSaveFolder('weekstaten')" style="min-width:140px">📑 Weekstaten</button>
+                            <button class="btn btn-sm" onclick="chooseSaveFolder('weekstaten')" style="min-width:140px;display:inline-flex;align-items:center;gap:6px;justify-content:center">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                Weekstaten
+                            </button>
                             <span id="folder-weekstaten" style="font-size:0.8rem;color:var(--muted)">Niet ingesteld</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px">
-                            <button class="btn btn-sm" onclick="chooseSaveFolder('inkooporders')" style="min-width:140px">📄 Inkooporders</button>
+                            <button class="btn btn-sm" onclick="chooseSaveFolder('inkooporders')" style="min-width:140px;display:inline-flex;align-items:center;gap:6px;justify-content:center">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+                                Inkooporders
+                            </button>
                             <span id="folder-inkooporders" style="font-size:0.8rem;color:var(--muted)">Niet ingesteld</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px">
-                            <button class="btn btn-sm" onclick="chooseSaveFolder('facturen')" style="min-width:140px">🧾 Facturen</button>
+                            <button class="btn btn-sm" onclick="chooseSaveFolder('facturen')" style="min-width:140px;display:inline-flex;align-items:center;gap:6px;justify-content:center">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                                Facturen
+                            </button>
                             <span id="folder-facturen" style="font-size:0.8rem;color:var(--muted)">Niet ingesteld</span>
                         </div>
                     </div>
@@ -4766,8 +4820,14 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Inspectie-formulieren</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem">📤 Exporteer Excel</button>
-                        <label for="insp-import-excel-input" class="btn btn-sm" style="background:#d1fae5;color:#059669;border:1px solid #a7f3d0;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center">📥 Importeer Excel</label>
+                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Exporteer Excel
+                        </button>
+                        <label for="insp-import-excel-input" class="btn btn-sm" style="background:#d1fae5;color:#059669;border:1px solid #a7f3d0;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Importeer Excel
+                        </label>
                         <input type="file" id="insp-import-excel-input" accept=".xlsx,.xls" onchange="inspImportTemplatesExcel(this)" style="display:none">
                         <button class="btn btn-primary btn-sm" onclick="inspOpenTemplateEditor()">+ Nieuw formulier</button>
                     </div>
@@ -4930,7 +4990,10 @@
     <div class="modal-overlay" id="project-modal">
         <div class="modal">
             <div class="modal-handle"></div>
-            <div class="modal-title">📂 Project kiezen</div>
+            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4 8 4v14"/><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+                Project kiezen
+            </div>
             <div id="project-switch-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
                 <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
             </div>
@@ -4941,7 +5004,10 @@
     <div class="modal-overlay" id="expense-modal">
         <div class="modal">
             <div class="modal-handle"></div>
-            <div class="modal-title">🧾 Declaratie toevoegen</div>
+            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                Declaratie toevoegen
+            </div>
             <div class="form-group" style="margin-bottom:12px">
                 <label>Datum</label>
                 <input type="date" id="exp-date">
@@ -4999,7 +5065,10 @@
     <div class="modal-overlay" id="weekdefaults-modal">
         <div class="modal" style="max-width:440px">
             <div class="modal-handle"></div>
-            <div class="modal-title">🕐 Mijn standaard werkweek</div>
+            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Mijn standaard werkweek
+            </div>
             <p style="font-size:0.8rem;color:var(--muted);margin:0 0 16px 0">Deze tijden worden automatisch ingevuld bij een nieuwe week.</p>
             <div id="weekdefaults-days"></div>
             <div class="form-actions" style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
@@ -5013,7 +5082,10 @@
     <div class="modal-overlay" id="signature-modal">
         <div class="modal" style="max-width:420px">
             <div class="modal-handle"></div>
-            <div class="modal-title">✍️ Week ondertekenen & versturen</div>
+            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Week ondertekenen &amp; versturen
+            </div>
 
             <!-- Opmerkingen (optioneel) -->
             <div style="margin-bottom:16px">
@@ -5536,7 +5608,7 @@
                 startClockTimer(state.startTime);
             } else {
                 btn.classList.remove('clocked-in');
-                label.innerHTML = '⏱️ Inklokken';
+                label.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Inklokken';
                 stopClockTimer();
             }
         }
@@ -5652,13 +5724,13 @@
             weekDataDirty = true;
             const btn = document.querySelector('#save-uren-btn-wrap .btn');
             if (btn) {
-                btn.innerHTML = '💾 Week opslaan <span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;margin-left:6px;vertical-align:middle"></span>';
+                btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:8px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Week opslaan <span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;margin-left:6px;vertical-align:middle"></span>';
             }
         }
         function markClean() {
             weekDataDirty = false;
             const btn = document.querySelector('#save-uren-btn-wrap .btn');
-            if (btn) btn.innerHTML = '💾 Week opslaan';
+            if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:8px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Week opslaan';
         }
 
         // Conflict-detectie: communicatie tussen tabs
@@ -8383,9 +8455,9 @@
                 if (signBtn) {
                     signBtn.style.display = 'block';
                     if (isOndertekend) {
-                        signBtn.innerHTML = '✍️ Week ' + currentWeekNumber + ' opnieuw ondertekenen & versturen';
+                        signBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:8px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Week ' + currentWeekNumber + ' opnieuw ondertekenen &amp; versturen';
                     } else {
-                        signBtn.innerHTML = '✍️ Week <span id="sign-week-num">' + currentWeekNumber + '</span> ondertekenen & versturen';
+                        signBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:8px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Week <span id="sign-week-num">' + currentWeekNumber + '</span> ondertekenen &amp; versturen';
                     }
                 }
             } else {
