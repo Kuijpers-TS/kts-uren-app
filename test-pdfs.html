@@ -152,10 +152,10 @@ async function generateWeekstaatV2(data) {
     const lineCol = [180, 180, 180];
     const lineColLight = [220, 220, 220];
 
-    // Watermark (light tandwiel center)
+    // Watermark (light tandwiel center, groot)
     if (TANDWIEL) {
         try {
-            const wmSize = 100;
+            const wmSize = 250;
             doc.saveGraphicsState && doc.saveGraphicsState();
             doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
             doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
@@ -168,32 +168,35 @@ async function generateWeekstaatV2(data) {
     // ============================================================
     let y = mt;
 
-    // Left: tandwiel + URENSTAAT
+    // Left: tandwiel + URENSTAAT — tandwiel iets groter dan tekst
     doc.setFontSize(20);
     doc.setFont(pdfFont, 'bold');
     doc.setTextColor(...ktsBlue);
-    const titleY = y + 5;
+    const titleY = y + 6;
+    const iconSize = 10; // 1.25x t.o.v. tekst-cap
+    // Vertical center icoon op tekst baseline
     if (TANDWIEL) {
-        try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - 6, 8, 8); } catch (e) {}
+        try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 1, iconSize, iconSize); } catch (e) {}
     }
-    doc.text('URENSTAAT', ml + (TANDWIEL ? 11 : 0), titleY);
+    doc.text('URENSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
-    // Right: KTS logo + adres (rechts gecentreerd)
-    const rightBlockW = 70;
-    const rightBlockX = pw - mr - rightBlockW;
+    // Right: KTS logo + adres (logo aspect ratio 204:200 = 1.02 — bijna vierkant)
+    // Logo 22mm breed × 21.6mm hoog (intrinsieke verhouding behouden)
+    const logoW = 22;
+    const logoH = logoW * (200 / 204); // = 21.57mm
+    const logoX = pw - mr - logoW;
     if (KTS_LOGO_B64) {
-        const logoH = 14;
-        try { doc.addImage(KTS_LOGO_B64, 'PNG', rightBlockX, y, rightBlockW * 0.6, logoH); } catch (e) {}
+        try { doc.addImage(KTS_LOGO_B64, 'PNG', logoX, y - 1, logoW, logoH); } catch (e) {}
     }
+    // Adres rechts ONDER het logo
     doc.setFontSize(8);
     doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink500);
     const addrLines = [
         'Nieuwboerweg 2A, 1738BB Waarland',
-        '+31 6 5106 3555  ·  +31 6 5123 9050',
-        'info@kuijpers-ts.nl'
+        '+31 6 5123 9050  ·  info@kuijpers-ts.nl'
     ];
-    let addrY = y + 16;
+    let addrY = y + logoH + 3;
     addrLines.forEach(line => {
         doc.text(line, pw - mr, addrY, { align: 'right' });
         addrY += 3.6;
@@ -202,7 +205,7 @@ async function generateWeekstaatV2(data) {
     // ============================================================
     // PERSON / PROJECT INFO BAR (twee rijen, 3 kolommen)
     // ============================================================
-    y = mt + 28;
+    y = mt + 36;
     const colA = ml, colB = ml + 95, colC = ml + 195;
     const labelGap = 24;
 
@@ -328,63 +331,78 @@ async function generateWeekstaatV2(data) {
     doc.rect(tableX, y - rowH * data.days.length - headerH, totalW, headerH + rowH * data.days.length);
 
     // ============================================================
-    // SUMMARY BLOCK + OPMERKINGEN + HANDTEKENINGEN
+    // SUMMARY BLOCK (KPI-strip) + OPMERKINGEN
     // ============================================================
     y += 6;
 
-    // Left: Summary table
-    const sumX = ml;
-    const sumW = 110;
-    const sumLabelW = 70;
-    const sumLines = [
-        ['Reguliere uren (ma–vr)', fmtNum(weekdayHours) + ' u'],
-        ['Zaterdaguren',           fmtNum(satHours) + ' u'],
-        ['Zondag-/feestdaguren',   fmtNum(sunHours) + ' u'],
-        ['Reis kilometers',        totalKm + ' km'],
+    // KPI-strip: 5 cellen naast elkaar (Reguliere | Zat | Zon | Km | TOTAAL)
+    // 5x 24mm = 120mm breed
+    const kpis = [
+        { label: 'REGULIER MA–VR', value: fmtNum(weekdayHours), unit: 'u', accent: false },
+        { label: 'ZATERDAG',       value: fmtNum(satHours),     unit: 'u', accent: false },
+        { label: 'ZONDAG/FEEST',   value: fmtNum(sunHours),     unit: 'u', accent: false },
+        { label: 'REIS KM',        value: (totalKm || 0).toLocaleString('nl-NL'), unit: 'km', accent: false },
+        { label: 'TOTAAL TE FACTUREREN', value: fmtNum(totalHours), unit: 'uur', accent: true },
     ];
-    doc.setFontSize(8);
-    doc.setFont(pdfFont, 'normal');
-    doc.setTextColor(...ink500);
-    sumLines.forEach((row, i) => {
-        doc.text(row[0], sumX, y + 4 + i * 5);
-        doc.setFont(pdfFont, 'bold');
-        doc.setTextColor(...ink900);
-        doc.text(row[1], sumX + sumLabelW + 30, y + 4 + i * 5, { align: 'right' });
+    const kpiW = 24;
+    const kpiH = 18;
+    const kpiTotalW = kpiW * kpis.length; // 120mm
+    let kx = ml;
+    kpis.forEach((k, i) => {
+        if (k.accent) {
+            doc.setFillColor(...ktsBlue);
+            doc.rect(kx, y, kpiW, kpiH, 'F');
+        } else {
+            doc.setFillColor(248, 248, 244);
+            doc.rect(kx, y, kpiW, kpiH, 'F');
+            doc.setDrawColor(...lineColLight);
+            doc.setLineWidth(0.15);
+            doc.rect(kx, y, kpiW, kpiH);
+        }
+        // Label boven (mono caps klein)
+        doc.setFontSize(6.5);
         doc.setFont(pdfFont, 'normal');
-        doc.setTextColor(...ink500);
+        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink400));
+        doc.text(k.label, kx + kpiW / 2, y + 4, { align: 'center', maxWidth: kpiW - 2 });
+        // Waarde groot bold
+        doc.setFontSize(15);
+        doc.setFont(pdfFont, 'bold');
+        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink900));
+        doc.text(k.value, kx + kpiW / 2, y + 12, { align: 'center' });
+        // Unit klein ernaast (rechts)
+        doc.setFontSize(7);
+        doc.setFont(pdfFont, 'normal');
+        doc.setTextColor(...(k.accent ? [255, 255, 255] : ink500));
+        doc.text(k.unit, kx + kpiW / 2, y + 16, { align: 'center' });
+        kx += kpiW;
     });
-    // Totaal te factureren uren — bold band
-    const totalY = y + 4 + sumLines.length * 5 + 2;
-    doc.setFillColor(...ktsBlue);
-    doc.rect(sumX, totalY - 4, sumW, 7, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.setFont(pdfFont, 'bold');
-    doc.text('TOTAAL TE FACTUREREN UREN', sumX + 2, totalY + 0.5);
-    doc.text(fmtNum(totalHours) + ' uur', sumX + sumW - 2, totalY + 0.5, { align: 'right' });
 
-    // Right: Opmerkingen
-    const opmX = ml + 120;
+    // Right: Opmerkingen blok (naast KPI-strip)
+    const opmX = ml + kpiTotalW + 6;
     const opmW = pw - mr - opmX;
-    doc.setFontSize(8);
-    doc.setFont(pdfFont, 'bold');
+    doc.setFontSize(7);
+    doc.setFont(pdfFont, 'normal');
     doc.setTextColor(...ink400);
-    doc.text('OPMERKINGEN', opmX, y);
+    doc.text('OPMERKINGEN', opmX + 2, y + 4);
     doc.setFont(pdfFont, 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...ink900);
     if (data.opmerkingen) {
-        const lines = doc.splitTextToSize(data.opmerkingen, opmW);
-        lines.slice(0, 4).forEach((line, i) => doc.text(line, opmX, y + 5 + i * 4));
+        const lines = doc.splitTextToSize(data.opmerkingen, opmW - 4);
+        lines.slice(0, 3).forEach((line, i) => doc.text(line, opmX + 2, y + 9 + i * 3.5));
     }
     // Border around opmerkingen-area
     doc.setDrawColor(...lineColLight);
-    doc.rect(opmX - 1, y + 1, opmW + 1, 22);
+    doc.setLineWidth(0.15);
+    doc.rect(opmX, y, opmW, kpiH);
+
+    // Push y to bottom of summary row
+    y += kpiH;
 
     // ============================================================
     // HANDTEKENINGEN (onderaan, 2 boxen naast elkaar)
     // ============================================================
-    y += 30;
+    y += 8;
     const sigBoxW = (uw - 6) / 2;
     const sigBoxH = 22;
     // Box 1: Opdrachtnemer
