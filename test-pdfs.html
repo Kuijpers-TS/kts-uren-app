@@ -45,9 +45,9 @@
     <h2>Inkooporder</h2>
     <p class="desc">Sample: KTS118-23012026, leverancier Futura Composites BV, 4× KTS118-02-03 à €1.048,13.</p>
     <div class="actions">
-      <button class="app-btn app-btn-primary" onclick="testInkooporder()" disabled>Genereer voorbeeld-inkooporder</button>
+      <button class="app-btn app-btn-primary" onclick="testInkooporder()">Genereer voorbeeld-inkooporder</button>
     </div>
-    <div id="status-inkooporder" class="status">Komt na review weekstaat.</div>
+    <div id="status-inkooporder" class="status">Klaar om te genereren.</div>
   </div>
 
   <div class="card">
@@ -483,8 +483,387 @@ async function testWeekstaatEmpty() {
         logStatus('weekstaat', '✗ Fout: ' + e.message, 'err');
     }
 }
-function testInkooporder() { logStatus('inkooporder', 'Komt na review weekstaat.'); }
-function testFactuur() { logStatus('factuur', 'Komt na review weekstaat.'); }
+// =============================================================
+// SAMPLE DATA — INKOOPORDER (KTS118 → Futura Composites BV)
+// =============================================================
+const SAMPLE_INKOOPORDER = {
+    project: { code: 'KTS118' },
+    separator: '-',
+    date: '03-05-2026',
+    poNumber: 'KTS118-03052026',
+    leverancier: {
+        company: 'Futura Composites BV',
+        contact: 'Frank van Duin',
+        address1: 'Marconistraat 40',
+        address2: '1704RG, Heerhugowaard',
+        phone: '+31 6 3462 9294',
+        email: 'f.vanduin@futuracomposites.com'
+    },
+    leveradres: {
+        contact: 'Mark Kuijpers',
+        company: 'Kuijpers Technical Services BV',
+        address1: 'Nieuwboerweg 2A',
+        address2: '1738BB, Waarland',
+        phone: '+31 6 5123 9050',
+        email: 'info@kuijpers-ts.nl'
+    },
+    items: [
+        { nr: 1, code: 'KTS118-02-03', desc: 'Volgens offerte WhatsApp dd 16-01-2026', qty: 4, price: 1048.125 }
+    ],
+    btwPct: 21,
+    transport: 0,
+    overige: 0,
+    opmerkingen: 'Levering binnen 4 weken vanaf orderdatum, liefst zo snel mogelijk.',
+    paymentTerm: '30 dagen na levering'
+};
+
+// =============================================================
+// HELPERS — currency
+// =============================================================
+function fmtEuro(n) {
+    return '€ ' + (n || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// =============================================================
+// INKOOPORDER V2 — design volgt Inkooporder KTS118 xlsx
+// =============================================================
+async function generateInkooporderV2(data) {
+    if (!window.jspdf) throw new Error('jsPDF niet geladen');
+    const pdfImages = window.KTS_PDF_IMAGES || {};
+    const KTS_LOGO_B64 = pdfImages.logo || null;
+    const TANDWIEL = pdfImages.tandwiel || null;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfFont = doc.getFontList()['DaxlinePro'] ? 'DaxlinePro' : 'helvetica';
+
+    const pw = 210, ph = 297, ml = 12, mr = 12, mt = 12, uw = pw - ml - mr;
+    const ktsBlue = [7, 86, 127];
+    const ink900 = [15, 27, 45];
+    const ink500 = [92, 102, 117];
+    const ink400 = [138, 147, 161];
+    const lineCol = [180, 180, 180];
+    const lineColLight = [220, 220, 220];
+
+    // Watermark
+    if (TANDWIEL) {
+        try {
+            const wmSize = 180;
+            doc.saveGraphicsState && doc.saveGraphicsState();
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
+            doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
+            doc.restoreGraphicsState && doc.restoreGraphicsState();
+        } catch (e) {}
+    }
+
+    let y = mt;
+
+    // --- HEADER: tandwiel + INKOOPORDER (links) | KTS logo + adres (rechts) ---
+    doc.setFontSize(20);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ktsBlue);
+    const titleY = y + 6;
+    const iconSize = 10;
+    if (TANDWIEL) {
+        try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 3, iconSize, iconSize); } catch (e) {}
+    }
+    doc.text('INKOOPORDER', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
+
+    // Logo rechts (zelfde size als weekstaat)
+    const logoW = 30.8;
+    const logoH = logoW * (200 / 204);
+    const logoX = pw - mr - logoW;
+    const logoCenterX = logoX + logoW / 2;
+    if (KTS_LOGO_B64) {
+        try { doc.addImage(KTS_LOGO_B64, 'PNG', logoX, y - 2, logoW, logoH); } catch (e) {}
+    }
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink500);
+    let addrY = y + logoH + 4;
+    ['Nieuwboerweg 2A, 1738BB Waarland', '+31 6 5123 9050  ·  info@kuijpers-ts.nl'].forEach(line => {
+        doc.text(line, logoCenterX, addrY, { align: 'center' });
+        addrY += 3.6;
+    });
+    const headerEndY = addrY;
+
+    // --- KTS NAW (links onder titel) ---
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink500);
+    const kvkLines = [
+        'Kuijpers Technical Services BV',
+        'Nieuwboerweg 2A, 1738BB Waarland',
+        'KvK: 93410557  ·  BTW: NL866385368B01'
+    ];
+    let kvkY = mt + 14;
+    kvkLines.forEach(line => {
+        doc.text(line, ml, kvkY);
+        kvkY += 3.6;
+    });
+
+    // --- INFO BAR: 4 cells (Project | Scheidingsteken | Datum | PO-Nummer) ---
+    y = Math.max(kvkY + 4, headerEndY + 4);
+    const infoW = uw / 4;
+    const infoH = 14;
+    const infoCells = [
+        { label: 'PROJECT',         value: data.project.code },
+        { label: 'SCHEIDINGSTEKEN', value: data.separator },
+        { label: 'DATUM',           value: data.date },
+        { label: 'PO-NUMMER',       value: data.poNumber }
+    ];
+    infoCells.forEach((c, i) => {
+        const cx = ml + i * infoW;
+        doc.setFillColor(248, 248, 244);
+        doc.rect(cx, y, infoW, infoH, 'F');
+        doc.setDrawColor(...lineColLight);
+        doc.setLineWidth(0.15);
+        doc.rect(cx, y, infoW, infoH);
+        doc.setFontSize(7);
+        doc.setFont(pdfFont, 'normal');
+        doc.setTextColor(...ink400);
+        doc.text(c.label, cx + 3, y + 4);
+        doc.setFontSize(11);
+        doc.setFont(pdfFont, 'bold');
+        doc.setTextColor(...ink900);
+        doc.text(String(c.value), cx + 3, y + 11);
+    });
+    y += infoH + 5;
+
+    // --- LEVERANCIER + LEVERADRES (twee blokken naast elkaar) ---
+    const blockW = (uw - 4) / 2;
+    const blockH = 38;
+    const headerH = 6;
+    // Leverancier
+    doc.setFillColor(...ktsBlue);
+    doc.rect(ml, y, blockW, headerH, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'bold');
+    doc.text('LEVERANCIER', ml + 3, y + 4.2);
+
+    // Leveradres
+    doc.setFillColor(...ktsBlue);
+    doc.rect(ml + blockW + 4, y, blockW, headerH, 'F');
+    doc.text('LEVERADRES', ml + blockW + 7, y + 4.2);
+
+    // Box bodies
+    doc.setFillColor(248, 248, 244);
+    doc.rect(ml, y + headerH, blockW, blockH - headerH, 'F');
+    doc.rect(ml + blockW + 4, y + headerH, blockW, blockH - headerH, 'F');
+    doc.setDrawColor(...lineColLight);
+    doc.setLineWidth(0.15);
+    doc.rect(ml, y, blockW, blockH);
+    doc.rect(ml + blockW + 4, y, blockW, blockH);
+
+    // Leverancier content
+    doc.setFontSize(9);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink900);
+    let lvY = y + headerH + 5;
+    doc.text(data.leverancier.company, ml + 3, lvY);
+    doc.setFont(pdfFont, 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...ink500);
+    [data.leverancier.contact, data.leverancier.address1, data.leverancier.address2, data.leverancier.phone, data.leverancier.email].forEach(line => {
+        if (line) {
+            lvY += 4;
+            doc.text(line, ml + 3, lvY);
+        }
+    });
+
+    // Leveradres content
+    let laY = y + headerH + 5;
+    doc.setFontSize(9);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink900);
+    doc.text(data.leveradres.contact, ml + blockW + 7, laY);
+    doc.setFont(pdfFont, 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...ink500);
+    [data.leveradres.company, data.leveradres.address1, data.leveradres.address2, data.leveradres.phone, data.leveradres.email].forEach(line => {
+        if (line) {
+            laY += 4;
+            doc.text(line, ml + blockW + 7, laY);
+        }
+    });
+
+    y += blockH + 6;
+
+    // --- ITEMS TABEL ---
+    const itemCols = [
+        { key:'nr',    label:'ITEM #',       w: 18,  align:'center' },
+        { key:'desc',  label:'OMSCHRIJVING', w: 92,  align:'left' },
+        { key:'qty',   label:'AANTAL',       w: 18,  align:'center' },
+        { key:'price', label:'PRIJS / STUK', w: 28,  align:'right' },
+        { key:'total', label:'TOTAAL',       w: 30,  align:'right' }
+    ];
+    const itemTotalW = itemCols.reduce((s,c)=>s+c.w,0); // = 186 = uw
+    const itemHeaderH = 7;
+    const itemRowH = 9;
+
+    // Header row
+    doc.setFillColor(...ktsBlue);
+    doc.rect(ml, y, itemTotalW, itemHeaderH, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'bold');
+    let cx = ml;
+    itemCols.forEach(c => {
+        const tx = c.align === 'left' ? cx + 2 : c.align === 'right' ? cx + c.w - 2 : cx + c.w / 2;
+        doc.text(c.label, tx, y + 4.5, { align: c.align });
+        cx += c.w;
+    });
+
+    y += itemHeaderH;
+
+    // Data rows (min 5 lege rijen voor visuele balans)
+    const items = data.items || [];
+    const minRows = Math.max(5, items.length);
+    let subtotaal = 0;
+    for (let i = 0; i < minRows; i++) {
+        const item = items[i];
+        if (i % 2 === 1) {
+            doc.setFillColor(248, 248, 244);
+            doc.rect(ml, y, itemTotalW, itemRowH, 'F');
+        }
+        doc.setDrawColor(...lineColLight);
+        doc.setLineWidth(0.15);
+        doc.line(ml, y + itemRowH, ml + itemTotalW, y + itemRowH);
+
+        if (item) {
+            const total = (item.qty || 0) * (item.price || 0);
+            subtotaal += total;
+            cx = ml;
+            itemCols.forEach(c => {
+                let v = '';
+                if (c.key === 'nr')    v = item.nr;
+                if (c.key === 'desc')  v = item.code + (item.desc ? '   ' + item.desc : '');
+                if (c.key === 'qty')   v = item.qty;
+                if (c.key === 'price') v = fmtEuro(item.price);
+                if (c.key === 'total') v = fmtEuro(total);
+                const tx = c.align === 'left' ? cx + 2 : c.align === 'right' ? cx + c.w - 2 : cx + c.w / 2;
+                doc.setFontSize(c.key === 'desc' ? 8.5 : 9);
+                doc.setFont(pdfFont, c.key === 'total' ? 'bold' : 'normal');
+                doc.setTextColor(...ink900);
+                let txt = String(v);
+                if (c.key === 'desc' && txt.length > 60) txt = txt.substring(0, 57) + '...';
+                doc.text(txt, tx, y + itemRowH / 2 + 1.5, { align: c.align });
+                cx += c.w;
+            });
+        }
+        y += itemRowH;
+    }
+
+    // Vertical lines
+    cx = ml;
+    doc.setDrawColor(...lineColLight);
+    for (let i = 0; i <= itemCols.length; i++) {
+        doc.line(cx, y - itemRowH * minRows - itemHeaderH, cx, y);
+        if (i < itemCols.length) cx += itemCols[i].w;
+    }
+    // Outer border
+    doc.setDrawColor(...lineCol);
+    doc.setLineWidth(0.3);
+    doc.rect(ml, y - itemRowH * minRows - itemHeaderH, itemTotalW, itemHeaderH + itemRowH * minRows);
+
+    y += 6;
+
+    // --- OPMERKINGEN (links) + TOTALEN-BLOK (rechts) ---
+    const totBlockW = 70;
+    const opmBlockW = uw - totBlockW - 4;
+    const blockH2 = 48;
+
+    // Opmerkingen
+    doc.setFillColor(248, 248, 244);
+    doc.rect(ml, y, opmBlockW, blockH2, 'F');
+    doc.setDrawColor(...lineColLight);
+    doc.rect(ml, y, opmBlockW, blockH2);
+    doc.setFillColor(...ktsBlue);
+    doc.rect(ml, y, opmBlockW, headerH, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'bold');
+    doc.text('OPMERKINGEN OF SPECIALE INSTRUCTIES', ml + 3, y + 4.2);
+
+    doc.setFontSize(9);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink900);
+    if (data.opmerkingen) {
+        const lines = doc.splitTextToSize(data.opmerkingen, opmBlockW - 6);
+        lines.slice(0, 5).forEach((line, i) => doc.text(line, ml + 3, y + headerH + 6 + i * 4));
+    }
+    // Betalingstermijn onderaan
+    doc.setFontSize(8);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink500);
+    doc.text('BETALINGSTERMIJN', ml + 3, y + blockH2 - 8);
+    doc.setFontSize(9);
+    doc.setFont(pdfFont, 'bold');
+    doc.setTextColor(...ink900);
+    doc.text(data.paymentTerm, ml + 3, y + blockH2 - 3.5);
+
+    // Totalen-blok (rechts)
+    const totX = ml + opmBlockW + 4;
+    const subTotalRows = [
+        { label: 'Subtotaal',        value: subtotaal },
+        { label: `BTW (${data.btwPct}%)`, value: subtotaal * (data.btwPct / 100) },
+        { label: 'Transport',        value: data.transport || 0 },
+        { label: 'Overige',          value: data.overige || 0 },
+    ];
+    const totalIncl = subtotaal + subtotaal * (data.btwPct / 100) + (data.transport || 0) + (data.overige || 0);
+
+    doc.setFillColor(248, 248, 244);
+    doc.rect(totX, y, totBlockW, blockH2, 'F');
+    doc.setDrawColor(...lineColLight);
+    doc.rect(totX, y, totBlockW, blockH2);
+    let totRowY = y + 6;
+    doc.setFontSize(8.5);
+    subTotalRows.forEach(r => {
+        doc.setFont(pdfFont, 'normal');
+        doc.setTextColor(...ink500);
+        doc.text(r.label, totX + 3, totRowY);
+        doc.setFont(pdfFont, 'bold');
+        doc.setTextColor(...ink900);
+        doc.text(fmtEuro(r.value), totX + totBlockW - 3, totRowY, { align: 'right' });
+        totRowY += 6;
+    });
+    // TOTAAL band onderaan
+    doc.setFillColor(...ktsBlue);
+    doc.rect(totX, y + blockH2 - 12, totBlockW, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont(pdfFont, 'bold');
+    doc.text('TOTAAL', totX + 3, y + blockH2 - 4.5);
+    doc.setFontSize(13);
+    doc.text(fmtEuro(totalIncl), totX + totBlockW - 3, y + blockH2 - 4, { align: 'right' });
+
+    // --- FOOTER ---
+    doc.setFontSize(7);
+    doc.setFont(pdfFont, 'normal');
+    doc.setTextColor(...ink400);
+    const footerY = ph - 5;
+    doc.text('Op deze inkooporder zijn de Algemene Voorwaarden 2026 van Kuijpers Technical Services BV van toepassing.', ml, footerY);
+    doc.text('KvK 93410557  ·  BTW NL866385368B01', pw - mr, footerY, { align: 'right' });
+
+    // Save
+    const slug = (data.project.code || '').replace(/[^a-zA-Z0-9-]/g, '');
+    const dt = (data.date || '').replace(/[^0-9]/g, '');
+    const fileName = `KTS-Inkooporder_${slug}-${dt}.pdf`;
+    doc.save(fileName);
+    return fileName;
+}
+
+async function testInkooporder() {
+    try {
+        logStatus('inkooporder', 'Genereren...');
+        const fn = await generateInkooporderV2(SAMPLE_INKOOPORDER);
+        logStatus('inkooporder', '✓ Gedownload: ' + fn, 'ok');
+    } catch (e) {
+        console.error(e);
+        logStatus('inkooporder', '✗ Fout: ' + e.message, 'err');
+    }
+}
+function testFactuur() { logStatus('factuur', 'Komt na review inkooporder.'); }
 </script>
 </body>
 </html>
