@@ -174,9 +174,9 @@ async function generateWeekstaatV2(data) {
     doc.setTextColor(...ktsBlue);
     const titleY = y + 6;
     const iconSize = 10; // 1.25x t.o.v. tekst-cap
-    // Vertical center icoon op tekst baseline
+    // Verticaal optisch gecentreerd op het midden van de tekst (cap-height/2 boven baseline)
     if (TANDWIEL) {
-        try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 1, iconSize, iconSize); } catch (e) {}
+        try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 3, iconSize, iconSize); } catch (e) {}
     }
     doc.text('URENSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
@@ -197,18 +197,19 @@ async function generateWeekstaatV2(data) {
         'Nieuwboerweg 2A, 1738BB Waarland',
         '+31 6 5123 9050  ·  info@kuijpers-ts.nl'
     ];
-    let addrY = y + logoH + 1;
+    let addrY = y + logoH + 4; // iets meer lucht tussen logo en tekst
     addrLines.forEach(line => {
         doc.text(line, logoCenterX, addrY, { align: 'center' });
         addrY += 3.6;
     });
-    const headerEndY = addrY; // bottom of header block
+    const headerEndY = addrY; // bottom of header block (right side)
 
     // ============================================================
     // PERSON / PROJECT INFO BAR (twee rijen, 3 kolommen)
     // ============================================================
-    // Dynamisch positioneren onder header-block (logo + adres)
-    y = Math.max(headerEndY + 4, mt + 38);
+    // Info-bar staat LINKS (colA t/m colB), logo+adres staan RECHTS — mag op
+    // dezelfde verticale band staan zodat de tabel hoger kan beginnen.
+    y = mt + 14; // direct na URENSTAAT-titel
     const colA = ml, colB = ml + 95, colC = ml + 195;
     const labelGap = 24;
 
@@ -240,7 +241,8 @@ async function generateWeekstaatV2(data) {
     // ============================================================
     // TABEL: Dag | Datum | Begin | Eind | Pauze | Uren | Omschrijving | Locatie | Km
     // ============================================================
-    y += 12;
+    // Tabel moet onder zowel info-bar (links) als logo+adres (rechts) starten
+    y = Math.max(y + 12, headerEndY + 4);
     const cols = [
         { key:'day',     label:'DAG',          w: 22 },
         { key:'date',    label:'DATUM',        w: 22 },
