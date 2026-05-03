@@ -514,6 +514,7 @@ const SAMPLE_INKOOPORDER = {
         projectName: SAMPLE_WEEKSTAAT.project.name
     },
     // Items per uren-type — alleen regels met aantal > 0 worden getoond
+    // Elke item: desc (hoofdregel) + optional sub (project context op regel 2)
     items: (function() {
         const days = SAMPLE_WEEKSTAAT.days;
         const weekday = days.slice(0, 5).reduce((s,d) => s + (d.hours || 0), 0);
@@ -529,16 +530,16 @@ const SAMPLE_INKOOPORDER = {
         const pn = SAMPLE_WEEKSTAAT.project.name;
         const result = [];
         let nr = 1;
-        if (weekday > 0) result.push({ nr: nr++, desc: `Reguliere uren ma–vr · week ${wn}/${yr} · ${pn}`, qty: weekday, unit: 'u', price: tariefRegulier });
-        if (sat > 0)     result.push({ nr: nr++, desc: `Zaterdaguren (toeslag 50%) · week ${wn}/${yr}`,    qty: sat,     unit: 'u', price: tariefZat });
-        if (sun > 0)     result.push({ nr: nr++, desc: `Zondag-/feestdaguren (toeslag 100%) · week ${wn}/${yr}`, qty: sun, unit: 'u', price: tariefZon });
-        if (km > 0)      result.push({ nr: nr++, desc: `Reis kilometers · week ${wn}/${yr}`,                qty: km,      unit: 'km', price: tariefKm });
+        if (weekday > 0) result.push({ nr: nr++, desc: `Reguliere uren ma–vr · week ${wn}/${yr}`, sub: pn, qty: weekday, unit: 'u', price: tariefRegulier });
+        if (sat > 0)     result.push({ nr: nr++, desc: `Zaterdaguren (toeslag 50%) · week ${wn}/${yr}`, sub: pn, qty: sat, unit: 'u', price: tariefZat });
+        if (sun > 0)     result.push({ nr: nr++, desc: `Zondag-/feestdaguren (toeslag 100%) · week ${wn}/${yr}`, sub: pn, qty: sun, unit: 'u', price: tariefZon });
+        if (km > 0)      result.push({ nr: nr++, desc: `Reis kilometers · week ${wn}/${yr}`, sub: pn, qty: km, unit: 'km', price: tariefKm });
         return result;
     })(),
     btwPct: 21,
     transport: 0,
     overige: 0,
-    opmerkingen: 'Inzet conform goedgekeurde weekstaat. Zie bijlage: KTS-Weekstaat_2026-W19_Mark-Kuijpers.pdf',
+    opmerkingen: 'Inzet conform goedgekeurde weekstaat.\nZie bijlage: KTS-Weekstaat_2026-W19_Mark-Kuijpers.pdf',
     paymentTerm: '30 dagen na factuurdatum'
 };
 
@@ -606,7 +607,7 @@ async function generateInkooporderV2(data) {
     doc.setTextColor(...ink500);
     let addrY = y + logoH + 4;
     ['Nieuwboerweg 2A, 1738BB Waarland', '+31 6 5123 9050  ·  info@kuijpers-ts.nl'].forEach(line => {
-        doc.text(line, logoCenterX, addrY, { align: 'center' });
+        doc.text(line, pw - mr, addrY, { align: 'right' });
         addrY += 3.6;
     });
     const headerEndY = addrY;
@@ -710,7 +711,7 @@ async function generateInkooporderV2(data) {
     ];
     const itemTotalW = itemCols.reduce((s,c)=>s+c.w,0); // = 186 = uw
     const itemHeaderH = 7;
-    const itemRowH = 9;
+    const itemRowH = 12; // 2 regels: hoofd-desc + project-sub
 
     // Header row
     doc.setFillColor(...ktsBlue);
@@ -746,19 +747,33 @@ async function generateInkooporderV2(data) {
             subtotaal += total;
             cx = ml;
             itemCols.forEach(c => {
-                let v = '';
-                if (c.key === 'nr')    v = item.nr;
-                if (c.key === 'desc')  v = item.desc || (item.code || '');
-                if (c.key === 'qty')   v = (item.qty != null ? item.qty.toLocaleString('nl-NL') : '') + (item.unit ? ' ' + item.unit : '');
-                if (c.key === 'price') v = fmtEuro(item.price);
-                if (c.key === 'total') v = fmtEuro(total);
                 const tx = c.align === 'left' ? cx + 2 : c.align === 'right' ? cx + c.w - 2 : cx + c.w / 2;
-                doc.setFontSize(c.key === 'desc' ? 8.5 : 9);
-                doc.setFont(pdfFont, c.key === 'total' ? 'bold' : 'normal');
-                doc.setTextColor(...ink900);
-                let txt = String(v);
-                if (c.key === 'desc' && txt.length > 78) txt = txt.substring(0, 75) + '...';
-                doc.text(txt, tx, y + itemRowH / 2 + 1.5, { align: c.align });
+                if (c.key === 'desc') {
+                    // 2-regel layout: hoofd-desc + sub (project-context) op regel 2
+                    let main = item.desc || item.code || '';
+                    if (main.length > 80) main = main.substring(0, 77) + '...';
+                    doc.setFontSize(8.5);
+                    doc.setFont(pdfFont, 'normal');
+                    doc.setTextColor(...ink900);
+                    doc.text(main, tx, y + 5, { align: 'left' });
+                    if (item.sub) {
+                        let sub = String(item.sub);
+                        if (sub.length > 80) sub = sub.substring(0, 77) + '...';
+                        doc.setFontSize(7.5);
+                        doc.setTextColor(...ink500);
+                        doc.text(sub, tx, y + 9, { align: 'left' });
+                    }
+                } else {
+                    let v = '';
+                    if (c.key === 'nr')    v = item.nr;
+                    if (c.key === 'qty')   v = (item.qty != null ? item.qty.toLocaleString('nl-NL') : '') + (item.unit ? ' ' + item.unit : '');
+                    if (c.key === 'price') v = fmtEuro(item.price);
+                    if (c.key === 'total') v = fmtEuro(total);
+                    doc.setFontSize(9);
+                    doc.setFont(pdfFont, c.key === 'total' ? 'bold' : 'normal');
+                    doc.setTextColor(...ink900);
+                    doc.text(String(v), tx, y + itemRowH / 2 + 1.5, { align: c.align });
+                }
                 cx += c.w;
             });
         }
