@@ -10129,6 +10129,40 @@
         }
 
         // ===== CUSTOM CONFIRM DIALOG =====
+        // Vraag na "Week opslaan" of de gebruiker direct wil ondertekenen+versturen
+        // Returned true = ondertekenen nu, false = later
+        function askSignAfterSaveAsync(weekNumber) {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,27,45,0.45);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:white;border-radius:14px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
+                box.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#EAF2F7;margin:0 auto 14px">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                    <div style="text-align:center;font-size:16px;font-weight:600;color:#0F1B2D;margin-bottom:6px">Week ${weekNumber} opgeslagen</div>
+                    <div style="text-align:center;font-size:13px;color:#5C6675;line-height:1.5;margin-bottom:20px">Wil je deze week direct ondertekenen en versturen?</div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <button id="sign-yes" style="padding:12px 20px;border-radius:10px;border:none;background:#07567F;color:white;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit">Ja, onderteken &amp; verstuur</button>
+                        <button id="sign-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:white;color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">Niet nu — doe ik later</button>
+                    </div>
+                `;
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                function close(result) { overlay.remove(); resolve(result); }
+                box.querySelector('#sign-yes').onclick = () => close(true);
+                box.querySelector('#sign-no').onclick = () => close(false);
+                overlay.onclick = (e) => { if (e.target === overlay) close(false); };
+                document.addEventListener('keydown', function escHandler(e) {
+                    if (e.key === 'Escape') {
+                        close(false);
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                });
+            });
+        }
+
         function confirmAsync(message, destructive) {
             return new Promise(resolve => {
                 const overlay = document.createElement('div');
@@ -10313,8 +10347,22 @@
                     notifyOtherTabs();
                     logAudit('week_opgeslagen', { week: currentWeekNumber, tab: tab });
                     showToast('✓ ' + (labels[tab] || tab) + ' opgeslagen');
-                    // Na uren opslaan naar overzicht; bij kosten blijf je op het scherm
-                    if (tab === 'uren') switchScreen('overzicht');
+                    // Na uren opslaan: switch naar overzicht + bied direct ondertekenen aan
+                    if (tab === 'uren') {
+                        switchScreen('overzicht');
+                        // Wacht kort tot overzicht-renderOverview is geupdate en knoppen zichtbaar zijn
+                        setTimeout(async () => {
+                            // Alleen vragen als de week nog niet ondertekend/verstuurd is en niet leeg
+                            const hasHours = (weekData || []).some(d => (d.hours || 0) > 0);
+                            const status = currentWeekDbStatus;
+                            if (hasHours && (status === 'opgeslagen' || !status)) {
+                                const wantSign = await askSignAfterSaveAsync(currentWeekNumber);
+                                if (wantSign) {
+                                    openSignatureModal();
+                                }
+                            }
+                        }, 350);
+                    }
                 } catch (err) {
                     // Offline: sla lokaal op
                     saveWeekLocal();
