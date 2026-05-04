@@ -15637,9 +15637,13 @@
             const gridCols = showKm
                 ? '54px 1fr 1fr 56px 56px 56px'
                 : '54px 1fr 1fr 56px 56px';
+            // Header-labels gecentreerd boven de input-kolommen — "Dag" links omdat de
+            // dag-naam ook links staat in de body. Zonder text-align staan headers
+            // tegen de linkerrand van hun cel terwijl de input-content gecentreerd is.
+            const headerCenter = 'text-align:center';
             const headerLabels = showKm
-                ? `<span>Dag</span><span>Start</span><span>Eind</span><span>Uren</span><span>Pauze</span><span>Km</span>`
-                : `<span>Dag</span><span>Start</span><span>Eind</span><span>Uren</span><span>Pauze</span>`;
+                ? `<span>Dag</span><span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span><span style="${headerCenter}">Km</span>`
+                : `<span>Dag</span><span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span>`;
 
             let rows = '';
             for (let d = 0; d < 7; d++) {
@@ -15674,22 +15678,25 @@
                        </label>`
                     : '';
 
-                rows += `<div style="background:${d>=5?'#f8fafc':'#fff'};border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px" data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}">
+                rows += `<div class="aew-row" style="background:${d>=5?'#f8fafc':'#fff'};border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px" data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}" data-day-idx="${d}">
                     <div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;font-size:0.85rem">
                         <span style="font-weight:700;color:${d>=5?'var(--kts-blue)':'inherit'}">${dagNamen[d]} ${date.getDate()}</span>
-                        <input type="time" class="aew-start" value="${startVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%">
-                        <input type="time" class="aew-end" value="${endVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%">
-                        <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center">
-                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center" title="Pauze in minuten">
+                        <input type="time" class="aew-start" value="${startVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                        <input type="time" class="aew-end" value="${endVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                        <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box">
+                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Pauze in minuten">
                         ${kmCell}
                     </div>
                     <input type="text" class="aew-loc" value="${escapeHtml(locVal)}" placeholder="Locatie" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                     <input type="text" class="aew-desc" value="${escapeHtml(descVal)}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                    ${hotelCell}
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+                        ${hotelCell || '<span></span>'}
+                        <button type="button" class="aew-clear-btn" onclick="adminClearDayRow(this)" style="padding:4px 10px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;cursor:pointer;font-weight:600">🚫 Niet gewerkt</button>
+                    </div>
                 </div>`;
             }
             document.getElementById('admin-modal-fields').innerHTML = `
-                <div style="display:grid;grid-template-columns:${gridCols};gap:8px;margin-bottom:8px;padding:0 10px;font-size:0.75rem;color:var(--muted);font-weight:600">
+                <div style="display:grid;grid-template-columns:${gridCols};gap:8px;margin-bottom:8px;padding:8px 11px 0 11px;font-size:0.75rem;color:var(--muted);font-weight:600">
                     ${headerLabels}
                 </div>
                 ${rows}
@@ -15701,6 +15708,32 @@
             const delBtn = document.getElementById('admin-modal-delete');
             if (delBtn) delBtn.style.display = 'none';
             modal.classList.add('active');
+        }
+
+        // "Niet gewerkt"-knop voor één dag in de admin-modal: leeg alle invoer-velden
+        // van die dagrij zodat hij overslaan wordt bij opslaan. Wordt aangeroepen vanuit
+        // onclick — pakt de dichtstbijzijnde .aew-row en cleart alle inputs binnen.
+        function adminClearDayRow(btn) {
+            const row = btn && btn.closest('.aew-row');
+            if (!row) return;
+            const startEl = row.querySelector('.aew-start');
+            const endEl   = row.querySelector('.aew-end');
+            const hoursEl = row.querySelector('.aew-hours');
+            const breakEl = row.querySelector('.aew-break');
+            const kmEl    = row.querySelector('.aew-km');
+            const hotelEl = row.querySelector('.aew-hotel');
+            const locEl   = row.querySelector('.aew-loc');
+            const descEl  = row.querySelector('.aew-desc');
+            if (startEl) startEl.value = '';
+            if (endEl)   endEl.value = '';
+            if (hoursEl) hoursEl.value = '';
+            if (breakEl) breakEl.value = 0;
+            if (kmEl)    kmEl.value = '';
+            if (hotelEl) hotelEl.checked = false;
+            if (locEl)   locEl.value = '';
+            if (descEl)  descEl.value = '';
+            // Visuele feedback: rij iets vergrijzen
+            row.style.opacity = '0.55';
         }
 
         async function adminSaveWeekEntries(userId, projectId, weekNumber, year) {
