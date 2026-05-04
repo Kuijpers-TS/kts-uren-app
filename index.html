@@ -8857,12 +8857,28 @@
             const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
 
             // Stats grid — verberg alles als er geen uren zijn
+            // Layout-strategie:
+            //  - canSeeRates=true: uren-highlight neemt volle rij (zodat omzet ernaast in
+            //    nieuwe rij past), kilometer + omzet in 2 kolommen, totaal weer volle rij.
+            //  - canSeeRates=false: tiles zijn allemaal "informatief" → gewoon 2 kolommen
+            //    naast elkaar, geen volle-rij highlight (anders staan vervolg-tiles
+            //    asymmetrisch alleen in een halve rij).
             let statsHtml = '';
             if (totalMonthHours === 0) {
                 statsHtml = '';
             } else {
+                // Tel hoeveel niet-rates tiles er getoond worden — bepaalt of uren
+                // volle rij krijgt of in een 2-kolom layout meegaat.
+                const showKmTile = hasKm && totalMonthKm > 0;
+                const showThuiswerkTile = hasThuiswerk && totalThuiswerkDagen > 0;
+                const showHotelTile = hasHotel && totalHotelNights > 0;
+                const nonRateTileCount = (showKmTile ? 1 : 0) + (showThuiswerkTile ? 1 : 0) + (showHotelTile ? 1 : 0);
+
+                // Uren-tile: volle rij ALLEEN als (a) gebruiker tarieven mag zien (omzet komt
+                // ernaast in nieuwe rij), OF (b) er geen andere tiles zijn om mee te combineren.
+                const urenSpansFullRow = canSeeRates || nonRateTileCount === 0;
                 statsHtml = `
-                <div class="stat-card highlight" ${!canSeeRates ? 'style="grid-column:1/-1"' : ''}>
+                <div class="stat-card highlight" ${urenSpansFullRow ? 'style="grid-column:1/-1"' : ''}>
                     <div class="stat-value">${fmt(totalMonthHours)}</div>
                     <div class="stat-label">Uren deze maand</div>
                 </div>`;
@@ -8875,7 +8891,7 @@
                 </div>`;
                 }
 
-                if (hasKm && totalMonthKm > 0) {
+                if (showKmTile) {
                     statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalMonthKm.toLocaleString('nl-NL')}</div>
@@ -8890,7 +8906,7 @@
                     }
                 }
 
-                if (hasThuiswerk && totalThuiswerkDagen > 0) {
+                if (showThuiswerkTile) {
                     statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalThuiswerkDagen}</div>
@@ -8898,7 +8914,7 @@
                 </div>`;
                 }
 
-                if (hasHotel && totalHotelNights > 0) {
+                if (showHotelTile) {
                     statsHtml += `
                 <div class="stat-card">
                     <div class="stat-value">${totalHotelNights}× 🏨</div>
@@ -8950,7 +8966,11 @@
             } else {
                 revenueHtml = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:0.85rem">Nog geen uren ingevuld voor ${MONTHS_LONG[overviewMonth]} ${overviewYear}</div>`;
             }
-            document.getElementById('overview-revenue').innerHTML = revenueHtml;
+            // Verberg de revenue-card volledig (incl. .week-summary border) als er
+            // geen content is — anders verschijnt er een lege witte tegel onder de stats.
+            const revenueEl = document.getElementById('overview-revenue');
+            revenueEl.innerHTML = revenueHtml;
+            revenueEl.style.display = revenueHtml ? '' : 'none';
 
             // Maandtotaal in navigatiebalk
             document.getElementById('month-total').textContent = totalMonthHours > 0
@@ -10061,6 +10081,9 @@
                 // Administratie tab tonen/verbergen
                 const navAdm2 = document.getElementById('nav-administratie');
                 if (navAdm2) navAdm2.style.display = (isAdmin || currentUser.allow_administratie) ? '' : 'none';
+                // Bottom-nav grid dynamisch aanpassen aan aantal zichtbare items
+                // (anders staan 4 knoppen op 1/5 grid links uitgelijnd i.p.v. gecentreerd)
+                updateBottomNavGrid();
 
                 // Laad uren voor huidige week
                 await loadWeekFromSupabase();
