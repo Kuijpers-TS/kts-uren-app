@@ -6804,10 +6804,13 @@
             const lineCol = [180, 180, 180];
             const lineColLight = [220, 220, 220];
 
-            // Watermark
+            // Watermark — tandwiel volledig binnen de pagina (anders worden tanden
+            // boven/onder afgeknot en zien losse tanden eruit als asymmetrische
+            // "uitstulpingen"). Landscape A4 = 210mm hoog, dus max ~180mm voor lucht
+            // boven en onder.
             if (TANDWIEL) {
                 try {
-                    const wmSize = 250;
+                    const wmSize = 175;
                     doc.saveGraphicsState && doc.saveGraphicsState();
                     doc.setGState && doc.setGState(new doc.GState({ opacity: 0.08 }));
                     doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
@@ -7941,6 +7944,67 @@
                             showToast('✅ Weekstaat goedgekeurd & PDF gedownload');
                         }
                     } catch(pdfErr) { console.warn('PDF generatie na goedkeuring:', pdfErr); }
+
+                    // Doorklik-flow: alleen voor admins (zzp heeft geen IO-tab toegang).
+                    // Niet starten als admin namens een gebruiker tekent — dan hoort hij in
+                    // de admin-flow door, niet via de zzp-modal.
+                    if (currentUser && currentUser.role === 'admin' && !_adminSignOverride
+                        && typeof askContinueAsync === 'function') {
+                        try {
+                            const wantIO = await askContinueAsync({
+                                title: 'Weekstaat goedgekeurd',
+                                message: `Week ${currentWeekNumber}/${currentYear} is goedgekeurd door beide partijen.<br>Wil je nu direct een inkooporder voor deze week maken?`,
+                                confirmLabel: 'Ja, naar inkooporder',
+                                cancelLabel: 'Niet nu',
+                                iconSvg: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>'
+                            });
+                            if (wantIO && typeof switchAdminTab === 'function') {
+                                // Bewaar referenties vóór tab-switch (currentUser/Project worden niet leeggemaakt
+                                // maar admin-tab heeft eigen filters)
+                                const targetUserId = currentUser.id;
+                                const targetProjectId = currentProject ? currentProject.id : null;
+                                const targetWeek = currentWeekNumber;
+                                const targetYear = currentYear;
+                                // Maandag van die ISO-week → maand-filter
+                                const simple = new Date(targetYear, 0, 1 + (targetWeek - 1) * 7);
+                                const dow = simple.getDay();
+                                const monday = new Date(simple);
+                                if (dow <= 4) monday.setDate(simple.getDate() - simple.getDay() + 1);
+                                else monday.setDate(simple.getDate() + 8 - simple.getDay());
+                                const targetMonth = monday.getMonth() + 1;
+
+                                switchAdminTab('inkooporders');
+                                setTimeout(async () => {
+                                    if (typeof loadInkooporderFilters === 'function') {
+                                        await loadInkooporderFilters();
+                                    }
+                                    const projEl = document.getElementById('io-filter-project');
+                                    const userEl = document.getElementById('io-filter-user');
+                                    const yearEl = document.getElementById('io-filter-year');
+                                    const monthEl = document.getElementById('io-filter-month');
+                                    if (projEl && targetProjectId) projEl.value = targetProjectId;
+                                    if (userEl && targetUserId) userEl.value = targetUserId;
+                                    if (yearEl) yearEl.value = targetYear;
+                                    if (monthEl) monthEl.value = targetMonth;
+                                    const useWeekEl = document.getElementById('io-use-week');
+                                    const weekWrap = document.getElementById('io-week-selector');
+                                    const weekEl = document.getElementById('io-filter-week');
+                                    if (useWeekEl) useWeekEl.checked = true;
+                                    if (weekWrap) weekWrap.style.display = '';
+                                    if (weekEl) {
+                                        if (!Array.from(weekEl.options).some(o => String(o.value) === String(targetWeek))) {
+                                            const opt = document.createElement('option');
+                                            opt.value = targetWeek;
+                                            opt.textContent = `Week ${targetWeek}`;
+                                            weekEl.appendChild(opt);
+                                        }
+                                        weekEl.value = targetWeek;
+                                    }
+                                    if (typeof previewPO === 'function') previewPO();
+                                }, 300);
+                            }
+                        } catch (e) { console.warn('Weekstaat→IO doorklik faalde:', e); }
+                    }
                 } else {
                     // Alleen ZZP'er getekend — direct ondertekenen + versturen in één stap
                     const sb = getSupabase();
