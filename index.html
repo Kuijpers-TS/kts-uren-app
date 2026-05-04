@@ -440,6 +440,10 @@
             padding: 24px 20px 32px;
             animation: slideUp 0.3s ease;
         }
+        /* Brede variant voor uren-invoer modals waar 6 kolommen op één rij moeten
+           passen — wordt door adminEditWeekEntries / adminNewWeekstaat erop gezet
+           en door closeModal weer verwijderd. */
+        .modal.modal-wide { max-width: 720px; }
         @keyframes slideUp {
             from { transform: translateY(100%); }
             to { transform: translateY(0); }
@@ -8697,7 +8701,15 @@
             document.getElementById('exp-date').value = toLocalDateStr(new Date());
             document.getElementById('expense-modal').classList.add('active');
         }
-        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('active');
+            // Reset eventuele wide-variant van de inner modal — vermijdt dat een volgende
+            // generieke admin-modal-opening per ongeluk te breed blijft.
+            const innerModal = el.querySelector('.modal');
+            if (innerModal) innerModal.classList.remove('modal-wide');
+        }
 
         // ===== PROJECT SWITCHER =====
         async function openProjectSwitcher() {
@@ -15660,17 +15672,20 @@
             const modal = document.getElementById('admin-modal');
             document.getElementById('admin-modal-title').textContent = `✏️ ${userName} — Week ${weekNumber}/${year}`;
 
-            // Header-grid: variabel aantal kolommen op basis van rechten
-            // Vast: dag, start, eind, uren, pauze. Optioneel: km (4 kolommen → 5/6 kolommen).
-            // Km-kolom iets breder (72px) want 3-cijferige km-waardes (zoals 232, 464)
-            // plus de native number-spinner-pijltjes pasten net niet in 56px.
-            // Belangrijk: minmax(0, 1fr) i.p.v. 1fr — anders forceert de native time-input
-            // een min-content van ~120px waardoor de totale grid-breedte de modal overflow't
-            // (probleem zichtbaar bij km-kolom die buiten de white card uitsteekt).
-            // Hotel-checkbox staat bij omschrijving-rij in de body.
+            // Vaste kolombreedtes: tijd-inputs hebben minimaal ~88px nodig om "07:00"
+            // volledig te tonen mét klok-icoon. Onder die breedte knipt Chrome de "00"
+            // eraf. Met minmax(0,1fr) gebeurde dat — vandaar nu vaste px-breedtes.
+            //
+            // Som van de kolommen + 5 gaps van 6px:
+            //   showKm: 50+88+88+50+50+72 = 398 + 30 gap = 428px (past op smartphone)
+            //   geen km: 50+88+88+50+50  = 326 + 24 gap = 350px (past zelfs op iPhone SE)
+            // De rij zelf wordt door overflow:hidden van de buiten-card gevangen, dus geen
+            // horizontale scroll meer. Op zeer smalle schermen (< 460px) toont een media
+            // query in CSS later eventueel een gestackte variant — voor laptop/tablet
+            // werkt deze layout out-of-the-box.
             const gridCols = showKm
-                ? '54px minmax(0, 1fr) minmax(0, 1fr) 56px 56px 72px'
-                : '54px minmax(0, 1fr) minmax(0, 1fr) 56px 56px';
+                ? '50px 88px 88px 50px 50px 72px'
+                : '50px 88px 88px 56px 56px';
             // Header-labels gecentreerd boven de input-kolommen — "Dag" links omdat de
             // dag-naam ook links staat in de body. Zonder text-align staan headers
             // tegen de linkerrand van hun cel terwijl de input-content gecentreerd is.
@@ -15751,6 +15766,10 @@
             saveBtn.onclick = () => adminSaveWeekEntries(userId, projectId, weekNumber, year);
             const delBtn = document.getElementById('admin-modal-delete');
             if (delBtn) delBtn.style.display = 'none';
+            // Brede modal-variant zodat de 6 kolommen volledig passen — anders knipt
+            // Chrome de "00" van de tijd-input af bij default 480px max-width.
+            const innerModal = modal.querySelector('.modal');
+            if (innerModal) innerModal.classList.add('modal-wide');
             modal.classList.add('active');
         }
 
@@ -15898,7 +15917,8 @@
 
             if (errors) showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
             else showToast(`✓ ${saved} dagen opgeslagen — staat klaar in Concept om te ondertekenen`);
-            document.getElementById('admin-modal').classList.remove('active');
+            // closeModal i.p.v. directe classList — die verwijdert ook modal-wide cleanup
+            closeModal('admin-modal');
             document.getElementById('admin-modal-save').textContent = 'Opslaan';
             // Lijst verversen zodat de nieuwe concept-weekstaat zichtbaar wordt
             if (typeof loadWeekstaten === 'function') loadWeekstaten();
