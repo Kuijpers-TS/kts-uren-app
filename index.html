@@ -8015,12 +8015,10 @@
                                     restoreAdminSignOverride();
                                     if (typeof loadWeekstaten === 'function') loadWeekstaten();
                                 }
-                                // Maandag van die ISO-week → maand-filter
-                                const simple = new Date(targetYear, 0, 1 + (targetWeek - 1) * 7);
-                                const dow = simple.getDay();
-                                const monday = new Date(simple);
-                                if (dow <= 4) monday.setDate(simple.getDate() - simple.getDay() + 1);
-                                else monday.setDate(simple.getDate() + 8 - simple.getDay());
+                                // Maand uit ISO-week — gebruik bestaande helper i.p.v. setDate-magic
+                                const monday = (typeof getWeekMondayFromWeekNumber === 'function')
+                                    ? getWeekMondayFromWeekNumber(targetYear, targetWeek)
+                                    : new Date(targetYear, 0, 1 + (targetWeek - 1) * 7);
                                 const targetMonth = monday.getMonth() + 1;
 
                                 switchAdminTab('inkooporders');
@@ -8034,8 +8032,10 @@
                                     const monthEl = document.getElementById('io-filter-month');
                                     if (projEl && targetProjectId) projEl.value = targetProjectId;
                                     if (userEl && targetUserId) userEl.value = targetUserId;
-                                    if (yearEl) yearEl.value = targetYear;
-                                    if (monthEl) monthEl.value = targetMonth;
+                                    if (yearEl) yearEl.value = String(targetYear);
+                                    // io-filter-month options gebruiken 2-digit zero-padded values
+                                    if (monthEl) monthEl.value = String(targetMonth).padStart(2, '0');
+                                    if (userEl && typeof autoFillCompanyForUser === 'function') autoFillCompanyForUser();
                                     const useWeekEl = document.getElementById('io-use-week');
                                     const weekWrap = document.getElementById('io-week-selector');
                                     const weekEl = document.getElementById('io-filter-week');
@@ -8048,7 +8048,7 @@
                                             opt.textContent = `Week ${targetWeek}`;
                                             weekEl.appendChild(opt);
                                         }
-                                        weekEl.value = targetWeek;
+                                        weekEl.value = String(targetWeek);
                                     }
                                     if (typeof previewPO === 'function') previewPO();
                                 }, 300);
@@ -14081,8 +14081,16 @@
                         const monthEl = document.getElementById('inv-filter-month');
                         if (projEl) projEl.value = ioData.project.id || ioData.project_id || '';
                         if (userEl) userEl.value = (ioData.user && ioData.user.id) || ioData.user_id || '';
-                        if (yearEl) yearEl.value = ioData.year;
-                        if (monthEl) monthEl.value = ioData.month;
+                        if (yearEl) yearEl.value = String(ioData.year);
+                        // Helper: zoek de juiste month-option ongeacht of die '5' of '05' is
+                        if (monthEl && ioData.month) {
+                            const m = parseInt(ioData.month);
+                            const padded = String(m).padStart(2, '0');
+                            const unpadded = String(m);
+                            // Probeer beide formats — werkt of de options nu padded zijn of niet
+                            const matchOpt = Array.from(monthEl.options).find(o => o.value === padded || o.value === unpadded);
+                            if (matchOpt) monthEl.value = matchOpt.value;
+                        }
                         if (typeof previewInvoice === 'function') previewInvoice();
                     }, 300);
                 }
@@ -15279,12 +15287,10 @@
                 });
                 if (wantIO) {
                     switchAdminTab('inkooporders');
-                    // Maandag van die ISO-week berekenen voor maand-filter
-                    const simple = new Date(year, 0, 1 + (weekNumber - 1) * 7);
-                    const dow = simple.getDay();
-                    const monday = new Date(simple);
-                    if (dow <= 4) monday.setDate(simple.getDate() - simple.getDay() + 1);
-                    else monday.setDate(simple.getDate() + 8 - simple.getDay());
+                    // Maand uit de ISO-week — gebruik bestaande helper i.p.v. setDate-magic
+                    const monday = (typeof getWeekMondayFromWeekNumber === 'function')
+                        ? getWeekMondayFromWeekNumber(year, weekNumber)
+                        : new Date(year, 0, 1 + (weekNumber - 1) * 7);
                     const month = monday.getMonth() + 1;
                     // Wacht tot IO-tab gerendered + filters geladen
                     setTimeout(async () => {
@@ -15297,8 +15303,13 @@
                         const monthEl = document.getElementById('io-filter-month');
                         if (projEl) projEl.value = projectId;
                         if (userEl) userEl.value = userId;
-                        if (yearEl) yearEl.value = year;
-                        if (monthEl) monthEl.value = month;
+                        if (yearEl) yearEl.value = String(year);
+                        // io-filter-month options gebruiken 2-digit zero-padded values
+                        // ('01'..'12') — dus padding is verplicht anders matcht .value niet
+                        if (monthEl) monthEl.value = String(month).padStart(2, '0');
+                        // Trigger autoFillCompanyForUser zodat IO-bedrijf en zzp-bedrijf
+                        // automatisch geselecteerd worden uit de project/user koppeling
+                        if (userEl && typeof autoFillCompanyForUser === 'function') autoFillCompanyForUser();
                         // Per-week selectie aanzetten en juiste week kiezen
                         const useWeekEl = document.getElementById('io-use-week');
                         const weekWrap = document.getElementById('io-week-selector');
@@ -15313,7 +15324,7 @@
                                 opt.textContent = `Week ${weekNumber}`;
                                 weekEl.appendChild(opt);
                             }
-                            weekEl.value = weekNumber;
+                            weekEl.value = String(weekNumber);
                         }
                         // Auto-preview
                         if (typeof previewPO === 'function') previewPO();
