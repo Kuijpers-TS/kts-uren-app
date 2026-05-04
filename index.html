@@ -4642,7 +4642,10 @@
 
             <!-- ===== GEBRUIKERS TAB ===== -->
             <div id="admin-gebruikers" style="display:none">
-                <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Actieve gebruikers</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                    <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Actieve gebruikers</div>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer"><input type="checkbox" id="admin-show-archived-users" onchange="loadAdminData('gebruikers')" style="width:14px;height:14px"> Toon gearchiveerd</label>
+                </div>
                 <div id="admin-user-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -10403,6 +10406,38 @@
             });
         }
 
+        // Modal-prompt voor vrije-tekst input. Resolved met de string (kan leeg zijn)
+        // bij OK, of null bij Annuleren — zodat caller "lege string" kan onderscheiden
+        // van "geannuleerd".
+        function promptAsync(title, placeholder, defaultValue) {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+                box.innerHTML = `
+                    <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:#1e293b;margin-bottom:8px">${title}</div>
+                    <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:18px">
+                    <div style="display:flex;gap:10px;justify-content:flex-end">
+                        <button id="pa-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
+                        <button id="pa-ok" style="padding:10px 20px;border-radius:10px;border:none;background:var(--kts-blue);color:white;font-size:0.85rem;cursor:pointer;font-weight:600">OK</button>
+                    </div>
+                `;
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                const input = box.querySelector('#pa-input');
+                setTimeout(() => input.focus(), 50);
+                function close(result) { overlay.remove(); resolve(result); }
+                box.querySelector('#pa-cancel').onclick = function() { close(null); };
+                box.querySelector('#pa-ok').onclick = function() { close(input.value); };
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') close(input.value);
+                    if (e.key === 'Escape') close(null);
+                });
+                overlay.onclick = function(e) { if (e.target === overlay) close(null); };
+            });
+        }
+
         // ===== OFFLINE INDICATOR =====
         (function() {
             const banner = document.createElement('div');
@@ -10787,8 +10822,16 @@
         }
 
         // Helper: filter users op test/productie modus
-        function getFilteredUsers() {
-            return (window._adminUsers || []).filter(u => _adminTestMode ? u.is_test === true : u.is_test !== true);
+        // Default: gearchiveerde gebruikers (archived_at gevuld) worden verborgen.
+        // Met opts.includeArchived=true worden ze WEL meegenomen — gebruikt voor de
+        // beheer-lijst met "Toon ook gearchiveerd" toggle, en voor history-views.
+        function getFilteredUsers(opts) {
+            const includeArchived = !!(opts && opts.includeArchived);
+            return (window._adminUsers || []).filter(u => {
+                if (_adminTestMode ? u.is_test !== true : u.is_test === true) return false;
+                if (!includeArchived && u.archived_at) return false;
+                return true;
+            });
         }
 
         function goToAdmin() {
@@ -11357,7 +11400,9 @@
             const { data: appUsers } = await sb.from('users').select('*').order('name');
             window._adminUsers = appUsers || [];
             const userList = document.getElementById('admin-user-list');
-            const filteredUsers = getFilteredUsers();
+            // Toggle "Toon ook gearchiveerd" bepaalt of archived users meegenomen worden
+            const showArchivedUsers = document.getElementById('admin-show-archived-users')?.checked || false;
+            const filteredUsers = getFilteredUsers({ includeArchived: showArchivedUsers });
             if (filteredUsers && filteredUsers.length > 0) {
                 userList.innerHTML = filteredUsers.map((u) => {
                     const idx = (window._adminUsers || []).indexOf(u);
@@ -11392,16 +11437,46 @@
                     const isNuActief = laatstActief === 'Nu actief';
                     const activityColor = isNuActief ? '#059669' : 'var(--muted)';
                     const activityDot = isNuActief ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#059669;margin-right:3px"></span>' : '';
+
+                    // Archief/anonymisering badges + actie-knoppen.
+                    const isArchived = !!u.archived_at;
+                    const isAnonymized = !!u.anonymized_at;
+                    const testBadge = u.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : '';
+                    const archivedBadge = isArchived ? ' <span style="background:#e2e8f0;color:#475569;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gearchiveerd op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' — ' + escapeHtml(u.archive_reason) : '') + '">📦 GEARCHIVEERD</span>' : '';
+                    const anonBadge = isAnonymized ? ' <span style="background:#fce7f3;color:#9d174d;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="PII verwijderd op ' + new Date(u.anonymized_at).toLocaleDateString('nl-NL') + '">🕶️ ANONIEM</span>' : '';
+
+                    // Test-modus → harde DELETE-knop. Productie → soft ARCHIVE / DEARCHIVE.
+                    // Anonymiseer-knop alleen voor archived users die >= 7 jaar gearchiveerd zijn
+                    // én nog niet geanonymiseerd.
+                    let actionBtn = '';
+                    if (_adminTestMode) {
+                        actionBtn = `<button onclick="event.stopPropagation();adminDeleteUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Permanent verwijderen (testdata)">🗑️</button>`;
+                    } else if (isArchived) {
+                        // Optioneel: dearchive-knop terugzetten naar actief
+                        actionBtn = `<button onclick="event.stopPropagation();adminUnarchiveUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#dcfce7;color:#166534;border:1px solid #86efac" title="Uit archief halen — gebruiker weer actief">↩️</button>`;
+                        // Anonymiseer-knop als ouder dan 7 jaar én PII nog aanwezig
+                        const archivedAge = (Date.now() - new Date(u.archived_at).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+                        if (archivedAge >= 7 && !isAnonymized) {
+                            actionBtn += `<button onclick="event.stopPropagation();adminAnonymizeUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4" title="PII verwijderen (>7 jaar oud)">🕶️</button>`;
+                        }
+                    } else {
+                        actionBtn = `<button onclick="event.stopPropagation();adminArchiveUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1" title="Archiveren (verbergt uit lijsten, data blijft bewaard)">📦</button>`;
+                    }
+
+                    const cardOpacity = isArchived ? '0.65' : '1';
                     return `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('gebruiker', ${idx})">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <div>
-                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(u.name || u.email)}${u.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
+                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer;opacity:${cardOpacity}" onclick="openAdminModal('gebruiker', ${idx})">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(u.name || u.email)}${testBadge}${archivedBadge}${anonBadge}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(u.email)}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
                                 <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${flagsHtml}</div>
                                 ${laatstActief ? '<div style="font-size:0.7rem;color:' + activityColor + ';margin-top:3px">' + activityDot + laatstActief + '</div>' : ''}
                             </div>
-                            <span class="status-badge ${u.role === 'admin' ? 'status-signed' : 'status-draft'}" style="text-transform:uppercase">${u.role}</span>
+                            <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+                                ${actionBtn}
+                                <span class="status-badge ${u.role === 'admin' ? 'status-signed' : 'status-draft'}" style="text-transform:uppercase">${u.role}</span>
+                            </div>
                         </div>
                     </div>`;
                 }).join('');
@@ -15169,6 +15244,142 @@
                 loadWeekstaten();
             } catch (e) {
                 showToast('❌ Fout: ' + e.message);
+            }
+        }
+
+        // ===== USER ARCHIVE / DELETE / ANONYMIZE =====
+        // 3 verschillende paden, elk AVG-conform:
+        //   1. adminDeleteUser   — alleen test-modus, hard delete met cascade
+        //   2. adminArchiveUser  — productie, soft archive (data blijft 7j voor Belastingdienst)
+        //   3. adminAnonymizeUser — productie, na 7j archief: PII verwijderen, IDs blijven
+
+        async function adminDeleteUser(userId, userName) {
+            // Alleen toegestaan in test-modus — beschermt productie data tegen ongeluk
+            if (!_adminTestMode) {
+                showToast('🔒 Hard verwijderen kan alleen in test-modus. Gebruik archiveren in productie.');
+                return;
+            }
+            const ok = await confirmAsync(
+                `Test-gebruiker "${userName}" PERMANENT verwijderen?\n\n` +
+                `Dit verwijdert de gebruiker EN alle gekoppelde data:\n` +
+                `· time_entries (uren-invoer)\n` +
+                `· week_status (weekstaten)\n` +
+                `· inkooporder_weeks (IO-koppelingen)\n` +
+                `· invoices (facturen waarop deze user staat)\n\n` +
+                `Deze actie is niet ongedaan te maken.`,
+                true
+            );
+            if (!ok) return;
+
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                // Cascade-delete handmatig (in geval FK-cascades niet aanwezig zijn)
+                // Volgorde: kinderen eerst, dan ouder
+                await sb.from('time_entries').delete().eq('user_id', userId);
+                await sb.from('week_status').delete().eq('user_id', userId);
+                await sb.from('inkooporder_weeks').delete().eq('user_id', userId);
+                // Invoices: alleen single-user (user_id=). Combi-facturen (user_ids array)
+                // verwijderen we niet automatisch — die kunnen meerdere users bevatten
+                // en horen bij een ander leven na verwijdering van één van hen.
+                await sb.from('invoices').delete().eq('user_id', userId);
+                // Rates per user-override
+                try { await sb.from('rates').delete().eq('user_id', userId); } catch (e) {}
+                // Project-assignments
+                try { await sb.from('project_users').delete().eq('user_id', userId); } catch (e) {}
+                // De user zelf
+                const { error: delErr } = await sb.from('users').delete().eq('id', userId);
+                if (delErr) throw delErr;
+
+                showToast('✓ Gebruiker en alle gekoppelde data verwijderd');
+                loadAdminData('gebruikers');
+            } catch (err) {
+                console.error('Delete user error:', err);
+                showToast('❌ Verwijderen mislukt: ' + err.message);
+            }
+        }
+
+        async function adminArchiveUser(userId, userName) {
+            // Vraag reden — optioneel
+            const reason = await promptAsync(
+                `Gebruiker "${userName}" archiveren?`,
+                'Reden van archivering (optioneel — bv. "Contract beeindigd 31-12-2025")',
+                ''
+            );
+            // promptAsync retourneert null bij cancel; lege string mag wel
+            if (reason === null) return;
+
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                const { error } = await sb.from('users')
+                    .update({
+                        archived_at: new Date().toISOString(),
+                        archive_reason: reason || null
+                    })
+                    .eq('id', userId);
+                if (error) throw error;
+                showToast('📦 Gebruiker gearchiveerd — data blijft 7 jaar bewaard');
+                loadAdminData('gebruikers');
+            } catch (err) {
+                console.error('Archive user error:', err);
+                showToast('❌ Archiveren mislukt: ' + err.message);
+            }
+        }
+
+        async function adminUnarchiveUser(userId, userName) {
+            const ok = await confirmAsync(`Gebruiker "${userName}" uit archief halen en weer activeren?`);
+            if (!ok) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                const { error } = await sb.from('users')
+                    .update({ archived_at: null, archive_reason: null })
+                    .eq('id', userId);
+                if (error) throw error;
+                showToast('↩️ Gebruiker is weer actief');
+                loadAdminData('gebruikers');
+            } catch (err) {
+                console.error('Unarchive user error:', err);
+                showToast('❌ Activeren mislukt: ' + err.message);
+            }
+        }
+
+        async function adminAnonymizeUser(userId, userName) {
+            const ok = await confirmAsync(
+                `PII verwijderen van "${userName}"?\n\n` +
+                `Naam, e-mail, telefoon, adres, KvK, BTW en IBAN worden gewist.\n` +
+                `De gebruiker-ID blijft bestaan zodat fiscale referenties\n` +
+                `(facturen, IO's, weekstaten) traceerbaar blijven.\n\n` +
+                `Deze actie is niet ongedaan te maken.`,
+                true
+            );
+            if (!ok) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                // Anonimiseer-naam: deterministisch op basis van eerste 8 chars van UUID
+                const shortId = String(userId).slice(0, 8);
+                const { error } = await sb.from('users')
+                    .update({
+                        name: 'Geanonimiseerd-' + shortId,
+                        email: shortId + '@anonymized.kts.local',
+                        phone: null,
+                        address: null,
+                        postcode: null,
+                        city: null,
+                        kvk_number: null,
+                        btw_number: null,
+                        iban: null,
+                        anonymized_at: new Date().toISOString()
+                    })
+                    .eq('id', userId);
+                if (error) throw error;
+                showToast('🕶️ Persoonsgegevens gewist — historische data blijft via ID traceerbaar');
+                loadAdminData('gebruikers');
+            } catch (err) {
+                console.error('Anonymize user error:', err);
+                showToast('❌ Anonymiseren mislukt: ' + err.message);
             }
         }
 
