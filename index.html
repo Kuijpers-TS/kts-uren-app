@@ -11597,10 +11597,18 @@
             listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
 
             try {
-                // Haal inkooporder records op uit inkooporder_weeks (gegroepeerd per io_number)
-                const { data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
-                    .select('io_number, user_id, project_id, year, month, week_number, created_at')
-                    .order('created_at', { ascending: false });
+                // Haal inkooporder records op uit inkooporder_weeks (gegroepeerd per io_number).
+                // storage_path is sinds mei 2026 expliciet opgeslagen — voor oude IO's NULL.
+                let ioWeeks, ioErr;
+                ({ data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
+                    .select('io_number, user_id, project_id, year, month, week_number, created_at, storage_path')
+                    .order('created_at', { ascending: false }));
+                // Fallback voor oude DB zonder storage_path kolom
+                if (ioErr && /storage_path/.test(ioErr.message || '')) {
+                    ({ data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
+                        .select('io_number, user_id, project_id, year, month, week_number, created_at')
+                        .order('created_at', { ascending: false }));
+                }
 
                 if (ioErr) throw ioErr;
 
@@ -11613,7 +11621,7 @@
                     return;
                 }
 
-                // Groepeer per io_number
+                // Groepeer per io_number — pak één storage_path per groep
                 const ioMap = {};
                 filteredPOWeeks.forEach(pw => {
                     if (!ioMap[pw.io_number]) {
@@ -11624,10 +11632,14 @@
                             year: pw.year,
                             month: pw.month,
                             weeks: [],
+                            storage_path: pw.storage_path || null,
                             created_at: pw.created_at
                         };
                     }
                     ioMap[pw.io_number].weeks.push(pw.week_number);
+                    if (!ioMap[pw.io_number].storage_path && pw.storage_path) {
+                        ioMap[pw.io_number].storage_path = pw.storage_path;
+                    }
                 });
 
                 const ioList = Object.values(ioMap).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -11642,11 +11654,15 @@
                 listEl.innerHTML = ioList.map(io => {
                     const userName = userMap[io.user_id] || 'Onbekend';
                     const projLabel = projMap[io.project_id] || 'Onbekend';
-                    const wekenTekst = io.weeks.sort((a,b) => a-b).join(', ');
+                    const sortedWeeks = io.weeks.sort((a,b) => a-b);
+                    const wekenTekst = sortedWeeks.join(', ');
                     const maandTekst = MONTHS_SHORT[io.month - 1] + ' ' + io.year;
                     const datumTekst = new Date(io.created_at).toLocaleDateString('nl-NL');
                     const projCode = (window._adminProjects || []).find(p => p.id === io.project_id)?.project_code || '';
-                    const storagePath = `${io.year}/${projCode}/${io.io_number.replace(/\\s+/g, '_')}.pdf`;
+                    // Path: gebruik opgeslagen storage_path; fallback naar reconstructie voor oude IO's.
+                    // Oud format: io_number.replace(/\s+/g, '_') + '.pdf'
+                    const storagePath = io.storage_path
+                        || `${io.year}/${projCode}/${(io.io_number || '').replace(/\s+/g, '_')}.pdf`;
 
                     return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                         <div style="flex:1;min-width:0">
@@ -11743,24 +11759,39 @@
             const sb = getSupabase();
             if (!sb) return;
             try {
-                // Haal PO-info op voor storage path
-                const { data: ioWeeks } = await sb.from('inkooporder_weeks')
-                    .select('project_id, year')
-                    .eq('io_number', ioNumber)
-                    .limit(1);
+                // Haal PO-info op voor storage path — incl. opgeslagen storage_path indien aanwezig
+                let ioWeeks;
+                try {
+                    ({ data: ioWeeks } = await sb.from('inkooporder_weeks')
+                        .select('project_id, year, storage_path')
+                        .eq('io_number', ioNumber)
+                        .limit(1));
+                } catch (e) {
+                    // Fallback voor oude DB zonder storage_path
+                    ({ data: ioWeeks } = await sb.from('inkooporder_weeks')
+                        .select('project_id, year')
+                        .eq('io_number', ioNumber)
+                        .limit(1));
+                }
 
                 // Verwijder inkooporder_weeks records
                 const { error: delErr } = await sb.from('inkooporder_weeks')
                     .delete().eq('io_number', ioNumber);
                 if (delErr) throw delErr;
 
-                // Probeer PDF uit storage te verwijderen
+                // Probeer PDF uit storage te verwijderen — beide paden (nieuwe + oude naming)
+                // zodat we ook PDFs kunnen opruimen die vóór de naming-migratie zijn aangemaakt.
                 if (ioWeeks && ioWeeks.length > 0) {
                     const pw = ioWeeks[0];
                     const projCode = (window._adminProjects || []).find(p => p.id === pw.project_id)?.project_code || '';
+                    const pathsToTry = [];
+                    if (pw.storage_path) pathsToTry.push(pw.storage_path);
                     if (projCode) {
-                        const storagePath = `${pw.year}/${projCode}/${ioNumber.replace(/\s+/g, '_')}.pdf`;
-                        await sb.storage.from('inkooporders').remove([storagePath]);
+                        // Oude naming-fallback
+                        pathsToTry.push(`${pw.year}/${projCode}/${ioNumber.replace(/\s+/g, '_')}.pdf`);
+                    }
+                    if (pathsToTry.length > 0) {
+                        try { await sb.storage.from('inkooporders').remove(pathsToTry); } catch (e) {}
                     }
                 }
 
@@ -12624,8 +12655,11 @@
             const doc = await generateFactuurV2(data, { save: false });
             if (!doc) return;
 
+            // Filename volgt KTS-naming-conventie: KTS-Factuur_{factuurnum}_{klant}.pdf
+            const clientName = invData.clientCompany?.name || invData.project?.client_name || '';
+            const fileName = ktsFactuurName(invoiceNumber, clientName);
+
             // Save lokaal (folder of download)
-            const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
             const savedInv = await savePdfToFolder(doc, fileName, 'facturen');
             if (!savedInv) doc.save(fileName);
 
@@ -12894,8 +12928,9 @@
             // Voettekst toevoegen
             addPdfFooter(doc, false);
 
-            // Download
-            const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
+            // Download — filename volgt KTS-naming-conventie
+            const clientNameLeg = invData.clientCompany?.name || invData.project?.client_name || '';
+            const fileName = ktsFactuurName(invoiceNumber, clientNameLeg);
             const savedInv = await savePdfToFolder(doc, fileName, 'facturen');
             if (!savedInv) doc.save(fileName);
 
@@ -12962,7 +12997,9 @@
                 const clientEmail = getContactEmailsByRole(invData.clientCompany, 'receives_factuur');
                 const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                 const pdfBytes = new Uint8Array(pdfBuffer); let pdfBin = ''; for (let i = 0; i < pdfBytes.length; i++) pdfBin += String.fromCharCode(pdfBytes[i]); const pdfBase64 = btoa(pdfBin);
-                const fileName = invoiceNumber.replace(/\s+/g, '_') + '.pdf';
+                // Filename voor email-bijlage: KTS-Factuur_…
+                const clientNameMail = invData.clientCompany?.name || invData.project?.client_name || '';
+                const fileName = ktsFactuurName(invoiceNumber, clientNameMail);
 
                 try {
                     showToast('📧 Factuur versturen...');
@@ -13803,11 +13840,18 @@
             const doc = await generateInkooporderV2(data, { save: false });
             if (!doc) return;
 
-            // Filename + path (zelfde berekening als legacy)
+            // IO-nummer (intern, voor DB-verwijzing) + filename (KTS-naming-conventie)
             const today = new Date();
             const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
             const ioNumber = ioData.project.project_code + '-' + ddmmyyyy;
-            const fileName = ioNumber.replace(/\s+/g, '_') + '.pdf';
+            // Filename volgt: KTS-Inkooporder_{jaar}-W{week}_{projcode}.pdf — week is alleen
+            // beschikbaar in per-week-mode, anders maand als fallback.
+            const ioWeekRef = (ioData.includedWeeks && ioData.includedWeeks.length === 1)
+                ? ioData.includedWeeks[0]
+                : null;
+            const fileName = ioWeekRef
+                ? ktsInkooporderName(ioData.year, ioWeekRef, ioData.project.project_code)
+                : `KTS-Inkooporder_${ioData.year}-${String(ioData.month).padStart(2,'0')}_${ktsSlug(ioData.project.project_code)}.pdf`;
             const filePath = `${ioData.year}/${ioData.project.project_code}/${fileName}`;
 
             // Save lokaal (folder of download)
@@ -14106,7 +14150,12 @@
 
             // Save to Supabase and open mailto
             const pdfData = doc.output('datauristring');
-            const fileName = ioNumber.replace(/\s+/g, '_') + '.pdf';
+            // Filename volgt KTS-naming-conventie i.p.v. ruwe ioNumber
+            const ioWeekRefLeg = (ioData.includedWeeks && ioData.includedWeeks.length === 1)
+                ? ioData.includedWeeks[0] : null;
+            const fileName = ioWeekRefLeg
+                ? ktsInkooporderName(ioData.year, ioWeekRefLeg, ioData.project.project_code)
+                : `KTS-Inkooporder_${ioData.year}-${String(ioData.month).padStart(2,'0')}_${ktsSlug(ioData.project.project_code)}.pdf`;
             const filePath = `${ioData.year}/${ioData.project.project_code}/${fileName}`;
 
             // Download the PDF
@@ -14140,9 +14189,16 @@
                         week_number: wn,
                         month: ioData.month,
                         io_number: ioNumber,
+                        storage_path: filePath,
                         created_at: new Date().toISOString()
                     }));
-                    const { error: weekErr } = await sb.from('inkooporder_weeks').upsert(weekRecords, { onConflict: 'user_id,project_id,year,week_number' });
+                    let { error: weekErr } = await sb.from('inkooporder_weeks').upsert(weekRecords, { onConflict: 'user_id,project_id,year,week_number' });
+                    // Fallback voor oude DB zonder storage_path kolom
+                    if (weekErr && /storage_path/.test(weekErr.message || '')) {
+                        console.warn('storage_path kolom niet aanwezig — fallback. Voer migratie-io-storage-path.sql uit.');
+                        const fallback = weekRecords.map(({ storage_path, ...rest }) => rest);
+                        ({ error: weekErr } = await sb.from('inkooporder_weeks').upsert(fallback, { onConflict: 'user_id,project_id,year,week_number' }));
+                    }
                     if (weekErr) console.warn('Inkooporder weken opslaan mislukt:', weekErr.message);
                     else console.log('Inkooporder weken opgeslagen:', ioData.includedWeeks);
                 }
@@ -14162,7 +14218,12 @@
                 const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                 const maandTekst = MONTHS_NL[ioData.month - 1] + ' ' + ioData.year;
                 const pdfBytes = new Uint8Array(pdfBuffer); let pdfBin = ''; for (let i = 0; i < pdfBytes.length; i++) pdfBin += String.fromCharCode(pdfBytes[i]); const pdfBase64 = btoa(pdfBin);
-                const fileName = ioNumber.replace(/\s+/g, '_') + '.pdf';
+                // Filename voor email-bijlage: KTS-Inkooporder_…
+                const ioWeekRefMail = (ioData.includedWeeks && ioData.includedWeeks.length === 1)
+                    ? ioData.includedWeeks[0] : null;
+                const fileName = ioWeekRefMail
+                    ? ktsInkooporderName(ioData.year, ioWeekRefMail, projCode)
+                    : `KTS-Inkooporder_${ioData.year}-${String(ioData.month).padStart(2,'0')}_${ktsSlug(projCode)}.pdf`;
 
                 try {
                     showToast('📧 Inkooporder versturen...');
