@@ -6791,7 +6791,9 @@
                 user: {
                     name: (currentUser && currentUser.name) || 'Onbekend',
                     email: (currentUser && currentUser.email) || '',
-                    role: (currentUser && currentUser.role) || ''
+                    role: (currentUser && currentUser.role) || '',
+                    // BV/eenmanszaak van de zzp — voor weekstaat-PDF "BV | Naam" weergave
+                    zzpCompanyName: (currentUser && currentUser._zzpCompanyName) || ''
                 },
                 project: {
                     name: (currentProject && currentProject.name) || '',
@@ -6888,12 +6890,20 @@
             doc.setFontSize(8);
             doc.setFont(pdfFont, 'normal');
             doc.setTextColor(...ink400);
-            doc.text('NAAM', colA, y);
+            // Label "OPDRACHTNEMER" als zzp via BV werkt — dan tonen we "BV | Naam"
+            // i.p.v. alleen de naam. "Opdrachtnemer" is in zzp-context het meer
+            // toepasselijke label dan "naam".
+            const showZzpCompany = !!(data.user.zzpCompanyName);
+            const naamLabel = showZzpCompany ? 'OPDRACHTNEMER' : 'NAAM';
+            const naamText = showZzpCompany
+                ? `${data.user.zzpCompanyName}  |  ${data.user.name}`
+                : data.user.name;
+            doc.text(naamLabel, colA, y);
             doc.text('PERIODE', colB, y);
             doc.setFontSize(11);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ink900);
-            doc.text(data.user.name, colA, y + 5);
+            doc.text(naamText, colA, y + 5, { maxWidth: 90 });
             doc.text(`Week ${data.weekNumber}  ·  ${data.year}`, colB, y + 5);
             y += 10;
             doc.setFontSize(8);
@@ -9510,6 +9520,14 @@
                 // Update laatste login tijdstip
                 sb.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', userId)
                     .then(({ error }) => { if (error) console.warn('last_active_at update mislukt:', error.message); });
+                // Als de gebruiker via een eigen BV werkt (zzp/eenmanszaak), haal de bedrijfs-
+                // naam op zodat hij op de weekstaat als "BV | Naam" getoond kan worden.
+                if (profile.company_id) {
+                    try {
+                        const { data: zzpComp } = await sb.from('companies').select('name').eq('id', profile.company_id).maybeSingle();
+                        if (zzpComp && zzpComp.name) profile._zzpCompanyName = zzpComp.name;
+                    } catch (e) { /* niet kritisch */ }
+                }
                 return profile;
             }
 
@@ -15891,6 +15909,20 @@
             const targetProject = (window._adminProjects || []).find(p => p.id === projectId);
             if (!targetUser) { showToast('❌ Gebruiker niet gevonden'); return; }
             if (!targetProject) { showToast('❌ Project niet gevonden'); return; }
+
+            // Resolve zzp company name uit window._adminCompanies (al geladen voor admin)
+            // Wordt op currentUser._zzpCompanyName gezet zodat de weekstaat-PDF
+            // "BV | Naam" kan tonen.
+            if (targetUser.company_id && !targetUser._zzpCompanyName) {
+                const zzpComp = (window._adminCompanies || []).find(c => c.id === targetUser.company_id);
+                if (zzpComp && zzpComp.name) targetUser._zzpCompanyName = zzpComp.name;
+                else {
+                    try {
+                        const { data: zc } = await sb.from('companies').select('name').eq('id', targetUser.company_id).maybeSingle();
+                        if (zc && zc.name) targetUser._zzpCompanyName = zc.name;
+                    } catch (e) { /* niet kritisch */ }
+                }
+            }
 
             const userName = targetUser.name || targetUser.email || 'Onbekend';
             if (!await confirmAsync(`Weekstaat ondertekenen & versturen namens ${userName}?\n\nWeek ${weekNumber} · ${year} · ${targetProject.project_code}`)) return;
