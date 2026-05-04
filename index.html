@@ -13578,6 +13578,18 @@
             const projectName = ioData.project.name || '';
             const monthLabel = MONTHS_NL[ioData.month - 1] + ' ' + ioData.year;
 
+            // Periode-label: bij 1-3 specifiek geselecteerde weken zetten we die er
+            // expliciet bij ("Week 19 · mei 2026" / "Weken 19, 20 · mei 2026"). Bij
+            // 4+ weken (= effectief de hele maand) houden we het op alleen de maand.
+            const includedWeeks = (ioData.includedWeeks || []).slice().sort((a,b) => a-b);
+            let periodLabel = monthLabel;
+            if (includedWeeks.length >= 1 && includedWeeks.length <= 3) {
+                const weekText = includedWeeks.length === 1
+                    ? `Week ${includedWeeks[0]}`
+                    : `Weken ${includedWeeks.join(', ')}`;
+                periodLabel = `${weekText} · ${monthLabel}`;
+            }
+
             // Items: per uren-type, per week
             const items = [];
             let nr = 1;
@@ -13597,14 +13609,15 @@
                     items.push({ nr: nr++, desc: `Zondag-/feestdaguren (${Math.round(ioData.rate.sunday_holiday_multiplier*100)}%) · ${weekLabel}`, sub: projectName, qty: w.sunHours, unit: 'u', price: r });
                 }
             });
-            // KM en hotel als 1 totaalregel over de hele periode
+            // KM en hotel als 1 totaalregel over de hele periode — gebruik periodLabel
+            // zodat bij 1 specifieke week ook "Reis kilometers · Week 19 · mei 2026" staat
             let totalKm = 0, totalHotel = 0;
             Object.values(ioData.weekData || {}).forEach(w => { totalKm += (w.totalKm || 0); totalHotel += (w.hotelNights || 0); });
             if (totalKm > 0) {
-                items.push({ nr: nr++, desc: `Reis kilometers · ${monthLabel}`, sub: projectName, qty: totalKm, unit: 'km', price: ioData.rate.km_rate });
+                items.push({ nr: nr++, desc: `Reis kilometers · ${periodLabel}`, sub: projectName, qty: totalKm, unit: 'km', price: ioData.rate.km_rate });
             }
             if (totalHotel > 0) {
-                items.push({ nr: nr++, desc: `Hotelovernachtingen · ${monthLabel}`, sub: projectName, qty: totalHotel, unit: 'nacht', price: ioData.hotelRate || 0 });
+                items.push({ nr: nr++, desc: `Hotelovernachtingen · ${periodLabel}`, sub: projectName, qty: totalHotel, unit: 'nacht', price: ioData.hotelRate || 0 });
             }
 
             const zzp = ioData.zzpCompany || {};
@@ -13634,7 +13647,7 @@
                 btwPct: 21,
                 transport: 0,
                 overige: 0,
-                opmerkingen: `Inzet conform goedgekeurde weekstaten.\nPeriode: ${monthLabel}`,
+                opmerkingen: `Inzet conform goedgekeurde weekstaten.\nPeriode: ${periodLabel}`,
                 paymentTerm: '30 dagen na factuurdatum'
             };
         }
