@@ -35,7 +35,11 @@ COMMENT ON COLUMN rates.hourly_rate_sale IS
 --    We kiezen (a) — een rates_public view zonder hourly_rate_sale.
 --    Niet-admins gebruiken die view. Admins gebruiken de echte tabel.
 
-CREATE OR REPLACE VIEW rates_public AS
+-- Maak de view robuust voor verschillende kolom-sets door SELECT * te gebruiken
+-- en hourly_rate_sale weg te laten via een DROP. Dit voorkomt dependency op
+-- specifieke meta-kolommen (updated_at bestaat bv. niet in deze rates-tabel).
+DROP VIEW IF EXISTS rates_public;
+CREATE VIEW rates_public AS
 SELECT
     id,
     project_id,
@@ -47,8 +51,7 @@ SELECT
     sunday_holiday_multiplier,
     valid_from,
     valid_to,
-    created_at,
-    updated_at
+    created_at
 FROM rates;
 
 COMMENT ON VIEW rates_public IS
