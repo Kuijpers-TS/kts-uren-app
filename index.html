@@ -6817,7 +6817,9 @@
 
             let y = mt;
 
-            // Header — tandwiel + URENSTAAT (links)
+            // Header — tandwiel + WEEKSTAAT (links)
+            // Naming: app, DB-tabel (week_status), filenames en knoppen gebruiken allemaal
+            // "weekstaat" — dus ook de PDF-titel.
             doc.setFontSize(20);
             doc.setFont(pdfFont, 'bold');
             doc.setTextColor(...ktsBlue);
@@ -6826,7 +6828,7 @@
             if (TANDWIEL) {
                 try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 3, iconSize, iconSize); } catch (e) {}
             }
-            doc.text('URENSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
+            doc.text('WEEKSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
             // Logo + adres rechts (gecentreerd boven tekst)
             const logoW = 30.8;
@@ -11720,8 +11722,9 @@
                     projSel.innerHTML += `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`;
                 });
             }
-            // Users
+            // Users — voeg "Alle medewerkers" toe voor combi-factuur (meerdere zzp's op 1 factuur)
             userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
+                '<option value="__ALL__">👥 Alle medewerkers (combi-factuur)</option>' +
                 getFilteredUsers().map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
             // Jaar
             if (yearSel.options.length <= 1) {
@@ -11736,51 +11739,65 @@
         }
 
         async function previewInvoice() {
-            const userId = document.getElementById('inv-filter-user').value;
+            const userIdRaw = document.getElementById('inv-filter-user').value;
             const projectId = document.getElementById('inv-filter-project').value;
             const year = document.getElementById('inv-filter-year').value;
             const month = document.getElementById('inv-filter-month').value;
 
-            if (!userId || !projectId || !year || !month) {
+            if (!userIdRaw || !projectId || !year || !month) {
                 showToast('⚠️ Selecteer project, medewerker, jaar en maand');
                 return;
             }
 
+            // Combi-mode: '__ALL__' = alle medewerkers met IO-weken op dit project/maand
+            const isCombi = userIdRaw === '__ALL__';
+            const userId = isCombi ? null : userIdRaw;
+
             const sb = getSupabase();
             if (!sb) return;
 
-            // Check of er IO's bestaan voor deze combinatie (factuur alleen na IO)
-            const { data: ioWeeks } = await sb.from('inkooporder_weeks')
-                .select('io_number, week_number')
-                .eq('user_id', userId)
+            // IO-weken ophalen — single user: gefilterd op user_id; combi: ALLE users op dit project+maand
+            let ioQuery = sb.from('inkooporder_weeks')
+                .select('io_number, week_number, user_id')
                 .eq('project_id', projectId)
                 .eq('year', parseInt(year))
                 .eq('month', parseInt(month));
+            if (!isCombi) ioQuery = ioQuery.eq('user_id', userId);
+
+            const { data: ioWeeks } = await ioQuery;
 
             if (!ioWeeks || ioWeeks.length === 0) {
                 const preview = document.getElementById('inv-preview');
                 const content = document.getElementById('inv-preview-content');
+                const subj = isCombi ? 'project/maand' : 'medewerker/project/maand';
                 content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">
-                    ⚠️ Er is nog geen inkooporder verstuurd voor deze maand/medewerker/project combinatie.<br>
-                    <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst een IO voordat je een factuur kunt maken.</span>
+                    ⚠️ Er ${isCombi ? 'zijn' : 'is'} nog geen inkooporder${isCombi ? 's' : ''} verstuurd voor deze ${subj} combinatie.<br>
+                    <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst de IO('s) voordat je een factuur kunt maken.</span>
                 </div>`;
                 preview.style.display = 'block';
                 return;
             }
 
-            // Check of er al een factuur bestaat
-            const { data: existingInv } = await sb.from('invoices')
-                .select('invoice_number')
-                .eq('user_id', userId)
-                .eq('project_id', projectId)
-                .eq('year', parseInt(year))
-                .eq('month', parseInt(month));
+            // Check of er al een factuur bestaat (single-user only — combi-factuur duplicaten
+            // afvangen we via invoice_number)
+            let existingInv = null;
+            if (!isCombi) {
+                const { data: existing } = await sb.from('invoices')
+                    .select('invoice_number')
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('year', parseInt(year))
+                    .eq('month', parseInt(month));
+                existingInv = existing;
+            }
 
-            // Aggregate data (hergebruik PO data, maar nu voor factuur)
-            const ioData = await aggregatePOData(userId, projectId, year, month);
-            if (!ioData || ioData.includedWeeks.length === 0) {
-                // Gebruik alle weken die op een PO staan i.p.v. alleen goedgekeurde
-                // Factuur is gebaseerd op PO weken
+            // Aggregate data — alleen voor single-user (combi heeft per-user breakdown)
+            if (!isCombi) {
+                const ioData = await aggregatePOData(userId, projectId, year, month);
+                if (!ioData || ioData.includedWeeks.length === 0) {
+                    // Gebruik alle weken die op een PO staan i.p.v. alleen goedgekeurde
+                    // Factuur is gebaseerd op PO weken
+                }
             }
 
             // Haal klantbedrijf op via project
@@ -11796,30 +11813,42 @@
                 }
             }
 
-            // Check welke weken al gefactureerd zijn
-            const { data: existingInvWeeks } = await sb.from('invoices')
-                .select('invoice_number, weeks')
-                .eq('user_id', userId)
+            // Check welke weken al gefactureerd zijn — per (user_id, week) zodat combi-factuur
+            // niet onterecht een week voor user A blokkeert omdat user B al gefactureerd is.
+            // Voor single-user mode filteren we op user_id; voor combi pakken we alle facturen
+            // die deze users kunnen bevatten.
+            let existingInvQuery = sb.from('invoices')
+                .select('invoice_number, weeks, user_id, user_ids')
                 .eq('project_id', projectId)
                 .eq('year', parseInt(year));
-            const alreadyInvoicedWeeks = new Set();
-            const invoicedWeekDetails = []; // voor waarschuwing
+            if (!isCombi) existingInvQuery = existingInvQuery.eq('user_id', userId);
+            const { data: existingInvWeeks } = await existingInvQuery;
+
+            // Bouw "al gefactureerd" check per (user, week)
+            const alreadyInvoicedKeys = new Set(); // key: `${user_id}_${week}`
+            const invoicedWeekDetails = []; // voor waarschuwing — { user_id, week, invoice }
             (existingInvWeeks || []).forEach(inv => {
-                if (inv.weeks && Array.isArray(inv.weeks)) {
-                    inv.weeks.forEach(w => {
-                        alreadyInvoicedWeeks.add(w);
-                        invoicedWeekDetails.push({ week: w, invoice: inv.invoice_number });
+                if (!inv.weeks || !Array.isArray(inv.weeks)) return;
+                // Single-user factuur: user_id gevuld — markeer voor die user
+                // Combi-factuur: user_ids gevuld — markeer voor elke user erin
+                const usersOnInv = (inv.user_ids && inv.user_ids.length > 0) ? inv.user_ids
+                    : (inv.user_id ? [inv.user_id] : []);
+                inv.weeks.forEach(w => {
+                    usersOnInv.forEach(uid => {
+                        alreadyInvoicedKeys.add(`${uid}_${w}`);
+                        invoicedWeekDetails.push({ user_id: uid, week: w, invoice: inv.invoice_number });
                     });
-                }
+                });
             });
 
-            // Filter PO-weken: verwijder al gefactureerde weken
-            const allIoWeekNums = ioWeeks.map(pw => pw.week_number);
-            const filteredIoWeekNums = allIoWeekNums.filter(w => !alreadyInvoicedWeeks.has(w));
-            const skippedWeeks = allIoWeekNums.filter(w => alreadyInvoicedWeeks.has(w));
+            // Filter IO-weken: verwijder (user, week) combinaties die al gefactureerd zijn
+            const filteredIoWeeks = ioWeeks.filter(pw => !alreadyInvoicedKeys.has(`${pw.user_id}_${pw.week_number}`));
+            const skippedIoWeeks = ioWeeks.filter(pw => alreadyInvoicedKeys.has(`${pw.user_id}_${pw.week_number}`));
+
+            const filteredIoWeekNums = [...new Set(filteredIoWeeks.map(pw => pw.week_number))];
+            const skippedWeeks = [...new Set(skippedIoWeeks.map(pw => pw.week_number))];
 
             // Bereken factuurregels op basis van PO weken (alleen niet-gefactureerde)
-            const ioWeekNums = new Set(filteredIoWeekNums);
             const yr = parseInt(year);
             const mo = parseInt(month);
             const firstDay = new Date(yr, mo - 1, 1);
@@ -11827,71 +11856,125 @@
             const dateFrom = toLocalDateStr(firstDay);
             const dateTo = toLocalDateStr(lastDay);
 
+            // Welke (user, week) zijn nog open voor facturatie?
+            const openIoSet = new Set(filteredIoWeeks.map(pw => `${pw.user_id}_${pw.week_number}`));
+
+            // Welke users zijn van toepassing? Combi: alle unieke users uit IO-weken; single: één.
+            const userIdsList = isCombi
+                ? [...new Set(filteredIoWeeks.map(pw => pw.user_id))]
+                : [userId];
+
+            if (userIdsList.length === 0) {
+                const preview = document.getElementById('inv-preview');
+                const content = document.getElementById('inv-preview-content');
+                content.innerHTML = `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
+                    Alle weken zijn al gefactureerd. Er zijn geen nieuwe (medewerker, week) combinaties om te factureren.
+                </div>`;
+                preview.style.display = 'block';
+                return;
+            }
+
+            // Rates ophalen voor het project (incl. user-specifieke overrides)
+            const { data: allRates } = await sb.from('rates').select('*')
+                .eq('project_id', projectId)
+                .order('valid_from', { ascending: false });
+
+            // Helper: pak verkoop-tarief voor een specifieke user (fallback chain:
+            // user-specifiek → project-default → hardcoded default)
+            function rateForUser(uid) {
+                let r = { hourly_rate: 85, km_rate: 0.50, saturday_multiplier: 1.50, sunday_holiday_multiplier: 2.00 };
+                if (allRates && allRates.length > 0) {
+                    const userRate = allRates.find(rr => rr.user_id === uid);
+                    const projRate = allRates.find(rr => !rr.user_id);
+                    const found = userRate || projRate;
+                    if (found) {
+                        const saleRate = parseFloat(found.hourly_rate_sale);
+                        r.hourly_rate = (!isNaN(saleRate) && saleRate > 0)
+                            ? saleRate
+                            : (parseFloat(found.hourly_rate) || 85);
+                        r.km_rate = parseFloat(found.km_rate) || 0.50;
+                        r.saturday_multiplier = parseFloat(found.saturday_multiplier) || 1.50;
+                        r.sunday_holiday_multiplier = parseFloat(found.sunday_holiday_multiplier) || 2.00;
+                    }
+                }
+                return r;
+            }
+
+            // Time entries ophalen voor alle relevante users in deze maand op dit project
             const { data: entries } = await sb.from('time_entries').select('*')
-                .eq('user_id', userId)
+                .in('user_id', userIdsList)
                 .eq('project_id', projectId)
                 .gte('entry_date', dateFrom)
                 .lte('entry_date', dateTo);
 
-            // Filter alleen entries die op PO-weken zitten
+            // Filter alleen entries waarvan (user, ISO-week) in de open IO-set zit
             const invoiceEntries = (entries || []).filter(e => {
                 if (!e.entry_date) return false;
                 const isoWeek = getISOWeek(new Date(e.entry_date + 'T12:00:00'));
-                return ioWeekNums.has(isoWeek);
+                return openIoSet.has(`${e.user_id}_${isoWeek}`);
             });
 
-            // Rates ophalen
-            const { data: allRates } = await sb.from('rates').select('*')
-                .eq('project_id', projectId)
-                .order('valid_from', { ascending: false });
-            let rate = { hourly_rate: 85, km_rate: 0.50, saturday_multiplier: 1.50, sunday_holiday_multiplier: 2.00 };
-            if (allRates && allRates.length > 0) {
-                const userRate = allRates.find(r => r.user_id === userId);
-                const projRate = allRates.find(r => !r.user_id);
-                const found = userRate || projRate;
-                if (found) {
-                    // FACTUUR-TARIEF: gebruik hourly_rate_sale (verkoop) indien gevuld,
-                    // anders fallback naar hourly_rate (= inkoop, doorberekenen 1:1).
-                    // Dit is het bedrag dat KTS aan de klant factureert.
-                    const saleRate = parseFloat(found.hourly_rate_sale);
-                    rate.hourly_rate = (!isNaN(saleRate) && saleRate > 0)
-                        ? saleRate
-                        : (parseFloat(found.hourly_rate) || 85);
-                    rate.km_rate = parseFloat(found.km_rate) || 0.50;
-                    rate.saturday_multiplier = parseFloat(found.saturday_multiplier) || 1.50;
-                    rate.sunday_holiday_multiplier = parseFloat(found.sunday_holiday_multiplier) || 2.00;
-                }
-            }
-            // Inkooporder gebruikt hourly_rate (inkoop, wat KTS de zzp betaalt).
-            // Factuur gebruikt hierboven hourly_rate_sale (verkoop) als beschikbaar.
+            // User info ophalen voor alle users — naam + hotel-tarief
+            const { data: usersData } = await sb.from('users').select('*').in('id', userIdsList);
+            const userById = {};
+            (usersData || []).forEach(u => { userById[u.id] = u; });
 
-            // User info
-            const { data: user } = await sb.from('users').select('*').eq('id', userId).single();
-            const hotelRate = (user && parseFloat(user.hotel_rate)) || 110;
+            // Per-user weekData opbouwen
+            // Structuur: perUser[userId] = { user, rate, hotelRate, weekData: {weekKey: {...}} }
+            const perUser = {};
+            userIdsList.forEach(uid => {
+                perUser[uid] = {
+                    user: userById[uid] || null,
+                    rate: rateForUser(uid),
+                    hotelRate: (userById[uid] && parseFloat(userById[uid].hotel_rate)) || 110,
+                    weekData: {}
+                };
+            });
 
-            // Groepeer per week
-            const weekData = {};
             invoiceEntries.forEach(entry => {
+                const uid = entry.user_id;
+                const bucket = perUser[uid];
+                if (!bucket) return;
                 const entryDate = new Date(entry.entry_date + 'T12:00:00');
                 const isoWeek = getISOWeek(entryDate);
                 const weekKey = `week_${isoWeek}`;
-                if (!weekData[weekKey]) {
-                    weekData[weekKey] = { weekNum: isoWeek, year: yr, regHours: 0, satHours: 0, sunHours: 0, totalKm: 0, hotelNights: 0 };
+                if (!bucket.weekData[weekKey]) {
+                    bucket.weekData[weekKey] = { weekNum: isoWeek, year: yr, regHours: 0, satHours: 0, sunHours: 0, totalKm: 0, hotelNights: 0 };
                 }
                 const hours = parseFloat(entry.total_hours) || 0;
                 const day = entryDate.getDay();
-                if (day === 6) weekData[weekKey].satHours += hours;
-                else if (day === 0) weekData[weekKey].sunHours += hours;
-                else weekData[weekKey].regHours += hours;
-                weekData[weekKey].totalKm += parseFloat(entry.km) || 0;
-                if (entry.hotel) weekData[weekKey].hotelNights++;
+                if (day === 6) bucket.weekData[weekKey].satHours += hours;
+                else if (day === 0) bucket.weekData[weekKey].sunHours += hours;
+                else bucket.weekData[weekKey].regHours += hours;
+                bucket.weekData[weekKey].totalKm += parseFloat(entry.km) || 0;
+                if (entry.hotel) bucket.weekData[weekKey].hotelNights++;
             });
+
+            // Filter users zonder uren (kunnen wel een IO hebben maar geen entries)
+            Object.keys(perUser).forEach(uid => {
+                if (Object.keys(perUser[uid].weekData).length === 0) delete perUser[uid];
+            });
+
+            // Backwards-compatibele velden voor single-user mode (preview + adapter logica)
+            // gebruiken nog `weekData`, `rate`, `user`, `hotelRate` in single-user pad.
+            const firstUid = Object.keys(perUser)[0];
+            const single = !isCombi && firstUid ? perUser[firstUid] : null;
 
             // Sla data op voor PDF generatie
             window._currentInvoiceData = {
-                userId, projectId, year: yr, month: mo,
-                user, project, clientCompany, rate, hotelRate, weekData,
-                entries: invoiceEntries, ioWeeks, existingInvoice: existingInv && existingInv.length > 0 ? existingInv[0] : null
+                isCombi,
+                userId: isCombi ? null : userId,
+                userIds: isCombi ? Object.keys(perUser) : null,
+                projectId, year: yr, month: mo,
+                project, clientCompany,
+                perUser, // combi + single pad: hier zit alles in
+                // legacy single-user velden (alleen gevuld in non-combi mode):
+                user: single ? single.user : null,
+                rate: single ? single.rate : { hourly_rate: 85, km_rate: 0.50, saturday_multiplier: 1.50, sunday_holiday_multiplier: 2.00 },
+                hotelRate: single ? single.hotelRate : 110,
+                weekData: single ? single.weekData : {},
+                entries: invoiceEntries, ioWeeks,
+                existingInvoice: existingInv && existingInv.length > 0 ? existingInv[0] : null
             };
 
             // Render preview
@@ -11899,21 +11982,22 @@
             const content = document.getElementById('inv-preview-content');
             let html = '';
 
-            // Waarschuwing als weken al gefactureerd zijn
-            if (skippedWeeks.length > 0) {
-                const skippedDetails = skippedWeeks.map(w => {
-                    const inv = invoicedWeekDetails.find(d => d.week === w);
-                    return `Week ${w} (${inv ? inv.invoice : '?'})`;
+            // Waarschuwing als (user, week) combinaties al gefactureerd zijn
+            if (skippedIoWeeks.length > 0) {
+                const skippedDetails = skippedIoWeeks.map(pw => {
+                    const detail = invoicedWeekDetails.find(d => d.week === pw.week_number && d.user_id === pw.user_id);
+                    const userName = userById[pw.user_id] ? (userById[pw.user_id].name || userById[pw.user_id].email) : 'Onbekend';
+                    return `${userName} W${pw.week_number} (${detail ? detail.invoice : '?'})`;
                 }).join(', ');
                 html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
-                    ⚠️ ${skippedWeeks.length === 1 ? 'Week' : 'Weken'} ${skippedDetails} ${skippedWeeks.length === 1 ? 'is' : 'zijn'} al gefactureerd en ${skippedWeeks.length === 1 ? 'wordt' : 'worden'} overgeslagen.
+                    ⚠️ ${skippedIoWeeks.length === 1 ? 'is' : 'zijn'} al gefactureerd en ${skippedIoWeeks.length === 1 ? 'wordt' : 'worden'} overgeslagen: ${skippedDetails}
                 </div>`;
             }
 
-            // Als alle weken al gefactureerd zijn
-            if (filteredIoWeekNums.length === 0) {
+            // Als geen perUser meer over (alles al gefactureerd of geen uren)
+            if (Object.keys(perUser).length === 0) {
                 html += `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
-                    Alle weken zijn al gefactureerd. Er zijn geen nieuwe weken om te factureren.
+                    Geen factureerbare uren gevonden voor deze selectie.
                 </div>`;
                 content.innerHTML = html;
                 preview.style.display = 'block';
@@ -11921,44 +12005,59 @@
             }
 
             html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? clientCompany.name : '(Geen klant ingesteld op project)'}</div>`;
-            html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Medewerker: ${user?.name || 'Onbekend'} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
+            const userNames = Object.keys(perUser).map(uid => perUser[uid].user?.name || perUser[uid].user?.email || 'Onbekend').join(', ');
+            const headerLabel = isCombi
+                ? `<span style="background:#dcfce7;color:#14532d;padding:2px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;margin-right:6px">👥 COMBI</span>${userNames}`
+                : userNames;
+            html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${isCombi ? 'Medewerkers' : 'Medewerker'}: ${headerLabel} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
 
             html += '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
             html += '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px;font-weight:600">Beschrijving</th><th style="text-align:right;padding:6px;font-weight:600">Aantal</th><th style="text-align:right;padding:6px;font-weight:600">Tarief</th><th style="text-align:right;padding:6px;font-weight:600">Bedrag</th></tr>';
 
             let subtotal = 0;
-            Object.keys(weekData).sort().forEach(weekKey => {
-                const week = weekData[weekKey];
-                const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
-                if (week.regHours > 0) {
-                    const amount = week.regHours * rate.hourly_rate;
-                    html += `<tr><td style="padding:4px 6px">Uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.regHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.hourly_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
-                    subtotal += amount;
+            Object.keys(perUser).forEach(uid => {
+                const bucket = perUser[uid];
+                const userName = bucket.user?.name || bucket.user?.email || 'Onbekend';
+                const userRate = bucket.rate;
+                const userHotelRate = bucket.hotelRate;
+
+                if (isCombi) {
+                    html += `<tr style="background:#f0f9ff"><td colspan="4" style="padding:6px;font-weight:700;color:var(--kts-blue);border-top:2px solid var(--kts-blue)">👤 ${userName}</td></tr>`;
                 }
-                if (week.satHours > 0) {
-                    const amount = week.satHours * rate.hourly_rate * rate.saturday_multiplier;
-                    html += `<tr><td style="padding:4px 6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.satHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.hourly_rate * rate.saturday_multiplier)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
-                    subtotal += amount;
+
+                Object.keys(bucket.weekData).sort().forEach(weekKey => {
+                    const week = bucket.weekData[weekKey];
+                    const weekLabel = `Week ${String(week.weekNum).padStart(2,'0')}/${week.year}`;
+                    if (week.regHours > 0) {
+                        const amount = week.regHours * userRate.hourly_rate;
+                        html += `<tr><td style="padding:4px 6px">Uren (ma-vr) — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.regHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userRate.hourly_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
+                        subtotal += amount;
+                    }
+                    if (week.satHours > 0) {
+                        const amount = week.satHours * userRate.hourly_rate * userRate.saturday_multiplier;
+                        html += `<tr><td style="padding:4px 6px">Zaterdaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.satHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userRate.hourly_rate * userRate.saturday_multiplier)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
+                        subtotal += amount;
+                    }
+                    if (week.sunHours > 0) {
+                        const amount = week.sunHours * userRate.hourly_rate * userRate.sunday_holiday_multiplier;
+                        html += `<tr><td style="padding:4px 6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.sunHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userRate.hourly_rate * userRate.sunday_holiday_multiplier)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
+                        subtotal += amount;
+                    }
+                });
+
+                let userKm = 0, userHotel = 0;
+                Object.values(bucket.weekData).forEach(w => { userKm += w.totalKm; userHotel += w.hotelNights; });
+                if (userKm > 0) {
+                    const kmAmount = userKm * userRate.km_rate;
+                    html += `<tr><td style="padding:4px 6px">Kilometers${isCombi ? ' — ' + userName : ''}</td><td style="text-align:right;padding:4px 6px">${userKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userRate.km_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
+                    subtotal += kmAmount;
                 }
-                if (week.sunHours > 0) {
-                    const amount = week.sunHours * rate.hourly_rate * rate.sunday_holiday_multiplier;
-                    html += `<tr><td style="padding:4px 6px">Zondaguren — ${weekLabel}</td><td style="text-align:right;padding:4px 6px">${fmtDecimal(week.sunHours)}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.hourly_rate * rate.sunday_holiday_multiplier)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
-                    subtotal += amount;
+                if (userHotel > 0) {
+                    const hotelAmount = userHotel * userHotelRate;
+                    html += `<tr><td style="padding:4px 6px">Hotelovernachtingen${isCombi ? ' — ' + userName : ''}</td><td style="text-align:right;padding:4px 6px">${userHotel}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userHotelRate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
+                    subtotal += hotelAmount;
                 }
             });
-
-            let totalKm = 0, totalHotel = 0;
-            Object.values(weekData).forEach(w => { totalKm += w.totalKm; totalHotel += w.hotelNights; });
-            if (totalKm > 0) {
-                const kmAmount = totalKm * rate.km_rate;
-                html += `<tr><td style="padding:4px 6px">Kilometers</td><td style="text-align:right;padding:4px 6px">${totalKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(rate.km_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
-                subtotal += kmAmount;
-            }
-            if (totalHotel > 0) {
-                const hotelAmount = totalHotel * hotelRate;
-                html += `<tr><td style="padding:4px 6px">Hotelovernachtingen</td><td style="text-align:right;padding:4px 6px">${totalHotel}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(hotelRate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
-                subtotal += hotelAmount;
-            }
 
             const btw = subtotal * 0.21;
             const total = subtotal + btw;
@@ -11991,6 +12090,8 @@
 
         // ===== FACTUUR PDF (V2 — KTS huisstijl, mei 2026) =====
         // Adapter: zet invData → V2 data-structure
+        // Single-user: regels[] bevat alleen normale rijen.
+        // Combi-mode: regels[] bevat per medewerker een groupHeader + diens rijen.
         function adaptInvoiceData(invData, invoiceNumber, payTermDays) {
             const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
             const today = new Date();
@@ -12000,33 +12101,54 @@
             const dueDateStr = dueDate.toLocaleDateString('nl-NL', { day:'2-digit', month:'2-digit', year:'numeric' });
 
             const monthLabel = (MONTHS_NL[invData.month - 1] || '') + ' ' + invData.year;
-            const userName = invData.user ? (invData.user.name || invData.user.email) : '';
             const projectName = (invData.project && invData.project.name) || '';
 
-            // Items per uren-type per week
+            // Bouw regels op uit perUser-structuur (zowel combi als single)
             const regels = [];
-            const weekKeys = Object.keys(invData.weekData || {}).sort();
-            weekKeys.forEach(key => {
-                const w = invData.weekData[key];
-                const weekLabel = `wk ${String(w.weekNum).padStart(2,'0')}/${w.year}`;
-                if (w.regHours > 0) {
-                    regels.push({ datum: weekLabel, desc: `Inzet ${userName} · ${projectName}`, qty: w.regHours, unit: 'uur', tarief: invData.rate.hourly_rate, btw: 21 });
+            const perUser = invData.perUser || {};
+            const userIds = Object.keys(perUser);
+            const isCombi = !!invData.isCombi;
+
+            userIds.forEach(uid => {
+                const bucket = perUser[uid];
+                if (!bucket) return;
+                const userName = bucket.user ? (bucket.user.name || bucket.user.email) : '';
+                const rate = bucket.rate;
+                const hotelRate = bucket.hotelRate;
+
+                // Combi: tussenkop per medewerker (zichtbaar in PDF als gekleurde band)
+                if (isCombi) {
+                    regels.push({ groupHeader: true, label: userName });
                 }
-                if (w.satHours > 0) {
-                    regels.push({ datum: weekLabel, desc: `Zaterdaguren (toeslag ${Math.round(invData.rate.saturday_multiplier*100)}%)`, qty: w.satHours, unit: 'uur', tarief: invData.rate.hourly_rate * invData.rate.saturday_multiplier, btw: 21 });
+
+                const weekKeys = Object.keys(bucket.weekData || {}).sort();
+                weekKeys.forEach(key => {
+                    const w = bucket.weekData[key];
+                    const weekLabel = `wk ${String(w.weekNum).padStart(2,'0')}/${w.year}`;
+                    // In single-mode hebben rijen al "Inzet {naam}" voor de oude look;
+                    // In combi-mode is de naam al in de groupHeader, dus weglaten.
+                    const inzetDesc = isCombi
+                        ? `Inzet · ${projectName}`
+                        : `Inzet ${userName} · ${projectName}`;
+                    if (w.regHours > 0) {
+                        regels.push({ datum: weekLabel, desc: inzetDesc, qty: w.regHours, unit: 'uur', tarief: rate.hourly_rate, btw: 21 });
+                    }
+                    if (w.satHours > 0) {
+                        regels.push({ datum: weekLabel, desc: `Zaterdaguren (toeslag ${Math.round(rate.saturday_multiplier*100)}%)`, qty: w.satHours, unit: 'uur', tarief: rate.hourly_rate * rate.saturday_multiplier, btw: 21 });
+                    }
+                    if (w.sunHours > 0) {
+                        regels.push({ datum: weekLabel, desc: `Zondag-/feestdaguren (toeslag ${Math.round(rate.sunday_holiday_multiplier*100)}%)`, qty: w.sunHours, unit: 'uur', tarief: rate.hourly_rate * rate.sunday_holiday_multiplier, btw: 21 });
+                    }
+                });
+                let userKm = 0, userHotel = 0;
+                Object.values(bucket.weekData || {}).forEach(w => { userKm += (w.totalKm || 0); userHotel += (w.hotelNights || 0); });
+                if (userKm > 0) {
+                    regels.push({ datum: monthLabel, desc: 'Reis kilometers', qty: userKm, unit: 'km', tarief: rate.km_rate, btw: 21 });
                 }
-                if (w.sunHours > 0) {
-                    regels.push({ datum: weekLabel, desc: `Zondag-/feestdaguren (toeslag ${Math.round(invData.rate.sunday_holiday_multiplier*100)}%)`, qty: w.sunHours, unit: 'uur', tarief: invData.rate.hourly_rate * invData.rate.sunday_holiday_multiplier, btw: 21 });
+                if (userHotel > 0) {
+                    regels.push({ datum: monthLabel, desc: 'Hotelovernachtingen', qty: userHotel, unit: 'nacht', tarief: hotelRate || 0, btw: 21 });
                 }
             });
-            let totalKm = 0, totalHotel = 0;
-            Object.values(invData.weekData || {}).forEach(w => { totalKm += (w.totalKm || 0); totalHotel += (w.hotelNights || 0); });
-            if (totalKm > 0) {
-                regels.push({ datum: monthLabel, desc: 'Reis kilometers', qty: totalKm, unit: 'km', tarief: invData.rate.km_rate, btw: 21 });
-            }
-            if (totalHotel > 0) {
-                regels.push({ datum: monthLabel, desc: 'Hotelovernachtingen', qty: totalHotel, unit: 'nacht', tarief: invData.hotelRate || 0, btw: 21 });
-            }
 
             const klant = invData.clientCompany || {};
 
@@ -12238,52 +12360,102 @@
             const fmtEuroLocal = (n) => '€ ' + (n || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             const items = data.regels || [];
-            const minRows = Math.max(5, items.length);
+            // Combi-mode: items bevat groupHeader-rijen (geen subtotaal-bijdrage). Voor de
+            // tabel-hoogte tellen die ook mee — ze zijn ietsje dunner dan een normale rij.
+            const headerRowH = 7;
+            // Bereken totale tabel-hoogte aan de hand van de mix
+            const calcRowsHeight = () => {
+                let h = 0;
+                items.forEach(it => { h += it.groupHeader ? headerRowH : itemRowH; });
+                // Minimaal 5 normale rijen aan visuele hoogte aanhouden voor lege facturen
+                const minNormalRows = 5;
+                const normalCount = items.filter(it => !it.groupHeader).length;
+                if (normalCount < minNormalRows) h += (minNormalRows - normalCount) * itemRowH;
+                return h;
+            };
+            const tableBodyH = calcRowsHeight();
+            const tableYStart = y;
+
             let subtotaalAll = 0;
             const btwBuckets = {};
-            for (let i = 0; i < minRows; i++) {
-                const item = items[i];
-                if (i % 2 === 1) {
-                    doc.setFillColor(248, 248, 244);
+            let normalRowIdx = 0; // teller voor zebra-kleur op niet-header rijen
+            const lightCellBg = [248, 248, 244];
+            const headerBandBg = [232, 240, 248]; // licht KTS-blauw zweem
+
+            items.forEach(item => {
+                if (item.groupHeader) {
+                    // Tussenkop: gekleurde band over de hele tabel-breedte met de naam links
+                    doc.setFillColor(...headerBandBg);
+                    doc.rect(ml, y, itemTotalW, headerRowH, 'F');
+                    doc.setDrawColor(...lineColLight);
+                    doc.setLineWidth(0.15);
+                    doc.line(ml, y + headerRowH, ml + itemTotalW, y + headerRowH);
+                    doc.setFontSize(9);
+                    doc.setFont(pdfFont, 'bold');
+                    doc.setTextColor(...ktsBlue);
+                    doc.text(item.label || '', ml + 2, y + headerRowH / 2 + 1.4);
+                    y += headerRowH;
+                    return;
+                }
+
+                if (normalRowIdx % 2 === 1) {
+                    doc.setFillColor(...lightCellBg);
                     doc.rect(ml, y, itemTotalW, itemRowH, 'F');
                 }
+                normalRowIdx++;
                 doc.setDrawColor(...lineColLight);
                 doc.setLineWidth(0.15);
                 doc.line(ml, y + itemRowH, ml + itemTotalW, y + itemRowH);
-                if (item) {
-                    const subtotal = (item.qty || 0) * (item.tarief || 0);
-                    subtotaalAll += subtotal;
-                    btwBuckets[item.btw] = (btwBuckets[item.btw] || 0) + subtotal;
-                    cx = ml;
-                    itemCols.forEach(c => {
-                        let v = '';
-                        if (c.key === 'datum')    v = item.datum;
-                        if (c.key === 'desc')     v = item.desc;
-                        if (c.key === 'qty')      v = ((item.qty != null) ? item.qty.toLocaleString('nl-NL') : '') + (item.unit ? ' ' + item.unit : '');
-                        if (c.key === 'tarief')   v = fmtEuroLocal(item.tarief);
-                        if (c.key === 'subtotal') v = fmtEuroLocal(subtotal);
-                        if (c.key === 'btw')      v = (item.btw != null ? item.btw + '%' : '');
-                        const tx = c.align === 'left' ? cx + 2 : c.align === 'right' ? cx + c.w - 2 : cx + c.w / 2;
-                        doc.setFontSize(c.key === 'desc' ? 8.5 : 9);
-                        doc.setFont(pdfFont, c.key === 'subtotal' ? 'bold' : 'normal');
-                        doc.setTextColor(...ink900);
-                        let txt = String(v);
-                        if (c.key === 'desc' && txt.length > 64) txt = txt.substring(0, 61) + '...';
-                        doc.text(txt, tx, y + itemRowH / 2 + 1.5, { align: c.align });
-                        cx += c.w;
-                    });
+
+                const subtotal = (item.qty || 0) * (item.tarief || 0);
+                subtotaalAll += subtotal;
+                btwBuckets[item.btw] = (btwBuckets[item.btw] || 0) + subtotal;
+                cx = ml;
+                itemCols.forEach(c => {
+                    let v = '';
+                    if (c.key === 'datum')    v = item.datum;
+                    if (c.key === 'desc')     v = item.desc;
+                    if (c.key === 'qty')      v = ((item.qty != null) ? item.qty.toLocaleString('nl-NL') : '') + (item.unit ? ' ' + item.unit : '');
+                    if (c.key === 'tarief')   v = fmtEuroLocal(item.tarief);
+                    if (c.key === 'subtotal') v = fmtEuroLocal(subtotal);
+                    if (c.key === 'btw')      v = (item.btw != null ? item.btw + '%' : '');
+                    const tx = c.align === 'left' ? cx + 2 : c.align === 'right' ? cx + c.w - 2 : cx + c.w / 2;
+                    doc.setFontSize(c.key === 'desc' ? 8.5 : 9);
+                    doc.setFont(pdfFont, c.key === 'subtotal' ? 'bold' : 'normal');
+                    doc.setTextColor(...ink900);
+                    let txt = String(v);
+                    if (c.key === 'desc' && txt.length > 64) txt = txt.substring(0, 61) + '...';
+                    doc.text(txt, tx, y + itemRowH / 2 + 1.5, { align: c.align });
+                    cx += c.w;
+                });
+                y += itemRowH;
+            });
+
+            // Aanvullende lege rijen voor visuele hoogte (alleen single, of als combi te kort is)
+            const minNormalRows = 5;
+            const normalCount = items.filter(it => !it.groupHeader).length;
+            for (let i = normalCount; i < minNormalRows; i++) {
+                if (normalRowIdx % 2 === 1) {
+                    doc.setFillColor(...lightCellBg);
+                    doc.rect(ml, y, itemTotalW, itemRowH, 'F');
                 }
+                normalRowIdx++;
+                doc.setDrawColor(...lineColLight);
+                doc.setLineWidth(0.15);
+                doc.line(ml, y + itemRowH, ml + itemTotalW, y + itemRowH);
                 y += itemRowH;
             }
+
+            // Verticale tabel-lijntjes — alleen tussen normal cells, dus over hele body
             cx = ml;
             doc.setDrawColor(...lineColLight);
             for (let i = 0; i <= itemCols.length; i++) {
-                doc.line(cx, y - itemRowH * minRows - itemHeaderH, cx, y);
+                doc.line(cx, tableYStart, cx, y);
                 if (i < itemCols.length) cx += itemCols[i].w;
             }
             doc.setDrawColor(...lineCol);
             doc.setLineWidth(0.3);
-            doc.rect(ml, y - itemRowH * minRows - itemHeaderH, itemTotalW, itemHeaderH + itemRowH * minRows);
+            doc.rect(ml, tableYStart - itemHeaderH, itemTotalW, itemHeaderH + (y - tableYStart));
 
             y += 6;
 
@@ -12677,23 +12849,47 @@
             if (!sb) return;
 
             try {
-                // Sla factuurrecord op in invoices tabel
-                const invoicedWeekNumbers = Object.values(invData.weekData).map(w => w.weekNum).sort((a,b) => a - b);
-                await sb.from('invoices').insert({
+                // Verzamel alle weken + bereken totaal excl. BTW over alle users (single + combi)
+                const perUser = invData.perUser || {};
+                const allWeekNums = new Set();
+                let totalExclBtw = 0;
+                Object.keys(perUser).forEach(uid => {
+                    const bucket = perUser[uid];
+                    Object.values(bucket.weekData || {}).forEach(w => {
+                        allWeekNums.add(w.weekNum);
+                        totalExclBtw += (w.regHours * bucket.rate.hourly_rate)
+                            + (w.satHours * bucket.rate.hourly_rate * bucket.rate.saturday_multiplier)
+                            + (w.sunHours * bucket.rate.hourly_rate * bucket.rate.sunday_holiday_multiplier)
+                            + ((w.totalKm || 0) * bucket.rate.km_rate)
+                            + ((w.hotelNights || 0) * (bucket.hotelRate || 0));
+                    });
+                });
+                const invoicedWeekNumbers = [...allWeekNums].sort((a, b) => a - b);
+
+                // Insert: combi krijgt user_id=NULL + user_ids=[…], single krijgt user_id=… + user_ids=NULL
+                const insertRow = {
                     invoice_number: invoiceNumber,
-                    user_id: invData.userId,
+                    user_id: invData.isCombi ? null : invData.userId,
+                    user_ids: invData.isCombi ? invData.userIds : null,
                     project_id: invData.projectId,
                     year: invData.year,
                     month: invData.month,
                     weeks: invoicedWeekNumbers,
                     storage_path: filePath,
-                    total_excl_btw: Object.keys(invData.weekData).reduce((sum, wk) => {
-                        const w = invData.weekData[wk];
-                        return sum + (w.regHours * invData.rate.hourly_rate)
-                            + (w.satHours * invData.rate.hourly_rate * invData.rate.saturday_multiplier)
-                            + (w.sunHours * invData.rate.hourly_rate * invData.rate.sunday_holiday_multiplier);
-                    }, 0)
-                });
+                    total_excl_btw: totalExclBtw
+                };
+                let { error: insertErr } = await sb.from('invoices').insert(insertRow);
+                // Fallback voor oude DB zonder user_ids kolom: probeer zonder
+                if (insertErr && /user_ids/.test(insertErr.message || '')) {
+                    console.warn('user_ids kolom niet aanwezig — fallback zonder. Voer migratie-combi-factuur.sql uit.');
+                    delete insertRow.user_ids;
+                    if (invData.isCombi && invData.userIds && invData.userIds.length > 0) {
+                        // Zet de eerste user als hoofduser zodat de factuur in elk geval zichtbaar blijft
+                        insertRow.user_id = invData.userIds[0];
+                    }
+                    ({ error: insertErr } = await sb.from('invoices').insert(insertRow));
+                }
+                if (insertErr) throw insertErr;
 
                 showToast('✓ Factuur opgeslagen in database');
                 loadInvoices();
@@ -12706,12 +12902,20 @@
 
                 try {
                     showToast('📧 Factuur versturen...');
+                    // Combi: alle namen achter elkaar; single: één naam
+                    let userNameForMail = invData.user?.name || '';
+                    if (invData.isCombi && invData.perUser) {
+                        userNameForMail = Object.values(invData.perUser)
+                            .map(b => b.user?.name || b.user?.email || '')
+                            .filter(Boolean)
+                            .join(' + ');
+                    }
                     const { data, error } = await sb.functions.invoke('send-invoice', {
                         body: {
                             pdfBase64: pdfBase64,
                             fileName: fileName,
                             invoiceNumber: invoiceNumber,
-                            userName: invData.user?.name || '',
+                            userName: userNameForMail,
                             projectCode: invData.project?.project_code || '',
                             projectName: invData.project?.name || '',
                             period: MONTHS_NL[invData.month - 1] + ' ' + invData.year,
@@ -12751,9 +12955,14 @@
 
                 if (error) throw error;
 
-                // Filter op test/productie modus
+                // Filter op test/productie modus — combi-factuur (user_ids) telt mee als
+                // ten minste één van zijn users in het filter zit
                 const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
-                const filteredInvoices = (invoices || []).filter(inv => filteredUserIds.has(inv.user_id));
+                const filteredInvoices = (invoices || []).filter(inv => {
+                    if (inv.user_id && filteredUserIds.has(inv.user_id)) return true;
+                    if (Array.isArray(inv.user_ids) && inv.user_ids.some(uid => filteredUserIds.has(uid))) return true;
+                    return false;
+                });
 
                 if (!filteredInvoices || filteredInvoices.length === 0) {
                     listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen facturen gegenereerd</div>';
@@ -12767,7 +12976,14 @@
                 const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
                 listEl.innerHTML = filteredInvoices.map(inv => {
-                    const userName = userMap[inv.user_id] || 'Onbekend';
+                    // Combi (user_ids gevuld): toon alle namen + COMBI-badge
+                    let userLabel;
+                    if (Array.isArray(inv.user_ids) && inv.user_ids.length > 0) {
+                        const names = inv.user_ids.map(uid => userMap[uid] || 'Onbekend').join(' + ');
+                        userLabel = `<span style="background:#dcfce7;color:#14532d;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;margin-right:4px">👥 COMBI</span>${names}`;
+                    } else {
+                        userLabel = userMap[inv.user_id] || 'Onbekend';
+                    }
                     const projLabel = projMap[inv.project_id] || 'Onbekend';
                     const maandTekst = MONTHS_SHORT[(inv.month || 1) - 1] + ' ' + inv.year;
                     const datumTekst = new Date(inv.created_at).toLocaleDateString('nl-NL');
@@ -12775,7 +12991,7 @@
                     return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                         <div style="flex:1;min-width:0">
                             <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🧾 ${inv.invoice_number}</div>
-                            <div style="font-size:0.75rem;color:var(--muted)">${userName} · ${projLabel}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">${userLabel} · ${projLabel}</div>
                             <div style="font-size:0.7rem;color:var(--muted)">${maandTekst} · ${datumTekst}</div>
                         </div>
                         <div style="display:flex;gap:4px;align-items:center">

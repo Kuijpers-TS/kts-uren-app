@@ -31,7 +31,7 @@
 
   <div class="card">
     <div class="meta">1 — WEEKSTAAT</div>
-    <h2>Urenstaat / Weekstaat</h2>
+    <h2>Weekstaat</h2>
     <p class="desc">Sample: Mark Kuijpers, week 19-2026, project DBFM Afsluitdijk (Levvel MTC B.V.), 5 werkdagen × 8 uur, 96 km/dag, met opmerking en handtekening.</p>
     <div class="actions">
       <button class="app-btn app-btn-primary" onclick="testWeekstaat()">Genereer voorbeeld-weekstaat</button>
@@ -164,11 +164,11 @@ async function generateWeekstaatV2(data) {
     }
 
     // ============================================================
-    // HEADER ROW (3 colommen): URENSTAAT title | empty | KTS adres
+    // HEADER ROW (3 colommen): WEEKSTAAT title | empty | KTS adres
     // ============================================================
     let y = mt;
 
-    // Left: tandwiel + URENSTAAT — tandwiel iets groter dan tekst
+    // Left: tandwiel + WEEKSTAAT — tandwiel iets groter dan tekst
     doc.setFontSize(20);
     doc.setFont(pdfFont, 'bold');
     doc.setTextColor(...ktsBlue);
@@ -178,7 +178,7 @@ async function generateWeekstaatV2(data) {
     if (TANDWIEL) {
         try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 3, iconSize, iconSize); } catch (e) {}
     }
-    doc.text('URENSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
+    doc.text('WEEKSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
     // Right: KTS logo + adres (zoveel mogelijk rechts-boven, tekst gecentreerd)
     // Logo 30.8mm breed × 30.2mm hoog (aspect 204:200 = 1.02 behouden, 0.7x)
@@ -209,7 +209,7 @@ async function generateWeekstaatV2(data) {
     // ============================================================
     // Info-bar staat LINKS (colA t/m colB), logo+adres staan RECHTS — mag op
     // dezelfde verticale band staan zodat de tabel hoger kan beginnen.
-    y = mt + 14; // direct na URENSTAAT-titel
+    y = mt + 14; // direct na WEEKSTAAT-titel
     const colA = ml, colB = ml + 95, colC = ml + 195;
     const labelGap = 24;
 

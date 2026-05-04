@@ -125,11 +125,11 @@ def make_weekstaat():
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    # ====== HEADER ROW: tandwiel + URENSTAAT (links) | logo + adres (rechts) ======
+    # ====== HEADER ROW: tandwiel + WEEKSTAAT (links) | logo + adres (rechts) ======
     # Tandwiel-icoon op A1 (klein)
     add_tandwiel_at(ws, 'A1', height_px=22)
-    # Titel URENSTAAT in A1, met whitespace voor icoon
-    ws['A1'] = "  URENSTAAT"
+    # Titel WEEKSTAAT in A1, met whitespace voor icoon
+    ws['A1'] = "  WEEKSTAAT"
     ws['A1'].font = Font(name='Calibri', size=22, bold=True, color=KTS_BLUE)
     ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
     ws.row_dimensions[1].height = 36
