@@ -9825,11 +9825,16 @@
             try {
                 const today = new Date().toISOString().slice(0, 10);
 
+                // Niet-admin gebruikers laden via rates_public view (zonder hourly_rate_sale).
+                // Admins laden via rates-tabel zelf voor volledige toegang.
+                const isAdmin = currentUser && currentUser.role === 'admin';
+                const sourceTable = isAdmin ? 'rates' : 'rates_public';
+
                 // Probeer eerst user-specifiek tarief te laden
                 let foundRate = null;
                 if (currentUser && currentUser.id) {
                     const { data: userRates } = await sb
-                        .from('rates')
+                        .from(sourceTable)
                         .select('*')
                         .eq('project_id', currentProject.id)
                         .eq('user_id', currentUser.id)
@@ -9842,7 +9847,7 @@
                 // Fallback: project-breed tarief (user_id is null)
                 if (!foundRate) {
                     const { data: projRates } = await sb
-                        .from('rates')
+                        .from(sourceTable)
                         .select('*')
                         .eq('project_id', currentProject.id)
                         .is('user_id', null)
@@ -11309,7 +11314,8 @@
                                 <div style="font-size:0.7rem;color:var(--muted)">${proj.project_code || ''} · vanaf ${r.valid_from}${r.valid_to ? ' t/m ' + r.valid_to : ''}</div>
                             </div>
                             <div style="text-align:right">
-                                <div style="font-weight:700;color:var(--kts-blue)">€${r.hourly_rate}/u</div>
+                                <div style="font-weight:700;color:var(--kts-blue)" title="Inkooptarief — wat KTS aan zzp betaalt">€${r.hourly_rate}/u <span style="font-size:0.65rem;color:var(--muted);font-weight:500">in</span></div>
+                                ${r.hourly_rate_sale ? '<div style="font-weight:700;color:#A56A1F;font-size:0.85rem" title="Verkooptarief — wat KTS aan klant factureert">€' + r.hourly_rate_sale + '/u <span style="font-size:0.65rem;color:var(--muted);font-weight:500">verk</span></div>' : ''}
                                 ${r.km_rate ? '<div style="font-size:0.7rem;color:var(--muted)">€' + r.km_rate + '/km</div>' : ''}
                             </div>
                         </div>
@@ -11742,16 +11748,20 @@
                 const projRate = allRates.find(r => !r.user_id);
                 const found = userRate || projRate;
                 if (found) {
-                    rate.hourly_rate = parseFloat(found.hourly_rate) || 85;
+                    // FACTUUR-TARIEF: gebruik hourly_rate_sale (verkoop) indien gevuld,
+                    // anders fallback naar hourly_rate (= inkoop, doorberekenen 1:1).
+                    // Dit is het bedrag dat KTS aan de klant factureert.
+                    const saleRate = parseFloat(found.hourly_rate_sale);
+                    rate.hourly_rate = (!isNaN(saleRate) && saleRate > 0)
+                        ? saleRate
+                        : (parseFloat(found.hourly_rate) || 85);
                     rate.km_rate = parseFloat(found.km_rate) || 0.50;
                     rate.saturday_multiplier = parseFloat(found.saturday_multiplier) || 1.50;
                     rate.sunday_holiday_multiplier = parseFloat(found.sunday_holiday_multiplier) || 2.00;
                 }
             }
-
-            // Maar voor de factuur: KTS factureert aan de klant, dus we gebruiken KTS tarieven
-            // (dit zijn dezelfde tarieven die op de PO staan, want KTS factureert door)
-            // Eventueel met opslag — voor nu 1:1 doorberekenen
+            // Inkooporder gebruikt hourly_rate (inkoop, wat KTS de zzp betaalt).
+            // Factuur gebruikt hierboven hourly_rate_sale (verkoop) als beschikbaar.
 
             // User info
             const { data: user } = await sb.from('users').select('*').eq('id', userId).single();
@@ -13903,8 +13913,16 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Medewerker</label><select id="adm-tar-user" onchange="updateTariffKmVisibility()"><option value="">Projectbreed (alle medewerkers)</option></select></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Functie</label><input type="text" id="adm-tar-function" placeholder="Bijv. Maintenance Engineer A" value="${existing ? existing.function_title || '' : ''}"></div>
                     <div class="form-row">
-                        <div class="form-group"><label>Uurtarief (€)</label><input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? existing.hourly_rate || '' : ''}"></div>
+                        <div class="form-group">
+                            <label>Inkooptarief (€/u) <span style="color:var(--muted);font-weight:400">— wat KTS aan zzp betaalt</span></label>
+                            <input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? existing.hourly_rate || '' : ''}">
+                        </div>
                         <div class="form-group" id="adm-tar-km-wrap"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
+                    </div>
+                    <div class="form-group" style="margin-top:12px;padding:10px 12px;background:#FEF3E0;border-radius:8px;border:1px solid #F4D9A0">
+                        <label style="display:block;margin-bottom:4px"><strong>Verkooptarief (€/u)</strong> <span style="color:var(--muted);font-weight:400">— wat KTS aan eindklant factureert</span></label>
+                        <input type="number" step="0.01" id="adm-tar-hourly-sale" placeholder="Leeg = gebruik inkooptarief" value="${existing && existing.hourly_rate_sale ? existing.hourly_rate_sale : ''}" style="width:100%">
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">⚠️ Dit veld is alleen zichtbaar voor admins. Wordt gebruikt op factuur (KTS → klant). Laat leeg om hetzelfde tarief te factureren als de inkoop.</div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
                         <div class="form-group"><label>Za-toeslag (%)</label><input type="number" step="1" id="adm-tar-sat" placeholder="150" value="${existing ? Math.round(existing.saturday_multiplier * 100) : '150'}"></div>
@@ -15572,11 +15590,15 @@
                 if (!projId || !hourly || !from) { showToast('⚠️ Vul project, uurtarief en startdatum in'); return; }
                 const userId = document.getElementById('adm-tar-user').value || null;
                 const functionTitle = document.getElementById('adm-tar-function').value.trim() || null;
+                // Verkoop-tarief (admin only) — leeg = NULL = factuur gebruikt fallback hourly_rate
+                const saleVal = document.getElementById('adm-tar-hourly-sale').value.trim();
+                const hourlySale = saleVal ? parseFloat(saleVal) : null;
                 const data = {
                     project_id: projId,
                     user_id: userId,
                     function_title: functionTitle,
                     hourly_rate: hourly,
+                    hourly_rate_sale: hourlySale,
                     km_rate: parseFloat(document.getElementById('adm-tar-km').value) || 0.50,
                     saturday_multiplier: (parseFloat(document.getElementById('adm-tar-sat').value) || 150) / 100,
                     sunday_holiday_multiplier: (parseFloat(document.getElementById('adm-tar-sun').value) || 200) / 100,
