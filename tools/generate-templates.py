@@ -666,37 +666,46 @@ def make_factuur():
     ws.row_dimensions[INFO_ROW].height = 14
     ws.row_dimensions[INFO_ROW + 1].height = 22
 
-    # ====== PROJECT-INFO compact + Loonheffingen ======
+    # ====== PROJECT-INFO TABEL ======
+    # 2-koloms tabel met alternerende rij-achtergrond, matching de PDF.
+    # De project-NAAM staat al in de info-bar hierboven, dus die NIET nogmaals.
+    # Volgorde: KTS-projectcode → klant-velden → loonheffingsnummers.
     PROJ_ROW = INFO_ROW + 3
     proj_info = [
-        ("Projectnummer",   "[Nummer]", False),
-        ("Opdrachtnummer",  "[Nummer]", False),
-        ("PO-nummer",       "[Nummer]", False),
+        ("KTS-projectcode",                                "[KTS2026_XX]"),
+        ("Projectnummer klant",                            "[Nummer]"),
+        ("Opdrachtnummer",                                 "[Nummer]"),
+        ("PO nummer",                                      "[Nummer]"),
+        ("Loonheffingennummer KTDS Holding B.V.",          "866381557L01"),
+        ("Loonheffingennummer Kuijpers TD Holding B.V.",   "866381594L01"),
     ]
-    for i, (lbl, val, _) in enumerate(proj_info):
+    for i, (lbl, val) in enumerate(proj_info):
         r = PROJ_ROW + i
-        set_cell(ws, (r, 1), lbl,
-            font_kwargs={'name':'Calibri','size':9,'color':INK_500})
-        set_cell(ws, (r, 3), val,
-            font_kwargs={'name':'Calibri','size':9,'color':INK_900})
-        ws.row_dimensions[r].height = 14
-
-    # Loonheffingennummers (klein, niet-bold)
-    LOON_ROW = PROJ_ROW + 3
-    loon_lines = [
-        ("Loonheffingennummer KTDS Holding B.V.",         "866381557L01"),
-        ("Loonheffingennummer Kuijpers TD Holding B.V.",  "866381594L01"),
-    ]
-    for i, (lbl, val) in enumerate(loon_lines):
-        r = LOON_ROW + i
-        set_cell(ws, (r, 1), lbl,
-            font_kwargs={'name':'Calibri','size':8,'color':INK_400})
-        set_cell(ws, (r, 4), val,
-            font_kwargs={'name':'Calibri','size':8,'color':INK_500})
-        ws.row_dimensions[r].height = 12
+        # Alternerende achtergrond — even rijen krijgen LIGHT_BG fill
+        row_fill = soft_fill() if i % 2 == 0 else None
+        # Label-cel (kolommen A-C, gemerged voor lange teksten)
+        c_lbl = set_cell(ws, (r, 1), lbl,
+            font_kwargs={'name':'Calibri','size':9,'bold':True,'color':INK_500},
+            fill=row_fill,
+            align=Alignment(horizontal='left', vertical='center', indent=1),
+            border=thin_border())
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=3)
+        # Value-cel (kolommen D-G, gemerged)
+        c_val = set_cell(ws, (r, 4), val,
+            font_kwargs={'name':'Calibri','size':9,'color':INK_900},
+            fill=row_fill,
+            align=Alignment(horizontal='left', vertical='center', indent=1),
+            border=thin_border())
+        ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=7)
+        # Vul border ook op de gemergede cellen
+        for col in range(1, 8):
+            cell = ws.cell(row=r, column=col)
+            if row_fill and not cell.fill.start_color.rgb:
+                cell.fill = row_fill
+        ws.row_dimensions[r].height = 16
 
     # ====== ITEMS TABEL ======
-    ITEMS_HEADER_ROW = LOON_ROW + 3
+    ITEMS_HEADER_ROW = PROJ_ROW + len(proj_info) + 2
     item_headers = [
         ("PERIODE",      'left'),
         ("OMSCHRIJVING", 'left'),

@@ -12555,10 +12555,10 @@
 
             // Project-info als nette 2-koloms tabel — zelfde lettertype als klant-blok,
             // alternerende achtergrondkleur per rij voor leesbaarheid.
+            // De project-NAAM zelf staat al in de info-bar ("PROJECT" cel) hierboven —
+            // dus die NIET nogmaals in de tabel zetten (dubbele weergave).
             // Volgorde: KTS-projectcode → klant-velden → loonheffingsnummers.
-            // Alleen rijen tonen die waarde hebben; loonheffingen altijd onderaan.
             const projectTableRows = [
-                { label: 'Project',              value: data.project },
                 { label: 'KTS-projectcode',      value: data.projectCodeKTS },
                 { label: 'Projectnummer klant',  value: data.projectNummer },
                 { label: 'Opdrachtnummer',       value: data.opdrachtNummer },
