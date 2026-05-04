@@ -4807,11 +4807,11 @@
 
             <!-- ===== WEEKSTATEN TAB ===== -->
             <div id="admin-weekstaten" style="display:none">
-                <div style="display:flex;gap:6px;margin-bottom:12px">
-                    <select id="ws-filter-project" onchange="loadWeekstaten()" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                    <select id="ws-filter-project" onchange="loadWeekstaten()" style="flex:1 1 140px;min-width:0;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                         <option value="">Alle projecten</option>
                     </select>
-                    <select id="ws-filter-user" onchange="loadWeekstaten()" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <select id="ws-filter-user" onchange="loadWeekstaten()" style="flex:1 1 140px;min-width:0;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                         <option value="">Alle medewerkers</option>
                     </select>
                 </div>
@@ -5145,7 +5145,7 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- BOTTOM NAV -->
-    <div class="bottom-nav app-bottom-nav" style="grid-template-columns: repeat(5, 1fr)">
+    <div class="bottom-nav app-bottom-nav" id="bottom-nav-grid" style="grid-template-columns: repeat(5, 1fr)">
         <button class="nav-item app-navitem active" type="button" onclick="switchScreen('uren', event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span class="app-nav-label">Uren</span>
@@ -6041,8 +6041,8 @@
                 }
 
                 return `
-                    <div class="day-card app-day-card ${stateClass} ${isExpanded ? 'expanded' : ''} ${isWeekend ? 'weekend-card' : ''}">
-                        <div class="day-header app-day-top" onclick="toggleDay(${i})" style="cursor:pointer">
+                    <div class="day-card app-day-card ${stateClass} ${isExpanded ? 'expanded' : ''} ${isWeekend ? 'weekend-card' : ''}" onclick="toggleDay(${i})" style="cursor:pointer">
+                        <div class="day-header app-day-top">
                             <div class="app-day-info">
                                 <span class="app-dnum">${getDATES()[i]}</span>
                                 <span class="app-dname">${DAYS_FULL[i]}${dnameSuffix}</span>
@@ -6053,7 +6053,7 @@
                         ${locHtml}
                         ${workHtml}
                         ${badges ? '<div class="day-badges" style="margin-top:6px">' + badges + '</div>' : ''}
-                        <div class="day-form">
+                        <div class="day-form" onclick="event.stopPropagation()">
                             <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isDayOff?'#fef3c7':'#f8fafc'};border:1px solid ${isDayOff?'#fbbf24':'var(--border)'};border-radius:10px;cursor:pointer;margin-bottom:12px" onclick="event.stopPropagation();toggleDayOff(${i})">
                                 <div style="width:20px;height:20px;border-radius:4px;border:2px solid ${isDayOff?'#d97706':'#cbd5e1'};background:${isDayOff?'#d97706':'white'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
                                     ${isDayOff ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : ''}
@@ -6748,7 +6748,7 @@
                 try {
                     const wmSize = 250;
                     doc.saveGraphicsState && doc.saveGraphicsState();
-                    doc.setGState && doc.setGState(new doc.GState({ opacity: 0.05 }));
+                    doc.setGState && doc.setGState(new doc.GState({ opacity: 0.08 }));
                     doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
                     doc.restoreGraphicsState && doc.restoreGraphicsState();
                 } catch (e) {}
@@ -7690,8 +7690,25 @@
                 if (!drawing) return;
                 drawing = false;
                 if (hasStrokes) {
-                    // Sla signature data op
-                    signatureData[type] = canvas.toDataURL('image/png');
+                    // Sla signature op met compressie: downsize naar max 800px + JPEG
+                    // (PNG signatures werden 1-2 MB elk, weekstaat-PDF werd daardoor 4 MB).
+                    // JPEG q=0.75 op witte bg geeft ~50-150 KB per signature, visueel
+                    // nauwelijks verschil voor handtekeningen.
+                    try {
+                        const tmp = document.createElement('canvas');
+                        const targetW = Math.min(canvas.width, 800);
+                        const scale = targetW / canvas.width;
+                        tmp.width = targetW;
+                        tmp.height = Math.round(canvas.height * scale);
+                        const tctx = tmp.getContext('2d');
+                        tctx.fillStyle = '#ffffff';
+                        tctx.fillRect(0, 0, tmp.width, tmp.height);
+                        tctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
+                        signatureData[type] = tmp.toDataURL('image/jpeg', 0.75);
+                    } catch (e) {
+                        // Fallback bij browser-issue: gewoon PNG
+                        signatureData[type] = canvas.toDataURL('image/png');
+                    }
                     updateSignatureUI();
                 }
             }
@@ -8397,6 +8414,19 @@
         }
 
         // ===== NAV =====
+        // Bottom-nav grid dynamisch aanpassen op aantal zichtbare nav-items
+        // (bv. 5 items default, 4 zonder inspecties-recht, 3 zonder kosten-recht)
+        function updateBottomNavGrid() {
+            const nav = document.getElementById('bottom-nav-grid');
+            if (!nav) return;
+            const items = nav.querySelectorAll('.nav-item');
+            let visible = 0;
+            items.forEach(it => { if (it.style.display !== 'none') visible++; });
+            if (visible > 0) {
+                nav.style.gridTemplateColumns = `repeat(${visible}, 1fr)`;
+            }
+        }
+
         function switchScreen(name, event) {
             // Blokkeer admin scherm voor niet-admins
             if (name === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
@@ -8576,6 +8606,8 @@
             // Administratie tab tonen/verbergen
             const navAdm = document.getElementById('nav-administratie');
             if (navAdm) navAdm.style.display = (currentUser.role === 'admin' || currentUser.allow_administratie) ? '' : 'none';
+            // Bottom-nav grid dynamisch aanpassen aan aantal zichtbare items
+            updateBottomNavGrid();
 
             // Laad tarieven voor nieuw project
             await loadProjectRates();
@@ -11932,7 +11964,7 @@
                 try {
                     const wmSize = 180;
                     doc.saveGraphicsState && doc.saveGraphicsState();
-                    doc.setGState && doc.setGState(new doc.GState({ opacity: 0.05 }));
+                    doc.setGState && doc.setGState(new doc.GState({ opacity: 0.08 }));
                     doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
                     doc.restoreGraphicsState && doc.restoreGraphicsState();
                 } catch (e) {}
@@ -13091,7 +13123,7 @@
                 try {
                     const wmSize = 180;
                     doc.saveGraphicsState && doc.saveGraphicsState();
-                    doc.setGState && doc.setGState(new doc.GState({ opacity: 0.05 }));
+                    doc.setGState && doc.setGState(new doc.GState({ opacity: 0.08 }));
                     doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
                     doc.restoreGraphicsState && doc.restoreGraphicsState();
                 } catch (e) {}
@@ -15597,6 +15629,7 @@
                         if (navInsp3) navInsp3.style.display = (currentUser.role === 'admin' || currentUser.allow_inspecties) ? '' : 'none';
                         const navAdm3 = document.getElementById('nav-administratie');
                         if (navAdm3) navAdm3.style.display = (currentUser.role === 'admin' || currentUser.allow_administratie) ? '' : 'none';
+                        updateBottomNavGrid();
                         // Overzicht + dagkaarten herladen met nieuwe flags
                         renderDays();
                         renderSummary();
