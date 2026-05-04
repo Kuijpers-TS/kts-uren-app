@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "Bash(code --install-extension pablodelucca.pixel-agents)",
+      "Bash(code --list-extensions)",
+      "Read(//c/Users/mkuij/Downloads/**)",
+      "Bash(pandoc \"ASD-PRO-0949-B Aanzet tot Werkinstructie Vervanging server en accu toegangscontrole-installatie ASD.docx\" -o /tmp/doc1.md)",
+      "Bash(pip install:*)",
+      "Bash(python fix_script.py)",
+      "Bash(rm fix_script.py)"
+    ]
+  }
+}
