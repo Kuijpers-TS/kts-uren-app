@@ -4823,6 +4823,10 @@
                         <option value="">Alle medewerkers</option>
                     </select>
                 </div>
+                <!-- Nieuwe weekstaat invullen namens medewerker (admin override) -->
+                <button type="button" onclick="adminNewWeekstaat()" class="btn btn-primary btn-sm" style="width:100%;padding:10px;font-size:0.9rem;margin-bottom:14px">
+                    ✍️ Nieuwe weekstaat invullen voor medewerker
+                </button>
                 <!-- Concept weekstaten (opgeslagen maar niet verstuurd) -->
                 <div id="admin-weekstaten-concept" style="margin-bottom:16px"></div>
                 <!-- Verstuurde weekstaten -->
@@ -15523,6 +15527,77 @@
             }
         }
 
+        // Admin opent een lege weekstaat voor een gekozen medewerker + project + week.
+        // Hergebruikt adminEditWeekEntries (die toont lege rijen als er geen time_entries
+        // bestaan, en adminSaveWeekEntries inserteert ze). Daarna kan admin via de ✍️
+        // knop in de concept-lijst ondertekenen + versturen namens de medewerker.
+        async function adminNewWeekstaat() {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            // Filter users op test/productie en archief
+            const users = (typeof getFilteredUsers === 'function' ? getFilteredUsers() : (window._adminUsers || []))
+                .filter(u => u.role !== 'admin');
+            const projects = (window._adminProjects || []).filter(p => {
+                const matchTest = _adminTestMode ? p.is_test === true : p.is_test !== true;
+                return matchTest && p.status === 'active';
+            });
+
+            if (users.length === 0) { showToast('⚠️ Geen medewerkers gevonden'); return; }
+            if (projects.length === 0) { showToast('⚠️ Geen actieve projecten gevonden'); return; }
+
+            const today = new Date();
+            const isoWeekToday = (typeof getISOWeek === 'function') ? getISOWeek(today) : Math.ceil((today - new Date(today.getFullYear(),0,1)) / 86400000 / 7);
+            const yearToday = today.getFullYear();
+
+            const modal = document.getElementById('admin-modal');
+            document.getElementById('admin-modal-title').textContent = '✍️ Nieuwe weekstaat invullen';
+            document.getElementById('admin-modal-fields').innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:10px">
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">MEDEWERKER</label>
+                        <select id="anw-user" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem">
+                            ${users.map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">PROJECT</label>
+                        <select id="anw-project" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem">
+                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div>
+                            <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">WEEK</label>
+                            <input type="number" id="anw-week" min="1" max="53" value="${isoWeekToday}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">JAAR</label>
+                            <input type="number" id="anw-year" min="2024" max="2030" value="${yearToday}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
+                        </div>
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;padding:10px;background:#f1f5f9;border-radius:8px;line-height:1.4">
+                        💡 Na opslaan verschijnt deze in <strong>Concept weekstaten</strong>. Klik daar op ✍️ om te ondertekenen &amp; versturen namens de medewerker.
+                    </div>
+                </div>`;
+            const saveBtn = document.getElementById('admin-modal-save');
+            saveBtn.style.display = '';
+            saveBtn.textContent = 'Open uren-invoer →';
+            saveBtn.onclick = () => {
+                const userId = document.getElementById('anw-user').value;
+                const projectId = document.getElementById('anw-project').value;
+                const weekNumber = parseInt(document.getElementById('anw-week').value) || isoWeekToday;
+                const year = parseInt(document.getElementById('anw-year').value) || yearToday;
+                if (!userId || !projectId) { showToast('⚠️ Kies medewerker en project'); return; }
+                const userName = users.find(u => u.id === userId)?.name || users.find(u => u.id === userId)?.email || 'Medewerker';
+                // adminEditWeekEntries opent direct de uren-invoer modal (vervangt deze)
+                adminEditWeekEntries(userId, projectId, weekNumber, year, userName);
+            };
+            const delBtn = document.getElementById('admin-modal-delete');
+            if (delBtn) delBtn.style.display = 'none';
+            modal.classList.add('active');
+        }
+
         async function adminEditWeekEntries(userId, projectId, weekNumber, year, userName) {
             const sb = getSupabase();
             if (!sb) return;
@@ -15578,6 +15653,7 @@
             if (!sb) return;
             const rows = document.querySelectorAll('#admin-modal-fields [data-date]');
             let saved = 0, errors = 0;
+            let totalHours = 0;
             for (const row of rows) {
                 const entryId = row.dataset.entryId;
                 const dateStr = row.dataset.date;
@@ -15588,6 +15664,7 @@
                 const desc = row.querySelector('.aew-desc').value.trim();
 
                 if (hours > 0 || desc) {
+                    totalHours += hours;
                     const data = {
                         user_id: userId,
                         project_id: projectId,
@@ -15612,10 +15689,37 @@
                     saved++;
                 }
             }
+
+            // Zorg dat er een week_status record bestaat met status='opgeslagen' zodat
+            // de weekstaat in de Concept-lijst verschijnt en met de ✍️ knop ondertekend
+            // kan worden namens de medewerker. Alleen aanmaken/bijwerken als er uren zijn.
+            if (totalHours > 0) {
+                try {
+                    const { data: existing } = await sb.from('week_status').select('status')
+                        .eq('user_id', userId).eq('project_id', projectId)
+                        .eq('week_number', weekNumber).eq('year', year).maybeSingle();
+                    // Niet downgrade — als al verstuurd, status laten staan
+                    if (!existing || existing.status === 'concept') {
+                        await sb.from('week_status').upsert({
+                            user_id: userId,
+                            project_id: projectId,
+                            week_number: weekNumber,
+                            year: year,
+                            status: 'opgeslagen',
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'user_id,project_id,week_number,year' });
+                    }
+                } catch (statusErr) {
+                    console.warn('week_status upsert mislukt (niet fataal):', statusErr.message || statusErr);
+                }
+            }
+
             if (errors) showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
-            else showToast(`✓ ${saved} dagen bijgewerkt`);
+            else showToast(`✓ ${saved} dagen bijgewerkt — staat klaar in Concept om te ondertekenen`);
             document.getElementById('admin-modal').classList.remove('active');
             document.getElementById('admin-modal-save').textContent = 'Opslaan';
+            // Lijst verversen zodat de nieuwe concept-weekstaat zichtbaar wordt
+            if (typeof loadWeekstaten === 'function') loadWeekstaten();
         }
 
         // Helper: maandag berekenen vanuit jaar + weeknummer (ISO)
