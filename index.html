@@ -5990,12 +5990,27 @@
             let totalHours = 0;
 
             const DAY_ABBR = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+
+            // Per-dag check: valt deze dag buiten project start/eind?
+            // Returnt 'before' / 'after' / null (= binnen periode)
+            function dayProjectStatus(dayIdx) {
+                if (!currentProject) return null;
+                const d = new Date(currentWeekMonday);
+                d.setDate(d.getDate() + dayIdx);
+                const dStr = toLocalDateStr(d);
+                if (currentProject.start_date && dStr < currentProject.start_date) return 'before';
+                if (currentProject.end_date && dStr > currentProject.end_date) return 'after';
+                return null;
+            }
+
             container.innerHTML = weekData.map((entry, i) => {
                 totalHours += entry.hours;
                 const isWeekend = i >= 5;
                 const isDayOff = entry.dayOff;
                 const isFilled = entry.hours > 0;
                 const isExpanded = expandedDay === i;
+                const projStatus = dayProjectStatus(i);
+                const isOutsideProject = projStatus !== null;
 
                 // Build badges (oude .day-badge styling blijft werken)
                 let badges = '';
@@ -6038,6 +6053,26 @@
                 let workHtml = '';
                 if (isFilled && !isExpanded && entry.desc) {
                     workHtml = `<div class="app-day-work">${entry.desc}</div>`;
+                }
+
+                // Buiten projectperiode → render als locked card, geen click handler
+                if (isOutsideProject) {
+                    const projStartFmt = currentProject.start_date ? new Date(currentProject.start_date).toLocaleDateString('nl-NL') : '';
+                    const projEndFmt   = currentProject.end_date   ? new Date(currentProject.end_date).toLocaleDateString('nl-NL') : '';
+                    const reason = projStatus === 'before'
+                        ? `Project start pas op ${projStartFmt}`
+                        : `Project liep af op ${projEndFmt}`;
+                    return `
+                        <div class="day-card app-day-card is-locked ${isWeekend ? 'weekend-card' : ''}" style="cursor:not-allowed;opacity:0.7">
+                            <div class="day-header app-day-top">
+                                <div class="app-day-info">
+                                    <span class="app-dnum">${getDATES()[i]}</span>
+                                    <span class="app-dname" style="color:var(--app-ink-500)">${DAYS_FULL[i]}<span style="color:var(--app-ink-400);font-weight:500;margin-left:6px">· buiten projectperiode</span></span>
+                                </div>
+                                <div class="app-dhrs is-empty">— u</div>
+                            </div>
+                            <div class="app-day-times" style="color:var(--app-ink-400)"><span>🔒 ${reason}</span></div>
+                        </div>`;
                 }
 
                 return `
@@ -6197,7 +6232,24 @@
         }
 
         // ===== UREN ACTIONS =====
-        function toggleDay(i) { expandedDay = expandedDay === i ? -1 : i; renderDays(); }
+        function toggleDay(i) {
+            // Blokkeer expand voor dagen buiten project start/eind
+            if (currentProject) {
+                const d = new Date(currentWeekMonday);
+                d.setDate(d.getDate() + i);
+                const dStr = toLocalDateStr(d);
+                if (currentProject.start_date && dStr < currentProject.start_date) {
+                    showToast('🔒 Deze dag valt vóór de projectstart');
+                    return;
+                }
+                if (currentProject.end_date && dStr > currentProject.end_date) {
+                    showToast('🔒 Deze dag valt na het projecteinde');
+                    return;
+                }
+            }
+            expandedDay = expandedDay === i ? -1 : i;
+            renderDays();
+        }
 
         function toggleDayOff(i) {
             weekData[i].dayOff = !weekData[i].dayOff;
