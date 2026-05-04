@@ -10231,6 +10231,37 @@
         // ===== CUSTOM CONFIRM DIALOG =====
         // Vraag na "Week opslaan" of de gebruiker direct wil ondertekenen+versturen
         // Returned true = ondertekenen nu, false = later
+        // Algemene helper voor admin-doorklik prompts.
+        // Returned true (ja, doorgaan) / false (annuleren).
+        function askContinueAsync(opts) {
+            const { title, message, confirmLabel = 'Ja, doorgaan', cancelLabel = 'Niet nu', iconSvg } = opts || {};
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,27,45,0.45);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:white;border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
+                const icon = iconSvg || '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>';
+                box.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#EAF2F7;margin:0 auto 14px">${icon}</div>
+                    <div style="text-align:center;font-size:16px;font-weight:600;color:#0F1B2D;margin-bottom:6px">${title}</div>
+                    <div style="text-align:center;font-size:13px;color:#5C6675;line-height:1.5;margin-bottom:20px">${message}</div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <button id="continue-yes" style="padding:12px 20px;border-radius:10px;border:none;background:#07567F;color:white;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit">${confirmLabel}</button>
+                        <button id="continue-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:white;color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">${cancelLabel}</button>
+                    </div>
+                `;
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                function close(r) { overlay.remove(); resolve(r); }
+                box.querySelector('#continue-yes').onclick = () => close(true);
+                box.querySelector('#continue-no').onclick = () => close(false);
+                overlay.onclick = (e) => { if (e.target === overlay) close(false); };
+                document.addEventListener('keydown', function esc(e) {
+                    if (e.key === 'Escape') { close(false); document.removeEventListener('keydown', esc); }
+                });
+            });
+        }
+
         function askSignAfterSaveAsync(weekNumber) {
             return new Promise(resolve => {
                 const overlay = document.createElement('div');
@@ -13495,6 +13526,36 @@
 
             // Upload metadata naar Supabase
             uploadPOToSupabase(filePath, doc.output('arraybuffer'), ioData, ioNumber);
+
+            // Doorklik-flow: vraag of admin direct een factuur wil maken
+            try {
+                const wantInvoice = await askContinueAsync({
+                    title: 'Inkooporder gegenereerd',
+                    message: `${ioNumber} is opgeslagen.<br>Wil je nu direct een factuur richting de eindklant maken?`,
+                    confirmLabel: 'Ja, naar factuur',
+                    cancelLabel: 'Niet nu',
+                    iconSvg: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>'
+                });
+                if (wantInvoice) {
+                    switchAdminTab('facturen');
+                    setTimeout(async () => {
+                        if (typeof loadInvoiceFilters === 'function') {
+                            await loadInvoiceFilters();
+                        }
+                        const projEl = document.getElementById('inv-filter-project');
+                        const userEl = document.getElementById('inv-filter-user');
+                        const yearEl = document.getElementById('inv-filter-year');
+                        const monthEl = document.getElementById('inv-filter-month');
+                        if (projEl) projEl.value = ioData.project.id || ioData.project_id || '';
+                        if (userEl) userEl.value = (ioData.user && ioData.user.id) || ioData.user_id || '';
+                        if (yearEl) yearEl.value = ioData.year;
+                        if (monthEl) monthEl.value = ioData.month;
+                        if (typeof previewInvoice === 'function') previewInvoice();
+                    }, 300);
+                }
+            } catch (e) {
+                console.warn('IO→Factuur doorklik faalde:', e);
+            }
         }
 
         // ===== INKOOPORDER PDF (LEGACY — backup van vorige versie) =====
@@ -14651,6 +14712,57 @@
                 if (error) throw error;
                 showToast('✅ Weekstaat goedgekeurd');
                 loadWeekstaten();
+
+                // Doorklik-flow: vraag of admin direct een inkooporder wil maken
+                const wantIO = await askContinueAsync({
+                    title: 'Weekstaat goedgekeurd',
+                    message: `Week ${weekNumber}/${year} is goedgekeurd.<br>Wil je nu direct een inkooporder voor deze week maken?`,
+                    confirmLabel: 'Ja, naar inkooporder',
+                    cancelLabel: 'Niet nu',
+                    iconSvg: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>'
+                });
+                if (wantIO) {
+                    switchAdminTab('inkooporders');
+                    // Maandag van die ISO-week berekenen voor maand-filter
+                    const simple = new Date(year, 0, 1 + (weekNumber - 1) * 7);
+                    const dow = simple.getDay();
+                    const monday = new Date(simple);
+                    if (dow <= 4) monday.setDate(simple.getDate() - simple.getDay() + 1);
+                    else monday.setDate(simple.getDate() + 8 - simple.getDay());
+                    const month = monday.getMonth() + 1;
+                    // Wacht tot IO-tab gerendered + filters geladen
+                    setTimeout(async () => {
+                        if (typeof loadInkooporderFilters === 'function') {
+                            await loadInkooporderFilters();
+                        }
+                        const projEl = document.getElementById('io-filter-project');
+                        const userEl = document.getElementById('io-filter-user');
+                        const yearEl = document.getElementById('io-filter-year');
+                        const monthEl = document.getElementById('io-filter-month');
+                        if (projEl) projEl.value = projectId;
+                        if (userEl) userEl.value = userId;
+                        if (yearEl) yearEl.value = year;
+                        if (monthEl) monthEl.value = month;
+                        // Per-week selectie aanzetten en juiste week kiezen
+                        const useWeekEl = document.getElementById('io-use-week');
+                        const weekWrap = document.getElementById('io-week-selector');
+                        const weekEl = document.getElementById('io-filter-week');
+                        if (useWeekEl) useWeekEl.checked = true;
+                        if (weekWrap) weekWrap.style.display = '';
+                        if (weekEl) {
+                            // Voeg de week-optie toe als die er nog niet is
+                            if (!Array.from(weekEl.options).some(o => String(o.value) === String(weekNumber))) {
+                                const opt = document.createElement('option');
+                                opt.value = weekNumber;
+                                opt.textContent = `Week ${weekNumber}`;
+                                weekEl.appendChild(opt);
+                            }
+                            weekEl.value = weekNumber;
+                        }
+                        // Auto-preview
+                        if (typeof previewPO === 'function') previewPO();
+                    }, 300);
+                }
             } catch (e) {
                 showToast('❌ Fout: ' + e.message);
             }
