@@ -5803,26 +5803,41 @@
         function fmtEuro(n) { return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
         // ===== PDF BESTANDSNAAM HELPERS =====
-        // Conventie: KTS-<Type>_<Jaar>-W<Week>_<context>.pdf
+        // Naming-conventie (mei 2026):
+        //   Weekstaat:   {PROJ}_{DDMMYYYY}_Weekstaat_W{wk}_{naam}.pdf
+        //   Inkooporder: {PROJ}-{DDMMYYYY}_Inkooporder_W{wk}_{leverancier}.pdf
+        //                (- na PROJ, want dat samen vormt het IO-nummer)
+        //   Factuur:     {factuurnum}_{klant}.pdf
         function ktsSlug(s) {
             return (s || '').trim()
                 .replace(/[^a-zA-Z0-9-_ ]/g, '')   // strip rare chars
-                .replace(/\s+/g, '-')               // spaces → dash
-                .replace(/-+/g, '-');               // collapse dashes
+                .replace(/\s+/g, '_')               // spaces → underscore
+                .replace(/_+/g, '_');               // collapse underscores
         }
-        function ktsWeekstaatName(year, week, userName) {
-            const slug = ktsSlug(userName);
-            const wk = String(week).padStart(2, '0');
-            return `KTS-Weekstaat_${year}-W${wk}${slug ? '_' + slug : ''}.pdf`;
+        // DDMMYYYY voor de huidige datum (of een gegeven Date)
+        function ktsDateStamp(d) {
+            d = d || new Date();
+            return String(d.getDate()).padStart(2,'0')
+                + String(d.getMonth()+1).padStart(2,'0')
+                + d.getFullYear();
         }
-        function ktsInkooporderName(year, week, projCode) {
-            const code = ktsSlug(projCode);
+        function ktsWeekstaatName(year, week, userName, projectCode, dateStr) {
             const wk = String(week).padStart(2, '0');
-            return `KTS-Inkooporder_${year}-W${wk}${code ? '_' + code : ''}.pdf`;
+            const ddmm = dateStr || ktsDateStamp();
+            const proj = ktsSlug(projectCode || '') || 'KTS';
+            const userSlug = ktsSlug(userName || '');
+            return `${proj}_${ddmm}_Weekstaat_W${wk}${userSlug ? '_' + userSlug : ''}.pdf`;
+        }
+        function ktsInkooporderName(year, week, projCode, supplierName, dateStr) {
+            const wk = String(week).padStart(2, '0');
+            const ddmm = dateStr || ktsDateStamp();
+            const proj = ktsSlug(projCode || '') || 'KTS';
+            const supSlug = ktsSlug(supplierName || '');
+            return `${proj}-${ddmm}_Inkooporder_W${wk}${supSlug ? '_' + supSlug : ''}.pdf`;
         }
         function ktsFactuurName(factuurNum, clientName) {
-            const slug = ktsSlug(clientName);
-            return `KTS-Factuur_${factuurNum}${slug ? '_' + slug : ''}.pdf`;
+            const slug = ktsSlug(clientName || '');
+            return `${factuurNum}${slug ? '_' + slug : ''}.pdf`;
         }
         function todayLabel() {
             const d = new Date();
@@ -6645,7 +6660,14 @@
             bic: 'BUNQNL2A',
             tel1: '+31 6 5106 3555',
             tel2: '+31 6 5123 9050',
-            email: 'info@kuijpers-ts.nl'
+            email: 'info@kuijpers-ts.nl',
+            // Loonheffingsnummers voor detacheringsfacturen (vereist door eindklanten zoals
+            // Levvel). Worden standaard meegenomen op de factuur — kunnen per project
+            // worden uitgezet via projects.show_loonheffingen=false.
+            loonheffingen: [
+                { label: 'Loonheffingennummer KTDS Holding B.V.',         value: '866381557L01' },
+                { label: 'Loonheffingennummer Kuijpers TD Holding B.V.',  value: '866381594L01' }
+            ]
         };
 
         function getWeekDates() {
@@ -6807,13 +6829,12 @@
             const lineCol = [180, 180, 180];
             const lineColLight = [220, 220, 220];
 
-            // Watermark — tandwiel volledig binnen de pagina (anders worden tanden
-            // boven/onder afgeknot en zien losse tanden eruit als asymmetrische
-            // "uitstulpingen"). Landscape A4 = 210mm hoog, dus max ~180mm voor lucht
-            // boven en onder.
+            // Watermark — 1.2x groter (175 → 210mm). Op landscape A4 (210mm hoog) past
+            // het tandwiel exact paginabreed: tanden raken net de boven- en onderrand
+            // maar worden niet afgesneden, alle 8 tanden blijven gelijkmatig zichtbaar.
             if (TANDWIEL) {
                 try {
-                    const wmSize = 175;
+                    const wmSize = 210;
                     doc.saveGraphicsState && doc.saveGraphicsState();
                     doc.setGState && doc.setGState(new doc.GState({ opacity: 0.08 }));
                     doc.addImage(TANDWIEL, 'PNG', (pw - wmSize) / 2, (ph - wmSize) / 2, wmSize, wmSize);
@@ -7080,7 +7101,7 @@
 
             if (options.save) {
                 const fileName = options.fileName || (typeof ktsWeekstaatName === 'function'
-                    ? ktsWeekstaatName(data.year, data.weekNumber, data.user.name)
+                    ? ktsWeekstaatName(data.year, data.weekNumber, data.user.name, (data.project && data.project.project_code) || '')
                     : `KTS-Weekstaat_${data.year}-W${String(data.weekNumber).padStart(2,'0')}.pdf`);
                 doc.save(fileName);
             }
@@ -7684,7 +7705,7 @@
             if (doc) {
                 const projCode = currentProject ? currentProject.project_code : 'KTS';
                 const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
-                const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName);
+                const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName, projCode);
                 const saved = await savePdfToFolder(doc, fileName, 'weekstaten');
                 if (!saved) doc.save(fileName);
                 showToast(saved ? '✓ Weekstaat opgeslagen in map' : '✓ Weekstaat gedownload');
@@ -7931,7 +7952,7 @@
                         if (weekstaat) {
                             const projCode = currentProject ? currentProject.project_code : 'KTS';
                             const userName = currentUser ? currentUser.name.replace(/\s+/g,'_') : '';
-                            const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName);
+                            const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName, projCode);
                             const wsSaved = await savePdfToFolder(weekstaat, fileName, 'weekstaten');
                             if (!wsSaved) weekstaat.save(fileName);
 
@@ -8040,7 +8061,7 @@
 
                     const projCode = currentProject ? currentProject.project_code : 'KTS';
                     const userNameSlug = currentUser ? currentUser.name.replace(/\s+/g, '_') : '';
-                    const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userNameSlug);
+                    const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userNameSlug, projCode);
 
                     // 4. Download PDF lokaal
                     const wsSaved = await savePdfToFolder(weekstaat, fileName, 'weekstaten');
@@ -8137,7 +8158,8 @@
                 const weekstaat = await generateWeekstaat();
                 if (!weekstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
 
-                const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName);
+                const projCodeSubmit = currentProject ? currentProject.project_code : 'KTS';
+                const fileName = ktsWeekstaatName(currentYear, currentWeekNumber, userName, projCodeSubmit);
 
                 // 5. Download PDF lokaal (ZZP'er heeft geen OneDrive toegang)
                 weekstaat.save(fileName);
@@ -12369,10 +12391,17 @@
                     address2: ((klant.postcode || '') + ' ' + (klant.city || '')).trim()
                 },
                 project: projectName,
-                projectNummer: (invData.project && (invData.project.client_project_number || invData.project.project_code)) || '',
+                projectCodeKTS: (invData.project && invData.project.project_code) || '',
+                projectNummer: (invData.project && invData.project.client_project_number) || '',
                 opdrachtNummer: (invData.project && invData.project.opdracht_number) || '',
                 poNummer: (invData.project && invData.project.po_number) || '',
-                loonheffingen: invData.loonheffingen || [],
+                // Loonheffingsnummers — uit invData (project-override) of default uit KTS_INFO.
+                // Project kan loonheffingen uitzetten via show_loonheffingen=false.
+                loonheffingen: (invData.loonheffingen && invData.loonheffingen.length > 0)
+                    ? invData.loonheffingen
+                    : ((invData.project && invData.project.show_loonheffingen === false)
+                        ? []
+                        : (KTS_INFO.loonheffingen || [])),
                 regels: regels,
                 iban: (typeof KTS_INFO !== 'undefined' && KTS_INFO.iban) ? KTS_INFO.iban : 'NL61 BUNQ 2113 3747 30',
                 bic: 'BUNQNL2A',
@@ -12502,37 +12531,49 @@
             });
             y += infoH + 4;
 
-            // Project-info compact
-            const projectRows = [
-                { label: 'Projectnummer',  value: data.projectNummer },
-                { label: 'Opdrachtnummer', value: data.opdrachtNummer },
-                { label: 'PO-nummer',      value: data.poNummer }
+            // Project-info als nette 2-koloms tabel — zelfde lettertype als klant-blok,
+            // alternerende achtergrondkleur per rij voor leesbaarheid.
+            // Volgorde: KTS-projectcode → klant-velden → loonheffingsnummers.
+            // Alleen rijen tonen die waarde hebben; loonheffingen altijd onderaan.
+            const projectTableRows = [
+                { label: 'Project',              value: data.project },
+                { label: 'KTS-projectcode',      value: data.projectCodeKTS },
+                { label: 'Projectnummer klant',  value: data.projectNummer },
+                { label: 'Opdrachtnummer',       value: data.opdrachtNummer },
+                { label: 'PO nummer',            value: data.poNummer }
             ].filter(r => r.value);
-            if (projectRows.length > 0) {
-                doc.setFontSize(8.5);
-                projectRows.forEach((row, i) => {
-                    const ry = y + i * 4.2;
-                    doc.setFont(pdfFont, 'normal');
+            // Loonheffingen toevoegen als sub-section
+            (data.loonheffingen || []).forEach(l => {
+                if (l && l.value) projectTableRows.push({ label: l.label, value: l.value });
+            });
+
+            if (projectTableRows.length > 0) {
+                const ptRowH = 5.6;
+                const ptTableW = uw;
+                const ptLabelW = 95; // ruimte voor lange labels zoals "Loonheffingennummer KTDS Holding B.V."
+                const ptHeaderH = 0; // geen kop — past compact onder de info-bar
+                const ptStartY = y;
+                projectTableRows.forEach((row, i) => {
+                    const ry = ptStartY + i * ptRowH;
+                    // Alternerende achtergrond
+                    if (i % 2 === 0) {
+                        doc.setFillColor(248, 248, 244);
+                        doc.rect(ml, ry, ptTableW, ptRowH, 'F');
+                    }
+                    // Tekst — zelfde grootte/familie als de klant-info regels (9pt)
+                    doc.setFontSize(8.5);
+                    doc.setFont(pdfFont, 'bold');
                     doc.setTextColor(...ink500);
-                    doc.text(row.label, ml, ry);
+                    doc.text(row.label, ml + 2, ry + ptRowH / 2 + 1.4);
                     doc.setFont(pdfFont, 'normal');
                     doc.setTextColor(...ink900);
-                    doc.text(String(row.value), ml + 35, ry);
+                    doc.text(String(row.value), ml + ptLabelW, ry + ptRowH / 2 + 1.4);
                 });
-                y += projectRows.length * 4.2 + 2;
-            }
-            // Loonheffingen
-            if (data.loonheffingen && data.loonheffingen.length > 0) {
-                doc.setFontSize(7.5);
-                data.loonheffingen.forEach((l, i) => {
-                    const ly = y + i * 3.6;
-                    doc.setFont(pdfFont, 'normal');
-                    doc.setTextColor(...ink400);
-                    doc.text(l.label + ':', ml, ly);
-                    doc.setTextColor(...ink500);
-                    doc.text(String(l.value), ml + 75, ly);
-                });
-                y += data.loonheffingen.length * 3.6 + 4;
+                // Buitenrand om de tabel
+                doc.setDrawColor(...lineColLight);
+                doc.setLineWidth(0.15);
+                doc.rect(ml, ptStartY, ptTableW, projectTableRows.length * ptRowH);
+                y += projectTableRows.length * ptRowH + 4;
             } else {
                 y += 4;
             }
@@ -13965,16 +14006,20 @@
 
             // IO-nummer (intern, voor DB-verwijzing) + filename (KTS-naming-conventie)
             const today = new Date();
-            const ddmmyyyy = String(today.getDate()).padStart(2,'0') + String(today.getMonth()+1).padStart(2,'0') + today.getFullYear();
+            const ddmmyyyy = ktsDateStamp(today);
             const ioNumber = ioData.project.project_code + '-' + ddmmyyyy;
-            // Filename volgt: KTS-Inkooporder_{jaar}-W{week}_{projcode}.pdf — week is alleen
-            // beschikbaar in per-week-mode, anders maand als fallback.
+            // Leverancier-naam voor in de filename — het IO-bedrijf (= zzp/leverancier)
+            const supplierNameIO = (ioData.zzpCompany && ioData.zzpCompany.name)
+                || (ioData.user && (ioData.user.name || ioData.user.email))
+                || '';
+            // Filename volgt: {PROJ}-{ddmmyyyy}_Inkooporder_W{wk}_{leverancier}.pdf
+            // Bij meerdere weken: vervangt W{wk} door {maand}
             const ioWeekRef = (ioData.includedWeeks && ioData.includedWeeks.length === 1)
                 ? ioData.includedWeeks[0]
                 : null;
             const fileName = ioWeekRef
-                ? ktsInkooporderName(ioData.year, ioWeekRef, ioData.project.project_code)
-                : `KTS-Inkooporder_${ioData.year}-${String(ioData.month).padStart(2,'0')}_${ktsSlug(ioData.project.project_code)}.pdf`;
+                ? ktsInkooporderName(ioData.year, ioWeekRef, ioData.project.project_code, supplierNameIO, ddmmyyyy)
+                : `${ktsSlug(ioData.project.project_code)}-${ddmmyyyy}_Inkooporder_${String(ioData.month).padStart(2,'0')}-${ioData.year}${supplierNameIO ? '_' + ktsSlug(supplierNameIO) : ''}.pdf`;
             const filePath = `${ioData.year}/${ioData.project.project_code}/${fileName}`;
 
             // Save lokaal (folder of download)
@@ -14274,11 +14319,15 @@
             // Save to Supabase and open mailto
             const pdfData = doc.output('datauristring');
             // Filename volgt KTS-naming-conventie i.p.v. ruwe ioNumber
+            const todayLeg = new Date();
+            const ddmmyyyyLeg = ktsDateStamp(todayLeg);
+            const supplierNameLeg = (ioData.zzpCompany && ioData.zzpCompany.name)
+                || (ioData.user && (ioData.user.name || ioData.user.email)) || '';
             const ioWeekRefLeg = (ioData.includedWeeks && ioData.includedWeeks.length === 1)
                 ? ioData.includedWeeks[0] : null;
             const fileName = ioWeekRefLeg
-                ? ktsInkooporderName(ioData.year, ioWeekRefLeg, ioData.project.project_code)
-                : `KTS-Inkooporder_${ioData.year}-${String(ioData.month).padStart(2,'0')}_${ktsSlug(ioData.project.project_code)}.pdf`;
+                ? ktsInkooporderName(ioData.year, ioWeekRefLeg, ioData.project.project_code, supplierNameLeg, ddmmyyyyLeg)
+                : `${ktsSlug(ioData.project.project_code)}-${ddmmyyyyLeg}_Inkooporder_${String(ioData.month).padStart(2,'0')}-${ioData.year}${supplierNameLeg ? '_' + ktsSlug(supplierNameLeg) : ''}.pdf`;
             const filePath = `${ioData.year}/${ioData.project.project_code}/${fileName}`;
 
             // Download the PDF
@@ -14341,12 +14390,14 @@
                 const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
                 const maandTekst = MONTHS_NL[ioData.month - 1] + ' ' + ioData.year;
                 const pdfBytes = new Uint8Array(pdfBuffer); let pdfBin = ''; for (let i = 0; i < pdfBytes.length; i++) pdfBin += String.fromCharCode(pdfBytes[i]); const pdfBase64 = btoa(pdfBin);
-                // Filename voor email-bijlage: KTS-Inkooporder_…
+                // Filename voor email-bijlage volgens KTS-naming
+                const supplierNameMail = (ioData.zzpCompany && ioData.zzpCompany.name) || userName || '';
+                const ddmmyyyyMail = ktsDateStamp(new Date());
                 const ioWeekRefMail = (ioData.includedWeeks && ioData.includedWeeks.length === 1)
                     ? ioData.includedWeeks[0] : null;
                 const fileName = ioWeekRefMail
-                    ? ktsInkooporderName(ioData.year, ioWeekRefMail, projCode)
-                    : `KTS-Inkooporder_${ioData.year}-${String(ioData.month).padStart(2,'0')}_${ktsSlug(projCode)}.pdf`;
+                    ? ktsInkooporderName(ioData.year, ioWeekRefMail, projCode, supplierNameMail, ddmmyyyyMail)
+                    : `${ktsSlug(projCode)}-${ddmmyyyyMail}_Inkooporder_${String(ioData.month).padStart(2,'0')}-${ioData.year}${supplierNameMail ? '_' + ktsSlug(supplierNameMail) : ''}.pdf`;
 
                 try {
                     showToast('📧 Inkooporder versturen...');
@@ -15780,7 +15831,7 @@
 
                     const userName = targetUser.name || 'Onbekend';
                     const pCode = targetProject.project_code || projCode;
-                    const fileName = ktsWeekstaatName(year, weekNumber, userName);
+                    const fileName = ktsWeekstaatName(year, weekNumber, userName, pCode);
 
                     // Download lokaal
                     weekstaat.save(fileName);
@@ -16118,7 +16169,7 @@
                     const { data: fnData, error: fnErr } = await sb.functions.invoke('send-weekstaat-confirmation', {
                         body: {
                             pdfBase64: pdfBase64,
-                            fileName: pdfFileName || ktsWeekstaatName(year, weekNumber, uSlug),
+                            fileName: pdfFileName || ktsWeekstaatName(year, weekNumber, uSlug, pCode),
                             recipientEmail: email,
                             recipientName: name,
                             userName: userName,
