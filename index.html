@@ -6674,7 +6674,10 @@
 
         function addPdfWatermark(doc, isLandscape) {
             const pdfImages = window.KTS_PDF_IMAGES || {};
-            const wmData = pdfImages.watermerk || null;
+            // Gebruik het echte ronde tandwiel (512x512, vierkant) — niet het K-logo
+            // Vorige implementatie gebruikte 'watermerk' (= K-logo, 3000x2318), wat aan
+            // de onderkant een asymmetrische uitstulping toonde door de diagonale K-vorm.
+            const wmData = pdfImages.tandwiel || null;
             if (!wmData) return;
             try {
                 const pw = doc.internal.pageSize.getWidth();
@@ -6682,13 +6685,13 @@
                 // Subtiele watermark — opacity 0.10 op alle PDFs
                 // Portrait (inspectie/IO/factuur) groter dan landscape (weekstaat)
                 const opacity = 0.10;
-                const scale = isLandscape ? 1.3 : 2.35;
+                const scale = isLandscape ? 0.55 : 0.75;
                 const gState = new doc.GState({ opacity });
                 doc.saveGraphicsState();
                 doc.setGState(gState);
-                const imgRatio = 3000 / 2318;
+                // Tandwiel is vierkant (1:1)
                 const wmW = pw * scale;
-                const wmH = wmW / imgRatio;
+                const wmH = wmW;
                 const wmX = (pw - wmW) / 2;
                 const wmY = (ph - wmH) / 2;
                 doc.addImage(wmData, 'PNG', wmX, wmY, wmW, wmH);
@@ -6746,8 +6749,9 @@
             const days = (weekData || []).map((entry, i) => ({
                 day: DAYS_FULL_LOCAL[i],
                 date: dates[i] || '',
-                start: entry.start || '',
-                end: entry.end || '',
+                // Defensieve slice naar 'HH:MM' — Postgres time-kolommen leveren 'HH:MM:SS'
+                start: entry.start ? String(entry.start).slice(0, 5) : '',
+                end:   entry.end   ? String(entry.end).slice(0, 5)   : '',
                 breakMin: entry.breakMin || 0,
                 hours: entry.hours || 0,
                 desc: entry.desc || '',
@@ -15008,8 +15012,9 @@
                     const dateStr = toLocalDateStr(date);
                     const entry = (entries || []).find(e => e.entry_date === dateStr);
                     targetWeekData.push({
-                        start: entry ? (entry.start_time || '') : '',
-                        end: entry ? (entry.end_time || '') : '',
+                        // Postgres time-kolom geeft 'HH:MM:SS' terug — slice naar 'HH:MM'
+                        start: entry && entry.start_time ? String(entry.start_time).slice(0, 5) : '',
+                        end:   entry && entry.end_time   ? String(entry.end_time).slice(0, 5)   : '',
                         breakMin: entry ? (entry.break_minutes || 0) : 0,
                         hours: entry ? (entry.total_hours || 0) : 0,
                         desc: entry ? (entry.description || '') : '',
@@ -15131,8 +15136,9 @@
                     const dateStr = toLocalDateStr(date);
                     const entry = (entries || []).find(e => e.entry_date === dateStr);
                     targetWeekData.push({
-                        start: entry ? (entry.start_time || '') : '',
-                        end: entry ? (entry.end_time || '') : '',
+                        // Postgres time-kolom geeft 'HH:MM:SS' terug — slice naar 'HH:MM'
+                        start: entry && entry.start_time ? String(entry.start_time).slice(0, 5) : '',
+                        end:   entry && entry.end_time   ? String(entry.end_time).slice(0, 5)   : '',
                         breakMin: entry ? (entry.break_minutes || 0) : 0,
                         hours: entry ? (entry.total_hours || 0) : 0,
                         desc: entry ? (entry.description || '') : '',
