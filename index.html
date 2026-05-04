@@ -15672,27 +15672,15 @@
             const modal = document.getElementById('admin-modal');
             document.getElementById('admin-modal-title').textContent = `✏️ ${userName} — Week ${weekNumber}/${year}`;
 
-            // Vaste kolombreedtes: tijd-inputs hebben minimaal ~88px nodig om "07:00"
-            // volledig te tonen mét klok-icoon. Onder die breedte knipt Chrome de "00"
-            // eraf. Met minmax(0,1fr) gebeurde dat — vandaar nu vaste px-breedtes.
-            //
-            // Som van de kolommen + 5 gaps van 6px:
-            //   showKm: 50+88+88+50+50+72 = 398 + 30 gap = 428px (past op smartphone)
-            //   geen km: 50+88+88+50+50  = 326 + 24 gap = 350px (past zelfs op iPhone SE)
-            // De rij zelf wordt door overflow:hidden van de buiten-card gevangen, dus geen
-            // horizontale scroll meer. Op zeer smalle schermen (< 460px) toont een media
-            // query in CSS later eventueel een gestackte variant — voor laptop/tablet
-            // werkt deze layout out-of-the-box.
-            const gridCols = showKm
-                ? '50px 88px 88px 50px 50px 72px'
-                : '50px 88px 88px 56px 56px';
+            // 5-koloms grid voor de tijden-rij: Dag, Start, Eind, Uren, Pauze.
+            // Km en hotel zijn naar de "extras"-rij onderaan verhuisd zodat de hoofdrij
+            // overal past — ook op smalle telefoons. minmax(0, 1fr) op de tijd-kolommen
+            // zodat ze flexibel meebewegen met de beschikbare ruimte.
+            const gridCols = '54px minmax(0, 1fr) minmax(0, 1fr) 56px 56px';
             // Header-labels gecentreerd boven de input-kolommen — "Dag" links omdat de
-            // dag-naam ook links staat in de body. Zonder text-align staan headers
-            // tegen de linkerrand van hun cel terwijl de input-content gecentreerd is.
+            // dag-naam ook links staat in de body.
             const headerCenter = 'text-align:center';
-            const headerLabels = showKm
-                ? `<span>Dag</span><span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span><span style="${headerCenter}">Km</span>`
-                : `<span>Dag</span><span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span>`;
+            const headerLabels = `<span>Dag</span><span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span>`;
 
             let rows = '';
             for (let d = 0; d < 7; d++) {
@@ -15718,12 +15706,18 @@
                 const kmVal    = entry.km != null ? entry.km : (usePrefill && showKm ? kmRetour : '');
                 const hotelVal = entry.hotel === true;
 
-                const kmCell = showKm
-                    ? `<input type="number" step="1" min="0" class="aew-km" value="${kmVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center" title="Kilometers (heen + terug)">`
+                // Km en hotel verhuizen naar een aparte "extras"-rij onder de hoofdrij —
+                // anders past de hoofdrij niet meer op smalle telefoons. Daar staan ze
+                // naast elkaar samen met de actie-knoppen (Standaard / Niet gewerkt).
+                const kmExtra = showKm
+                    ? `<label style="display:inline-flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--muted)">
+                        <span style="font-weight:600">🚗 Km</span>
+                        <input type="number" step="1" min="0" class="aew-km" value="${kmVal}" placeholder="0" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:right;width:84px;box-sizing:border-box" title="Kilometers (heen + terug)">
+                       </label>`
                     : '';
-                const hotelCell = showHotel
-                    ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);margin-top:4px;cursor:pointer;user-select:none">
-                        <input type="checkbox" class="aew-hotel" ${hotelVal ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> 🏨 Hotelovernachting
+                const hotelExtra = showHotel
+                    ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--muted);cursor:pointer;user-select:none">
+                        <input type="checkbox" class="aew-hotel" ${hotelVal ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--kts-blue)"> 🏨 Hotelovernachting
                        </label>`
                     : '';
 
@@ -15741,12 +15735,14 @@
                         <input type="time" class="aew-end" value="${endVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                         <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box">
                         <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Pauze in minuten">
-                        ${kmCell}
                     </div>
                     <input type="text" class="aew-loc" value="${escapeHtml(locVal)}" placeholder="Locatie" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                     <input type="text" class="aew-desc" value="${escapeHtml(descVal)}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
-                        ${hotelCell || '<span></span>'}
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
+                        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                            ${kmExtra}
+                            ${hotelExtra}
+                        </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <button type="button" class="aew-default-btn" onclick="adminFillDefaultDay(this)" style="padding:4px 10px;font-size:0.7rem;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;cursor:pointer;font-weight:600" title="Standaard tijden (07:00-16:00, 8u, 60 min) invullen">🕒 Standaard</button>
                             <button type="button" class="aew-clear-btn" onclick="adminClearDayRow(this)" style="padding:4px 10px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;cursor:pointer;font-weight:600">🚫 Niet gewerkt</button>
@@ -15766,10 +15762,8 @@
             saveBtn.onclick = () => adminSaveWeekEntries(userId, projectId, weekNumber, year);
             const delBtn = document.getElementById('admin-modal-delete');
             if (delBtn) delBtn.style.display = 'none';
-            // Brede modal-variant zodat de 6 kolommen volledig passen — anders knipt
-            // Chrome de "00" van de tijd-input af bij default 480px max-width.
-            const innerModal = modal.querySelector('.modal');
-            if (innerModal) innerModal.classList.add('modal-wide');
+            // Modal blijft default 480px breed — km en hotel staan nu op een aparte
+            // rij onderin zodat de hoofdrij (5 kolommen) ook op smalle schermen past.
             modal.classList.add('active');
         }
 
