@@ -15664,10 +15664,13 @@
             // Vast: dag, start, eind, uren, pauze. Optioneel: km (4 kolommen → 5/6 kolommen).
             // Km-kolom iets breder (72px) want 3-cijferige km-waardes (zoals 232, 464)
             // plus de native number-spinner-pijltjes pasten net niet in 56px.
+            // Belangrijk: minmax(0, 1fr) i.p.v. 1fr — anders forceert de native time-input
+            // een min-content van ~120px waardoor de totale grid-breedte de modal overflow't
+            // (probleem zichtbaar bij km-kolom die buiten de white card uitsteekt).
             // Hotel-checkbox staat bij omschrijving-rij in de body.
             const gridCols = showKm
-                ? '54px 1fr 1fr 56px 56px 72px'
-                : '54px 1fr 1fr 56px 56px';
+                ? '54px minmax(0, 1fr) minmax(0, 1fr) 56px 56px 72px'
+                : '54px minmax(0, 1fr) minmax(0, 1fr) 56px 56px';
             // Header-labels gecentreerd boven de input-kolommen — "Dag" links omdat de
             // dag-naam ook links staat in de body. Zonder text-align staan headers
             // tegen de linkerrand van hun cel terwijl de input-content gecentreerd is.
