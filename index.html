@@ -8711,6 +8711,20 @@
             if (innerModal) innerModal.classList.remove('modal-wide');
         }
 
+        // Globale Escape-handler voor alle .modal-overlay elementen die `.active` zijn.
+        // confirmAsync / askContinueAsync / promptAsync hebben hun eigen handlers op
+        // dynamisch aangemaakte overlays — die werken onafhankelijk en sluiten zichzelf.
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape' && e.key !== 'Esc') return;
+            // Pak de laatst-actieve modal-overlay (visueel bovenste). Als er meerdere
+            // open staan (zelden), sluit alleen de bovenste — niet alle tegelijk.
+            const actives = Array.from(document.querySelectorAll('.modal-overlay.active'));
+            if (actives.length === 0) return;
+            const top = actives[actives.length - 1];
+            if (top.id) closeModal(top.id);
+            else top.classList.remove('active');
+        });
+
         // ===== PROJECT SWITCHER =====
         async function openProjectSwitcher() {
             const modal = document.getElementById('project-modal');
