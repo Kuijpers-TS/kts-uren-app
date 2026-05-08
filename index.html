@@ -14532,6 +14532,17 @@
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom:12px">
+                        <label>📧 CC-ontvanger(s) bij weekstaat-bevestiging <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(optioneel)</span></label>
+                        <input type="text" id="adm-proj-cc-weekstaat"
+                            placeholder="bv. info@levvel-epc.nl, ander@klant.nl"
+                            value="${existing ? (existing.cc_emails_weekstaat || '').replace(/"/g,'&quot;') : ''}"
+                            style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px;line-height:1.4">
+                            Voor uitzonderlijke gevallen — bv. detachering waarbij de weekstaat ook naar
+                            een 2e partij moet zonder dat de facturering via hen loopt. Comma-gescheiden.
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px">
                         <label>Notities</label>
                         <textarea id="adm-proj-notes" rows="3" placeholder="Afspraken, contactmomenten, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
                     </div>
@@ -16395,6 +16406,14 @@
                     clientName = getContactNameByRole(company, 'receives_weekstaat') || company.name || '';
                 }
             }
+            // CC-ontvangers uit project (uitzonderingsveld) — comma-separated
+            const ccRaw = (project && project.cc_emails_weekstaat) || '';
+            const ccBanner = ccRaw.trim()
+                ? `<div style="margin-bottom:12px;padding:10px;background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;font-size:0.78rem;color:#1e40af;line-height:1.4">
+                    <strong>📧 CC bij verzenden:</strong> ${escapeHtml(ccRaw)}<br>
+                    <span style="opacity:0.85">Ingesteld op project — pas aan via Beheer → Projecten als nodig.</span>
+                   </div>`
+                : '';
 
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:#d1fae5;border-radius:8px;font-size:0.85rem">
@@ -16412,6 +16431,7 @@
                     <label>Naam opdrachtgever</label>
                     <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                 </div>
+                ${ccBanner}
                 <div id="confirm-status" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:0.8rem"></div>
                 <button id="confirm-send-btn" onclick="sendConfirmationToClient('${userId}','${projectId}',${weekNumber},${year},'${projCode}','${userSlug}')" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;background:#059669">📩 Verstuur bevestiging met PDF</button>
             `;
@@ -16445,6 +16465,9 @@
             const pCode = projCode || (project ? project.project_code : '');
             const projName = project ? project.name : '';
             const uSlug = userSlug || userName.replace(/\s+/g, '_');
+            // CC-ontvangers uit project (uitzonderingsveld voor bv. Levvel-EPC info-only)
+            const ccRaw = (project && project.cc_emails_weekstaat) || '';
+            const ccEmails = ccRaw.split(/[,;]\s*/).map(s => s.trim()).filter(Boolean);
 
             function showStatus(msg, isError) {
                 if (!statusEl) return;
@@ -16500,6 +16523,7 @@
                             fileName: pdfFileName || ktsWeekstaatName(year, weekNumber, uSlug, pCode),
                             recipientEmail: email,
                             recipientName: name,
+                            ccEmails: ccEmails,  // optioneel — Edge Function leest dit uit
                             userName: userName,
                             projectCode: pCode,
                             projectName: projName,
@@ -16556,16 +16580,19 @@
                         `Met vriendelijke groet,\n` +
                         `Mark Kuijpers\nKuijpers Technical Services B.V.`
                     );
-                    window.open(`mailto:${email}?subject=${subject}&body=${mailBody}`);
+                    // mailto met CC: &cc=adres1,adres2 — werkt in alle major mail clients
+                    const ccParam = ccEmails.length > 0 ? `&cc=${encodeURIComponent(ccEmails.join(','))}` : '';
+                    window.open(`mailto:${email}?${ccParam ? ccParam.slice(1) + '&' : ''}subject=${subject}&body=${mailBody}`);
                 }
 
                 document.getElementById('admin-modal').classList.remove('active');
+                const ccSuffix = ccEmails.length > 0 ? ` (CC: ${ccEmails.join(', ')})` : '';
                 if (edgeFunctionOk) {
-                    showToast('✅ Bevestiging met PDF verstuurd naar ' + email);
+                    showToast('✅ Bevestiging met PDF verstuurd naar ' + email + ccSuffix);
                 } else if (pdfBase64) {
-                    showToast('📥 PDF gedownload — voeg deze handmatig toe aan de mail');
+                    showToast('📥 PDF gedownload — voeg deze handmatig toe aan de mail' + ccSuffix);
                 } else {
-                    showToast('✓ Mail geopend (geen PDF gevonden)');
+                    showToast('✓ Mail geopend (geen PDF gevonden)' + ccSuffix);
                 }
             } catch (err) {
                 showStatus('❌ Fout: ' + err.message, true);
@@ -16744,11 +16771,23 @@
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active',
                     notes: document.getElementById('adm-proj-notes').value.trim() || null,
+                    cc_emails_weekstaat: document.getElementById('adm-proj-cc-weekstaat').value.trim() || null,
                     is_test: document.getElementById('adm-proj-test').checked
                 };
-                result = _editingId
+                // Probeer met cc_emails_weekstaat. Als de kolom nog niet bestaat (migratie
+                // niet uitgevoerd), val terug op insert/update zonder dat veld.
+                let saveErr;
+                ({ error: saveErr } = _editingId
                     ? await sb.from('projects').update(data).eq('id', _editingId)
-                    : await sb.from('projects').insert(data);
+                    : await sb.from('projects').insert(data));
+                if (saveErr && /cc_emails_weekstaat/.test(saveErr.message || '')) {
+                    console.warn('cc_emails_weekstaat kolom niet aanwezig — fallback. Voer migratie-project-cc-weekstaat.sql uit.');
+                    delete data.cc_emails_weekstaat;
+                    ({ error: saveErr } = _editingId
+                        ? await sb.from('projects').update(data).eq('id', _editingId)
+                        : await sb.from('projects').insert(data));
+                }
+                result = { error: saveErr };
             } else if (type === 'persoon') {
                 const name = document.getElementById('adm-pers-name').value.trim();
                 const ptype = document.getElementById('adm-pers-type').value;
