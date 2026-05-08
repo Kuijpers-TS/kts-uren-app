@@ -11916,13 +11916,16 @@
             const sb = getSupabase();
             if (!sb) return;
             try {
-                // Zoek het ZZP-bedrijf (opdrachtnemer) via de user
+                // Zoek het ZZP-bedrijf (opdrachtnemer) via de user. Multi-stage flow:
+                // invoice_via_company_id heeft voorrang op company_id (= eigen BV)
+                // zodat de IO/mail naar de juiste factureren-via-bedrijf gaat.
                 const user = (window._adminUsers || []).find(u => u.id === userId);
                 let recipientEmail = '';
                 let recipientName = '';
 
-                if (user && user.company_id) {
-                    const { data: zzpComp } = await sb.from('companies').select('*').eq('id', user.company_id).single();
+                const supplierId = (user && user.invoice_via_company_id) || (user && user.company_id) || null;
+                if (supplierId) {
+                    const { data: zzpComp } = await sb.from('companies').select('*').eq('id', supplierId).single();
                     if (zzpComp) {
                         recipientEmail = zzpComp.email_po || zzpComp.email || '';
                         recipientName = zzpComp.contact_name || zzpComp.name || '';
@@ -13509,10 +13512,14 @@
                 ioCompany = company; // fallback naar factuur-ontvanger
             }
 
-            // ZZP-bedrijf ophalen via user (voor LEVERANCIER op IO)
+            // ZZP-bedrijf ophalen via user (voor LEVERANCIER op IO).
+            // Multi-stage facturatie: als user.invoice_via_company_id gevuld is wordt
+            // dat de leverancier (bv. Aad → Hydroart, factureert via HSW). Anders
+            // fallback naar de eigen company_id.
             let zzpCompany = null;
-            if (user && user.company_id) {
-                const { data: zzpComp } = await sb.from('companies').select('*').eq('id', user.company_id).single();
+            const supplierId = (user && user.invoice_via_company_id) || (user && user.company_id) || null;
+            if (supplierId) {
+                const { data: zzpComp } = await sb.from('companies').select('*').eq('id', supplierId).single();
                 zzpCompany = zzpComp;
             }
             const hotelRate = (user && parseFloat(user.hotel_rate)) || 110;
@@ -14723,10 +14730,21 @@
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testgebruikers worden verborgen in productie-modus</div>
                     </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Bedrijf (opdrachtnemer)</div>
-                    <div class="form-group" style="margin-bottom:16px">
+                    <div class="form-group" style="margin-bottom:12px">
+                        <label style="font-size:0.75rem;color:var(--muted)">Eigen BV — verschijnt op weekstaat als "BV-naam | medewerker"</label>
                         <select id="adm-user-company">
                             <option value="">-- Geen bedrijf --</option>
                         </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label style="font-size:0.75rem;color:var(--muted)">Factureert via <span style="color:var(--muted);font-style:italic">(optioneel)</span></label>
+                        <select id="adm-user-invoice-via">
+                            <option value="">— Zelfde als eigen BV —</option>
+                        </select>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px;line-height:1.4">
+                            Voor multi-stage facturatie. Bv. Aad werkt via Hydroart maar factureert via HSW BV.
+                            Op de inkooporder is dit het leverancier-bedrijf, op de weekstaat blijft de eigen BV staan.
+                        </div>
                     </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Tarieven</div>
                     <div class="form-row">
@@ -14799,6 +14817,32 @@
                             }
                         }
                         compSel.value = existing.company_id;
+                    }
+                }
+                // Vul ook de "factureert via" dropdown — zelfde lijst als eigen-BV
+                const ivSel = document.getElementById('adm-user-invoice-via');
+                if (ivSel && window._adminCompanies) {
+                    const filteredCompsIV = window._adminCompanies.filter(c => {
+                        if (_adminTestMode ? c.is_test !== true : c.is_test === true) return false;
+                        if (c.archived) return false;
+                        return true;
+                    });
+                    const seenIV = new Set();
+                    const uniqueCompsIV = filteredCompsIV.filter(c => {
+                        if (seenIV.has(c.name)) return false;
+                        seenIV.add(c.name);
+                        return true;
+                    });
+                    ivSel.innerHTML = '<option value="">— Zelfde als eigen BV —</option>' +
+                        uniqueCompsIV.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+                    if (existing && existing.invoice_via_company_id) {
+                        if (!uniqueCompsIV.find(c => c.id === existing.invoice_via_company_id)) {
+                            const orig = window._adminCompanies.find(c => c.id === existing.invoice_via_company_id);
+                            if (orig) {
+                                ivSel.innerHTML += `<option value="${orig.id}">${escapeHtml(orig.name)} (gearchiveerd)</option>`;
+                            }
+                        }
+                        ivSel.value = existing.invoice_via_company_id;
                     }
                 }
             }
@@ -17140,9 +17184,18 @@
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
                     company_id: document.getElementById('adm-user-company').value || null,
+                    invoice_via_company_id: document.getElementById('adm-user-invoice-via').value || null,
                     is_test: document.getElementById('adm-user-test').checked,
                 };
-                result = await sb.from('users').update(data).eq('id', _editingId);
+                let updErr;
+                ({ error: updErr } = await sb.from('users').update(data).eq('id', _editingId));
+                // Fallback voor oude DB zonder invoice_via_company_id kolom
+                if (updErr && /invoice_via_company_id/.test(updErr.message || '')) {
+                    console.warn('invoice_via_company_id kolom niet aanwezig — fallback. Voer migratie-invoice-via.sql uit.');
+                    delete data.invoice_via_company_id;
+                    ({ error: updErr } = await sb.from('users').update(data).eq('id', _editingId));
+                }
+                result = { error: updErr };
             }
 
             if (result && result.error) {
