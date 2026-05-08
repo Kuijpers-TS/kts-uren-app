@@ -8240,22 +8240,78 @@
             if (fil) fil.value = '';
         }
 
-        function addExpense() {
+        async function addExpense() {
             const cat = document.getElementById('exp-cat').value;
             const amount = parseFloat(document.getElementById('exp-amount').value);
             const desc = document.getElementById('exp-desc').value;
             if (!amount || !desc) { showToast('⚠️ Vul alle velden in'); return; }
-            expEntries.push({
-                id: expNextId++, cat, icon: catIcons[cat], desc, amount,
-                date: todayLabel(), catLabel: catLabels[cat]
-            });
+
+            const sb = getSupabase();
+            // Persistent: schrijf naar expenses-tabel als we ingelogd zijn op huidige
+            // week/project. Anders fallback naar in-memory expEntries (bv. demo-modus).
+            if (sb && currentUser && currentUser.id && currentProject && currentWeekNumber && currentYear) {
+                try {
+                    const record = {
+                        user_id: currentUser.id,
+                        project_id: currentProject.id,
+                        week_number: currentWeekNumber,
+                        year: currentYear,
+                        cat: cat,
+                        amount: amount,
+                        description: desc,
+                        created_by: currentUser.id
+                    };
+                    const { error } = await sb.from('expenses').insert(record);
+                    if (error) {
+                        if (/relation.*expenses.*does not exist/i.test(error.message || '')) {
+                            console.warn('expenses-tabel niet aanwezig — voer migratie-expenses.sql uit. Fallback naar in-memory.');
+                        } else {
+                            console.warn('expense insert mislukt — fallback naar in-memory:', error.message);
+                        }
+                        // Fallback in-memory
+                        expEntries.push({ id: expNextId++, cat, icon: catIcons[cat], desc, amount, date: todayLabel(), catLabel: catLabels[cat] });
+                    } else {
+                        // Reload expenses uit DB zodat in-memory cache klopt
+                        await loadExpEntriesForWeek(sb, currentUser.id, currentProject.id, currentWeekNumber, currentYear);
+                    }
+                } catch (e) {
+                    console.warn('expense insert exception:', e);
+                    expEntries.push({ id: expNextId++, cat, icon: catIcons[cat], desc, amount, date: todayLabel(), catLabel: catLabels[cat] });
+                }
+            } else {
+                // Geen sb / niet ingelogd — pure in-memory (demo mode)
+                expEntries.push({ id: expNextId++, cat, icon: catIcons[cat], desc, amount, date: todayLabel(), catLabel: catLabels[cat] });
+            }
+
             renderExpenses();
             renderOverview();
             closeModal('expense-modal');
             showToast('✓ Declaratie toegevoegd');
         }
 
-        function deleteExpense(id) {
+        async function deleteExpense(id) {
+            const sb = getSupabase();
+            // Bij DB-load expenses krijgen ze id 'db-0', 'db-1', etc — moeten via cat+amount+desc
+            // gematched worden. Bij in-memory expenses heb je een numeric id.
+            // Pak de entry uit expEntries om te bepalen hoe te verwijderen.
+            const entry = expEntries.find(e => e.id === id);
+            if (entry && sb && currentUser && currentUser.id && currentProject) {
+                // Probeer DB-delete op basis van inhoud (cat + amount + description + week + year)
+                try {
+                    let q = sb.from('expenses').delete()
+                        .eq('user_id', currentUser.id)
+                        .eq('project_id', currentProject.id)
+                        .eq('week_number', currentWeekNumber)
+                        .eq('year', currentYear)
+                        .eq('cat', entry.cat)
+                        .eq('amount', entry.amount);
+                    if (entry.desc) q = q.eq('description', entry.desc);
+                    const { error } = await q;
+                    if (error && !/relation.*expenses.*does not exist/i.test(error.message || '')) {
+                        console.warn('expense delete mislukt:', error.message);
+                    }
+                } catch (e) { /* fallback — verwijder alleen in-memory */ }
+            }
             expEntries = expEntries.filter(e => e.id !== id);
             renderExpenses();
             renderOverview();
@@ -8312,6 +8368,14 @@
             if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
             if (name === 'administratie') { adminLoadScreen(); }
             if (name === 'profiel') renderProfile();
+            // Kosten-tab: laad de DB-expenses voor huidige week zodat de lijst klopt
+            if (name === 'kosten') {
+                const sbK = getSupabase();
+                if (sbK && currentUser && currentProject && currentWeekNumber && currentYear) {
+                    loadExpEntriesForWeek(sbK, currentUser.id, currentProject.id, currentWeekNumber, currentYear)
+                        .then(() => renderExpenses());
+                }
+            }
             // Hide project selector on screens where it's not relevant
             document.querySelector('.project-selector').style.display = (name === 'administratie' || name === 'admin' || name === 'inspecties' || name === 'profiel') ? 'none' : '';
         }
