@@ -5045,8 +5045,12 @@
                     <select id="exp-cat">
                         <option value="transport">Transport</option>
                         <option value="parkeren">Parkeren</option>
-                        <option value="meals">Maaltijd</option>
+                        <option value="maaltijd">Maaltijd</option>
                         <option value="materiaal">Materiaal</option>
+                        <option value="huur">Huur (gereedschap/machine)</option>
+                        <option value="tolheffing">Tolheffingen</option>
+                        <option value="veerboot">Veerboot</option>
+                        <option value="doorbelasting">Doorbelasting</option>
                         <option value="other">Overig</option>
                     </select>
                 </div>
@@ -5797,8 +5801,34 @@
         let expEntries = [];
         let expNextId = 1;
 
-        const catIcons = { hotel: '🏨', meals: '🍽️', transport: '🚌', parkeren: '🅿️', materiaal: '🔧', other: '📦' };
-        const catLabels = { hotel: 'Hotel', meals: 'Maaltijd', transport: 'Transport', parkeren: 'Parkeren', materiaal: 'Materiaal', other: 'Overig' };
+        // Categorieen voor extra kosten / declaraties.
+        // Volgorde matcht de UI dropdown: meest voorkomend eerst, "Overig" als laatste.
+        const catIcons = {
+            transport:    '🚌',
+            parkeren:     '🅿️',
+            maaltijd:     '🍽️',  // alias 'meals' (oude waarde) blijft werken via fallback
+            meals:        '🍽️',
+            materiaal:    '🔧',
+            huur:         '🏗️',
+            tolheffing:   '🛣️',
+            veerboot:     '⛴️',
+            doorbelasting:'💸',
+            hotel:        '🏨',
+            other:        '📦'
+        };
+        const catLabels = {
+            transport:    'Transport',
+            parkeren:     'Parkeren',
+            maaltijd:     'Maaltijd',
+            meals:        'Maaltijd',  // backwards-compat: oude rijen met cat='meals'
+            materiaal:    'Materiaal',
+            huur:         'Huur',
+            tolheffing:   'Tolheffingen',
+            veerboot:     'Veerboot',
+            doorbelasting:'Doorbelasting',
+            hotel:        'Hotel',
+            other:        'Overig'
+        };
 
         function fmt(n) {
             // Toon als decimaal met komma (bijv. 47,5 of 8,0)
@@ -15789,14 +15819,22 @@
                 if (!expErr && expData) existingExpenses = expData;
             } catch (e) { /* expenses tabel bestaat nog niet — fallback */ }
 
-            // Categorie-labels (matching gewone zzp-flow)
+            // Categorie-labels (matching gewone zzp-flow). Volgorde = UI dropdown:
+            // meest voorkomend eerst, "Overig" als laatste.
             const expCatLabels = {
-                transport: 'Transport',
-                parkeren: 'Parkeren',
-                meals: 'Maaltijd',
-                materiaal: 'Materiaal',
-                other: 'Overig'
+                transport:    'Transport',
+                parkeren:     'Parkeren',
+                maaltijd:     'Maaltijd',
+                materiaal:    'Materiaal',
+                huur:         'Huur',
+                tolheffing:   'Tolheffingen',
+                veerboot:     'Veerboot',
+                doorbelasting:'Doorbelasting',
+                other:        'Overig'
             };
+            // Backwards-compat: oude rijen met cat='meals' tonen we als 'maaltijd' in
+            // de UI maar laten we ongemoeid in de DB tot ze worden bewerkt.
+            const expCatLabelDisplay = (cat) => expCatLabels[cat] || (cat === 'meals' ? 'Maaltijd' : 'Overig');
             const expCatOptions = Object.entries(expCatLabels)
                 .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 
@@ -15809,16 +15847,20 @@
                         <button type="button" onclick="adminAddExpenseRow(this)" class="btn btn-sm" style="padding:4px 10px;font-size:0.7rem;background:#dcfce7;color:#166534;border:1px solid #86efac">+ Toevoegen</button>
                     </div>
                     <div id="aew-expenses-list" style="display:flex;flex-direction:column;gap:6px">
-                        ${existingExpenses.map(e => `
+                        ${existingExpenses.map(e => {
+                            // Backwards-compat: oude rijen kunnen 'meals' hebben — map naar 'maaltijd'
+                            const eCat = e.cat === 'meals' ? 'maaltijd' : e.cat;
+                            return `
                             <div class="aew-exp-row" data-exp-id="${e.id}" style="display:grid;grid-template-columns:1fr 80px 24px;gap:6px;align-items:center;padding:6px;background:white;border:1px solid var(--border);border-radius:8px">
                                 <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
-                                    ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${e.cat === k ? 'selected' : ''}>${v}</option>`).join('')}
+                                    ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${eCat === k ? 'selected' : ''}>${v}</option>`).join('')}
                                 </select>
                                 <input type="number" step="0.01" min="0" class="aew-exp-amount" value="${e.amount || ''}" placeholder="€" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right">
                                 <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
                                 <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. parkeerkaart Den Oever)" style="grid-column:1/-1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                     <div id="aew-expenses-empty" style="display:${existingExpenses.length === 0 ? 'block' : 'none'};text-align:center;padding:8px;color:var(--muted);font-size:0.75rem">Geen extra kosten — klik "+ Toevoegen" voor parkeerkaart, brandstof, etc.</div>
                 </div>`;
@@ -16186,7 +16228,11 @@
 
                 const expCatLabelsLocal = {
                     transport: 'Transport', parkeren: 'Parkeren',
-                    meals: 'Maaltijd', materiaal: 'Materiaal', other: 'Overig'
+                    maaltijd: 'Maaltijd', meals: 'Maaltijd',  // backwards-compat
+                    materiaal: 'Materiaal',
+                    huur: 'Huur', tolheffing: 'Tolheffingen',
+                    veerboot: 'Veerboot', doorbelasting: 'Doorbelasting',
+                    other: 'Overig'
                 };
                 if (typeof expEntries !== 'undefined' && Array.isArray(expEntries)) {
                     // Globale array — vervang voor de PDF-generatie tijdens deze flow
