@@ -16081,10 +16081,20 @@
             }
 
             // Expenses opslaan: nieuwe inserts, updates op bestaande, deletes voor marked
+            let expensesError = null;
+            let expensesCount = 0;
             try {
                 const expRows = document.querySelectorAll('#aew-expenses-list .aew-exp-row');
                 const toDelete = [];
-                const toUpsert = [];
+                const toInsert = [];
+                const toUpdate = [];
+                // Auth-user vooraf ophalen — gebruikt voor created_by op insert-rijen
+                let authUid = null;
+                try {
+                    const { data: authData } = await sb.auth.getUser();
+                    authUid = authData && authData.user ? authData.user.id : null;
+                } catch (e) { /* anonieme client — created_by leeg */ }
+
                 expRows.forEach(row => {
                     const expId = row.dataset.expId || null;
                     const marked = row.dataset.markedForDelete === 'true';
@@ -16099,34 +16109,70 @@
                         week_number: weekNumber, year: year,
                         cat: cat, amount: amount, description: desc || null
                     };
-                    if (expId) record.id = expId;
-                    toUpsert.push(record);
+                    if (expId) {
+                        record.id = expId;
+                        toUpdate.push(record);
+                    } else {
+                        if (authUid) record.created_by = authUid;
+                        toInsert.push(record);
+                    }
                 });
 
+                // Apart: deletes
                 if (toDelete.length > 0) {
                     const { error: delErr } = await sb.from('expenses').delete().in('id', toDelete);
-                    if (delErr) console.warn('expenses delete mislukt:', delErr.message);
+                    if (delErr) {
+                        expensesError = 'Verwijderen mislukt: ' + delErr.message;
+                        console.error('expenses delete mislukt:', delErr);
+                    }
                 }
-                if (toUpsert.length > 0) {
-                    // created_by alleen meegeven als auth-user beschikbaar — anders RLS-policy issue
-                    const { data: { user: authUser } = { user: null } } = await sb.auth.getUser().catch(() => ({ data: { user: null } }));
-                    if (authUser) toUpsert.forEach(r => { if (!r.id) r.created_by = authUser.id; });
-                    const { error: upErr } = await sb.from('expenses').upsert(toUpsert, { onConflict: 'id' });
-                    if (upErr) {
-                        // Tabel bestaat mogelijk nog niet
-                        if (/relation.*expenses.*does not exist/i.test(upErr.message || '')) {
-                            console.warn('expenses tabel niet aanwezig — voer migratie-expenses.sql uit');
+                // Apart: inserts (geen onConflict — laat Supabase een nieuwe id genereren)
+                if (toInsert.length > 0 && !expensesError) {
+                    const { error: insErr } = await sb.from('expenses').insert(toInsert);
+                    if (insErr) {
+                        if (/relation.*expenses.*does not exist/i.test(insErr.message || '')) {
+                            expensesError = 'Tabel "expenses" bestaat niet — voer migratie-expenses.sql uit';
+                        } else if (/row-level security|policy/i.test(insErr.message || '')) {
+                            expensesError = 'RLS-policy blokkeert insert — voer migratie-expenses-rls-fix.sql uit';
                         } else {
-                            console.warn('expenses upsert mislukt:', upErr.message);
+                            expensesError = 'Insert mislukt: ' + insErr.message;
                         }
+                        console.error('expenses insert mislukt:', insErr);
+                    } else {
+                        expensesCount += toInsert.length;
+                    }
+                }
+                // Apart: updates per record (zodat RLS per rij geëvalueerd wordt)
+                if (toUpdate.length > 0 && !expensesError) {
+                    for (const rec of toUpdate) {
+                        const { id, ...rest } = rec;
+                        const { error: updErr } = await sb.from('expenses').update(rest).eq('id', id);
+                        if (updErr) {
+                            if (/row-level security|policy/i.test(updErr.message || '')) {
+                                expensesError = 'RLS-policy blokkeert update — voer migratie-expenses-rls-fix.sql uit';
+                            } else {
+                                expensesError = 'Update mislukt: ' + updErr.message;
+                            }
+                            console.error('expenses update mislukt:', updErr);
+                            break;
+                        }
+                        expensesCount++;
                     }
                 }
             } catch (expSaveErr) {
-                console.warn('Expenses opslaan overgeslagen:', expSaveErr.message || expSaveErr);
+                expensesError = 'Onverwachte fout: ' + (expSaveErr.message || expSaveErr);
+                console.error('Expenses opslaan exception:', expSaveErr);
             }
 
-            if (errors) showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
-            else showToast(`✓ ${saved} dagen opgeslagen — staat klaar in Concept om te ondertekenen`);
+            // Toast: combineer dag-save resultaat + eventuele expense-fout
+            if (expensesError) {
+                showToast(`⚠️ ${saved} dagen opgeslagen — extra kosten faalden: ${expensesError}`);
+            } else if (errors) {
+                showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
+            } else {
+                const expSuffix = expensesCount > 0 ? ` + ${expensesCount} extra kost${expensesCount === 1 ? '' : 'en'}` : '';
+                showToast(`✓ ${saved} dagen opgeslagen${expSuffix} — staat klaar in Concept om te ondertekenen`);
+            }
             // closeModal i.p.v. directe classList — die verwijdert ook modal-wide cleanup
             closeModal('admin-modal');
             document.getElementById('admin-modal-save').textContent = 'Opslaan';
