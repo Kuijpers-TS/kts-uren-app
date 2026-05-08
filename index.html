@@ -15921,13 +15921,23 @@
             // (migratie niet uitgevoerd), val terug op een lege lijst zonder error.
             let existingExpenses = [];
             try {
-                const { data: expData, error: expErr } = await sb.from('expenses')
-                    .select('id, cat, amount, description, entry_date')
+                let { data: expData, error: expErr } = await sb.from('expenses')
+                    .select('id, cat, amount, description, entry_date, quantity, unit_price')
                     .eq('user_id', userId)
                     .eq('project_id', projectId)
                     .eq('week_number', weekNumber)
                     .eq('year', year)
                     .order('created_at', { ascending: true });
+                // Fallback voor DB zonder quantity/unit_price kolommen
+                if (expErr && /quantity|unit_price/.test(expErr.message || '')) {
+                    ({ data: expData, error: expErr } = await sb.from('expenses')
+                        .select('id, cat, amount, description, entry_date')
+                        .eq('user_id', userId)
+                        .eq('project_id', projectId)
+                        .eq('week_number', weekNumber)
+                        .eq('year', year)
+                        .order('created_at', { ascending: true }));
+                }
                 if (!expErr && expData) existingExpenses = expData;
             } catch (e) { /* expenses tabel bestaat nog niet — fallback */ }
 
@@ -15963,13 +15973,20 @@
                             // Backwards-compat: oude rijen kunnen 'meals' hebben — map naar 'maaltijd'
                             const eCat = e.cat === 'meals' ? 'maaltijd' : e.cat;
                             return `
-                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:grid;grid-template-columns:1fr 80px 24px;gap:6px;align-items:center;padding:6px;background:white;border:1px solid var(--border);border-radius:8px">
-                                <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
-                                    ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${eCat === k ? 'selected' : ''}>${v}</option>`).join('')}
-                                </select>
-                                <input type="number" step="0.01" min="0" class="aew-exp-amount" value="${e.amount || ''}" placeholder="€" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right">
-                                <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
-                                <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. parkeerkaart Den Oever)" style="grid-column:1/-1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:flex;flex-direction:column;gap:6px;padding:6px;background:white;border:1px solid var(--border);border-radius:8px">
+                                <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
+                                    <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                                        ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${eCat === k ? 'selected' : ''}>${v}</option>`).join('')}
+                                    </select>
+                                    <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
+                                </div>
+                                <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                                <div style="display:grid;grid-template-columns:60px 80px 1fr 90px;gap:6px;align-items:center">
+                                    <input type="number" step="1" min="0" class="aew-exp-qty" value="${e.quantity || ''}" placeholder="Aantal" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Aantal stuks (optioneel)">
+                                    <input type="number" step="0.01" min="0" class="aew-exp-unit" value="${e.unit_price || ''}" placeholder="€/stuk" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Prijs per stuk (optioneel)">
+                                    <span style="font-size:0.7rem;color:var(--muted);text-align:right;padding-right:4px">Totaal €</span>
+                                    <input type="number" step="0.01" min="0" class="aew-exp-amount" value="${e.amount || ''}" placeholder="0,00" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right;font-weight:600">
+                                </div>
                             </div>
                         `;
                         }).join('')}
@@ -16008,18 +16025,40 @@
             const row = document.createElement('div');
             row.className = 'aew-exp-row';
             // Geen data-exp-id → wordt nieuwe insert bij save
-            row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 24px;gap:6px;align-items:center;padding:6px;background:white;border:1px solid var(--border);border-radius:8px';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:6px;background:white;border:1px solid var(--border);border-radius:8px';
             row.innerHTML = `
-                <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">${catOptionsHtml}</select>
-                <input type="number" step="0.01" min="0" class="aew-exp-amount" placeholder="€" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right">
-                <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
-                <input type="text" class="aew-exp-desc" placeholder="Omschrijving (bv. parkeerkaart Den Oever)" style="grid-column:1/-1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
+                    <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">${catOptionsHtml}</select>
+                    <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
+                </div>
+                <input type="text" class="aew-exp-desc" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                <div style="display:grid;grid-template-columns:60px 80px 1fr 90px;gap:6px;align-items:center">
+                    <input type="number" step="1" min="0" class="aew-exp-qty" placeholder="Aantal" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Aantal stuks (optioneel)">
+                    <input type="number" step="0.01" min="0" class="aew-exp-unit" placeholder="€/stuk" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Prijs per stuk (optioneel)">
+                    <span style="font-size:0.7rem;color:var(--muted);text-align:right;padding-right:4px">Totaal €</span>
+                    <input type="number" step="0.01" min="0" class="aew-exp-amount" placeholder="0,00" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right;font-weight:600">
+                </div>
             `;
             list.appendChild(row);
             if (empty) empty.style.display = 'none';
-            // Focus op categorie zodat user direct kan typen
-            const firstInput = row.querySelector('input.aew-exp-amount');
-            if (firstInput) firstInput.focus();
+            // Focus op de omschrijving zodat user direct kan typen wat het is
+            const descInput = row.querySelector('input.aew-exp-desc');
+            if (descInput) descInput.focus();
+        }
+
+        // Auto-bereken totaal als zowel aantal als prijs/stuk zijn ingevuld.
+        // Wordt aangeroepen bij oninput van qty en unit-price velden.
+        function adminRecalcExpRow(input) {
+            const row = input && input.closest('.aew-exp-row');
+            if (!row) return;
+            const qty = parseFloat(row.querySelector('.aew-exp-qty')?.value) || 0;
+            const unit = parseFloat(row.querySelector('.aew-exp-unit')?.value) || 0;
+            const amountEl = row.querySelector('.aew-exp-amount');
+            // Alleen overschrijven als beide gevuld — gebruiker kan altijd handmatig
+            // het totaal blijven aanpassen als hij geen unit-price heeft.
+            if (qty > 0 && unit > 0 && amountEl) {
+                amountEl.value = (qty * unit).toFixed(2);
+            }
         }
 
         // Helper: verwijder een expense-rij. Als de rij een DB-id heeft markeren we
@@ -16235,11 +16274,17 @@
                     const cat = row.querySelector('.aew-exp-cat')?.value || 'other';
                     const amount = parseFloat(row.querySelector('.aew-exp-amount')?.value || '0');
                     const desc = (row.querySelector('.aew-exp-desc')?.value || '').trim();
+                    const qtyVal = row.querySelector('.aew-exp-qty')?.value;
+                    const unitVal = row.querySelector('.aew-exp-unit')?.value;
+                    const quantity = qtyVal ? parseFloat(qtyVal) : null;
+                    const unitPrice = unitVal ? parseFloat(unitVal) : null;
                     if (!amount || amount <= 0) return; // skip lege rijen (geen bedrag)
                     const record = {
                         user_id: userId, project_id: projectId,
                         week_number: weekNumber, year: year,
-                        cat: cat, amount: amount, description: desc || null
+                        cat: cat, amount: amount, description: desc || null,
+                        quantity: (quantity && quantity > 0) ? quantity : null,
+                        unit_price: (unitPrice && unitPrice > 0) ? unitPrice : null
                     };
                     if (expId) {
                         record.id = expId;
@@ -16260,7 +16305,13 @@
                 }
                 // Apart: inserts (geen onConflict — laat Supabase een nieuwe id genereren)
                 if (toInsert.length > 0 && !expensesError) {
-                    const { error: insErr } = await sb.from('expenses').insert(toInsert);
+                    let { error: insErr } = await sb.from('expenses').insert(toInsert);
+                    // Fallback: DB heeft nog geen quantity/unit_price kolommen — strip die en retry
+                    if (insErr && /quantity|unit_price/.test(insErr.message || '')) {
+                        console.warn('quantity/unit_price kolommen niet aanwezig — fallback. Voer migratie-expenses-quantity.sql uit.');
+                        const stripped = toInsert.map(r => { const c = {...r}; delete c.quantity; delete c.unit_price; return c; });
+                        ({ error: insErr } = await sb.from('expenses').insert(stripped));
+                    }
                     if (insErr) {
                         if (/relation.*expenses.*does not exist/i.test(insErr.message || '')) {
                             expensesError = 'Tabel "expenses" bestaat niet — voer migratie-expenses.sql uit';
@@ -16278,7 +16329,12 @@
                 if (toUpdate.length > 0 && !expensesError) {
                     for (const rec of toUpdate) {
                         const { id, ...rest } = rec;
-                        const { error: updErr } = await sb.from('expenses').update(rest).eq('id', id);
+                        let { error: updErr } = await sb.from('expenses').update(rest).eq('id', id);
+                        if (updErr && /quantity|unit_price/.test(updErr.message || '')) {
+                            console.warn('quantity/unit_price kolommen niet aanwezig — fallback.');
+                            const stripped = {...rest}; delete stripped.quantity; delete stripped.unit_price;
+                            ({ error: updErr } = await sb.from('expenses').update(stripped).eq('id', id));
+                        }
                         if (updErr) {
                             if (/row-level security|policy/i.test(updErr.message || '')) {
                                 expensesError = 'RLS-policy blokkeert update — voer migratie-expenses-rls-fix.sql uit';
@@ -16405,10 +16461,16 @@
                 // weekstaat-PDF generator (die expEntries leest in regel ~7333) ze meeneemt.
                 let weekExpenses = [];
                 try {
-                    const { data: exps } = await sb.from('expenses')
-                        .select('cat, amount, description, entry_date')
+                    let { data: exps, error: expSelErr } = await sb.from('expenses')
+                        .select('cat, amount, description, entry_date, quantity, unit_price')
                         .eq('user_id', userId).eq('project_id', projectId)
                         .eq('week_number', weekNumber).eq('year', year);
+                    if (expSelErr && /quantity|unit_price/.test(expSelErr.message || '')) {
+                        ({ data: exps } = await sb.from('expenses')
+                            .select('cat, amount, description, entry_date')
+                            .eq('user_id', userId).eq('project_id', projectId)
+                            .eq('week_number', weekNumber).eq('year', year));
+                    }
                     weekExpenses = exps || [];
                 } catch (e) { /* tabel bestaat nog niet — fallback */ }
 
@@ -16424,13 +16486,28 @@
                     // Globale array — vervang voor de PDF-generatie tijdens deze flow
                     expEntries.length = 0;
                     weekExpenses.forEach((e, i) => {
+                        // Beschrijving voor PDF: "7× Afblindplug á €15" als aantal+prijs zijn,
+                        // anders gewoon de description
+                        let desc = e.description || '';
+                        if (e.quantity && e.unit_price) {
+                            const qtyStr = Number(e.quantity) % 1 === 0 ? Number(e.quantity).toString() : Number(e.quantity).toFixed(2);
+                            const unitStr = '€' + Number(e.unit_price).toFixed(2).replace('.', ',');
+                            const prefix = `${qtyStr}× `;
+                            const suffix = ` á ${unitStr}`;
+                            // Voorkom dubbele "7×" als gebruiker dat al in de desc had
+                            if (!desc.includes('×') && !desc.toLowerCase().startsWith(qtyStr + ' ')) {
+                                desc = prefix + desc + suffix;
+                            }
+                        }
                         expEntries.push({
                             id: 'admin-' + i,
                             cat: e.cat || 'other',
                             catLabel: expCatLabelsLocal[e.cat] || 'Overig',
-                            desc: e.description || '',
+                            desc: desc,
                             amount: parseFloat(e.amount) || 0,
-                            date: e.entry_date || ''
+                            date: e.entry_date || '',
+                            quantity: e.quantity || null,
+                            unit_price: e.unit_price || null
                         });
                     });
                 }
