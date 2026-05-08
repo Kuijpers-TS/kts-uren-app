@@ -14939,7 +14939,11 @@
                 const userMap = {};
                 (window._adminUsers || []).forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
                 const projMap = {};
-                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code); });
+                const projNameMap = {};
+                (window._adminProjects || []).forEach(p => {
+                    projMap[p.id] = escapeHtml(p.project_code);
+                    projNameMap[p.id] = escapeHtml(p.name || '');
+                });
 
                 if (conceptEl && filteredConcepts.length > 0) {
                     conceptEl.innerHTML = `
@@ -14947,6 +14951,7 @@
                         ${filteredConcepts.map(ws => {
                             const userName = userMap[ws.user_id] || 'Onbekend';
                             const projCode = projMap[ws.project_id] || '?';
+                            const projName = projNameMap[ws.project_id] || '';
                             const statusBadge = ws.status === 'ondertekend'
                                 ? '<span style="font-size:0.65rem;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:600">✍️ Ondertekend</span>'
                                 : '<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:600">📝 Opgeslagen</span>';
@@ -14955,7 +14960,8 @@
                                     <div style="font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                                         ${userName} ${statusBadge}
                                     </div>
-                                    <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year} · ${projCode}</div>
+                                    <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year}</div>
+                                    <div style="font-size:0.7rem;color:var(--muted);margin-top:1px"><strong>${projCode}</strong>${projName ? ' · ' + projName : ''}</div>
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
                                     <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Ondertekenen & versturen namens gebruiker">✍️</button>
@@ -14992,6 +14998,7 @@
                 listEl.innerHTML = filteredRecords.map(ws => {
                     const userName = userMap[ws.user_id] || 'Onbekend';
                     const projCode = projMap[ws.project_id] || '?';
+                    const projName = projNameMap[ws.project_id] || '';
                     const approvalStatus = ws.approval_status || 'geen';
 
                     // Storage pad reconstrueren
@@ -15025,7 +15032,8 @@
                             <div style="font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                                 ${userName} ${approvalBadge}
                             </div>
-                            <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year} · ${projCode}</div>
+                            <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);margin-top:1px"><strong>${projCode}</strong>${projName ? ' · ' + projName : ''}</div>
                         </div>
                         <div style="display:flex;gap:4px;flex-shrink:0">
                             ${adminApproveBtn}
