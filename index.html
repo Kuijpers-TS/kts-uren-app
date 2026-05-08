@@ -9996,6 +9996,33 @@
         }
 
         // ===== DATA OPSLAAN NAAR SUPABASE =====
+        // Werk last_modified_at + last_modified_by bij op week_status zodat de admin
+        // in de weekstaten-lijst kan zien wanneer en door wie de week als laatste is
+        // aangepast. Wordt aangeroepen vanuit zowel de zzp-save-flow als de admin-flow.
+        // Niet-fataal als kolom of record nog niet bestaat.
+        async function touchWeekstaatModified(sb, userId, projectId, weekNumber, year, modifiedBy) {
+            if (!sb || !userId || !projectId || !weekNumber || !year) return;
+            try {
+                // Probeer eerst een UPDATE — alleen als de week_status al bestaat
+                let { error: updErr, count } = await sb.from('week_status')
+                    .update({
+                        last_modified_at: new Date().toISOString(),
+                        last_modified_by: modifiedBy || null
+                    }, { count: 'exact' })
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year);
+                if (updErr) {
+                    if (/last_modified/.test(updErr.message || '')) {
+                        // Kolom bestaat nog niet — silent fallback (migratie nog niet gedraaid)
+                        return;
+                    }
+                    console.warn('week_status modified-update faalde:', updErr.message);
+                }
+            } catch (e) { /* niet kritisch */ }
+        }
+
         async function saveWeekToSupabase() {
             if (weekSummary) return false; // historische data: niet overschrijven
             if (!getSupabase() || !currentUser || !currentUser.id) return false;
@@ -10074,6 +10101,9 @@
                     showToast('⚠️ ' + saveErrors + ' dag(en) niet opgeslagen — probeer opnieuw');
                     return false;
                 }
+                // Mark week als laatst-aangepast — voor admin-zichtbaarheid
+                await touchWeekstaatModified(sb, currentUser.id, currentProject.id,
+                    currentWeekNumber, currentYear, currentUser.id);
                 return true;
             } catch (err) {
                 console.error('saveWeekToSupabase fout:', err);
@@ -14989,6 +15019,27 @@
                     projNameMap[p.id] = escapeHtml(p.name || '');
                 });
 
+                // Helper: format "laatst aangepast" voor in de tegel
+                // bv: "✏️ 4 mei 17:23 · Bart Hoogeveen"
+                function fmtModified(ws) {
+                    if (!ws.last_modified_at) return '';
+                    const d = new Date(ws.last_modified_at);
+                    if (isNaN(d.getTime())) return '';
+                    const now = new Date();
+                    const diffMin = Math.floor((now - d) / 60000);
+                    const diffH = Math.floor(diffMin / 60);
+                    const diffD = Math.floor(diffH / 24);
+                    let when;
+                    if (diffMin < 5)        when = 'Net aangepast';
+                    else if (diffMin < 60)  when = diffMin + ' min geleden';
+                    else if (diffH < 24)    when = diffH + ' uur geleden';
+                    else if (diffD < 7)     when = diffD + ' dag' + (diffD > 1 ? 'en' : '') + ' geleden';
+                    else                    when = d.toLocaleDateString('nl-NL', { day:'numeric', month:'short' }) + ' ' + d.toTimeString().slice(0,5);
+                    const byName = ws.last_modified_by ? (userMap[ws.last_modified_by] || 'Onbekend') : '';
+                    const byPart = byName ? ' · ' + byName : '';
+                    return `<div style="font-size:0.65rem;color:#94a3b8;margin-top:2px">✏️ ${when}${byPart}</div>`;
+                }
+
                 if (conceptEl && filteredConcepts.length > 0) {
                     conceptEl.innerHTML = `
                         <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:8px">Concept weekstaten (nog niet verstuurd)</div>
@@ -15006,6 +15057,7 @@
                                     </div>
                                     <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year}</div>
                                     <div style="font-size:0.7rem;color:var(--muted);margin-top:1px"><strong>${projCode}</strong>${projName ? ' · ' + projName : ''}</div>
+                                    ${fmtModified(ws)}
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
                                     <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Ondertekenen & versturen namens gebruiker">✍️</button>
@@ -15078,6 +15130,7 @@
                             </div>
                             <div style="font-size:0.75rem;color:var(--muted)">Week ${ws.week_number} · ${ws.year}</div>
                             <div style="font-size:0.7rem;color:var(--muted);margin-top:1px"><strong>${projCode}</strong>${projName ? ' · ' + projName : ''}</div>
+                            ${fmtModified(ws)}
                         </div>
                         <div style="display:flex;gap:4px;flex-shrink:0">
                             ${adminApproveBtn}
@@ -16123,6 +16176,13 @@
             } catch (statusErr) {
                 console.warn('week_status upsert mislukt (niet fataal):', statusErr.message || statusErr);
             }
+
+            // Mark als laatst-aangepast door admin (de huidige auth-user)
+            try {
+                const { data: { user: authUser } = { user: null } } = await sb.auth.getUser();
+                await touchWeekstaatModified(sb, userId, projectId, weekNumber, year,
+                    authUser ? authUser.id : null);
+            } catch (e) { /* niet kritisch */ }
 
             // Expenses opslaan: nieuwe inserts, updates op bestaande, deletes voor marked
             let expensesError = null;
