@@ -8149,7 +8149,31 @@
                     await updateWeekStatus('verstuurd');
                     logAudit('week_ondertekend_verstuurd', { week: currentWeekNumber });
                     notifyOtherTabs();
-                    showToast('✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd — PDF gedownload');
+
+                    // 8. Open vooringevulde notificatie-mail naar KTS administratie.
+                    // Skip in admin-namens-flow — daar is geen extra notificatie nodig
+                    // (admin verwerkt het zelf in de Concept-lijst).
+                    if (!_adminSignOverride) {
+                        try {
+                            const userNameMail = currentUser ? currentUser.name : 'Onbekend';
+                            const projectNameMail = currentProject ? currentProject.name : '';
+                            const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userNameMail + ' - ' + projectNameMail);
+                            const mailBody = encodeURIComponent(
+                                'Beste KTS,\n\n' +
+                                'Mijn weekstaat voor week ' + currentWeekNumber + ' is zojuist ondertekend en verstuurd.\n\n' +
+                                'Medewerker: ' + userNameMail + '\n' +
+                                'Project: ' + projectNameMail + '\n' +
+                                'Week: ' + currentWeekNumber + ' / ' + currentYear + '\n' +
+                                'Bestand: ' + fileName + '\n\n' +
+                                'Met vriendelijke groet,\n' + userNameMail
+                            );
+                            window.location.href = 'mailto:uren@kuijpers-ts.nl?subject=' + mailSubject + '&body=' + mailBody;
+                        } catch (mailErr) {
+                            console.warn('Notificatie-mail openen mislukt:', mailErr);
+                        }
+                    }
+
+                    showToast('✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd — PDF gedownload + mail geopend');
                 }
                 if (!_adminSignOverride) await renderOverview();
             } catch (err) {
