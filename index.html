@@ -15898,10 +15898,10 @@
                     data-default-km="${dKmDefault}" data-default-loc="${escapeHtml(defaultLocation)}" data-default-desc="${escapeHtml(defaultDescription)}">
                     <div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;font-size:0.85rem">
                         <span style="font-weight:700;color:${d>=5?'var(--kts-blue)':'inherit'}">${dagNamen[d]} ${date.getDate()}</span>
-                        <input type="time" class="aew-start" value="${startVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                        <input type="time" class="aew-end" value="${endVal}" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                        <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box">
-                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Pauze in minuten">
+                        <input type="time" class="aew-start" value="${startVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                        <input type="time" class="aew-end" value="${endVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                        <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Wordt automatisch berekend uit start/eind − pauze. Handmatig overschrijven mag.">
+                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" oninput="adminRecalcDayHours(this)" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Pauze in minuten">
                     </div>
                     <input type="text" class="aew-loc" value="${escapeHtml(locVal)}" placeholder="Locatie" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                     <input type="text" class="aew-desc" value="${escapeHtml(descVal)}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
@@ -16044,6 +16044,35 @@
             // Focus op de omschrijving zodat user direct kan typen wat het is
             const descInput = row.querySelector('input.aew-exp-desc');
             if (descInput) descInput.focus();
+        }
+
+        // Auto-bereken uren in een dag-rij op basis van start/eind − pauze.
+        // Wordt aangeroepen bij oninput van .aew-start, .aew-end en .aew-break.
+        // Logica matcht defaultWeekData() in de zzp-flow:
+        //   werkMin = (eind - start)
+        //   effectiveBreak = min(pauze, werkMin)  // pauze nooit groter dan werktijd
+        //   hours = (werkMin - effectiveBreak) / 60
+        function adminRecalcDayHours(input) {
+            const row = input && input.closest('.aew-row');
+            if (!row) return;
+            const startEl = row.querySelector('.aew-start');
+            const endEl   = row.querySelector('.aew-end');
+            const breakEl = row.querySelector('.aew-break');
+            const hoursEl = row.querySelector('.aew-hours');
+            if (!startEl || !endEl || !hoursEl) return;
+            const start = startEl.value;
+            const end = endEl.value;
+            // Geen tijden gevuld → niet auto-overwriten (gebruiker kan handmatig uren typen)
+            if (!start || !end) return;
+            const [sh, sm] = start.split(':').map(Number);
+            const [eh, em] = end.split(':').map(Number);
+            if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return;
+            const werkMin = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+            const breakMin = parseInt(breakEl?.value, 10) || 0;
+            const effectiveBreak = Math.min(breakMin, werkMin);
+            const hours = Math.max(0, (werkMin - effectiveBreak) / 60);
+            // Schoon getal: hele uren zonder decimalen, anders 2 decimalen
+            hoursEl.value = (hours % 1 === 0) ? hours.toString() : hours.toFixed(2);
         }
 
         // Auto-bereken totaal als zowel aantal als prijs/stuk zijn ingevuld.
