@@ -7749,6 +7749,11 @@
         }
 
         async function downloadWeekstaat() {
+            // Laad expenses uit DB zodat ze in de PDF "Extra kosten"-sectie verschijnen
+            const sbDw = getSupabase();
+            if (sbDw && currentUser && currentProject) {
+                await loadExpEntriesForWeek(sbDw, currentUser.id, currentProject.id, currentWeekNumber, currentYear);
+            }
             const doc = await generateWeekstaat();
             if (doc) {
                 const projCode = currentProject ? currentProject.project_code : 'KTS';
@@ -7942,6 +7947,57 @@
             }, 100);
         }
 
+        // Laad persistent opgeslagen extra kosten uit de expenses-tabel voor een
+        // (user, project, week, year) en push ze naar de globale expEntries array.
+        // Wordt aangeroepen vóór PDF-generatie zodat de "Extra kosten"-sectie op de
+        // weekstaat-PDF gevuld wordt vanuit de DB (i.p.v. alleen vanuit de oude
+        // in-memory Kosten-tab).
+        async function loadExpEntriesForWeek(sb, userId, projectId, weekNumber, year) {
+            if (!sb || !userId || !projectId || !weekNumber || !year) return;
+            if (typeof expEntries === 'undefined' || !Array.isArray(expEntries)) return;
+            try {
+                let { data: exps, error: expErr } = await sb.from('expenses')
+                    .select('cat, amount, description, entry_date, quantity, unit_price')
+                    .eq('user_id', userId).eq('project_id', projectId)
+                    .eq('week_number', weekNumber).eq('year', year);
+                if (expErr && /quantity|unit_price/.test(expErr.message || '')) {
+                    ({ data: exps } = await sb.from('expenses')
+                        .select('cat, amount, description, entry_date')
+                        .eq('user_id', userId).eq('project_id', projectId)
+                        .eq('week_number', weekNumber).eq('year', year));
+                }
+                const labels = {
+                    transport:'Transport', parkeren:'Parkeren', maaltijd:'Maaltijd',
+                    meals:'Maaltijd', materiaal:'Materiaal', huur:'Huur',
+                    tolheffing:'Tolheffingen', veerboot:'Veerboot',
+                    doorbelasting:'Doorbelasting', other:'Overig'
+                };
+                // Vervang expEntries volledig met DB-data. Dit zorgt dat oude
+                // in-memory entries van een andere week niet doorlekken.
+                expEntries.length = 0;
+                (exps || []).forEach((e, i) => {
+                    let desc = e.description || '';
+                    if (e.quantity && e.unit_price) {
+                        const qtyStr = Number(e.quantity) % 1 === 0 ? Number(e.quantity).toString() : Number(e.quantity).toFixed(2);
+                        const unitStr = '€' + Number(e.unit_price).toFixed(2).replace('.', ',');
+                        if (!desc.includes('×') && !desc.toLowerCase().startsWith(qtyStr + ' ')) {
+                            desc = `${qtyStr}× ` + desc + ` á ${unitStr}`;
+                        }
+                    }
+                    expEntries.push({
+                        id: 'db-' + i,
+                        cat: e.cat || 'other',
+                        catLabel: labels[e.cat] || 'Overig',
+                        desc: desc,
+                        amount: parseFloat(e.amount) || 0,
+                        date: e.entry_date || '',
+                        quantity: e.quantity || null,
+                        unit_price: e.unit_price || null
+                    });
+                });
+            } catch (e) { /* tabel/kolom niet aanwezig — fallback */ }
+        }
+
         async function confirmSignatures() {
             if (!signatureData.zzp) { showToast('⚠️ ZZP\'er handtekening is verplicht'); return; }
             // Opmerkingen opslaan
@@ -7995,6 +8051,10 @@
                     try {
                         if (!window.jspdf) {
                             for (let w = 0; w < 10; w++) { await new Promise(r => setTimeout(r, 500)); if (window.jspdf) break; }
+                        }
+                        // Laad expenses uit DB zodat ze op de PDF verschijnen
+                        if (sb && currentUser && currentProject) {
+                            await loadExpEntriesForWeek(sb, currentUser.id, currentProject.id, currentWeekNumber, currentYear);
                         }
                         const weekstaat = await generateWeekstaat();
                         if (weekstaat) {
@@ -8103,7 +8163,12 @@
                         for (let w = 0; w < 10; w++) { await new Promise(r => setTimeout(r, 500)); if (window.jspdf) break; }
                     }
 
-                    // 3. Genereer PDF met handtekening
+                    // 3. Laad expenses uit DB zodat ze op de PDF verschijnen
+                    if (sb && currentUser && currentProject) {
+                        await loadExpEntriesForWeek(sb, currentUser.id, currentProject.id, currentWeekNumber, currentYear);
+                    }
+
+                    // 4. Genereer PDF met handtekening
                     const weekstaat = await generateWeekstaat();
                     if (!weekstaat) throw new Error('PDF generatie mislukt');
 
@@ -8225,7 +8290,13 @@
                     }
                 }
 
-                // 4. Genereer PDF met handtekeningen
+                // 4. Laad expenses uit DB zodat ze op de PDF verschijnen
+                const sbSubmit = getSupabase();
+                if (sbSubmit && currentUser && currentProject) {
+                    await loadExpEntriesForWeek(sbSubmit, currentUser.id, currentProject.id, currentWeekNumber, currentYear);
+                }
+
+                // 5. Genereer PDF met handtekeningen
                 if (btn) btn.innerHTML = '📄 PDF genereren...';
                 const weekstaat = await generateWeekstaat();
                 if (!weekstaat) throw new Error('PDF generatie mislukt — herlaad de pagina en probeer opnieuw');
@@ -16704,6 +16775,9 @@
                     if (!window.jspdf) {
                         for (let w = 0; w < 10; w++) { await new Promise(r => setTimeout(r, 500)); if (window.jspdf) break; }
                     }
+
+                    // Laad expenses voor deze week uit DB → expEntries
+                    await loadExpEntriesForWeek(sb, userId, projectId, weekNumber, year);
 
                     const weekstaat = await generateWeekstaat();
                     if (!weekstaat) throw new Error('PDF generatie mislukt');
