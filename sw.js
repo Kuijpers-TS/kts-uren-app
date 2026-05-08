@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v126';
+const CACHE_NAME = 'kts-uren-v127';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

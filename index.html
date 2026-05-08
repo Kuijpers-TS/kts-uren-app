@@ -15775,12 +15775,64 @@
                     </div>
                 </div>`;
             }
+            // Bestaande expenses voor deze week ophalen — als de tabel nog niet bestaat
+            // (migratie niet uitgevoerd), val terug op een lege lijst zonder error.
+            let existingExpenses = [];
+            try {
+                const { data: expData, error: expErr } = await sb.from('expenses')
+                    .select('id, cat, amount, description, entry_date')
+                    .eq('user_id', userId)
+                    .eq('project_id', projectId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year)
+                    .order('created_at', { ascending: true });
+                if (!expErr && expData) existingExpenses = expData;
+            } catch (e) { /* expenses tabel bestaat nog niet — fallback */ }
+
+            // Categorie-labels (matching gewone zzp-flow)
+            const expCatLabels = {
+                transport: 'Transport',
+                parkeren: 'Parkeren',
+                meals: 'Maaltijd',
+                materiaal: 'Materiaal',
+                other: 'Overig'
+            };
+            const expCatOptions = Object.entries(expCatLabels)
+                .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+
+            // HTML voor expenses-sectie. Elke bestaande rij krijgt z'n DB-id zodat we
+            // bij save kunnen update'n (i.p.v. delete+insert).
+            const expensesHtml = `
+                <div id="aew-expenses-section" style="margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fafafa">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <div style="font-weight:600;font-size:0.85rem;color:var(--kts-blue)">💶 Extra kosten</div>
+                        <button type="button" onclick="adminAddExpenseRow(this)" class="btn btn-sm" style="padding:4px 10px;font-size:0.7rem;background:#dcfce7;color:#166534;border:1px solid #86efac">+ Toevoegen</button>
+                    </div>
+                    <div id="aew-expenses-list" style="display:flex;flex-direction:column;gap:6px">
+                        ${existingExpenses.map(e => `
+                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:grid;grid-template-columns:1fr 80px 24px;gap:6px;align-items:center;padding:6px;background:white;border:1px solid var(--border);border-radius:8px">
+                                <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                                    ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${e.cat === k ? 'selected' : ''}>${v}</option>`).join('')}
+                                </select>
+                                <input type="number" step="0.01" min="0" class="aew-exp-amount" value="${e.amount || ''}" placeholder="€" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right">
+                                <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
+                                <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. parkeerkaart Den Oever)" style="grid-column:1/-1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div id="aew-expenses-empty" style="display:${existingExpenses.length === 0 ? 'block' : 'none'};text-align:center;padding:8px;color:var(--muted);font-size:0.75rem">Geen extra kosten — klik "+ Toevoegen" voor parkeerkaart, brandstof, etc.</div>
+                </div>`;
+
             document.getElementById('admin-modal-fields').innerHTML = `
                 <div style="display:grid;grid-template-columns:${gridCols};gap:8px;margin-bottom:8px;padding:8px 11px 0 11px;font-size:0.75rem;color:var(--muted);font-weight:600">
                     ${headerLabels}
                 </div>
                 ${rows}
+                ${expensesHtml}
             `;
+            // Cache categorie-labels op modal voor adminAddExpenseRow helper
+            document.getElementById('aew-expenses-section').dataset.catOptions = expCatOptions;
+
             const saveBtn = document.getElementById('admin-modal-save');
             saveBtn.style.display = '';
             saveBtn.textContent = 'Wijzigingen opslaan';
@@ -15790,6 +15842,50 @@
             // Modal blijft default 480px breed — km en hotel staan nu op een aparte
             // rij onderin zodat de hoofdrij (5 kolommen) ook op smalle schermen past.
             modal.classList.add('active');
+        }
+
+        // Helper: voeg een lege expense-rij toe aan de admin-modal
+        function adminAddExpenseRow(btn) {
+            const section = document.getElementById('aew-expenses-section');
+            const list = document.getElementById('aew-expenses-list');
+            const empty = document.getElementById('aew-expenses-empty');
+            if (!list) return;
+            const catOptionsHtml = section.dataset.catOptions || '<option value="other">Overig</option>';
+            const row = document.createElement('div');
+            row.className = 'aew-exp-row';
+            // Geen data-exp-id → wordt nieuwe insert bij save
+            row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 24px;gap:6px;align-items:center;padding:6px;background:white;border:1px solid var(--border);border-radius:8px';
+            row.innerHTML = `
+                <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">${catOptionsHtml}</select>
+                <input type="number" step="0.01" min="0" class="aew-exp-amount" placeholder="€" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right">
+                <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
+                <input type="text" class="aew-exp-desc" placeholder="Omschrijving (bv. parkeerkaart Den Oever)" style="grid-column:1/-1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+            `;
+            list.appendChild(row);
+            if (empty) empty.style.display = 'none';
+            // Focus op categorie zodat user direct kan typen
+            const firstInput = row.querySelector('input.aew-exp-amount');
+            if (firstInput) firstInput.focus();
+        }
+
+        // Helper: verwijder een expense-rij. Als de rij een DB-id heeft markeren we
+        // hem als "te verwijderen" — adminSaveWeekEntries handelt het echte delete af.
+        function adminRemoveExpenseRow(btn) {
+            const row = btn && btn.closest('.aew-exp-row');
+            if (!row) return;
+            const expId = row.dataset.expId;
+            if (expId) {
+                // Bestaande rij — markeer voor delete bij save (visueel verbergen)
+                row.dataset.markedForDelete = 'true';
+                row.style.display = 'none';
+            } else {
+                // Nieuwe rij — direct uit de DOM
+                row.remove();
+            }
+            // Update lege-lijst hint
+            const visible = document.querySelectorAll('#aew-expenses-list .aew-exp-row:not([data-marked-for-delete="true"])').length;
+            const empty = document.getElementById('aew-expenses-empty');
+            if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
         }
 
         // "Standaard"-knop voor één dag: vult start, eind, uren, pauze, km en
@@ -15934,6 +16030,51 @@
                 console.warn('week_status upsert mislukt (niet fataal):', statusErr.message || statusErr);
             }
 
+            // Expenses opslaan: nieuwe inserts, updates op bestaande, deletes voor marked
+            try {
+                const expRows = document.querySelectorAll('#aew-expenses-list .aew-exp-row');
+                const toDelete = [];
+                const toUpsert = [];
+                expRows.forEach(row => {
+                    const expId = row.dataset.expId || null;
+                    const marked = row.dataset.markedForDelete === 'true';
+                    if (marked && expId) { toDelete.push(expId); return; }
+                    if (marked) return; // nieuwe rij die meteen verwijderd is — skip
+                    const cat = row.querySelector('.aew-exp-cat')?.value || 'other';
+                    const amount = parseFloat(row.querySelector('.aew-exp-amount')?.value || '0');
+                    const desc = (row.querySelector('.aew-exp-desc')?.value || '').trim();
+                    if (!amount || amount <= 0) return; // skip lege rijen (geen bedrag)
+                    const record = {
+                        user_id: userId, project_id: projectId,
+                        week_number: weekNumber, year: year,
+                        cat: cat, amount: amount, description: desc || null
+                    };
+                    if (expId) record.id = expId;
+                    toUpsert.push(record);
+                });
+
+                if (toDelete.length > 0) {
+                    const { error: delErr } = await sb.from('expenses').delete().in('id', toDelete);
+                    if (delErr) console.warn('expenses delete mislukt:', delErr.message);
+                }
+                if (toUpsert.length > 0) {
+                    // created_by alleen meegeven als auth-user beschikbaar — anders RLS-policy issue
+                    const { data: { user: authUser } = { user: null } } = await sb.auth.getUser().catch(() => ({ data: { user: null } }));
+                    if (authUser) toUpsert.forEach(r => { if (!r.id) r.created_by = authUser.id; });
+                    const { error: upErr } = await sb.from('expenses').upsert(toUpsert, { onConflict: 'id' });
+                    if (upErr) {
+                        // Tabel bestaat mogelijk nog niet
+                        if (/relation.*expenses.*does not exist/i.test(upErr.message || '')) {
+                            console.warn('expenses tabel niet aanwezig — voer migratie-expenses.sql uit');
+                        } else {
+                            console.warn('expenses upsert mislukt:', upErr.message);
+                        }
+                    }
+                }
+            } catch (expSaveErr) {
+                console.warn('Expenses opslaan overgeslagen:', expSaveErr.message || expSaveErr);
+            }
+
             if (errors) showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
             else showToast(`✓ ${saved} dagen opgeslagen — staat klaar in Concept om te ondertekenen`);
             // closeModal i.p.v. directe classList — die verwijdert ook modal-wide cleanup
@@ -16028,8 +16169,39 @@
                     originalWeekNumber: currentWeekNumber,
                     originalYear: currentYear,
                     originalWeekDbStatus: currentWeekDbStatus,
-                    originalWeekSummary: weekSummary
+                    originalWeekSummary: weekSummary,
+                    originalExpEntries: typeof expEntries !== 'undefined' ? expEntries : []
                 };
+
+                // Expenses voor deze week ophalen — worden in expEntries gezet zodat de
+                // weekstaat-PDF generator (die expEntries leest in regel ~7333) ze meeneemt.
+                let weekExpenses = [];
+                try {
+                    const { data: exps } = await sb.from('expenses')
+                        .select('cat, amount, description, entry_date')
+                        .eq('user_id', userId).eq('project_id', projectId)
+                        .eq('week_number', weekNumber).eq('year', year);
+                    weekExpenses = exps || [];
+                } catch (e) { /* tabel bestaat nog niet — fallback */ }
+
+                const expCatLabelsLocal = {
+                    transport: 'Transport', parkeren: 'Parkeren',
+                    meals: 'Maaltijd', materiaal: 'Materiaal', other: 'Overig'
+                };
+                if (typeof expEntries !== 'undefined' && Array.isArray(expEntries)) {
+                    // Globale array — vervang voor de PDF-generatie tijdens deze flow
+                    expEntries.length = 0;
+                    weekExpenses.forEach((e, i) => {
+                        expEntries.push({
+                            id: 'admin-' + i,
+                            cat: e.cat || 'other',
+                            catLabel: expCatLabelsLocal[e.cat] || 'Overig',
+                            desc: e.description || '',
+                            amount: parseFloat(e.amount) || 0,
+                            date: e.entry_date || ''
+                        });
+                    });
+                }
 
                 // Swap globals naar target user
                 currentUser = targetUser;
@@ -16068,6 +16240,12 @@
             currentYear = _adminSignOverride.originalYear;
             currentWeekDbStatus = _adminSignOverride.originalWeekDbStatus;
             weekSummary = _adminSignOverride.originalWeekSummary;
+            // Reset expEntries naar admin's eigen lijstje (was tijdelijk vervangen
+            // door target user's expenses voor de PDF-generatie)
+            if (typeof expEntries !== 'undefined' && Array.isArray(expEntries) && _adminSignOverride.originalExpEntries) {
+                expEntries.length = 0;
+                _adminSignOverride.originalExpEntries.forEach(e => expEntries.push(e));
+            }
             _adminSignOverride = null;
         }
 
