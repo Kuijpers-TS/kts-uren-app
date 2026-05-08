@@ -9999,28 +9999,35 @@
         // Werk last_modified_at + last_modified_by bij op week_status zodat de admin
         // in de weekstaten-lijst kan zien wanneer en door wie de week als laatste is
         // aangepast. Wordt aangeroepen vanuit zowel de zzp-save-flow als de admin-flow.
-        // Niet-fataal als kolom of record nog niet bestaat.
         async function touchWeekstaatModified(sb, userId, projectId, weekNumber, year, modifiedBy) {
             if (!sb || !userId || !projectId || !weekNumber || !year) return;
             try {
-                // Probeer eerst een UPDATE — alleen als de week_status al bestaat
-                let { error: updErr, count } = await sb.from('week_status')
+                // UPDATE-only — geen row nodig om aan te maken vanuit deze helper.
+                // (Status-aanmaken gebeurt elders; deze helper raakt alleen de
+                // last_modified velden aan.)
+                const { error: updErr, data: updData } = await sb.from('week_status')
                     .update({
                         last_modified_at: new Date().toISOString(),
                         last_modified_by: modifiedBy || null
-                    }, { count: 'exact' })
+                    })
                     .eq('user_id', userId)
                     .eq('project_id', projectId)
                     .eq('week_number', weekNumber)
-                    .eq('year', year);
+                    .eq('year', year)
+                    .select('id');
                 if (updErr) {
-                    if (/last_modified/.test(updErr.message || '')) {
-                        // Kolom bestaat nog niet — silent fallback (migratie nog niet gedraaid)
-                        return;
+                    // Schema cache niet ge-reload? Specifieke melding voor deze case
+                    if (/schema cache|column.*last_modified/i.test(updErr.message || '')) {
+                        console.warn('⚠️ touchWeekstaatModified: PostgREST schema cache kent de kolom nog niet. Wacht 10 sec of run NOTIFY pgrst, \'reload schema\' in Supabase SQL editor.');
+                    } else {
+                        console.warn('touchWeekstaatModified faalde:', updErr.message);
                     }
-                    console.warn('week_status modified-update faalde:', updErr.message);
+                    return;
                 }
-            } catch (e) { /* niet kritisch */ }
+                if (!updData || updData.length === 0) {
+                    console.warn('touchWeekstaatModified: geen week_status rij gevonden voor', { userId, projectId, weekNumber, year });
+                }
+            } catch (e) { console.warn('touchWeekstaatModified exception:', e.message || e); }
         }
 
         async function saveWeekToSupabase() {
@@ -16157,32 +16164,53 @@
 
             // Zorg dat er een week_status record bestaat met status='opgeslagen' zodat
             // de weekstaat in de Concept-lijst verschijnt en met de ✍️ knop ondertekend
-            // kan worden namens de medewerker.
+            // kan worden namens de medewerker. Tegelijk last_modified_at + by zetten
+            // zodat we maar één DB-call nodig hebben voor zowel status als modified-info.
             try {
+                const { data: { user: authUser } = { user: null } } = await sb.auth.getUser();
+                const adminId = authUser ? authUser.id : null;
                 const { data: existing } = await sb.from('week_status').select('status')
                     .eq('user_id', userId).eq('project_id', projectId)
                     .eq('week_number', weekNumber).eq('year', year).maybeSingle();
-                // Niet downgrade — als al verstuurd, status laten staan
+
+                const baseRecord = {
+                    user_id: userId,
+                    project_id: projectId,
+                    week_number: weekNumber,
+                    year: year,
+                    updated_at: new Date().toISOString()
+                };
+                // Probeer met last_modified velden — fallback voor oude DB
+                const recordWithModified = {
+                    ...baseRecord,
+                    last_modified_at: new Date().toISOString(),
+                    last_modified_by: adminId
+                };
+
+                let upsertRecord;
                 if (!existing || existing.status === 'concept') {
-                    await sb.from('week_status').upsert({
-                        user_id: userId,
-                        project_id: projectId,
-                        week_number: weekNumber,
-                        year: year,
-                        status: 'opgeslagen',
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'user_id,project_id,week_number,year' });
+                    // Status mag opgeslagen worden — voeg toe aan record
+                    upsertRecord = { ...recordWithModified, status: 'opgeslagen' };
+                } else {
+                    // Status NIET wijzigen (al verstuurd) — alleen modified-velden updaten
+                    upsertRecord = recordWithModified;
                 }
+
+                let { error: wsErr } = await sb.from('week_status').upsert(upsertRecord,
+                    { onConflict: 'user_id,project_id,week_number,year' });
+                // Fallback: als last_modified kolommen niet bestaan
+                if (wsErr && /last_modified/.test(wsErr.message || '')) {
+                    console.warn('⚠️ week_status last_modified kolommen niet aanwezig — voer migratie-weekstaat-last-modified.sql uit');
+                    const fallback = { ...upsertRecord };
+                    delete fallback.last_modified_at;
+                    delete fallback.last_modified_by;
+                    ({ error: wsErr } = await sb.from('week_status').upsert(fallback,
+                        { onConflict: 'user_id,project_id,week_number,year' }));
+                }
+                if (wsErr) console.warn('week_status upsert mislukt:', wsErr.message);
             } catch (statusErr) {
                 console.warn('week_status upsert mislukt (niet fataal):', statusErr.message || statusErr);
             }
-
-            // Mark als laatst-aangepast door admin (de huidige auth-user)
-            try {
-                const { data: { user: authUser } = { user: null } } = await sb.auth.getUser();
-                await touchWeekstaatModified(sb, userId, projectId, weekNumber, year,
-                    authUser ? authUser.id : null);
-            } catch (e) { /* niet kritisch */ }
 
             // Expenses opslaan: nieuwe inserts, updates op bestaande, deletes voor marked
             let expensesError = null;
