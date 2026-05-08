@@ -6840,6 +6840,17 @@
                 monday: typeof currentWeekMonday !== 'undefined' ? currentWeekMonday : new Date(),
                 days: days,
                 opmerkingen: typeof weekOpmerkingen !== 'undefined' ? (weekOpmerkingen || '') : '',
+                // Extra kosten (expenses) — ook beschikbaar voor de V2 renderer.
+                // expEntries is de globale array die door loadExpEntriesForWeek of de
+                // Kosten-tab gevuld wordt.
+                expenses: (typeof expEntries !== 'undefined' && Array.isArray(expEntries))
+                    ? expEntries.map(e => ({
+                        cat: e.cat || 'other',
+                        catLabel: e.catLabel || e.cat || 'Overig',
+                        desc: e.desc || '',
+                        amount: parseFloat(e.amount) || 0
+                    }))
+                    : [],
                 sign: {
                     zzpName: (signatureData && signatureData.zzpName) || (currentUser && currentUser.name) || '',
                     zzpDate: (signatureData && signatureData.zzpDate) || (signatureData && signatureData.zzp ? new Date().toLocaleDateString('nl-NL') : ''),
@@ -7084,17 +7095,48 @@
 
             const opmX = ml + kpiTotalW + 6;
             const opmW = pw - mr - opmX;
+            // Bepaal of er extra kosten zijn — bepaalt cel-label en hoogte
+            const hasExpenses = data.expenses && data.expenses.length > 0;
+            const cellLabel = hasExpenses ? 'OPMERKINGEN & EXTRA KOSTEN' : 'OPMERKINGEN';
+
             doc.setFillColor(248, 248, 244);
             doc.rect(opmX, y, opmW, kpiH, 'F');
             doc.setFontSize(7);
             doc.setFont(pdfFont, 'normal');
             doc.setTextColor(...ink400);
-            doc.text('OPMERKINGEN', opmX + 3, y + 5);
-            doc.setFontSize(9);
-            doc.setTextColor(...ink900);
+            doc.text(cellLabel, opmX + 3, y + 5);
+
+            // Bouw één lijst van regels: opmerking-tekst + expense-rijen
+            const lines = [];
             if (data.opmerkingen) {
-                const lines = doc.splitTextToSize(data.opmerkingen, opmW - 6);
-                lines.slice(0, 5).forEach((line, i) => doc.text(line, opmX + 3, y + 11 + i * 3.8));
+                const opmLines = doc.splitTextToSize(data.opmerkingen, opmW - 6);
+                opmLines.forEach(l => lines.push({ text: l, kind: 'note' }));
+            }
+            if (hasExpenses) {
+                const fmtAmt = (n) => '€ ' + (n || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                data.expenses.forEach(exp => {
+                    const label = exp.catLabel || exp.cat;
+                    const desc = exp.desc ? ' ' + exp.desc : '';
+                    const txt = `• ${label}:${desc} — ${fmtAmt(exp.amount)}`;
+                    // Wrap lange tekst zodat hij in de cel past
+                    const wrapped = doc.splitTextToSize(txt, opmW - 6);
+                    wrapped.forEach(l => lines.push({ text: l, kind: 'expense' }));
+                });
+            }
+
+            // Render maximaal 5 regels (cel is 26mm hoog, regelhoogte 3.8mm)
+            doc.setFontSize(8.5);
+            const maxLines = Math.floor((kpiH - 7) / 3.8);
+            lines.slice(0, maxLines).forEach((line, i) => {
+                doc.setFont(pdfFont, line.kind === 'expense' ? 'normal' : 'normal');
+                doc.setTextColor(...(line.kind === 'expense' ? ink500 : ink900));
+                doc.text(line.text, opmX + 3, y + 9 + i * 3.8);
+            });
+            // Als er meer regels zijn dan past, toon "+ N meer"
+            if (lines.length > maxLines) {
+                doc.setFontSize(7);
+                doc.setTextColor(...ink400);
+                doc.text(`+ ${lines.length - maxLines} meer`, opmX + opmW - 18, y + kpiH - 2);
             }
             doc.setDrawColor(...lineColLight);
             doc.setLineWidth(0.15);
