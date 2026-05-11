@@ -5737,6 +5737,11 @@
         }
 
         let weekData = defaultWeekData();
+        // Snapshot van weekData zoals het laatst uit de DB is geladen. Wordt gebruikt
+        // bij saveWeekToSupabase om alleen GEWIJZIGDE dagen te schrijven — voorkomt
+        // dat default-waarden de admin-data overschrijven wanneer een zzp inlogt
+        // zonder een dag aan te raken. NULL = nog niet geladen (fresh sessie).
+        let weekDataLoaded = null;
         let expandedDay = -1;
         let weekDataDirty = false; // track unsaved changes
         let weekOpmerkingen = ''; // opmerkingen bij de weekstaat
@@ -7681,9 +7686,10 @@
                     // Alleen ZZP'er getekend — direct ondertekenen + versturen in één stap
                     const sb = getSupabase();
 
-                    // 1. Eerst opslaan naar Supabase
+                    // 1. Eerst opslaan naar Supabase — forceAllDays omdat de gebruiker
+                    // de hele week formeel bevestigt door te ondertekenen
                     if (sb && currentUser && currentUser.id) {
-                        await saveWeekToSupabase();
+                        await saveWeekToSupabase({ forceAllDays: true });
                     }
 
                     // 2. Wacht op jsPDF als die nog laadt
@@ -7813,9 +7819,10 @@
             if (btn) { btn.innerHTML = '⏳ Versturen...'; btn.disabled = true; }
 
             try {
-                // 1. Eerst opslaan naar Supabase
+                // 1. Eerst opslaan naar Supabase — forceAllDays bij submitWeek
+                // omdat de gebruiker de hele week verstuurd (definitief)
                 if (getSupabase() && currentUser && currentUser.id) {
-                    await saveWeekToSupabase();
+                    await saveWeekToSupabase({ forceAllDays: true });
                 }
 
                 // 2. Gegevens verzamelen
@@ -9731,7 +9738,12 @@
             } catch (e) { console.warn('touchWeekstaatModified exception:', e.message || e); }
         }
 
-        async function saveWeekToSupabase() {
+        async function saveWeekToSupabase(options) {
+            options = options || {};
+            // forceAllDays = bij ondertekenen-en-versturen: bevestig alle 7 dagen
+            // (anders incremental: alleen schrijf dagen die afwijken van weekDataLoaded)
+            const forceAllDays = !!options.forceAllDays;
+
             if (weekSummary) return false; // historische data: niet overschrijven
             if (!getSupabase() || !currentUser || !currentUser.id) return false;
             const sb = getSupabase();
@@ -9755,10 +9767,35 @@
 
                 let saveErrors = 0;
 
+                // Helper: bepaal of een dag inhoudelijk anders is dan de baseline
+                const dayChanged = (curr, prev) => {
+                    if (!prev) return true; // geen baseline — schrijven (eerste keer)
+                    const norm = (v) => v == null ? '' : String(v);
+                    return norm(curr.start)       !== norm(prev.start)
+                        || norm(curr.end)         !== norm(prev.end)
+                        || (curr.breakMin || 0)   !== (prev.breakMin || 0)
+                        || (curr.hours    || 0)   !== (prev.hours    || 0)
+                        || norm(curr.desc)        !== norm(prev.desc)
+                        || norm(curr.location)    !== norm(prev.location)
+                        || (curr.km       || 0)   !== (prev.km       || 0)
+                        || !!curr.hotel           !== !!prev.hotel
+                        || !!curr.thuiswerk       !== !!prev.thuiswerk
+                        || !!curr.dayOff          !== !!prev.dayOff;
+                };
+
                 // Uren opslaan per dag
                 for (let i = 0; i < weekData.length; i++) {
                     const d = weekData[i];
                     const entryDate = getDateForDayIndex(i);
+
+                    // Skip dagen die NIET gewijzigd zijn t.o.v. de laatst-geladen baseline.
+                    // Dit voorkomt dat default-waarden over admin's reeds-ingevoerde data
+                    // worden geschreven wanneer Bart inlogt zonder iets aan te raken.
+                    // Bij forceAllDays (= bij ondertekenen) wordt alles geschreven.
+                    if (!forceAllDays && weekDataLoaded) {
+                        const prev = weekDataLoaded[i];
+                        if (!dayChanged(d, prev)) continue;
+                    }
 
                     // Check of er al een entry bestaat voor deze datum + project
                     let existQuery = sb
@@ -10023,6 +10060,9 @@
                             };
                         }
                     });
+                    // Baseline-snapshot zodat saveWeekToSupabase later alleen
+                    // GEWIJZIGDE dagen schrijft (anti-overschrijf bescherming)
+                    weekDataLoaded = JSON.parse(JSON.stringify(weekData));
                 } else {
                     // 2. Geen dag-entries: check week_summaries (historische data)
                     if (currentUser && currentUser.id) {
