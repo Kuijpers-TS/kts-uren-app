@@ -1,3 +1,4 @@
 *.sql
 *.ts
 *.md
+.claude/
