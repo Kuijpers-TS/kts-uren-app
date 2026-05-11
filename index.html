@@ -14591,7 +14591,7 @@
         }
 
         async function adminApproveWeekstaat(userId, projectId, weekNumber, year) {
-            if (!await confirmAsync(`Week ${weekNumber} (${year}) goedkeuren als admin?`)) return;
+            if (!await confirmAsync(`Week ${weekNumber} (${year}) goedkeuren als admin?\n\nDe PDF wordt vernieuwd met de actuele uren + extra kosten. Handtekening-velden blijven leeg (admin-goedkeuring zonder formele ondertekening).`)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             try {
@@ -14605,7 +14605,22 @@
                     .eq('week_number', weekNumber)
                     .eq('year', year);
                 if (error) throw error;
-                showToast('✅ Weekstaat goedgekeurd');
+
+                // Genereer PDF opnieuw met actuele uren + expenses, zonder handtekeningen.
+                // De oude PDF in storage wordt overschreven zodat downloaden een verse
+                // versie geeft met de admin-gewijzigde data.
+                try {
+                    const projCodeApp = (window._adminProjects || []).find(p => p.id === projectId)?.project_code || '';
+                    const userObj = (window._adminUsers || []).find(u => u.id === userId);
+                    const userSlugApp = userObj ? (userObj.name || userObj.email || '').replace(/\s+/g, '_') : '';
+                    await regenerateWeekstaatPdf(userId, projectId, weekNumber, year, projCodeApp, userSlugApp,
+                        { clearSignatures: true, skipDownload: true });
+                } catch (regenErr) {
+                    console.warn('PDF regeneratie bij admin-goedkeuring mislukt:', regenErr);
+                    // Niet-fataal: goedkeuring zelf is wel gelukt
+                }
+
+                showToast('✅ Weekstaat goedgekeurd — PDF bijgewerkt met laatste uren + extra kosten');
                 loadWeekstaten();
 
                 // Doorklik-flow: vraag of admin direct een inkooporder wil maken
@@ -15766,7 +15781,10 @@
             }
         }
 
-        async function regenerateWeekstaatPdf(userId, projectId, weekNumber, year, projCode, userSlug) {
+        async function regenerateWeekstaatPdf(userId, projectId, weekNumber, year, projCode, userSlug, options) {
+            options = options || {};
+            const clearSignatures = !!options.clearSignatures;
+            const skipDownload = !!options.skipDownload;
             const sb = getSupabase();
             if (!sb) return;
             try {
@@ -15816,7 +15834,9 @@
                 const backup = {
                     user: currentUser, project: currentProject, weekData: weekData,
                     weekNumber: currentWeekNumber, year: currentYear,
-                    weekDbStatus: currentWeekDbStatus, weekSummary: weekSummary
+                    weekDbStatus: currentWeekDbStatus, weekSummary: weekSummary,
+                    sigZzp: signatureData ? signatureData.zzp : null,
+                    sigClient: signatureData ? signatureData.client : null
                 };
 
                 currentUser = targetUser;
@@ -15826,6 +15846,13 @@
                 currentYear = year;
                 currentWeekDbStatus = 'verstuurd';
                 weekSummary = null;
+                // Bij clearSignatures: handtekening-velden leeg maken zodat de PDF
+                // geen handtekeningen toont (bv. bij admin-goedkeuring zonder dat
+                // de zzp of opdrachtgever formeel hebben getekend)
+                if (clearSignatures && signatureData) {
+                    signatureData.zzp = null;
+                    signatureData.client = null;
+                }
 
                 try {
                     // Wacht op jsPDF
@@ -15843,10 +15870,10 @@
                     const pCode = targetProject.project_code || projCode;
                     const fileName = ktsWeekstaatName(year, weekNumber, userName, pCode);
 
-                    // Download lokaal
-                    weekstaat.save(fileName);
+                    // Download lokaal — alleen als niet skipDownload
+                    if (!skipDownload) weekstaat.save(fileName);
 
-                    // Upload naar storage voor volgende keer
+                    // Upload naar storage voor volgende keer (overschrijft bestaande)
                     try {
                         const pdfBase64 = weekstaat.output('datauristring').split(',')[1];
                         const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
@@ -15855,7 +15882,7 @@
                         await sb.storage.from('weekstaten').upload(storagePath, pdfBlob, { upsert: true, contentType: 'application/pdf' });
                     } catch(e) { console.warn('Storage backup overgeslagen:', e); }
 
-                    showToast('✅ PDF opnieuw gegenereerd & gedownload');
+                    if (!skipDownload) showToast('✅ PDF opnieuw gegenereerd & gedownload');
                 } finally {
                     // Herstel globals
                     currentUser = backup.user;
@@ -15865,6 +15892,10 @@
                     currentYear = backup.year;
                     currentWeekDbStatus = backup.weekDbStatus;
                     weekSummary = backup.weekSummary;
+                    if (signatureData) {
+                        signatureData.zzp = backup.sigZzp;
+                        signatureData.client = backup.sigClient;
+                    }
                 }
             } catch (err) {
                 showToast('❌ Regeneratie mislukt: ' + err.message);
