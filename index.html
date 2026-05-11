@@ -4758,6 +4758,16 @@
                             </select>
                         </div>
                     </div>
+                    <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;cursor:pointer">
+                        <input type="checkbox" id="inv-skip-io" style="width:16px;height:16px;margin-top:2px;accent-color:#92400e">
+                        <div>
+                            <div style="font-size:0.85rem;font-weight:600;color:#92400e">Factuur zonder inkooporder</div>
+                            <div style="font-size:0.7rem;color:#92400e;opacity:0.85;margin-top:2px;line-height:1.4">
+                                Voor wanneer de onderaannemer zelf factureert en KTS dus geen IO heeft uitgestuurd.
+                                Basis: alle verstuurde/goedgekeurde weekstaten van die maand i.p.v. IO-weken.
+                            </div>
+                        </div>
+                    </label>
                     <button class="btn btn-primary" onclick="previewInvoice()" style="width:100%;margin-top:8px">👁 Preview Factuur</button>
                 </div>
                 <div id="inv-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
@@ -11829,37 +11839,73 @@
             const projectId = document.getElementById('inv-filter-project').value;
             const year = document.getElementById('inv-filter-year').value;
             const month = document.getElementById('inv-filter-month').value;
+            const skipIO = !!document.getElementById('inv-skip-io')?.checked;
 
             if (!userIdRaw || !projectId || !year || !month) {
                 showToast('⚠️ Selecteer project, medewerker, jaar en maand');
                 return;
             }
 
-            // Combi-mode: '__ALL__' = alle medewerkers met IO-weken op dit project/maand
+            // Combi-mode: '__ALL__' = alle medewerkers met IO-weken (of weekstaten) op dit project/maand
             const isCombi = userIdRaw === '__ALL__';
             const userId = isCombi ? null : userIdRaw;
 
             const sb = getSupabase();
             if (!sb) return;
 
-            // IO-weken ophalen — single user: gefilterd op user_id; combi: ALLE users op dit project+maand
-            let ioQuery = sb.from('inkooporder_weeks')
-                .select('io_number, week_number, user_id')
-                .eq('project_id', projectId)
-                .eq('year', parseInt(year))
-                .eq('month', parseInt(month));
-            if (!isCombi) ioQuery = ioQuery.eq('user_id', userId);
-
-            const { data: ioWeeks } = await ioQuery;
+            // Bron-weken bepalen:
+            //  - Default: IO-weken uit inkooporder_weeks (admin moet eerst IO maken)
+            //  - skipIO=true: verstuurde/goedgekeurde weekstaten uit week_status
+            //    (voor wanneer onderaannemer zelf factureert — geen IO nodig)
+            let ioWeeks;
+            if (skipIO) {
+                // Haal verstuurde/goedgekeurde weekstaten op voor dit project+maand
+                const yrInt = parseInt(year);
+                const moInt = parseInt(month);
+                // Maand-grenzen voor entry_date matching → ISO-week binnen die maand
+                const firstDayDate = new Date(yrInt, moInt - 1, 1);
+                const lastDayDate = new Date(yrInt, moInt, 0);
+                let wsQuery = sb.from('week_status').select('user_id, week_number, status')
+                    .eq('project_id', projectId)
+                    .eq('year', yrInt)
+                    .in('status', ['verstuurd', 'ondertekend']);
+                if (!isCombi) wsQuery = wsQuery.eq('user_id', userId);
+                const { data: wsRows } = await wsQuery;
+                // Filter: alleen weken die binnen de gekozen maand vallen
+                ioWeeks = (wsRows || []).filter(ws => {
+                    const monday = (typeof getWeekMondayFromWeekNumber === 'function')
+                        ? getWeekMondayFromWeekNumber(yrInt, ws.week_number)
+                        : new Date(yrInt, 0, 1 + (ws.week_number - 1) * 7);
+                    // Week valt in deze maand als de maandag in deze maand zit OF (bij overlap-weken) op een ander manier
+                    // Simpel: gebruik de "month" van de maandag
+                    return monday.getMonth() + 1 === moInt;
+                }).map(ws => ({
+                    io_number: null, // geen IO — losse weekstaat
+                    week_number: ws.week_number,
+                    user_id: ws.user_id
+                }));
+            } else {
+                // IO-weken ophalen — single user: gefilterd op user_id; combi: ALLE users op dit project+maand
+                let ioQuery = sb.from('inkooporder_weeks')
+                    .select('io_number, week_number, user_id')
+                    .eq('project_id', projectId)
+                    .eq('year', parseInt(year))
+                    .eq('month', parseInt(month));
+                if (!isCombi) ioQuery = ioQuery.eq('user_id', userId);
+                const { data: rows } = await ioQuery;
+                ioWeeks = rows || [];
+            }
 
             if (!ioWeeks || ioWeeks.length === 0) {
                 const preview = document.getElementById('inv-preview');
                 const content = document.getElementById('inv-preview-content');
                 const subj = isCombi ? 'project/maand' : 'medewerker/project/maand';
-                content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">
-                    ⚠️ Er ${isCombi ? 'zijn' : 'is'} nog geen inkooporder${isCombi ? 's' : ''} verstuurd voor deze ${subj} combinatie.<br>
-                    <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst de IO('s) voordat je een factuur kunt maken.</span>
-                </div>`;
+                const msg = skipIO
+                    ? `⚠️ Geen verstuurde weekstaten gevonden voor deze ${subj} combinatie.<br>
+                       <span style="font-size:0.8rem;color:var(--muted)">De medewerker moet eerst zijn weekstaten ondertekenen & versturen.</span>`
+                    : `⚠️ Er ${isCombi ? 'zijn' : 'is'} nog geen inkooporder${isCombi ? 's' : ''} verstuurd voor deze ${subj} combinatie.<br>
+                       <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst de IO('s), of vink "Factuur zonder inkooporder" aan als de onderaannemer zelf factureert.</span>`;
+                content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">${msg}</div>`;
                 preview.style.display = 'block';
                 return;
             }
