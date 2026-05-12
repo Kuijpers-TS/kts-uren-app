@@ -12082,9 +12082,51 @@
                 if (entry.hotel) bucket.weekData[weekKey].hotelNights++;
             });
 
-            // Filter users zonder uren (kunnen wel een IO hebben maar geen entries)
+            // Extra kosten (expenses) ophalen voor alle users in de open IO-weken.
+            // Worden per user bewaard in perUser[uid].expenses zodat ze op factuur en
+            // in de preview kunnen verschijnen.
+            try {
+                const weekNumsForExpenses = [...new Set(filteredIoWeeks.map(pw => pw.week_number))];
+                if (weekNumsForExpenses.length > 0 && userIdsList.length > 0) {
+                    let { data: expsData, error: expsErr } = await sb.from('expenses')
+                        .select('user_id, cat, amount, description, week_number, year, quantity, unit_price')
+                        .in('user_id', userIdsList)
+                        .eq('project_id', projectId)
+                        .eq('year', yr)
+                        .in('week_number', weekNumsForExpenses);
+                    if (expsErr && /quantity|unit_price/.test(expsErr.message || '')) {
+                        // Fallback voor DB zonder qty/unit cols
+                        ({ data: expsData } = await sb.from('expenses')
+                            .select('user_id, cat, amount, description, week_number, year')
+                            .in('user_id', userIdsList)
+                            .eq('project_id', projectId)
+                            .eq('year', yr)
+                            .in('week_number', weekNumsForExpenses));
+                    }
+                    (expsData || []).forEach(e => {
+                        const bucket = perUser[e.user_id];
+                        if (!bucket) return;
+                        // Filter: alleen expenses van weken die in openIoSet zitten
+                        // (zodat al gefactureerde week-expenses niet dubbel binnenkomen)
+                        if (!openIoSet.has(`${e.user_id}_${e.week_number}`)) return;
+                        if (!bucket.expenses) bucket.expenses = [];
+                        bucket.expenses.push({
+                            cat: e.cat || 'other',
+                            amount: parseFloat(e.amount) || 0,
+                            description: e.description || '',
+                            week_number: e.week_number,
+                            quantity: e.quantity || null,
+                            unit_price: e.unit_price || null
+                        });
+                    });
+                }
+            } catch (e) { /* tabel/kolom niet aanwezig — fallback geen expenses */ }
+
+            // Filter users zonder uren EN zonder expenses (kunnen wel een IO hebben maar geen data)
             Object.keys(perUser).forEach(uid => {
-                if (Object.keys(perUser[uid].weekData).length === 0) delete perUser[uid];
+                const hasWeeks = Object.keys(perUser[uid].weekData).length > 0;
+                const hasExpenses = perUser[uid].expenses && perUser[uid].expenses.length > 0;
+                if (!hasWeeks && !hasExpenses) delete perUser[uid];
             });
 
             // Backwards-compatibele velden voor single-user mode (preview + adapter logica)
@@ -12189,6 +12231,26 @@
                     html += `<tr><td style="padding:4px 6px">Hotelovernachtingen${isCombi ? ' — ' + userName : ''}</td><td style="text-align:right;padding:4px 6px">${userHotel}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userHotelRate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
                     subtotal += hotelAmount;
                 }
+                // Extra kosten (declaraties) — per user, in volgorde van toevoegen
+                const expCatLabelsInv = {
+                    transport:'Transport', parkeren:'Parkeren', maaltijd:'Maaltijd',
+                    meals:'Maaltijd', materiaal:'Materiaal', huur:'Huur',
+                    tolheffing:'Tolheffingen', veerboot:'Veerboot',
+                    doorbelasting:'Doorbelasting', other:'Overig'
+                };
+                if (bucket.expenses && bucket.expenses.length > 0) {
+                    bucket.expenses.forEach(exp => {
+                        const catLbl = expCatLabelsInv[exp.cat] || 'Overig';
+                        const desc = exp.description ? `: ${exp.description}` : '';
+                        // Aantal kolom: bij quantity+unit_price gebruiken, anders 1×
+                        const qty = exp.quantity && exp.quantity > 0 ? exp.quantity : 1;
+                        const unit = exp.unit_price && exp.unit_price > 0 ? exp.unit_price : exp.amount;
+                        const qtyStr = qty % 1 === 0 ? qty.toString() : qty.toFixed(2);
+                        const userSuffix = isCombi ? ' — ' + userName : '';
+                        html += `<tr><td style="padding:4px 6px">${catLbl}${desc}${userSuffix}</td><td style="text-align:right;padding:4px 6px">${qtyStr}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(unit)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(exp.amount)}</td></tr>`;
+                        subtotal += exp.amount;
+                    });
+                }
             });
 
             const btw = subtotal * 0.21;
@@ -12279,6 +12341,33 @@
                 }
                 if (userHotel > 0) {
                     regels.push({ datum: monthLabel, desc: 'Hotelovernachtingen', qty: userHotel, unit: 'nacht', tarief: hotelRate || 0, btw: 21 });
+                }
+                // Extra kosten (declaraties) — per expense een regel op de factuur
+                const expCatLabelsFact = {
+                    transport:'Transport', parkeren:'Parkeren', maaltijd:'Maaltijd',
+                    meals:'Maaltijd', materiaal:'Materiaal', huur:'Huur',
+                    tolheffing:'Tolheffingen', veerboot:'Veerboot',
+                    doorbelasting:'Doorbelasting', other:'Overig'
+                };
+                if (bucket.expenses && bucket.expenses.length > 0) {
+                    bucket.expenses.forEach(exp => {
+                        const catLbl = expCatLabelsFact[exp.cat] || 'Overig';
+                        const desc = exp.description ? `${catLbl}: ${exp.description}` : catLbl;
+                        const wkLabel = exp.week_number ? `wk ${String(exp.week_number).padStart(2,'0')}/${invData.year}` : monthLabel;
+                        // Bij aantal+prijs/stuk: split in qty+tarief; anders qty=1 met totaal als tarief
+                        const qty = (exp.quantity && exp.quantity > 0) ? exp.quantity : 1;
+                        const tarief = (exp.unit_price && exp.unit_price > 0)
+                            ? exp.unit_price
+                            : (exp.amount || 0);
+                        regels.push({
+                            datum: wkLabel,
+                            desc: desc,
+                            qty: qty,
+                            unit: (exp.quantity && exp.unit_price) ? 'stuks' : 'x',
+                            tarief: tarief,
+                            btw: 21
+                        });
+                    });
                 }
             });
 
@@ -12733,7 +12822,8 @@
             if (!sb) return;
 
             try {
-                // Verzamel alle weken + bereken totaal excl. BTW over alle users (single + combi)
+                // Verzamel alle weken + bereken totaal excl. BTW over alle users (single + combi).
+                // Inclusief extra kosten (expenses) zodat het totaalbedrag klopt met de factuur.
                 const perUser = invData.perUser || {};
                 const allWeekNums = new Set();
                 let totalExclBtw = 0;
@@ -12746,6 +12836,11 @@
                             + (w.sunHours * bucket.rate.hourly_rate * bucket.rate.sunday_holiday_multiplier)
                             + ((w.totalKm || 0) * bucket.rate.km_rate)
                             + ((w.hotelNights || 0) * (bucket.hotelRate || 0));
+                    });
+                    // Expenses ook meetellen — en hun weeknummers
+                    (bucket.expenses || []).forEach(exp => {
+                        if (exp.week_number) allWeekNums.add(exp.week_number);
+                        totalExclBtw += parseFloat(exp.amount) || 0;
                     });
                 });
                 const invoicedWeekNumbers = [...allWeekNums].sort((a, b) => a - b);
