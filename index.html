@@ -9748,6 +9748,22 @@
         }
 
         // ===== AUTH =====
+        // Geeft een blokkade-reden terug als de user niet mag inloggen,
+        // anders null. Wordt gebruikt na elke sign-in (initieel + auto-restore).
+        function getLoginBlockReason(user) {
+            if (!user) return null;
+            if (user.archived_at) {
+                const datum = new Date(user.archived_at).toLocaleDateString('nl-NL');
+                return `🔒 Dit account is afgesloten (${datum}).<br>Neem contact op met de beheerder.`;
+            }
+            if (user.paused_at) {
+                const datum = new Date(user.paused_at).toLocaleDateString('nl-NL');
+                const reden = user.pause_reason ? ` — ${escapeHtml(user.pause_reason)}` : '';
+                return `⏸️ Dit account is gepauzeerd sinds ${datum}.${reden}<br>Neem contact op met de beheerder.`;
+            }
+            return null;
+        }
+
         async function forgotPassword() {
             const email = document.getElementById('login-email').value.trim();
             if (!email) {
@@ -9834,6 +9850,18 @@
 
             // Haal user profiel op (auto-provisioning als het nog niet bestaat)
             currentUser = await getOrCreateUserProfile(data.user.id, data.user.email);
+
+            // Login-blokkering: gepauzeerd of afgesloten? Niet toegestaan.
+            const blockReason = getLoginBlockReason(currentUser);
+            if (blockReason) {
+                await getSupabase().auth.signOut();
+                currentUser = null;
+                errorEl.innerHTML = blockReason;
+                errorEl.style.display = 'block';
+                btn.textContent = 'Inloggen';
+                btn.disabled = false;
+                return;
+            }
 
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
@@ -10032,6 +10060,15 @@
                 if (session) {
                     // Auto-provisioning als profiel nog niet bestaat
                     currentUser = await getOrCreateUserProfile(session.user.id, session.user.email);
+                    // Auto-restore: blokkeer als account gepauzeerd of afgesloten
+                    const blockReason = getLoginBlockReason(currentUser);
+                    if (blockReason) {
+                        await getSupabase().auth.signOut();
+                        currentUser = null;
+                        const errorEl = document.getElementById('login-error');
+                        if (errorEl) { errorEl.innerHTML = blockReason; errorEl.style.display = 'block'; }
+                        return;
+                    }
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
                     await loadDataFromSupabase();
@@ -11176,14 +11213,18 @@
         }
 
         // Helper: filter users op test/productie modus
-        // Default: gearchiveerde gebruikers (archived_at gevuld) worden verborgen.
-        // Met opts.includeArchived=true worden ze WEL meegenomen — gebruikt voor de
-        // beheer-lijst met "Toon ook gearchiveerd" toggle, en voor history-views.
+        // Default: gearchiveerde EN gepauzeerde gebruikers worden verborgen.
+        // Met opts.includeArchived=true worden gearchiveerden meegenomen — gebruikt
+        // voor de beheer-lijst met "Toon ook gearchiveerd" toggle, en history-views.
+        // Met opts.includePaused=true worden gepauzeerden meegenomen — voor de
+        // beheer-lijst zodat admin ze kan zien om weer te activeren.
         function getFilteredUsers(opts) {
             const includeArchived = !!(opts && opts.includeArchived);
+            const includePaused = !!(opts && opts.includePaused);
             return (window._adminUsers || []).filter(u => {
                 if (_adminTestMode ? u.is_test !== true : u.is_test === true) return false;
                 if (!includeArchived && u.archived_at) return false;
+                if (!includePaused && u.paused_at) return false;
                 return true;
             });
         }
@@ -11764,9 +11805,11 @@
             const { data: appUsers } = await sb.from('users').select('*').order('name');
             window._adminUsers = appUsers || [];
             const userList = document.getElementById('admin-user-list');
-            // Toggle "Toon ook gearchiveerd" bepaalt of archived users meegenomen worden
+            // Toggle "Toon ook gearchiveerd" bepaalt of archived users meegenomen worden.
+            // Gepauzeerde gebruikers altijd tonen in de beheer-lijst (anders kan admin
+            // ze niet weer activeren); voor andere screens worden ze wel verborgen.
             const showArchivedUsers = document.getElementById('admin-show-archived-users')?.checked || false;
-            const filteredUsers = getFilteredUsers({ includeArchived: showArchivedUsers });
+            const filteredUsers = getFilteredUsers({ includeArchived: showArchivedUsers, includePaused: true });
             if (filteredUsers && filteredUsers.length > 0) {
                 userList.innerHTML = filteredUsers.map((u) => {
                     const idx = (window._adminUsers || []).indexOf(u);
@@ -11802,37 +11845,44 @@
                     const activityColor = isNuActief ? '#059669' : 'var(--muted)';
                     const activityDot = isNuActief ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#059669;margin-right:3px"></span>' : '';
 
-                    // Archief/anonymisering badges + actie-knoppen.
+                    // Archief/pauze/anonymisering badges + actie-knoppen.
                     const isArchived = !!u.archived_at;
+                    const isPaused = !!u.paused_at;
                     const isAnonymized = !!u.anonymized_at;
-                    const testBadge = u.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : '';
-                    const archivedBadge = isArchived ? ' <span style="background:#e2e8f0;color:#475569;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gearchiveerd op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' — ' + escapeHtml(u.archive_reason) : '') + '">📦 GEARCHIVEERD</span>' : '';
+                    const safeName = escapeHtml(u.name || u.email).replace(/'/g, "\\'");
+                    const testBadge = u.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : '';
+                    const archivedBadge = isArchived ? ' <span style="background:#e2e8f0;color:#475569;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Afgesloten op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' — ' + escapeHtml(u.archive_reason) : '') + '">🔒 AFGESLOTEN</span>' : '';
+                    const pausedBadge = isPaused ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gepauzeerd op ' + new Date(u.paused_at).toLocaleDateString('nl-NL') + (u.pause_reason ? ' — ' + escapeHtml(u.pause_reason) : '') + '">⏸️ GEPAUZEERD</span>' : '';
                     const anonBadge = isAnonymized ? ' <span style="background:#fce7f3;color:#9d174d;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="PII verwijderd op ' + new Date(u.anonymized_at).toLocaleDateString('nl-NL') + '">🕶️ ANONIEM</span>' : '';
 
-                    // Test-modus → harde DELETE-knop. Productie → soft ARCHIVE / DEARCHIVE.
-                    // Anonymiseer-knop alleen voor archived users die >= 7 jaar gearchiveerd zijn
-                    // én nog niet geanonymiseerd.
+                    // Test-modus → harde DELETE-knop.
+                    // Productie:
+                    //   - Afgesloten (archived) → unarchive-knop (+ anonymize na 7 jaar)
+                    //   - Gepauzeerd → unpause-knop
+                    //   - Actief → pauze + afsluit-knoppen naast elkaar
                     let actionBtn = '';
                     if (_adminTestMode) {
-                        actionBtn = `<button onclick="event.stopPropagation();adminDeleteUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Permanent verwijderen (testdata)">🗑️</button>`;
+                        actionBtn = `<button onclick="event.stopPropagation();adminDeleteUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Permanent verwijderen (testdata)">🗑️</button>`;
                     } else if (isArchived) {
-                        // Optioneel: dearchive-knop terugzetten naar actief
-                        actionBtn = `<button onclick="event.stopPropagation();adminUnarchiveUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#dcfce7;color:#166534;border:1px solid #86efac" title="Uit archief halen — gebruiker weer actief">↩️</button>`;
-                        // Anonymiseer-knop als ouder dan 7 jaar én PII nog aanwezig
+                        actionBtn = `<button onclick="event.stopPropagation();adminUnarchiveUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Heractiveren — gebruiker weer actief">↩️</button>`;
                         const archivedAge = (Date.now() - new Date(u.archived_at).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
                         if (archivedAge >= 7 && !isAnonymized) {
-                            actionBtn += `<button onclick="event.stopPropagation();adminAnonymizeUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4" title="PII verwijderen (>7 jaar oud)">🕶️</button>`;
+                            actionBtn += `<button onclick="event.stopPropagation();adminAnonymizeUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4" title="PII verwijderen (>7 jaar oud)">🕶️</button>`;
                         }
+                    } else if (isPaused) {
+                        actionBtn = `<button onclick="event.stopPropagation();adminUnpauseUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Pauze opheffen — gebruiker kan weer inloggen">▶️</button>`;
                     } else {
-                        actionBtn = `<button onclick="event.stopPropagation();adminArchiveUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1" title="Archiveren (verbergt uit lijsten, data blijft bewaard)">📦</button>`;
+                        // Actief: pauzeer + afsluit naast elkaar
+                        actionBtn = `<button onclick="event.stopPropagation();adminPauseUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Pauzeer (tijdelijk geen login, reversibel)">⏸️</button>`;
+                        actionBtn += `<button onclick="event.stopPropagation();adminArchiveUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1" title="Afsluiten (definitief, data blijft 7 jaar bewaard voor AVG)">🔒</button>`;
                     }
 
-                    const cardOpacity = isArchived ? '0.65' : '1';
+                    const cardOpacity = (isArchived || isPaused) ? '0.65' : '1';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer;opacity:${cardOpacity}" onclick="openAdminModal('gebruiker', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                             <div style="flex:1;min-width:0">
-                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(u.name || u.email)}${testBadge}${archivedBadge}${anonBadge}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(u.name || u.email)}${testBadge}${pausedBadge}${archivedBadge}${anonBadge}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(u.email)}${priceInfo.length ? ' · ' + priceInfo.join(' · ') : ''}</div>
                                 <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${flagsHtml}</div>
                                 ${laatstActief ? '<div style="font-size:0.7rem;color:' + activityColor + ';margin-top:3px">' + activityDot + laatstActief + '</div>' : ''}
@@ -15620,6 +15670,52 @@
                 loadAdminData('gebruikers');
             } catch (err) {
                 console.error('Unarchive user error:', err);
+                showToast('❌ Activeren mislukt: ' + err.message);
+            }
+        }
+
+        // ===== PAUZE-FLOW (tijdelijk login blokkeren, reversibel) =====
+        // Verschilt van archiveren (=afsluiten met AVG-retentie): pauze blijft
+        // staan zolang nodig, geen 7-jaar-eis; bij activeren is alles weer normaal.
+        async function adminPauseUser(userId, userName) {
+            const reason = await promptAsync(
+                `Gebruiker "${userName}" pauzeren?`,
+                'Reden van pauzering (optioneel — bv. "Tijdelijk uit dienst tot 1 september")',
+                ''
+            );
+            if (reason === null) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                const { error } = await sb.from('users')
+                    .update({
+                        paused_at: new Date().toISOString(),
+                        pause_reason: reason || null
+                    })
+                    .eq('id', userId);
+                if (error) throw error;
+                showToast('⏸️ Gebruiker gepauzeerd — kan niet meer inloggen');
+                loadAdminData('gebruikers');
+            } catch (err) {
+                console.error('Pause user error:', err);
+                showToast('❌ Pauzeren mislukt: ' + err.message);
+            }
+        }
+
+        async function adminUnpauseUser(userId, userName) {
+            const ok = await confirmAsync(`Pauze opheffen voor "${userName}"? Gebruiker kan dan weer inloggen.`);
+            if (!ok) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            try {
+                const { error } = await sb.from('users')
+                    .update({ paused_at: null, pause_reason: null })
+                    .eq('id', userId);
+                if (error) throw error;
+                showToast('▶️ Gebruiker is weer actief');
+                loadAdminData('gebruikers');
+            } catch (err) {
+                console.error('Unpause user error:', err);
                 showToast('❌ Activeren mislukt: ' + err.message);
             }
         }
