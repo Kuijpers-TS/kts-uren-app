@@ -11,10 +11,31 @@
     <link rel="icon" type="image/png" sizes="48x48" href="favicon-48-v2.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32-v2.png">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-v2.png">
-    <meta name="theme-color" content="#07567F">
+    <meta name="theme-color" content="#0A1628" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#07567F" media="(prefers-color-scheme: light)">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- FOWT-fix: pas data-theme + initial background toe VÓÓR CSS parsing.
+         Voorkomt witte flikker op mobile bij page-load (vooral op iOS Safari
+         waar de gap tussen CSS-parse en JS-init zichtbaar kan zijn). -->
+    <script>
+        (function() {
+            try {
+                var pref = localStorage.getItem('kts-theme') || 'dark';
+                var resolved = pref;
+                if (pref === 'auto') {
+                    resolved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-theme', resolved);
+                // Inline initial background zodat eerste paint NIET wit is.
+                document.documentElement.style.backgroundColor = resolved === 'dark' ? '#0F1419' : '#FAFAF7';
+            } catch (e) { /* localStorage geblokkeerd → default dark */
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.style.backgroundColor = '#0F1419';
+            }
+        })();
+    </script>
     <!-- Plex fonts voor inspectie-module (sans + mono) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +74,11 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { font-size: 16px; }
+        /* Onderdruk mobile tap-highlight die op donker scherm wit oplicht bij
+           elke tap. Specifieke elementen kunnen dit overrijden indien gewenst. */
+        * { -webkit-tap-highlight-color: transparent; }
+        html { font-size: 16px; background-color: var(--app-bg, #FAFAF7); }
+        [data-theme="dark"] html, html[data-theme="dark"] { background-color: var(--app-bg, #0F1419); }
         /* Zoom schaalt ALLES (px én rem) consistent — werkt voor zowel oude rem-based
            content als de Fase 2 px-based components. CSS zoom is breed ondersteund
            in moderne browsers (Chrome, Safari, Firefox 126+, Edge). */
@@ -3925,11 +3950,13 @@
   margin-bottom: 12px;
 }
 .app-action-section-label {
-  font-family: var(--app-font-mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--app-ink-400);
-  letter-spacing: 0.06em;
+  /* Aligned met website .section-tag / .kts-eyebrow stijl —
+     accent-light kleur, sans-serif bold, ls 0.04em (PDF p.32) */
+  font-family: var(--app-font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--kts-accent-light);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 16px 16px 6px;
 }
