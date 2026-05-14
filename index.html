@@ -5784,7 +5784,9 @@
         // Opslag in localStorage: 'light' | 'dark' | 'auto' (default = auto)
         // ============================================================
         function getThemePref() {
-            return localStorage.getItem('kts-theme') || 'auto';
+            // Default = 'dark' — gebruikers kunnen via Profiel → Weergave wisselen
+            // naar Licht of Systeem. Eerdere keuze blijft gerespecteerd.
+            return localStorage.getItem('kts-theme') || 'dark';
         }
         function resolveTheme(pref) {
             if (pref === 'light' || pref === 'dark') return pref;
