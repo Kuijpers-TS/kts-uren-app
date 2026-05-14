@@ -136,19 +136,9 @@
                     var(--kts-blue, #07567F) 100%);
             background-attachment: fixed;
         }
-        [data-theme="dark"] body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                repeating-linear-gradient(0deg, transparent, transparent 60px,
-                    rgba(255, 255, 255, 0.035) 60px, rgba(255, 255, 255, 0.035) 61px),
-                repeating-linear-gradient(90deg, transparent, transparent 60px,
-                    rgba(255, 255, 255, 0.035) 60px, rgba(255, 255, 255, 0.035) 61px);
-            opacity: 0.7;
-            pointer-events: none;
-            z-index: 0;
-        }
+        /* Geen grid-pattern op de body — alleen gradient als 'frame' kleur.
+           Het raster blijft wel op het login-scherm (.kts-hero-bg) want
+           daar past het bij de hero-uitstraling van de website. */
         /* App-content blijft 'card-achtige' container met --app-bg achtergrond,
            gehesen boven de gradient. Op brede schermen zie je gradient links/rechts. */
         [data-theme="dark"] .app-content {
