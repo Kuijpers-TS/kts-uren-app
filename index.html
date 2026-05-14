@@ -5772,7 +5772,9 @@
             try {
                 const stored = localStorage.getItem(getWeekDefaultsKey());
                 if (stored) return JSON.parse(stored);
-            } catch (e) {}
+            } catch (e) {
+                console.warn('getWeekDefaults: corrupt localStorage, fallback naar standaard week:', e.message);
+            }
             // Standaard: ma-vr 07:00-16:00, 60 min pauze
             return [
                 { start: '07:00', end: '16:00', breakMin: 60, active: true, thuiswerk: false, hotel: false },
@@ -5982,7 +5984,9 @@
             try {
                 const stored = localStorage.getItem(getClockKey());
                 if (stored) return JSON.parse(stored);
-            } catch (e) {}
+            } catch (e) {
+                console.warn('getClockState: corrupt localStorage, klok-state verloren:', e.message);
+            }
             return null;
         }
 
@@ -6450,7 +6454,6 @@
 
             // Update week totaal
             document.getElementById('week-total').textContent = `Totaal: ${fmt(parseFloat(s.total_hours))} uur · ${(s.total_km||0).toLocaleString('nl-NL')} km${s.hotel_nights > 0 ? ' · ' + s.hotel_nights + '× 🏨' : ''}`;
-            renderSummary();
             renderOverview();
         }
 
@@ -6698,11 +6701,9 @@
             if (userHasKm() && totalKmWeek > 0) weekTotalText += ` · ${totalKmWeek} km`;
             if (userHasHotel() && totalHotelWeek > 0) weekTotalText += ` · ${totalHotelWeek}× 🏨`;
             document.getElementById('week-total').textContent = weekTotalText;
-            renderSummary();
             renderOverview();
         }
-
-        function renderSummary() { /* verwijderd — info staat nu per dag */ }
+        // renderSummary verwijderd 2026-05-14 — was lege no-op; info staat nu per dag in renderDays().
 
         // ===== EXPENSE RENDER =====
         function renderExpenses() {
@@ -7033,6 +7034,12 @@
         }
 
         // ===== DOCUMENTEN ADMIN TAB =====
+        // DEPRECATED 2026-05-14 — niet aangeroepen, leest naar onbestaande
+        // DOM-IDs ('admin-factuur-list', 'admin-io-list'). Functionaliteit
+        // is vervangen door loadInvoices() (regel ~13523) en
+        // loadInkooporders() (regel ~12114) die direct uit invoices en
+        // inkooporder_weeks tabellen lezen i.p.v. document_numbers.
+        // Bewaard voor referentie tot volgende cleanup-ronde.
         async function loadDocumentNumbers() {
             const sb = getSupabase();
             if (!sb) return;
@@ -7092,6 +7099,8 @@
             }
         }
 
+        // DEPRECATED 2026-05-14 — niet aangeroepen. Was bedoeld voor CSV-export
+        // van document_numbers; admin-export draait nu via andere paden.
         async function exportDocumentNumbers() {
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
@@ -10463,7 +10472,9 @@
                     weekData = JSON.parse(stored);
                     return true;
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn('loadWeekLocal: corrupt localStorage voor key', key, '-', e.message);
+            }
             return false;
         }
 
@@ -11269,9 +11280,14 @@
         // ===== DASHBOARD FUNCTIES =====
         let _dashboardChart = null; // Chart.js instance
 
+        // Sequence-teller om race conditions te voorkomen bij snel filteren:
+        // alleen de laatste loadDashboard()-aanroep rendert. Vorige in-flight
+        // requests detecteren dat hun mySeq is verlopen en stoppen stilletjes.
+        let _loadDashboardSeq = 0;
         async function loadDashboard() {
             const sb = getSupabase();
             if (!sb) return;
+            const mySeq = ++_loadDashboardSeq;
 
             const now = new Date();
             const currentYear = now.getFullYear();
@@ -11315,6 +11331,11 @@
                 sb.from('rates').select('*').order('valid_from', { ascending: false }),
                 sb.from('expenses').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd)
             ]);
+
+            // Race-guard: er is een nieuwere loadDashboard()-aanroep gestart
+            // (user heeft filter snel gewisseld) — stop deze stilletjes om
+            // te voorkomen dat oude data over de nieuwe heen wordt gerenderd.
+            if (mySeq !== _loadDashboardSeq) return;
 
             const allRates = ratesRes.data || [];
             const users = getFilteredUsers();
@@ -20035,7 +20056,9 @@
                     const el = document.getElementById('admin-invoice-base-path');
                     if (el) el.value = bp.value;
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn('Restore invoice base path mislukt:', e.message);
+            }
         }
 
         async function adminSaveInvoiceBasePath(val) {
