@@ -1972,6 +1972,10 @@
    --app-* tokens gebruiken adapteren automatisch.
 */
 [data-theme="dark"] {
+  /* Vertel de browser om native controls (scrollbar, date-picker,
+     spin-buttons, default form widgets) dark te renderen */
+  color-scheme: dark;
+
   /* --- KTS Brand (lichter voor leesbaarheid op dark bg) --- */
   --kts-blue: #4FA8D8;
   --kts-blue-700: #76BBE0;
@@ -2022,6 +2026,43 @@
   --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.4);
   --app-shadow:    0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
   --app-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* =============================================================================
+   1c. DARK MODE — fallback voor form-controls zonder eigen class
+   =============================================================================
+   Veel inputs/selects/textareas in de app hebben (nog) geen .app-input class
+   en kregen daardoor de browser-default witte styling. Onder dark mode geven
+   we ze allemaal een dark surface + light text. Type-uitzonderingen
+   (checkbox/radio/submit/button) krijgen we via color-scheme automatisch.
+*/
+[data-theme="dark"] input:not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]):not([type=reset]):not([type=file]):not([type=range]):not([type=color]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--app-surface);
+  color: var(--app-ink-900);
+  border-color: var(--app-line-strong);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--app-ink-400);
+  opacity: 1; /* Firefox dimt placeholders extra */
+}
+/* Select chevron: in light mode is die hardcoded #5C6675 grijs.
+   In dark mode lichter (#9AA3B0) zodat 'ie zichtbaar blijft op dark surface. */
+[data-theme="dark"] .app-select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AA3B0' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+}
+/* Autofill — Chrome forceert wit. Overschrijf via inset-shadow truc. */
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover,
+[data-theme="dark"] input:-webkit-autofill:focus,
+[data-theme="dark"] textarea:-webkit-autofill,
+[data-theme="dark"] select:-webkit-autofill {
+  -webkit-text-fill-color: var(--app-ink-900);
+  -webkit-box-shadow: 0 0 0px 1000px var(--app-surface) inset;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: var(--app-ink-900);
 }
 
 
