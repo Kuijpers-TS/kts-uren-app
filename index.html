@@ -6955,10 +6955,11 @@
         // ===== DOCUMENT NUMMERING =====
         async function getNextDocumentNumber(docType) {
             const sb = getSupabase();
-            if (!sb) return docType === 'factuur' ? '2026-??' : 'IO-2026-???';
             const year = new Date().getFullYear();
+            const fallback = docType === 'factuur' ? `${year}-??` : `INKOOPORDER-${year}-???`;
+            if (!sb) return fallback;
             const { data } = await sb.rpc('next_document_number', { doc_type: docType, doc_year: year });
-            return data || (docType === 'factuur' ? `${year}-??` : `IO-${year}-???`);
+            return data || fallback;
         }
 
         async function saveDocumentNumber(docType, number, details) {
