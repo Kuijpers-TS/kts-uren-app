@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Login mockup variant 1 — App-keuze vóór login</title>
+<style>
+  :root {
+    --kts-blue: #043B56;
+    --kts-blue-light: #07567F;
+    --kts-orange: #E97724;
+    --app-ink-900: #0f172a;
+    --app-ink-700: #334155;
+    --app-ink-400: #94a3b8;
+    --app-ink-200: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: linear-gradient(135deg, #0A1628 0%, #043B56 40%, #07567F 100%);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .pattern {
+    position: fixed; inset: 0; opacity: 0.04; pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
+      radial-gradient(circle at 80% 20%, white 1px, transparent 1px),
+      radial-gradient(circle at 60% 80%, white 1px, transparent 1px);
+    background-size: 60px 60px, 80px 80px, 90px 90px;
+  }
+  .container { position: relative; z-index: 1; width: 100%; max-width: 760px; padding: 24px; }
+  .header { text-align: center; margin-bottom: 28px; }
+  .header .logo {
+    display: inline-block; background: white; border-radius: 16px;
+    padding: 18px 32px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    margin-bottom: 18px;
+  }
+  .header .logo-text {
+    font-weight: 700; font-size: 18px; color: var(--kts-blue);
+    letter-spacing: 0.02em;
+  }
+  .header .tagline {
+    color: rgba(255,255,255,0.7); font-size: 13px; letter-spacing: 0.04em;
+    text-transform: uppercase; font-weight: 500;
+  }
+
+  .app-cards {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  .app-card {
+    background: white; border-radius: 20px; padding: 32px 28px;
+    cursor: pointer; transition: transform 0.18s, box-shadow 0.18s;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    border: 3px solid transparent;
+    text-align: center;
+    position: relative;
+  }
+  .app-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+    border-color: var(--kts-blue-light);
+  }
+  .app-card .icon-wrap {
+    width: 72px; height: 72px; margin: 0 auto 18px;
+    background: linear-gradient(135deg, var(--kts-blue) 0%, var(--kts-blue-light) 100%);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+  }
+  .app-card.inspectie .icon-wrap {
+    background: linear-gradient(135deg, var(--kts-orange) 0%, #f59c4f 100%);
+  }
+  .app-card .label {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px; font-weight: 600; color: var(--app-ink-400);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .app-card .title {
+    font-size: 20px; font-weight: 700; color: var(--app-ink-900);
+    margin-bottom: 8px; letter-spacing: -0.01em;
+  }
+  .app-card .desc {
+    font-size: 13px; color: var(--app-ink-700); line-height: 1.5;
+    margin-bottom: 18px;
+  }
+  .app-card .arrow {
+    color: var(--kts-blue); font-weight: 600; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .app-card:hover .arrow { gap: 10px; }
+  .app-card.inspectie .arrow { color: var(--kts-orange); }
+
+  .footer {
+    text-align: center; margin-top: 32px;
+    color: rgba(255,255,255,0.4); font-size: 11px;
+  }
+
+  @media (max-width: 600px) {
+    .app-cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="pattern"></div>
+  <div class="container">
+    <div class="header">
+      <div class="logo"><span class="logo-text">Kuijpers Technical Services</span></div>
+      <div class="tagline">Welkom — kies je werkomgeving</div>
+    </div>
+
+    <div class="app-cards">
+      <div class="app-card uren">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="label">KTS Uren App</div>
+        <div class="title">Urenregistratie</div>
+        <div class="desc">Weekstaten invullen, ondertekenen en versturen. Inkooporders en facturen.</div>
+        <div class="arrow">Inloggen →</div>
+      </div>
+
+      <div class="app-card inspectie">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+        </div>
+        <div class="label">KTS Inspectie App</div>
+        <div class="title">Inspecties</div>
+        <div class="desc">Koelwater, sprinkler en overige inspecties uitvoeren en rapporteren.</div>
+        <div class="arrow">Inloggen →</div>
+      </div>
+    </div>
+
+    <div class="footer">© 2026 Kuijpers Technical Services BV · Waarland</div>
+  </div>
+</body>
+</html>
