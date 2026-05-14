@@ -4673,7 +4673,7 @@
                 <!-- Zoekbalk transacties -->
                 <div style="position:relative;margin-bottom:12px">
                     <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem">🔍</span>
-                    <input type="text" class="admin-search-input" id="admin-list-search" placeholder="Zoek transactie..." oninput="adminRenderListView()">
+                    <input type="text" class="admin-search-input" id="admin-list-search" placeholder="Zoek transactie..." oninput="adminRenderListViewDebounced()">
                 </div>
 
                 <!-- Filter chips -->
@@ -4722,7 +4722,7 @@
                 <!-- Zoeken -->
                 <div style="position:relative;margin-bottom:12px">
                     <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem">🔍</span>
-                    <input type="text" class="admin-search-input" id="admin-invoice-search" placeholder="Zoek op bestandsnaam of bedrag..." oninput="adminSearchInvoices(this.value)">
+                    <input type="text" class="admin-search-input" id="admin-invoice-search" placeholder="Zoek op bestandsnaam of bedrag..." oninput="adminSearchInvoicesDebounced(this.value)">
                 </div>
 
                 <!-- Suggesties -->
@@ -4744,7 +4744,7 @@
                 <!-- Navigatie + verwijderen -->
                 <div style="display:flex;gap:8px;margin-top:10px">
                     <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(-1)">← Vorige</button>
-                    <button class="btn btn-sm" style="padding:6px 10px;background:#fee2e2;color:#dc2626;font-weight:600;border:none;border-radius:8px;cursor:pointer;font-size:0.78rem" onclick="adminDeleteTx()">🗑️</button>
+                    <button class="btn btn-sm" style="padding:6px 10px;background:var(--app-alert-soft);color:var(--app-alert);font-weight:600;border:none;border-radius:8px;cursor:pointer;font-size:0.78rem" onclick="adminDeleteTx()">🗑️</button>
                     <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(1)">Volgende →</button>
                 </div>
             </div>
@@ -4894,7 +4894,7 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Dashboard</div>
                     <div style="display:flex;gap:6px;align-items:center">
-                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="exportDashboardExcel()">
+                        <button class="btn btn-sm" style="background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="exportDashboardExcel()">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Excel
                         </button>
@@ -4935,7 +4935,7 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Projecten</div>
                     <div style="display:flex;gap:6px">
-                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="document.getElementById('import-file-project').click()">
+                        <button class="btn btn-sm" style="background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="document.getElementById('import-file-project').click()">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Excel Import
                         </button>
@@ -4943,7 +4943,7 @@
                     </div>
                     <input type="file" id="import-file-project" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('project', this)">
                 </div>
-                <input type="text" id="admin-search-project" placeholder="Zoek project..." oninput="filterAdminList('project')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
+                <input type="text" id="admin-search-project" placeholder="Zoek project..." oninput="filterAdminListDebounced('project')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -4952,7 +4952,7 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Personen & Bedrijven</div>
                     <div style="display:flex;gap:6px">
-                        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="document.getElementById('import-file-persoon').click()">
+                        <button class="btn btn-sm" style="background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);font-size:0.75rem;display:inline-flex;align-items:center;gap:5px" onclick="document.getElementById('import-file-persoon').click()">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Excel Import
                         </button>
@@ -4961,7 +4961,7 @@
                     <input type="file" id="import-file-persoon" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('persoon', this)">
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." oninput="filterAdminList('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." oninput="filterAdminListDebounced('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
                     <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer"><input type="checkbox" id="admin-show-archived" onchange="loadAdminData('personen')" style="width:14px;height:14px"> Archief</label>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
@@ -4982,7 +4982,7 @@
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project / medewerker</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
-                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." oninput="filterAdminList('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
+                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." oninput="filterAdminListDebounced('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -5091,7 +5091,7 @@
                             </select>
                         </div>
                     </div>
-                    <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;cursor:pointer">
+                    <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;background:#fef3c7;border:1px solid var(--app-warn-line);border-radius:8px;cursor:pointer">
                         <input type="checkbox" id="inv-skip-io" style="width:16px;height:16px;margin-top:2px;accent-color:#92400e">
                         <div>
                             <div style="font-size:0.85rem;font-weight:600;color:#92400e">Factuur zonder inkooporder</div>
@@ -5205,11 +5205,11 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Inspectie-formulieren</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px">
+                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:#f0f9ff;color:#0369a1;border:1px solid var(--app-info-line);font-size:0.75rem;display:inline-flex;align-items:center;gap:5px">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Exporteer Excel
                         </button>
-                        <label for="insp-import-excel-input" class="btn btn-sm" style="background:#d1fae5;color:#059669;border:1px solid #a7f3d0;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+                        <label for="insp-import-excel-input" class="btn btn-sm" style="background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line);font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Importeer Excel
                         </label>
@@ -5383,7 +5383,7 @@
             <div class="modal-title" id="admin-modal-title">Nieuw item</div>
             <div id="admin-modal-fields"></div>
             <div class="form-actions" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
-                <button class="btn" id="admin-modal-delete" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;display:none" onclick="deleteAdminItem()">Verwijderen</button>
+                <button class="btn" id="admin-modal-delete" style="background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line);display:none" onclick="deleteAdminItem()">Verwijderen</button>
                 <div style="display:flex;gap:8px;margin-left:auto">
                     <button class="btn btn-secondary" onclick="closeModal('admin-modal')">Annuleren</button>
                     <button class="btn btn-primary" id="admin-modal-save">Opslaan</button>
@@ -6133,6 +6133,12 @@
 
         // Debounced versie van renderDays — voor tekst-inputs (desc, location)
         const renderDaysDebounced = debounce(() => renderDays(), 300);
+
+        // Debounced versies van admin-zoekvelden (250ms) — voorkomt render-spam
+        // bij snel typen in zoekvelden met 100+ rijen
+        const filterAdminListDebounced = debounce((type) => filterAdminList(type), 250);
+        const adminSearchInvoicesDebounced = debounce((val) => adminSearchInvoices(val), 250);
+        const adminRenderListViewDebounced = debounce(() => adminRenderListView(), 250);
 
         // Debounced auto-save naar localStorage bij elke wijziging
         const autoSaveLocalDebounced = debounce(() => {
@@ -11322,14 +11328,14 @@
             const yearStart = currentYear + '-01-01';
             const yearEnd = currentYear + '-12-31';
 
-            // Parallel data ophalen
+            // Parallel data ophalen — explicit kolommen i.p.v. select('*') voor kleinere payloads
             const [entriesRes, yearEntriesRes, weekStatusRes, ioWeeksRes, ratesRes, monthExpensesRes] = await Promise.all([
-                sb.from('time_entries').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd),
+                sb.from('time_entries').select('entry_date, total_hours, km, hotel, project_id, user_id').gte('entry_date', monthStart).lte('entry_date', monthEnd),
                 sb.from('time_entries').select('entry_date, total_hours, km, hotel, project_id, user_id').gte('entry_date', yearStart).lte('entry_date', yearEnd),
-                sb.from('week_status').select('*').eq('year', currentYear),
-                sb.from('inkooporder_weeks').select('*').eq('year', currentYear),
-                sb.from('rates').select('*').order('valid_from', { ascending: false }),
-                sb.from('expenses').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd)
+                sb.from('week_status').select('user_id, project_id, week_number, year, status, approval_status').eq('year', currentYear),
+                sb.from('inkooporder_weeks').select('user_id, project_id, week_number, year, io_number').eq('year', currentYear),
+                sb.from('rates').select('id, user_id, project_id, hourly_rate, hourly_rate_sale, km_rate, saturday_multiplier, sunday_holiday_multiplier, valid_from').order('valid_from', { ascending: false }),
+                sb.from('expenses').select('user_id, project_id, amount, entry_date').gte('entry_date', monthStart).lte('entry_date', monthEnd)
             ]);
 
             // Race-guard: er is een nieuwere loadDashboard()-aanroep gestart
@@ -11590,9 +11596,9 @@
                         }
                         const ws = userWeekStatuses.find(w => w.week_number === wn);
                         if (ws && ws.status === 'verstuurd') {
-                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: verstuurd">${wn}</span>`;
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-ok-soft);color:var(--app-ok);font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: verstuurd">${wn}</span>`;
                         } else if (ws && (ws.status === 'opgeslagen' || ws.status === 'ondertekend')) {
-                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#fef3c7;color:#d97706;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-warn-soft);color:var(--app-warn);font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
                         } else {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-bg-deep);color:#94a3b8;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: niet ingevuld">${wn}</span>`;
                         }
@@ -11700,9 +11706,9 @@
                 weekNums.forEach(wn => {
                     const w = g.weeks[wn];
                     if (w.opPO) {
-                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#dbeafe;color:#1e40af;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: op inkooporder">📋</span>`;
+                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:var(--app-info-soft);color:var(--app-info);font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: op inkooporder">📋</span>`;
                     } else {
-                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: verstuurd, nog geen inkooporder">${wn}</span>`;
+                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:var(--app-ok-soft);color:var(--app-ok);font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: verstuurd, nog geen inkooporder">${wn}</span>`;
                     }
                 });
 
@@ -11855,7 +11861,7 @@
                     if (u.can_declare_expenses !== false) flags.push('Declaraties');
                     if (u.allow_inspecties) flags.push('Inspecties');
                     if (u.allow_administratie) flags.push('Administratie');
-                    const flagsHtml = flags.map(f => '<span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-size:0.65rem">' + f + '</span>').join(' ');
+                    const flagsHtml = flags.map(f => '<span style="background:var(--app-info-soft);color:var(--app-info);padding:1px 6px;border-radius:4px;font-size:0.65rem">' + f + '</span>').join(' ');
                     const priceInfo = [];
                     if (u.km_single_trip) priceInfo.push(u.km_single_trip + ' km');
                     if (u.hotel_rate) priceInfo.push('€' + u.hotel_rate + '/nacht');
@@ -11891,7 +11897,7 @@
                     // én nog niet geanonymiseerd.
                     let actionBtn = '';
                     if (_adminTestMode) {
-                        actionBtn = `<button onclick="event.stopPropagation();adminDeleteUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Permanent verwijderen (testdata)">🗑️</button>`;
+                        actionBtn = `<button onclick="event.stopPropagation();adminDeleteUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Permanent verwijderen (testdata)">🗑️</button>`;
                     } else if (isArchived) {
                         // Optioneel: dearchive-knop terugzetten naar actief
                         actionBtn = `<button onclick="event.stopPropagation();adminUnarchiveUser('${u.id}', '${escapeHtml(u.name || u.email).replace(/'/g, "\\'")}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#dcfce7;color:#166534;border:1px solid #86efac" title="Uit archief halen — gebruiker weer actief">↩️</button>`;
@@ -12261,9 +12267,9 @@
                         </div>
                         <div style="display:flex;gap:4px;align-items:center">
                             ${paidBtn}
-                            <button onclick="mailInkooporder('${storagePath}','${safeIo}','${io.user_id}','${io.project_id}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Mailen naar opdrachtnemer">📧</button>
+                            <button onclick="mailInkooporder('${storagePath}','${safeIo}','${io.user_id}','${io.project_id}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Mailen naar opdrachtnemer">📧</button>
                             <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
-                            <button onclick="adminDeleteIO('${safeIo}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
+                            <button onclick="adminDeleteIO('${safeIo}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -12404,25 +12410,33 @@
             const monthSel = document.getElementById('inv-filter-month');
             if (!projSel) return;
 
-            // Projecten
+            // Projecten — array.map().join() i.p.v. innerHTML += in loop (1 reflow vs N reflows)
             if (projSel.options.length <= 1 && window._adminProjects) {
-                (window._adminProjects || []).filter(p => p.status === 'active').forEach(p => {
-                    projSel.innerHTML += `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`;
-                });
+                const projOpts = (window._adminProjects || [])
+                    .filter(p => p.status === 'active')
+                    .map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} — ${escapeHtml(p.name)}</option>`)
+                    .join('');
+                projSel.insertAdjacentHTML('beforeend', projOpts);
             }
             // Users — voeg "Alle medewerkers" toe voor combi-factuur (meerdere zzp's op 1 factuur)
             userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
                 '<option value="__ALL__">👥 Alle medewerkers (combi-factuur)</option>' +
                 getFilteredUsers().map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
-            // Jaar
+            // Jaar — array-join i.p.v. 3× reflow
             if (yearSel.options.length <= 1) {
                 const y = new Date().getFullYear();
-                [y - 1, y, y + 1].forEach(yr => { yearSel.innerHTML += `<option value="${yr}" ${yr === y ? 'selected' : ''}>${yr}</option>`; });
+                const yearOpts = [y - 1, y, y + 1]
+                    .map(yr => `<option value="${yr}" ${yr === y ? 'selected' : ''}>${yr}</option>`)
+                    .join('');
+                yearSel.insertAdjacentHTML('beforeend', yearOpts);
             }
-            // Maanden
+            // Maanden — array-join i.p.v. 12× reflow
             if (monthSel.options.length <= 1) {
                 const MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-                MONTHS.forEach((m, i) => { monthSel.innerHTML += `<option value="${i + 1}" ${i === new Date().getMonth() ? 'selected' : ''}>${m}</option>`; });
+                const monthOpts = MONTHS
+                    .map((m, i) => `<option value="${i + 1}" ${i === new Date().getMonth() ? 'selected' : ''}>${m}</option>`)
+                    .join('');
+                monthSel.insertAdjacentHTML('beforeend', monthOpts);
             }
         }
 
@@ -13634,7 +13648,7 @@
                         <div style="display:flex;gap:4px;align-items:center">
                             ${paidBtn}
                             <button onclick="downloadInvoice('${inv.storage_path}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
-                            <button onclick="adminDeleteInvoice('${inv.id}', '${safeNumber}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
+                            <button onclick="adminDeleteInvoice('${inv.id}', '${safeNumber}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -14779,7 +14793,7 @@
                         <div class="form-group" id="adm-user-km-wrap" style="${existing && existing.allow_km === false ? 'display:none' : ''}"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
                         <div class="form-group" id="adm-user-hotel-wrap" style="${existing && existing.allow_hotel === false ? 'display:none' : ''}"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
                     </div>
-                    ${existing ? '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px"><button type="button" class="btn btn-sm" onclick="inviteUser(\'' + existing.email + '\', \'' + (existing.name || '').replace(/'/g, "\\'") + '\')" style="font-size:0.8rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0">📧 Uitnodigen voor de app</button><button type="button" class="btn btn-sm btn-secondary" onclick="resetWelcomeGuide(\'' + existing.id + '\', \'' + (existing.name || existing.email) + '\')" style="font-size:0.8rem">🔄 Welkomstgids opnieuw tonen bij volgende login</button></div>' : ''}
+                    ${existing ? '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px"><button type="button" class="btn btn-sm" onclick="inviteUser(\'' + existing.email + '\', \'' + (existing.name || '').replace(/'/g, "\\'") + '\')" style="font-size:0.8rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)">📧 Uitnodigen voor de app</button><button type="button" class="btn btn-sm btn-secondary" onclick="resetWelcomeGuide(\'' + existing.id + '\', \'' + (existing.name || existing.email) + '\')" style="font-size:0.8rem">🔄 Welkomstgids opnieuw tonen bij volgende login</button></div>' : ''}
                 `;
             }
 
@@ -15054,7 +15068,7 @@
                             const projCode = projMap[ws.project_id] || '?';
                             const projName = projNameMap[ws.project_id] || '';
                             const statusBadge = ws.status === 'ondertekend'
-                                ? '<span style="font-size:0.65rem;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:600">✍️ Ondertekend</span>'
+                                ? '<span style="font-size:0.65rem;background:var(--app-info-soft);color:var(--app-info);padding:2px 6px;border-radius:4px;font-weight:600">✍️ Ondertekend</span>'
                                 : '<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:600">📝 Opgeslagen</span>';
                             return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:6px;border-left:3px solid #f59e0b">
                                 <div style="flex:1;min-width:0">
@@ -15066,9 +15080,9 @@
                                     ${fmtModified(ws)}
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
-                                    <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Ondertekenen & versturen namens gebruiker">✍️</button>
-                                    <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd" title="Uren bekijken">👁️</button>
-                                    <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Concept verwijderen">🗑️</button>
+                                    <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Ondertekenen & versturen namens gebruiker">✍️</button>
+                                    <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bekijken">👁️</button>
+                                    <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid #fecaca" title="Concept verwijderen">🗑️</button>
                                 </div>
                             </div>`;
                         }).join('')}
@@ -15136,17 +15150,17 @@
                     // Admin-goedkeurknop (voor alle statussen behalve 'goedgekeurd')
                     let adminApproveBtn = '';
                     if (approvalStatus !== 'goedgekeurd') {
-                        adminApproveBtn = `<button onclick="event.stopPropagation();adminApproveWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Admin goedkeuren">✅</button>`;
+                        adminApproveBtn = `<button onclick="event.stopPropagation();adminApproveWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Admin goedkeuren">✅</button>`;
                     }
 
                     if (approvalStatus === 'goedgekeurd') {
-                        approvalBadge = '<span style="font-size:0.65rem;background:#d1fae5;color:#059669;padding:2px 6px;border-radius:4px;font-weight:600">✅ Goedgekeurd</span>';
-                        approvalAction = `<button onclick="event.stopPropagation();openConfirmationModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Bevestiging naar klant versturen">📩</button>`;
+                        approvalBadge = '<span style="font-size:0.65rem;background:var(--app-ok-soft);color:var(--app-ok);padding:2px 6px;border-radius:4px;font-weight:600">✅ Goedgekeurd</span>';
+                        approvalAction = `<button onclick="event.stopPropagation();openConfirmationModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Bevestiging naar klant versturen">📩</button>`;
                     } else if (approvalStatus === 'ter_goedkeuring') {
-                        approvalBadge = '<span style="font-size:0.65rem;background:#fef3c7;color:#d97706;padding:2px 6px;border-radius:4px;font-weight:600">⏳ Ter goedkeuring</span>';
-                        approvalAction = `<button onclick="event.stopPropagation();copyApprovalLink('${ws.approval_token}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a" title="Link kopiëren">🔗</button>`;
+                        approvalBadge = '<span style="font-size:0.65rem;background:var(--app-warn-soft);color:var(--app-warn);padding:2px 6px;border-radius:4px;font-weight:600">⏳ Ter goedkeuring</span>';
+                        approvalAction = `<button onclick="event.stopPropagation();copyApprovalLink('${ws.approval_token}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid var(--app-warn-line)" title="Link kopiëren">🔗</button>`;
                     } else if (approvalStatus === 'afgewezen') {
-                        approvalBadge = '<span style="font-size:0.65rem;background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-weight:600">❌ Afgewezen</span>';
+                        approvalBadge = '<span style="font-size:0.65rem;background:var(--app-alert-soft);color:var(--app-alert);padding:2px 6px;border-radius:4px;font-weight:600">❌ Afgewezen</span>';
                         approvalAction = `<button onclick="event.stopPropagation();openApprovalModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem" title="Opnieuw versturen">📩</button>`;
                     } else {
                         approvalAction = `<button onclick="event.stopPropagation();openApprovalModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="Ter goedkeuring versturen">📩</button>`;
@@ -15164,10 +15178,10 @@
                         <div style="display:flex;gap:4px;flex-shrink:0">
                             ${adminApproveBtn}
                             ${approvalAction}
-                            <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd" title="Uren bewerken">✏️</button>
+                            <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bewerken">✏️</button>
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}','${ws.user_id}','${ws.project_id}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
-                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a" title="Terugzetten naar concept">↩️</button>
-                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca" title="Weekstaat verwijderen">🗑️</button>
+                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid var(--app-warn-line)" title="Terugzetten naar concept">↩️</button>
+                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid #fecaca" title="Weekstaat verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -15948,8 +15962,8 @@
                             ${hotelExtra}
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button type="button" class="aew-default-btn" onclick="adminFillDefaultDay(this)" style="padding:4px 10px;font-size:0.7rem;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;cursor:pointer;font-weight:600" title="Standaard tijden (07:00-16:00, 8u, 60 min) invullen">🕒 Standaard</button>
-                            <button type="button" class="aew-clear-btn" onclick="adminClearDayRow(this)" style="padding:4px 10px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;cursor:pointer;font-weight:600">🚫 Niet gewerkt</button>
+                            <button type="button" class="aew-default-btn" onclick="adminFillDefaultDay(this)" style="padding:4px 10px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid #93c5fd;border-radius:6px;cursor:pointer;font-weight:600" title="Standaard tijden (07:00-16:00, 8u, 60 min) invullen">🕒 Standaard</button>
+                            <button type="button" class="aew-clear-btn" onclick="adminClearDayRow(this)" style="padding:4px 10px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid var(--app-warn-line);border-radius:6px;cursor:pointer;font-weight:600">🚫 Niet gewerkt</button>
                         </div>
                     </div>
                 </div>`;
@@ -16015,7 +16029,7 @@
                                     <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
                                         ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${eCat === k ? 'selected' : ''}>${v}</option>`).join('')}
                                     </select>
-                                    <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
+                                    <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line);border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
                                 </div>
                                 <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
                                 <div style="display:grid;grid-template-columns:60px 80px 1fr 90px;gap:6px;align-items:center">
@@ -16066,7 +16080,7 @@
             row.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
                     <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">${catOptionsHtml}</select>
-                    <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
+                    <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line);border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
                 </div>
                 <input type="text" class="aew-exp-desc" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
                 <div style="display:grid;grid-template-columns:60px 80px 1fr 90px;gap:6px;align-items:center">
@@ -19056,7 +19070,7 @@
             if (insp.status === 'concept') {
                 footerHtml = `
                     <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
+                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid var(--app-warn-line);padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
                         <button id="insp-finish-btn" onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem;${totalDone < totalQ ? 'opacity:0.5;cursor:not-allowed' : ''}" ${totalDone < totalQ ? 'disabled' : ''}>✓ Inspectie afronden</button>
                     </div>`;
             } else {
@@ -20829,7 +20843,7 @@
                         <div class="admin-progress-bar" style="max-width:80px">
                             <div class="admin-progress-fill" style="width:${pct}%"></div>
                         </div>
-                        <button onclick="event.stopPropagation(); adminDeleteUpload('${u.id}')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:0.9rem;margin-left:6px" title="Verwijderen">🗑️</button>
+                        <button onclick="event.stopPropagation(); adminDeleteUpload('${u.id}')" style="background:var(--app-alert-soft);color:var(--app-alert);border:none;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:0.9rem;margin-left:6px" title="Verwijderen">🗑️</button>
                         <div style="font-size:0.8rem;font-weight:600;color:${done ? 'var(--green)' : 'var(--muted)'}">
                             ${done ? '✅' : pct + '%'} ▶
                         </div>
@@ -21167,7 +21181,7 @@
                     const txN = tx.counterName.toLowerCase();
                     if (txN.length >= 4 && (invN.includes(txN.slice(0,5)) || txN.includes(invN.slice(0,5)))) tags.push('🏢 Naam');
                 }
-                if (tags.length > 0) tagsHtml = '<div style="display:flex;gap:4px;margin-top:3px">' + tags.map(t => '<span style="font-size:0.65rem;background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px">' + t + '</span>').join('') + '</div>';
+                if (tags.length > 0) tagsHtml = '<div style="display:flex;gap:4px;margin-top:3px">' + tags.map(t => '<span style="font-size:0.65rem;background:var(--app-info-soft);color:var(--app-info);padding:1px 6px;border-radius:4px">' + t + '</span>').join('') + '</div>';
             }
 
             return `
