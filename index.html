@@ -565,34 +565,46 @@
             50% { box-shadow: 0 2px 16px rgba(7,86,127,0.3); }
         }
 
-        /* ===== HERINNERING BANNER ===== */
+        /* ===== HERINNERING BANNER (huisstijl, theme-aware) ===== */
         .reminder-banner {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border: 1px solid #f59e0b;
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin: 8px 0;
+            background: var(--app-warn-soft);
+            border: 1px solid var(--app-warn-line);
+            border-left: 3px solid var(--app-warn);
+            border-radius: 10px;
+            padding: 11px 14px;
+            margin: 10px 0;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 10px;
-            font-size: 0.82rem;
-            color: #92400e;
+            font-size: 0.85rem;
+            color: var(--app-warn);
             font-weight: 500;
-            text-align: center;
+            text-align: left;
             animation: reminderSlide 0.4s ease;
+            box-shadow: var(--app-shadow-sm);
+            line-height: 1.4;
+        }
+        .reminder-banner > span:first-child {
+            flex: 1;
         }
         .reminder-banner .reminder-close {
-            margin-left: auto;
-            background: none;
+            background: transparent;
             border: none;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            color: #b45309;
-            padding: 2px 6px;
+            color: var(--app-warn);
+            padding: 4px 8px;
+            border-radius: 6px;
+            opacity: 0.55;
+            transition: opacity 150ms ease, background 150ms ease;
+            flex-shrink: 0;
+        }
+        .reminder-banner .reminder-close:hover {
+            opacity: 1;
+            background: var(--app-warn-line);
         }
         @keyframes reminderSlide {
-            from { opacity: 0; transform: translateY(-10px); }
+            from { opacity: 0; transform: translateY(-6px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -4096,14 +4108,24 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--app-ink-500);
-  transition: all 160ms ease;
+  /* Geen 'all' — voorkomt witte flikker tijdens transition van native styles
+     (browser-defaults zoals focus-ring kunnen kort doorslaan met transition:all) */
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+  /* Onderdruk mobile tap-highlight die op donker scherm wit oplicht */
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 .login-app-toggle button svg { width: 14px; height: 14px; flex-shrink: 0; }
 .login-app-toggle button:hover { color: var(--app-ink-700); }
+/* Custom focus-ring (i.p.v. browser default die wit/zwart is en flikkert) */
+.login-app-toggle button:focus-visible {
+  outline: 2px solid var(--kts-blue);
+  outline-offset: 2px;
+}
 .login-app-toggle button.active {
   background: var(--app-surface);
   color: var(--kts-blue);
@@ -5053,11 +5075,11 @@
                             </select>
                         </div>
                     </div>
-                    <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;background:#fef3c7;border:1px solid var(--app-warn-line);border-radius:8px;cursor:pointer">
-                        <input type="checkbox" id="inv-skip-io" style="width:16px;height:16px;margin-top:2px;accent-color:#92400e">
+                    <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;background:var(--app-warn-soft);border:1px solid var(--app-warn-line);border-radius:8px;cursor:pointer">
+                        <input type="checkbox" id="inv-skip-io" style="width:16px;height:16px;margin-top:2px;accent-color:var(--app-warn)">
                         <div>
-                            <div style="font-size:0.85rem;font-weight:600;color:#92400e">Factuur zonder inkooporder</div>
-                            <div style="font-size:0.7rem;color:#92400e;opacity:0.85;margin-top:2px;line-height:1.4">
+                            <div style="font-size:0.85rem;font-weight:600;color:var(--app-warn)">Factuur zonder inkooporder</div>
+                            <div style="font-size:0.7rem;color:var(--app-warn);opacity:0.85;margin-top:2px;line-height:1.4">
                                 Voor wanneer de onderaannemer zelf factureert en KTS dus geen inkooporder heeft uitgestuurd.
                                 Basis: alle verstuurde/goedgekeurde weekstaten van die maand i.p.v. inkooporder-weken.
                             </div>
@@ -10833,7 +10855,7 @@
         (function() {
             const banner = document.createElement('div');
             banner.id = 'offline-banner';
-            banner.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:#fef3c7;color:#92400e;text-align:center;padding:6px 12px;font-size:0.8rem;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.1)';
+            banner.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:var(--app-alert-soft);color:var(--app-alert);border-bottom:1px solid var(--app-alert-line);text-align:center;padding:8px 12px;font-size:0.8rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.15);letter-spacing:0.01em';
             banner.textContent = '⚠️ Geen internetverbinding — wijzigingen worden niet opgeslagen';
             document.body.appendChild(banner);
 
