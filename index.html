@@ -4008,6 +4008,44 @@
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
 
+/* ---------- 17a. WINST-CARD met blur-onthulling -------------------------- */
+.winst-card {
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  position: relative;
+  overflow: hidden;
+}
+.winst-card:hover { transform: translateY(-1px); box-shadow: var(--app-shadow); }
+.winst-card .stat-value,
+.winst-card .winst-breakdown,
+.winst-card .winst-bedrag {
+  transition: filter 220ms ease, opacity 220ms ease;
+}
+.winst-card[data-hidden="1"] .stat-value,
+.winst-card[data-hidden="1"] .winst-breakdown,
+.winst-card[data-hidden="1"] .winst-bedrag {
+  filter: blur(9px);
+  user-select: none;
+  pointer-events: none;
+}
+.winst-card[data-hidden="1"]::after {
+  content: '🔒 Klik om te tonen';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
 /* ---------- 17b. ARCHIEF FILTER BAR (admin lijsten) ------------------------ */
 .archief-filter-bar {
   display: flex;
@@ -11267,12 +11305,13 @@
             const yearEnd = currentYear + '-12-31';
 
             // Parallel data ophalen
-            const [entriesRes, yearEntriesRes, weekStatusRes, ioWeeksRes, ratesRes] = await Promise.all([
+            const [entriesRes, yearEntriesRes, weekStatusRes, ioWeeksRes, ratesRes, monthExpensesRes] = await Promise.all([
                 sb.from('time_entries').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd),
                 sb.from('time_entries').select('entry_date, total_hours, km, hotel, project_id, user_id').gte('entry_date', yearStart).lte('entry_date', yearEnd),
                 sb.from('week_status').select('*').eq('year', currentYear),
                 sb.from('inkooporder_weeks').select('*').eq('year', currentYear),
-                sb.from('rates').select('*').order('valid_from', { ascending: false })
+                sb.from('rates').select('*').order('valid_from', { ascending: false }),
+                sb.from('expenses').select('*').gte('entry_date', monthStart).lte('entry_date', monthEnd)
             ]);
 
             const allRates = ratesRes.data || [];
@@ -11303,12 +11342,20 @@
             const yearEntries = (yearEntriesRes.data || []).filter(e => filteredUserIds.has(e.user_id) && (!e.project_id || filteredProjIds.has(e.project_id)) && isDefinitiefEntry(e));
 
             // Rate lookup helper: user+project → rate, project → rate, default
+            // sale = verkoop-tarief (hourly_rate_sale). Als NULL → fallback hourly_rate
+            // (= geen marge, KTS factureert wat zzp kost).
             function getRate(userId, projectId) {
                 const userRate = allRates.find(r => r.user_id === userId && r.project_id === projectId);
-                if (userRate) return { hourly: parseFloat(userRate.hourly_rate) || 85, km: parseFloat(userRate.km_rate) || 0.50, sat: parseFloat(userRate.saturday_multiplier) || 1.5, sun: parseFloat(userRate.sunday_holiday_multiplier) || 2.0 };
+                if (userRate) {
+                    const hourly = parseFloat(userRate.hourly_rate) || 85;
+                    return { hourly, sale: parseFloat(userRate.hourly_rate_sale) || hourly, km: parseFloat(userRate.km_rate) || 0.50, sat: parseFloat(userRate.saturday_multiplier) || 1.5, sun: parseFloat(userRate.sunday_holiday_multiplier) || 2.0 };
+                }
                 const projRate = allRates.find(r => !r.user_id && r.project_id === projectId);
-                if (projRate) return { hourly: parseFloat(projRate.hourly_rate) || 85, km: parseFloat(projRate.km_rate) || 0.50, sat: parseFloat(projRate.saturday_multiplier) || 1.5, sun: parseFloat(projRate.sunday_holiday_multiplier) || 2.0 };
-                return { hourly: 85, km: 0.50, sat: 1.5, sun: 2.0 };
+                if (projRate) {
+                    const hourly = parseFloat(projRate.hourly_rate) || 85;
+                    return { hourly, sale: parseFloat(projRate.hourly_rate_sale) || hourly, km: parseFloat(projRate.km_rate) || 0.50, sat: parseFloat(projRate.saturday_multiplier) || 1.5, sun: parseFloat(projRate.sunday_holiday_multiplier) || 2.0 };
+                }
+                return { hourly: 85, sale: 85, km: 0.50, sat: 1.5, sun: 2.0 };
             }
 
             // Omzet berekenen voor een set entries
@@ -11327,19 +11374,46 @@
                 return total;
             }
 
+            // Winst KTS = (verkoop − inkoop) × uren met juiste multiplier  +  15% van materialen
+            // Toont het bedrag dat KTS verdient als tussenpersoon op de zzp-uren plus marge op kosten.
+            const MATERIAL_MARGIN = 0.15;
+            function calcWinst(entries, expenses) {
+                let urenWinst = 0;
+                entries.forEach(e => {
+                    const hours = parseFloat(e.total_hours) || 0;
+                    if (hours <= 0) return;
+                    const rate = getRate(e.user_id, e.project_id);
+                    const marge = rate.sale - rate.hourly;
+                    if (marge <= 0) return; // geen verkoop-tarief = geen marge
+                    const dow = new Date(e.entry_date + 'T12:00:00').getDay();
+                    if (dow === 6)      urenWinst += hours * marge * rate.sat;
+                    else if (dow === 0) urenWinst += hours * marge * rate.sun;
+                    else                urenWinst += hours * marge;
+                });
+                const materiaalTotaal = (expenses || []).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+                const materiaalWinst = materiaalTotaal * MATERIAL_MARGIN;
+                return { uren: urenWinst, materiaal: materiaalWinst, totaal: urenWinst + materiaalWinst };
+            }
+
+            // Filter expenses op test/productie + projecten
+            const monthExpenses = (monthExpensesRes.data || []).filter(x =>
+                filteredUserIds.has(x.user_id) && (!x.project_id || filteredProjIds.has(x.project_id))
+            );
+
             // Bewaar data voor Excel export
             window._dashboardExportData = { monthEntries, yearEntries, users, projects, calcRevenue, currentYear, selectedMonth, isFullYear };
 
             // Render alle secties
-            renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, currentYear, calcRevenue);
+            renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, currentYear, calcRevenue, calcWinst, monthExpenses);
             renderDashboardChart(yearEntries, currentYear, calcRevenue);
             renderMedewerkerOverzicht(monthEntries, weekStatuses, users, selectedMonth, currentYear);
             renderProjectCards(monthEntries, projects, users, selectedMonth, currentYear, calcRevenue);
             renderPOStatus(weekStatuses, ioWeeks, users, projects, currentYear);
         }
 
-        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, year, calcRevenue) {
+        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, year, calcRevenue, calcWinst, monthExpenses) {
             const omzetMaand = calcRevenue(monthEntries);
+            const winst = calcWinst ? calcWinst(monthEntries, monthExpenses || []) : { uren: 0, materiaal: 0, totaal: 0 };
 
             // Vorige maand
             const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
@@ -11388,6 +11462,17 @@
                 <div class="stat-card">
                     <div class="stat-value" style="${openWeeks.length > 0 ? 'color:#f59e0b' : 'color:#10b981'}">${openWeeks.length}</div>
                     <div class="stat-label">Weken zonder inkooporder</div>
+                </div>
+                <div class="stat-card winst-card"
+                     data-hidden="1"
+                     onclick="this.setAttribute('data-hidden', this.getAttribute('data-hidden') === '1' ? '0' : '1')"
+                     style="grid-column:1/-1;background:var(--kts-blue-900);color:white;border-radius:14px;padding:18px 16px"
+                     title="Klik om bedrag te tonen of te verbergen">
+                    <div class="stat-value winst-bedrag" style="color:white;font-size:1.6rem">${fmtEuro(winst.totaal)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.85);font-weight:600">💼 Winst KTS deze maand</div>
+                    <div class="winst-breakdown" style="font-size:0.7rem;color:rgba(255,255,255,0.65);margin-top:4px;font-family:var(--app-font-mono)">
+                        Uren-marge: ${fmtEuro(winst.uren)} &nbsp;·&nbsp; Materialen (15%): ${fmtEuro(winst.materiaal)}
+                    </div>
                 </div>
             `;
         }
