@@ -17194,8 +17194,8 @@
                         if (user.show_rates !== false) badges.push('Tarieven');
                         if (user.can_declare_expenses !== false) badges.push('Declaraties');
                     }
-                    const badgesHtml = badges.map(b => '<span style="background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;font-size:0.6rem">' + b + '</span>').join(' ');
-                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:4px">
+                    const badgesHtml = badges.map(b => '<span style="background:var(--app-info-soft);color:var(--app-info);padding:1px 5px;border-radius:4px;font-size:0.6rem;border:1px solid var(--app-info-line)">' + b + '</span>').join(' ');
+                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--app-info-soft);border:1px solid var(--app-info-line);border-radius:8px;margin-bottom:4px;color:var(--app-ink-900)">
                         <div>
                             <span style="font-size:0.85rem;font-weight:600">👤 ${name}</span>
                             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px">${badgesHtml}</div>
