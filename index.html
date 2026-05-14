@@ -82,6 +82,15 @@
             --muted: #64748b;
             --border: #e2e8f0;
         }
+        /* ===== DARK MODE — legacy tokens ===== */
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #334155;
+            --kts-light: #60a5fa;
+        }
         body {
             font-family: 'Daxline Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
@@ -1918,6 +1927,66 @@
   /* --- Type stacks --- */
   --app-font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
   --app-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* =============================================================================
+   1b. DARK MODE TOKENS
+   =============================================================================
+   Activeert wanneer <html data-theme="dark"> wordt gezet. JS bepaalt dit op
+   basis van user-keuze (licht / donker / systeem). Alle componenten die de
+   --app-* tokens gebruiken adapteren automatisch.
+*/
+[data-theme="dark"] {
+  /* --- KTS Brand (lichter voor leesbaarheid op dark bg) --- */
+  --kts-blue: #4FA8D8;
+  --kts-blue-700: #76BBE0;
+  --kts-blue-900: #BDDDED;
+  --kts-blue-50: #1A2F3D;
+  --kts-blue-100: #243D4E;
+
+  /* --- Surfaces — cool dark slate --- */
+  --app-bg: #0F1419;
+  --app-bg-tint: #171C24;
+  --app-bg-deep: #1F242D;
+  --app-surface: #1E2632;
+  --app-surface-2: #252D3A;
+
+  /* --- Tekst hiërarchie (omgekeerd) --- */
+  --app-ink-900: #E8EBF0;
+  --app-ink-700: #C9CFD9;
+  --app-ink-500: #9AA3B0;
+  --app-ink-400: #7A828F;
+  --app-ink-300: #5C6675;
+  --app-ink-200: #3A424E;
+
+  /* --- Hairlines & dividers (donkerder) --- */
+  --app-line: #2D343F;
+  --app-line-strong: #3D4450;
+
+  /* --- Status (iets lichter voor contrast) --- */
+  --app-ok: #6BC58E;
+  --app-ok-soft: #1A3024;
+  --app-ok-line: #2E4E3A;
+
+  --app-warn: #E0A45C;
+  --app-warn-soft: #2E2419;
+  --app-warn-line: #4A3A22;
+
+  --app-alert: #E47481;
+  --app-alert-soft: #2E1A1D;
+  --app-alert-line: #4A2A2E;
+
+  --app-info: #4FA8D8;
+  --app-info-soft: #1A2F3D;
+  --app-info-line: #2E4A5E;
+
+  --app-idle: #7A828F;
+  --app-idle-soft: #1F242D;
+
+  /* --- Schaduwen (steviger voor dark mode) --- */
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.4);
+  --app-shadow:    0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --app-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.4);
 }
 
 
@@ -3863,6 +3932,32 @@
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
 
+/* ---------- 18b. THEME CONTROL (segmented Licht/Auto/Donker) ----------------- */
+.app-theme-control {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.app-theme-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-ink-500);
+  cursor: pointer;
+  transition: all 120ms;
+  display: grid;
+  place-items: center;
+}
+.app-theme-btn:hover { background: var(--app-bg-tint); color: var(--app-ink-700); }
+.app-theme-btn.is-active {
+  border-color: var(--kts-blue);
+  background: var(--app-info-soft);
+  color: var(--kts-blue);
+}
+
 
 /* ---------- 19. WEEK-ROW (overzicht-tab) ----------------------------------- */
 
@@ -4948,6 +5043,27 @@
                         <button class="app-zoom-btn app-zoom-btn-lg" type="button" data-zoom="groot" onclick="setZoom('groot')">A</button>
                     </div>
                 </div>
+
+                <div class="app-action-row" style="cursor:default">
+                    <div class="app-action-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                    </div>
+                    <div class="app-action-row-text">
+                        <div class="app-action-row-title">Weergave</div>
+                        <div class="app-action-row-desc">Licht, donker of volg systeem</div>
+                    </div>
+                    <div class="app-theme-control">
+                        <button class="app-theme-btn" type="button" data-theme-pref="light" onclick="setTheme('light')" title="Licht">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                        </button>
+                        <button class="app-theme-btn" type="button" data-theme-pref="auto" onclick="setTheme('auto')" title="Volg systeem">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>
+                        </button>
+                        <button class="app-theme-btn" type="button" data-theme-pref="dark" onclick="setTheme('dark')" title="Donker">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="app-action-section-label">Account</div>
@@ -5442,6 +5558,43 @@
         (function initZoom() {
             const saved = localStorage.getItem('kts-zoom') || 'normaal';
             document.documentElement.classList.add('zoom-' + saved);
+        })();
+
+        // ============================================================
+        // THEME (Licht / Donker / Systeem) — vergelijkbaar met Windows
+        // Opslag in localStorage: 'light' | 'dark' | 'auto' (default = auto)
+        // ============================================================
+        function getThemePref() {
+            return localStorage.getItem('kts-theme') || 'auto';
+        }
+        function resolveTheme(pref) {
+            if (pref === 'light' || pref === 'dark') return pref;
+            // auto: volg systeem
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark' : 'light';
+        }
+        function applyTheme(pref) {
+            const resolved = resolveTheme(pref);
+            document.documentElement.setAttribute('data-theme', resolved);
+            // Update segmented control in profiel (indien aanwezig)
+            document.querySelectorAll('.app-theme-btn[data-theme-pref]').forEach(btn => {
+                btn.classList.toggle('is-active', btn.dataset.themePref === pref);
+            });
+        }
+        function setTheme(pref) {
+            if (!['light', 'dark', 'auto'].includes(pref)) pref = 'auto';
+            localStorage.setItem('kts-theme', pref);
+            applyTheme(pref);
+        }
+        // Init bij laden + listener voor systeem-wijzigingen (alleen relevant in auto)
+        (function initTheme() {
+            applyTheme(getThemePref());
+            if (window.matchMedia) {
+                const mq = window.matchMedia('(prefers-color-scheme: dark)');
+                const onChange = () => { if (getThemePref() === 'auto') applyTheme('auto'); };
+                if (mq.addEventListener) mq.addEventListener('change', onChange);
+                else if (mq.addListener) mq.addListener(onChange); // Safari legacy
+            }
         })();
 
         function openWeekDefaults() {
