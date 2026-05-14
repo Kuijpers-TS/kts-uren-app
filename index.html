@@ -5723,9 +5723,11 @@
             const weekMondayStr = toLocalDateStr(currentWeekMonday);
             const weekFridayStr = toLocalDateStr(weekFriday);
 
-            // Project niet actief
-            if (currentProject.status === 'inactive') {
-                return { editable: false, reason: 'Project is niet actief', icon: '⏸️' };
+            // Project niet actief (gepauzeerd of afgesloten)
+            if (currentProject.status && currentProject.status !== 'active') {
+                const reason = currentProject.status === 'paused' ? 'Project is gepauzeerd' : 'Project is afgesloten';
+                const icon = currentProject.status === 'paused' ? '⏸️' : '🔒';
+                return { editable: false, reason, icon };
             }
 
             // Week valt voor startdatum
@@ -10870,8 +10872,8 @@
                 return;
             }
 
-            // Niet tonen als project niet actief of nog niet gestart
-            if (!currentProject || currentProject.status === 'inactive') {
+            // Niet tonen als project niet actief (paused/closed) of nog niet gestart
+            if (!currentProject || (currentProject.status && currentProject.status !== 'active')) {
                 container.innerHTML = '';
                 return;
             }
@@ -14568,8 +14570,9 @@
                     <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
                         <select id="adm-proj-status">
-                            <option value="active" ${!existing || existing.status === 'active' ? 'selected' : ''}>Active</option>
-                            <option value="inactive" ${existing && existing.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                            <option value="active" ${!existing || existing.status === 'active' ? 'selected' : ''}>Actief</option>
+                            <option value="paused" ${existing && existing.status === 'paused' ? 'selected' : ''}>Gepauzeerd</option>
+                            <option value="closed" ${existing && existing.status === 'closed' ? 'selected' : ''}>Afgesloten</option>
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom:12px">
