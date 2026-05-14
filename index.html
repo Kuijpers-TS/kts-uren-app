@@ -3967,6 +3967,43 @@
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
 
+/* ---------- 18a. LOGIN APP TOGGLE (KTS Uren / KTS Inspectie) ---------------- */
+.login-app-toggle {
+  display: flex;
+  background: var(--app-bg-tint);
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 22px;
+}
+.login-app-toggle button {
+  flex: 1;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-ink-500);
+  transition: all 160ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.login-app-toggle button svg { width: 14px; height: 14px; flex-shrink: 0; }
+.login-app-toggle button:hover { color: var(--app-ink-700); }
+.login-app-toggle button.active {
+  background: var(--app-surface);
+  color: var(--kts-blue);
+  border-color: var(--kts-blue-100);
+  box-shadow: 0 1px 2px rgba(7, 86, 127, 0.08), 0 2px 6px rgba(7, 86, 127, 0.06);
+}
+
 /* ---------- 18b. THEME CONTROL (segmented Licht/Auto/Donker) ----------------- */
 .app-theme-control {
   display: flex;
@@ -4136,7 +4173,18 @@
 
                 <!-- Rechter paneel: formulier -->
                 <div style="flex:1;padding:36px 32px;display:flex;flex-direction:column;justify-content:center;font-family:var(--app-font-sans)">
-                    <div style="font-family:var(--app-font-mono);font-size:11px;font-weight:500;color:var(--app-ink-400);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px">KTS Uren App</div>
+                    <!-- App-keuze toggle: Uren ↔ Inspectie -->
+                    <div class="login-app-toggle" role="tablist" aria-label="Kies werkomgeving">
+                        <button type="button" class="active" data-login-app="uren" onclick="switchLoginApp('uren')" role="tab" aria-selected="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            KTS Uren
+                        </button>
+                        <button type="button" data-login-app="inspectie" onclick="switchLoginApp('inspectie')" role="tab" aria-selected="false">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            KTS Inspectie
+                        </button>
+                    </div>
+                    <div id="login-app-label" style="font-family:var(--app-font-mono);font-size:11px;font-weight:500;color:var(--app-ink-400);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px">KTS Uren App</div>
                     <div style="font-weight:600;font-size:20px;color:var(--app-ink-900);letter-spacing:-0.005em;margin-bottom:24px">Welkom terug</div>
 
                     <form onsubmit="event.preventDefault();doLogin()">
@@ -5629,6 +5677,37 @@
                 const onChange = () => { if (getThemePref() === 'auto') applyTheme('auto'); };
                 if (mq.addEventListener) mq.addEventListener('change', onChange);
                 else if (mq.addListener) mq.addListener(onChange); // Safari legacy
+            }
+        })();
+
+        // ============================================================
+        // LOGIN APP TOGGLE — Uren ↔ Inspectie keuze op login-scherm
+        // Onthoudt laatste keuze; bij login navigeren we naar de juiste tab.
+        // ============================================================
+        function getLoginAppPref() {
+            return localStorage.getItem('kts-login-app') || 'uren';
+        }
+        function switchLoginApp(app) {
+            if (app !== 'uren' && app !== 'inspectie') app = 'uren';
+            localStorage.setItem('kts-login-app', app);
+            // Active state op knoppen
+            document.querySelectorAll('.login-app-toggle button[data-login-app]').forEach(btn => {
+                const isActive = btn.dataset.loginApp === app;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            // Label bovenaan formulier
+            const label = document.getElementById('login-app-label');
+            if (label) label.textContent = (app === 'inspectie') ? 'KTS Inspectie App' : 'KTS Uren App';
+        }
+        // Init bij laden — herstel laatste keuze
+        (function initLoginApp() {
+            // Wacht tot DOM klaar is voor het geval het script bovenaan staat
+            const apply = () => switchLoginApp(getLoginAppPref());
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', apply);
+            } else {
+                apply();
             }
         })();
 
@@ -9631,6 +9710,14 @@
             } else {
                 showToast('✓ Welkom, ' + currentUser.name);
             }
+
+            // Open het scherm dat hoort bij de gekozen app op het login-scherm
+            try {
+                const loginApp = getLoginAppPref();
+                if (loginApp === 'inspectie' && typeof switchScreen === 'function') {
+                    switchScreen('inspecties');
+                }
+            } catch (e) { /* niet kritisch — uren-tab blijft default */ }
         }
 
         function demoLogin() {
