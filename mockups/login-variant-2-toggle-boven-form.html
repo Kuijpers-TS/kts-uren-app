@@ -2,26 +2,46 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<title>Login mockup variant 2 — Toggle boven inlogformulier</title>
+<title>Login mockup variant 2 — Toggle boven inlogformulier (huisstijl)</title>
 <style>
   :root {
-    --kts-blue: #043B56;
-    --kts-blue-light: #07567F;
-    --kts-orange: #E97724;
-    --app-ink-900: #0f172a;
-    --app-ink-700: #334155;
-    --app-ink-400: #94a3b8;
-    --app-ink-200: #e2e8f0;
-    --app-ink-100: #f1f5f9;
+    /* KTS huisstijl tokens */
+    --kts-blue:      #07567F;
+    --kts-blue-700:  #044560;
+    --kts-blue-900:  #0A1628;
+    --kts-blue-50:   #EAF2F7;
+    --kts-blue-100:  #D5E5EE;
+
+    --app-bg:        #FAFAF7;
+    --app-bg-tint:   #F4F3EE;
+    --app-surface:   #FFFFFF;
+    --app-surface-2: #FBFBF8;
+
+    --app-ink-900: #0F1B2D;
+    --app-ink-700: #2A3441;
+    --app-ink-500: #5C6675;
+    --app-ink-400: #8A93A1;
+    --app-ink-300: #B4BCC7;
+    --app-ink-200: #DDE2EA;
+
+    --app-line: #E7E4DD;
+    --app-line-strong: #D4D0C7;
+
+    --app-shadow:    0 1px 3px rgba(15, 27, 45, 0.06), 0 4px 12px rgba(15, 27, 45, 0.04);
+    --app-shadow-lg: 0 4px 8px rgba(15, 27, 45, 0.06), 0 16px 32px rgba(15, 27, 45, 0.06);
+
+    --app-font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
+    --app-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: linear-gradient(135deg, #0A1628 0%, #043B56 40%, #07567F 100%);
+    font-family: var(--app-font-sans);
+    background: linear-gradient(135deg, var(--kts-blue-900) 0%, var(--kts-blue-700) 40%, var(--kts-blue) 100%);
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
+    color: var(--app-ink-900);
   }
   .pattern {
     position: fixed; inset: 0; opacity: 0.04; pointer-events: none;
@@ -32,64 +52,90 @@
     background-size: 60px 60px, 80px 80px, 90px 90px;
   }
   .container { position: relative; z-index: 1; width: 100%; max-width: 680px; padding: 24px; }
+
+  /* ============ Card ============ */
   .card {
-    background: white; border-radius: 24px; overflow: hidden;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.2);
-    display: flex; flex-direction: row; min-height: 460px;
+    background: var(--app-surface); border-radius: 24px; overflow: hidden;
+    box-shadow: var(--app-shadow-lg);
+    display: flex; flex-direction: row; min-height: 480px;
   }
   .logo-panel {
     flex: 0 0 240px;
-    background: white;
+    background: var(--app-surface);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 40px 28px;
     border-right: 3px solid var(--kts-blue);
   }
-  .logo-panel .logo-text {
-    font-weight: 700; font-size: 16px; color: var(--kts-blue);
+  .logo-mark {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: var(--kts-blue);
+    display: flex; align-items: center; justify-content: center;
+    color: white; margin-bottom: 16px;
+    box-shadow: var(--app-shadow);
+  }
+  .logo-text {
+    font-family: var(--app-font-sans);
+    font-weight: 700; font-size: 14px; color: var(--kts-blue);
     text-align: center; line-height: 1.4;
+    letter-spacing: -0.005em;
   }
   .form-panel {
-    flex: 1; padding: 36px 32px;
-    display: flex; flex-direction: column; justify-content: center;
+    flex: 1; padding: 32px;
+    display: flex; flex-direction: column;
   }
 
+  /* ============ App toggle (huisstijl, segmented in blauw) ============ */
   .app-toggle {
-    display: flex; background: var(--app-ink-100); border-radius: 12px;
-    padding: 4px; margin-bottom: 24px;
+    display: flex;
+    background: var(--app-bg-tint);
+    border: 1px solid var(--app-line);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 24px;
     position: relative;
   }
   .app-toggle button {
-    flex: 1; padding: 10px 12px; border: none; background: transparent;
-    cursor: pointer; border-radius: 9px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; color: var(--app-ink-400);
-    transition: all 0.18s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    flex: 1;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 8px;
+    font-family: var(--app-font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--app-ink-500);
+    transition: all 160ms ease;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
   }
+  .app-toggle button svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .app-toggle button:hover { color: var(--app-ink-700); }
   .app-toggle button.active {
-    background: white; color: var(--kts-blue);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    background: var(--app-surface);
+    color: var(--kts-blue);
+    border-color: var(--kts-blue-100);
+    box-shadow: 0 1px 2px rgba(7, 86, 127, 0.08), 0 2px 6px rgba(7, 86, 127, 0.06);
   }
-  .app-toggle button.active.inspectie { color: var(--kts-orange); }
-  .app-toggle button svg { width: 14px; height: 14px; }
 
-  .welkom-line {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  /* ============ Heading ============ */
+  .label-line {
+    font-family: var(--app-font-mono);
     font-size: 11px; font-weight: 500; color: var(--app-ink-400);
     letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;
-    transition: color 0.18s;
   }
-  .welkom-line.inspectie { color: var(--kts-orange); }
-  .welkom-title {
+  .title {
     font-weight: 600; font-size: 20px; color: var(--app-ink-900);
-    letter-spacing: -0.005em; margin-bottom: 24px;
+    letter-spacing: -0.005em; margin-bottom: 22px;
   }
 
-  .form-row { margin-bottom: 16px; }
+  /* ============ Form ============ */
+  .form-row { margin-bottom: 14px; }
   .form-row label {
-    display: block; font-size: 13px; font-weight: 500;
+    display: block; font-size: 12px; font-weight: 500;
     color: var(--app-ink-700); margin-bottom: 6px;
+    letter-spacing: 0.005em;
   }
   .input-wrap { position: relative; }
   .input-wrap svg {
@@ -98,41 +144,53 @@
   }
   .input-wrap input {
     width: 100%; padding: 11px 14px 11px 40px;
-    border: 1px solid var(--app-ink-200); border-radius: 10px;
+    border: 1px solid var(--app-line-strong); border-radius: 10px;
     font-size: 14px; font-family: inherit;
-    transition: border-color 0.18s, box-shadow 0.18s;
+    background: var(--app-surface);
+    color: var(--app-ink-900);
+    transition: border-color 160ms, box-shadow 160ms;
   }
+  .input-wrap input::placeholder { color: var(--app-ink-400); }
   .input-wrap input:focus {
     outline: none; border-color: var(--kts-blue);
-    box-shadow: 0 0 0 3px rgba(4,59,86,0.12);
+    box-shadow: 0 0 0 3px rgba(7,86,127,0.12);
   }
 
   .btn-primary {
     width: 100%; padding: 13px;
     background: var(--kts-blue); color: white;
-    border: none; border-radius: 10px;
-    font-size: 15px; font-weight: 600; cursor: pointer;
-    transition: background 0.18s;
-    margin-top: 8px;
+    border: 1px solid var(--kts-blue-700);
+    border-radius: 10px;
+    font-size: 14.5px; font-weight: 600; cursor: pointer;
+    transition: background 160ms;
+    margin-top: 6px;
+    font-family: inherit;
+    letter-spacing: 0.01em;
   }
-  .btn-primary:hover { background: var(--kts-blue-light); }
-  .btn-primary.inspectie { background: var(--kts-orange); }
-  .btn-primary.inspectie:hover { background: #f59c4f; }
+  .btn-primary:hover { background: var(--kts-blue-700); }
 
   .forgot {
     text-align: center; margin-top: 14px;
     font-size: 13px; color: var(--kts-blue);
     text-decoration: none; display: block;
+    font-weight: 500;
   }
+  .forgot:hover { text-decoration: underline; }
 
   .footer {
     text-align: center; margin-top: 24px;
-    color: rgba(255,255,255,0.25); font-size: 11px;
+    color: rgba(255,255,255,0.35); font-size: 11px;
+    letter-spacing: 0.02em;
+    font-family: var(--app-font-mono);
   }
 
   @media (max-width: 600px) {
-    .card { flex-direction: column; }
-    .logo-panel { flex: 0 0 auto; padding: 24px; border-right: none; border-bottom: 3px solid var(--kts-blue); }
+    .card { flex-direction: column; min-height: auto; }
+    .logo-panel { flex: 0 0 auto; padding: 24px; border-right: none; border-bottom: 3px solid var(--kts-blue); flex-direction: row; gap: 14px; justify-content: flex-start; }
+    .logo-mark { margin-bottom: 0; width: 44px; height: 44px; border-radius: 11px; }
+    .logo-text { text-align: left; }
+    .logo-text br { display: none; }
+    .form-panel { padding: 24px; }
   }
 </style>
 </head>
@@ -141,6 +199,13 @@
   <div class="container">
     <div class="card">
       <div class="logo-panel">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7l9-4 9 4-9 4-9-4z"/>
+            <path d="M3 12l9 4 9-4"/>
+            <path d="M3 17l9 4 9-4"/>
+          </svg>
+        </div>
         <div class="logo-text">Kuijpers<br>Technical<br>Services</div>
       </div>
 
@@ -156,8 +221,8 @@
           </button>
         </div>
 
-        <div class="welkom-line" id="welkomLine">KTS Uren App</div>
-        <div class="welkom-title">Welkom terug</div>
+        <div class="label-line" id="labelLine">KTS Uren App</div>
+        <div class="title">Welkom terug</div>
 
         <form onsubmit="event.preventDefault()">
           <div class="form-row">
@@ -176,7 +241,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn-primary" id="loginBtn">Inloggen</button>
+          <button type="submit" class="btn-primary">Inloggen</button>
           <a href="#" class="forgot" onclick="event.preventDefault()">Wachtwoord vergeten?</a>
         </form>
       </div>
@@ -187,20 +252,10 @@
 
 <script>
   function switchApp(btn, app) {
-    document.querySelectorAll('.app-toggle button').forEach(b => b.classList.remove('active', 'inspectie'));
+    document.querySelectorAll('.app-toggle button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    const welkomLine = document.getElementById('welkomLine');
-    const loginBtn = document.getElementById('loginBtn');
-    if (app === 'inspectie') {
-      btn.classList.add('inspectie');
-      welkomLine.classList.add('inspectie');
-      welkomLine.textContent = 'KTS Inspectie App';
-      loginBtn.classList.add('inspectie');
-    } else {
-      welkomLine.classList.remove('inspectie');
-      welkomLine.textContent = 'KTS Uren App';
-      loginBtn.classList.remove('inspectie');
-    }
+    document.getElementById('labelLine').textContent =
+      (app === 'inspectie') ? 'KTS Inspectie App' : 'KTS Uren App';
   }
 </script>
 </body>
