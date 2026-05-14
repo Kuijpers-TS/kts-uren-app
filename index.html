@@ -4955,7 +4955,10 @@
             <div id="admin-gebruikers" style="display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Actieve gebruikers</div>
-                    <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer"><input type="checkbox" id="admin-show-archived-users" onchange="loadAdminData('gebruikers')" style="width:14px;height:14px"> Toon gearchiveerd</label>
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--app-ink-700);white-space:nowrap;cursor:pointer;padding:5px 10px;border:1px solid var(--app-line);border-radius:8px;background:var(--app-bg-tint);transition:background 150ms,border-color 150ms">
+                        <input type="checkbox" id="admin-show-archived-users" onchange="loadAdminData('gebruikers')" style="width:14px;height:14px;accent-color:var(--kts-blue);cursor:pointer">
+                        <span>🔒 Toon afgesloten <span id="admin-archived-count" style="opacity:0.7"></span></span>
+                    </label>
                 </div>
                 <div id="admin-user-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
@@ -11827,11 +11830,20 @@
             const { data: appUsers } = await sb.from('users').select('*').order('name');
             window._adminUsers = appUsers || [];
             const userList = document.getElementById('admin-user-list');
-            // Toggle "Toon ook gearchiveerd" bepaalt of archived users meegenomen worden.
+            // Toggle "Toon afgesloten" bepaalt of afgesloten users meegenomen worden.
             // Gepauzeerde gebruikers altijd tonen in de beheer-lijst (anders kan admin
             // ze niet weer activeren); voor andere screens worden ze wel verborgen.
             const showArchivedUsers = document.getElementById('admin-show-archived-users')?.checked || false;
             const filteredUsers = getFilteredUsers({ includeArchived: showArchivedUsers, includePaused: true });
+
+            // Tel afgesloten users in dezelfde test/productie-modus zodat de toggle
+            // toont "🔒 Toon afgesloten (3)" — admin ziet hoeveel er te heractiveren zijn.
+            const archivedCount = (window._adminUsers || []).filter(u => {
+                if (_adminTestMode ? u.is_test !== true : u.is_test === true) return false;
+                return !!u.archived_at;
+            }).length;
+            const countEl = document.getElementById('admin-archived-count');
+            if (countEl) countEl.textContent = archivedCount > 0 ? `(${archivedCount})` : '';
             if (filteredUsers && filteredUsers.length > 0) {
                 userList.innerHTML = filteredUsers.map((u) => {
                     const idx = (window._adminUsers || []).indexOf(u);
