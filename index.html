@@ -4817,7 +4817,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
                         </div>
                         <div class="app-tile-title">Inkooporders</div>
-                        <div class="app-tile-meta">IO's genereren</div>
+                        <div class="app-tile-meta">Inkooporders genereren</div>
                     </button>
                     <button class="admin-tile app-tile" type="button" onclick="switchAdminTab('facturen')">
                         <div class="app-tile-icon">
@@ -5058,8 +5058,8 @@
                         <div>
                             <div style="font-size:0.85rem;font-weight:600;color:#92400e">Factuur zonder inkooporder</div>
                             <div style="font-size:0.7rem;color:#92400e;opacity:0.85;margin-top:2px;line-height:1.4">
-                                Voor wanneer de onderaannemer zelf factureert en KTS dus geen IO heeft uitgestuurd.
-                                Basis: alle verstuurde/goedgekeurde weekstaten van die maand i.p.v. IO-weken.
+                                Voor wanneer de onderaannemer zelf factureert en KTS dus geen inkooporder heeft uitgestuurd.
+                                Basis: alle verstuurde/goedgekeurde weekstaten van die maand i.p.v. inkooporder-weken.
                             </div>
                         </div>
                     </label>
@@ -7081,7 +7081,7 @@
             });
 
             csv += '\n\nINKOOPORDERS (KTS → ZZP)\n';
-            csv += 'IO Nummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
+            csv += 'Inkoopordernummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
             pos.forEach(p => {
                 csv += `${p.number};${p.description || ''};${escapeHtml(p.client_name || '')};${p.weeks || ''};${(p.amount_excl_btw||0).toFixed(2).replace('.',',')};${p.document_date || ''};${p.status || ''}\n`;
             });
@@ -9334,7 +9334,7 @@
 
                 // Inkooporder pill
                 const ioPill = inkooporderWeken.has(wn)
-                    ? `<span class="app-pill is-info" style="margin-left:4px"><span class="app-pdot"></span>IO</span>`
+                    ? `<span class="app-pill is-info" style="margin-left:4px"><span class="app-pdot"></span>Inkooporder</span>`
                     : '';
 
                 // Uren tekst
@@ -9582,7 +9582,7 @@
                     <div style="display:flex;justify-content:flex-end;gap:24px;font-size:0.8rem;margin:12px 0;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
                         <div><span style="font-weight:700">PROJECT</span> ${io.projectCode}</div>
                         <div><span style="font-weight:700">DATUM</span> ${io.date}</div>
-                        <div><span style="font-weight:700">IO-NR</span> ${io.id}</div>
+                        <div><span style="font-weight:700">INKOOPORDER-NR</span> ${io.id}</div>
                     </div>
 
                     <!-- LEVERANCIER + LEVERADRES -->
@@ -11386,7 +11386,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" style="${openWeeks.length > 0 ? 'color:#f59e0b' : 'color:#10b981'}">${openWeeks.length}</div>
-                    <div class="stat-label">Weken zonder IO</div>
+                    <div class="stat-label">Weken zonder inkooporder</div>
                 </div>
             `;
         }
@@ -11591,15 +11591,15 @@
                 weekNums.forEach(wn => {
                     const w = g.weeks[wn];
                     if (w.opPO) {
-                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#dbeafe;color:#1e40af;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: op IO">📋</span>`;
+                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#dbeafe;color:#1e40af;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: op inkooporder">📋</span>`;
                     } else {
-                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: verstuurd, nog geen IO">${wn}</span>`;
+                        weekDots += `<span style="display:inline-block;width:22px;height:22px;border-radius:4px;background:#d1fae5;color:#059669;font-size:0.6rem;text-align:center;line-height:22px;font-weight:700" title="Week ${wn}: verstuurd, nog geen inkooporder">${wn}</span>`;
                     }
                 });
 
                 const openCount = weekNums.filter(wn => !g.weeks[wn].opPO).length;
                 const statusText = openCount === 0
-                    ? '<span style="color:#10b981;font-size:0.65rem">Alle weken op IO</span>'
+                    ? '<span style="color:#10b981;font-size:0.65rem">Alle weken op inkooporder</span>'
                     : `<span style="color:#f59e0b;font-size:0.65rem">${openCount} ${openCount === 1 ? 'week' : 'weken'} nog open</span>`;
 
                 html += `<div style="padding:8px 0;border-bottom:1px solid #f1f5f9">
@@ -12019,7 +12019,7 @@
             // Markeer ALLE weken van deze IO (combi-IO heeft meerdere rijen met zelfde io_number)
             const { error } = await sb.from('inkooporder_weeks').update(updates).eq('io_number', ioNumber);
             if (error) { showToast('❌ ' + error.message); return; }
-            showToast(paid ? `✓ IO ${ioNumber} → betaald` : `↩ IO ${ioNumber} → open`);
+            showToast(paid ? `✓ Inkooporder ${ioNumber} → betaald` : `↩ Inkooporder ${ioNumber} → open`);
             loadInkooporders();
         }
 
@@ -12108,9 +12108,9 @@
 
                 if (!ioList || ioList.length === 0) {
                     const leegMsg = _ioFilter.status === 'paid'
-                        ? 'Nog geen betaalde IO\'s in archief'
+                        ? 'Nog geen betaalde inkooporders in archief'
                         : _ioFilter.status === 'open'
-                            ? 'Geen open IO\'s — alles is betaald 🎉'
+                            ? 'Geen open inkooporders — alles is betaald 🎉'
                             : 'Nog geen inkooporders gegenereerd';
                     listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">${leegMsg}</div>`;
                     return;
@@ -12239,7 +12239,7 @@
         }
 
         async function adminDeleteIO(ioNumber) {
-            if (!await confirmAsync(`Inkooporder "${ioNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een IO gezet worden.`, true)) return;
+            if (!await confirmAsync(`Inkooporder "${ioNumber}" verwijderen?\n\nDe weken worden weer vrijgegeven en kunnen opnieuw op een inkooporder gezet worden.`, true)) return;
             const sb = getSupabase();
             if (!sb) return;
             try {
@@ -12387,7 +12387,7 @@
                     ? `⚠️ Geen verstuurde weekstaten gevonden voor deze ${subj} combinatie.<br>
                        <span style="font-size:0.8rem;color:var(--muted)">De medewerker moet eerst zijn weekstaten ondertekenen & versturen.</span>`
                     : `⚠️ Er ${isCombi ? 'zijn' : 'is'} nog geen inkooporder${isCombi ? 's' : ''} verstuurd voor deze ${subj} combinatie.<br>
-                       <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst de IO('s), of vink "Factuur zonder inkooporder" aan als de onderaannemer zelf factureert.</span>`;
+                       <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst de inkooporder(s), of vink "Factuur zonder inkooporder" aan als de onderaannemer zelf factureert.</span>`;
                 content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">${msg}</div>`;
                 preview.style.display = 'block';
                 return;
@@ -14469,7 +14469,7 @@
                         </select>
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">Facturen worden naar dit bedrijf gestuurd</div>
                     </div>
-                    <div class="form-group" style="margin-bottom:12px"><label>📋 IO-ontvanger <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(opdrachtnemer / tussenpersoon)</span></label>
+                    <div class="form-group" style="margin-bottom:12px"><label>📋 Inkooporder-ontvanger <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(opdrachtnemer / tussenpersoon)</span></label>
                         <select id="adm-proj-io-company" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem">
                             <option value="">— Zelfde als factuur-ontvanger —</option>
                         </select>
@@ -15145,7 +15145,7 @@
                     ? ['name','contact_name','type','kvk_number','btw_number','address','postcode','city','country','phone','email','email_po']
                     : ['project_code','name','client_name','location','default_description','default_location','start_date','status'];
                 const dbLabels = type === 'persoon'
-                    ? ['Naam*','Contactpersoon','Type','KvK','BTW','Adres','Postcode','Stad','Land','Telefoon','E-mail','E-mail IO']
+                    ? ['Naam*','Contactpersoon','Type','KvK','BTW','Adres','Postcode','Stad','Land','Telefoon','E-mail','E-mail Inkooporder']
                     : ['Code*','Naam*','Klant','Locatie','Omschrijving','Standaard locatie','Startdatum','Status'];
 
                 let html = '<div style="font-size:0.8rem;margin-bottom:10px;color:#666">Gevonden: <b>' + rows.length + '</b> rijen in "' + sheetName + '"</div>';
@@ -15588,7 +15588,7 @@
                 `PII verwijderen van "${userName}"?\n\n` +
                 `Naam, e-mail, telefoon, adres, KvK, BTW en IBAN worden gewist.\n` +
                 `De gebruiker-ID blijft bestaan zodat fiscale referenties\n` +
-                `(facturen, IO's, weekstaten) traceerbaar blijven.\n\n` +
+                `(facturen, inkooporders, weekstaten) traceerbaar blijven.\n\n` +
                 `Deze actie is niet ongedaan te maken.`,
                 true
             );
@@ -15622,7 +15622,7 @@
         }
 
         async function adminDeleteWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
-            if (!await confirmAsync(`Weekstaat verwijderen?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDit verwijdert de weekstatus, time entries en eventuele IO-koppelingen voor deze week.`, true)) return;
+            if (!await confirmAsync(`Weekstaat verwijderen?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDit verwijdert de weekstatus, time entries en eventuele inkooporder-koppelingen voor deze week.`, true)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             try {
