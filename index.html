@@ -126,21 +126,41 @@
         }
 
         /* ===== ADMIN TILES (mobile-friendly hover) ===== */
+        /* Admin tegels in website-stijl met accent-strook hover (PDF p.73) */
         .admin-tile {
             background: var(--app-surface);
-            border-radius: 14px;
+            border-radius: 10px;
             padding: 18px 14px;
             cursor: pointer;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-            border: 2px solid transparent;
-            transition: all 0.15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border: 1px solid var(--app-line);
+            transition: transform 250ms ease, box-shadow 250ms ease, border-color 250ms ease;
             display: flex;
             align-items: center;
             gap: 12px;
-            -webkit-tap-highlight-color: rgba(0,100,200,0.1);
+            position: relative;
+            overflow: hidden;
         }
-        .admin-tile:active { border-color: var(--kts-blue); transform: scale(0.98); }
-        @media (hover: hover) { .admin-tile:hover { border-color: var(--kts-blue); } }
+        .admin-tile::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 2px; height: 0;
+            background: var(--kts-accent-light);
+            transition: height 350ms ease;
+        }
+        .admin-tile:active {
+            transform: scale(0.98);
+            border-color: var(--kts-accent-light);
+        }
+        @media (hover: hover) {
+            .admin-tile:hover {
+                transform: translateY(-3px);
+                border-color: rgba(58, 156, 197, 0.3);
+                box-shadow: 0 12px 28px rgba(7, 86, 127, 0.12);
+            }
+            .admin-tile:hover::before { height: 100%; }
+        }
 
         /* ===== WATERMERK ===== */
         .watermark {
@@ -420,18 +440,47 @@
             gap: 10px;
             margin-bottom: 16px;
         }
+        /* Stat-cards in website-stijl: accent-strook hover (PDF p.73 — "minder
+           template-truc"), subtiele lift, accent-light voor het cijfer dat de
+           website-eyebrow stijl matcht. */
         .stat-card {
             background: var(--app-surface);
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--app-line);
+            border-radius: 10px;
+            padding: 18px 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: transform 250ms ease, box-shadow 250ms ease, border-color 250ms ease;
         }
-        .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--kts-blue); }
-        .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
-        .stat-card.highlight { background: var(--kts-blue); }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 2px; height: 0;
+            background: var(--kts-accent-light);
+            transition: height 350ms ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(7, 86, 127, 0.10);
+            border-color: rgba(58, 156, 197, 0.25);
+        }
+        .stat-card:hover::before { height: 100%; }
+        .stat-value { font-size: 1.65rem; font-weight: 800; color: var(--kts-blue); letter-spacing: -0.01em; }
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--kts-accent-light);
+            margin-top: 4px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .stat-card.highlight { background: var(--kts-blue); border-color: var(--kts-blue); }
         .stat-card.highlight .stat-value { color: white; }
-        .stat-card.highlight .stat-label { color: rgba(255,255,255,0.7); }
+        .stat-card.highlight .stat-label { color: rgba(255,255,255,0.8); }
+        .stat-card.highlight::before { background: var(--kts-accent-light); }
 
         /* ===== STATUS BADGES ===== */
         .status-badge {
