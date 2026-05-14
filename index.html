@@ -4008,6 +4008,72 @@
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
 
+/* ---------- 17b. ARCHIEF FILTER BAR (admin lijsten) ------------------------ */
+.archief-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--app-bg-tint);
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+}
+.archief-tabs {
+  display: flex;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.archief-tab {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--app-ink-500);
+  transition: all 140ms ease;
+}
+.archief-tab:hover { color: var(--app-ink-700); }
+.archief-tab.active {
+  background: var(--kts-blue);
+  color: white;
+}
+.archief-year {
+  margin-left: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 8px;
+  background: var(--app-surface);
+  font-family: var(--app-font-sans);
+  font-size: 12.5px;
+  color: var(--app-ink-900);
+  cursor: pointer;
+}
+.archief-year:focus { outline: none; border-color: var(--kts-blue); }
+.archief-paid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--app-ok-soft);
+  color: var(--app-ok);
+  border: 1px solid var(--app-ok-line);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* ---------- 18a. LOGIN APP TOGGLE (KTS Uren / KTS Inspectie) ---------------- */
 .login-app-toggle {
   display: flex;
@@ -4939,6 +5005,16 @@
 
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Gegenereerde inkooporders</div>
+                    <div class="archief-filter-bar" id="io-filter-bar">
+                        <div class="archief-tabs" role="tablist">
+                            <button class="archief-tab active" data-io-status="open" onclick="setIoFilter('open')">Open</button>
+                            <button class="archief-tab" data-io-status="paid" onclick="setIoFilter('paid')">Betaald</button>
+                            <button class="archief-tab" data-io-status="all" onclick="setIoFilter('all')">Alles</button>
+                        </div>
+                        <select id="io-year-filter" class="archief-year" onchange="setIoYearFilter(this.value)">
+                            <option value="">Alle jaren</option>
+                        </select>
+                    </div>
                     <div id="io-list" style="display:flex;flex-direction:column;gap:6px">
                         <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
                     </div>
@@ -5005,6 +5081,16 @@
 
                 <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:16px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:10px">Gegenereerde facturen</div>
+                    <div class="archief-filter-bar" id="inv-filter-bar">
+                        <div class="archief-tabs" role="tablist">
+                            <button class="archief-tab active" data-inv-status="open" onclick="setInvFilter('open')">Open</button>
+                            <button class="archief-tab" data-inv-status="paid" onclick="setInvFilter('paid')">Betaald</button>
+                            <button class="archief-tab" data-inv-status="all" onclick="setInvFilter('all')">Alles</button>
+                        </div>
+                        <select id="inv-year-filter" class="archief-year" onchange="setInvYearFilter(this.value)">
+                            <option value="">Alle jaren</option>
+                        </select>
+                    </div>
                     <div id="inv-list" style="display:flex;flex-direction:column;gap:6px">
                         <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>
                     </div>
@@ -5064,6 +5150,11 @@
                 <div id="admin-weekstaten-concept" style="margin-bottom:16px"></div>
                 <!-- Verstuurde weekstaten -->
                 <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:8px">Verstuurde weekstaten</div>
+                <div class="archief-filter-bar" id="ws-filter-bar" style="background:transparent;border:none;padding:0;margin-bottom:8px">
+                    <select id="ws-year-filter" class="archief-year" onchange="setWsYearFilter(this.value)" style="margin-left:0">
+                        <option value="">Alle jaren</option>
+                    </select>
+                </div>
                 <div id="admin-weekstaten-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -11905,6 +11996,33 @@
             }
         }
 
+        // ===== Archief-filter state voor inkooporders =====
+        let _ioFilter = { status: 'open', year: String(new Date().getFullYear()) };
+        function setIoFilter(status) {
+            _ioFilter.status = status;
+            document.querySelectorAll('[data-io-status]').forEach(b => {
+                b.classList.toggle('active', b.dataset.ioStatus === status);
+            });
+            loadInkooporders();
+        }
+        function setIoYearFilter(year) {
+            _ioFilter.year = year || '';
+            loadInkooporders();
+        }
+
+        async function adminMarkIoPaid(ioNumber, paid) {
+            const sb = getSupabase();
+            if (!sb) return;
+            const updates = paid
+                ? { paid_at: new Date().toISOString(), paid_by: currentUser?.id || null }
+                : { paid_at: null, paid_by: null };
+            // Markeer ALLE weken van deze IO (combi-IO heeft meerdere rijen met zelfde io_number)
+            const { error } = await sb.from('inkooporder_weeks').update(updates).eq('io_number', ioNumber);
+            if (error) { showToast('❌ ' + error.message); return; }
+            showToast(paid ? `✓ IO ${ioNumber} → betaald` : `↩ IO ${ioNumber} → open`);
+            loadInkooporders();
+        }
+
         async function loadInkooporders() {
             const sb = getSupabase();
             if (!sb) return;
@@ -11915,10 +12033,17 @@
             try {
                 // Haal inkooporder records op uit inkooporder_weeks (gegroepeerd per io_number).
                 // storage_path is sinds mei 2026 expliciet opgeslagen — voor oude IO's NULL.
+                // paid_at is sinds mei 2026 beschikbaar (archief-filter).
                 let ioWeeks, ioErr;
                 ({ data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
-                    .select('io_number, user_id, project_id, year, month, week_number, created_at, storage_path')
+                    .select('io_number, user_id, project_id, year, month, week_number, created_at, storage_path, paid_at')
                     .order('created_at', { ascending: false }));
+                // Fallback voor oude DB zonder paid_at kolom
+                if (ioErr && /paid_at/.test(ioErr.message || '')) {
+                    ({ data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
+                        .select('io_number, user_id, project_id, year, month, week_number, created_at, storage_path')
+                        .order('created_at', { ascending: false }));
+                }
                 // Fallback voor oude DB zonder storage_path kolom
                 if (ioErr && /storage_path/.test(ioErr.message || '')) {
                     ({ data: ioWeeks, error: ioErr } = await sb.from('inkooporder_weeks')
@@ -11932,12 +12057,7 @@
                 const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
                 const filteredPOWeeks = (ioWeeks || []).filter(pw => filteredUserIds.has(pw.user_id));
 
-                if (!filteredPOWeeks || filteredPOWeeks.length === 0) {
-                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen inkooporders gegenereerd</div>';
-                    return;
-                }
-
-                // Groepeer per io_number — pak één storage_path per groep
+                // Groepeer per io_number — pak één storage_path/paid_at per groep
                 const ioMap = {};
                 filteredPOWeeks.forEach(pw => {
                     if (!ioMap[pw.io_number]) {
@@ -11949,6 +12069,7 @@
                             month: pw.month,
                             weeks: [],
                             storage_path: pw.storage_path || null,
+                            paid_at: pw.paid_at || null,
                             created_at: pw.created_at
                         };
                     }
@@ -11956,9 +12077,44 @@
                     if (!ioMap[pw.io_number].storage_path && pw.storage_path) {
                         ioMap[pw.io_number].storage_path = pw.storage_path;
                     }
+                    // IO geldt als betaald zodra ALLE weken paid_at hebben
+                    if (!pw.paid_at) ioMap[pw.io_number].paid_at = null;
                 });
 
-                const ioList = Object.values(ioMap).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                let ioList = Object.values(ioMap).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                // Vul jaar-dropdown op basis van wat in DB zit
+                const yearsInData = [...new Set(ioList.map(i => i.year).filter(Boolean))].sort((a,b) => b-a);
+                const yearSel = document.getElementById('io-year-filter');
+                if (yearSel) {
+                    const currentVal = _ioFilter.year;
+                    const yearOpts = ['<option value="">Alle jaren</option>'].concat(
+                        yearsInData.map(y => `<option value="${y}"${String(y) === currentVal ? ' selected' : ''}>${y}</option>`)
+                    );
+                    yearSel.innerHTML = yearOpts.join('');
+                    if (currentVal && !yearsInData.includes(parseInt(currentVal))) {
+                        yearSel.value = '';
+                        _ioFilter.year = '';
+                    } else {
+                        yearSel.value = currentVal;
+                    }
+                }
+
+                // Filter op archief-status
+                if (_ioFilter.status === 'open')   ioList = ioList.filter(io => !io.paid_at);
+                if (_ioFilter.status === 'paid')   ioList = ioList.filter(io =>  io.paid_at);
+                // Filter op jaar
+                if (_ioFilter.year) ioList = ioList.filter(io => String(io.year) === _ioFilter.year);
+
+                if (!ioList || ioList.length === 0) {
+                    const leegMsg = _ioFilter.status === 'paid'
+                        ? 'Nog geen betaalde IO\'s in archief'
+                        : _ioFilter.status === 'open'
+                            ? 'Geen open IO\'s — alles is betaald 🎉'
+                            : 'Nog geen inkooporders gegenereerd';
+                    listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">${leegMsg}</div>`;
+                    return;
+                }
 
                 // Haal namen op voor weergave
                 const userMap = {};
@@ -11979,17 +12135,26 @@
                     // Oud format: io_number.replace(/\s+/g, '_') + '.pdf'
                     const storagePath = io.storage_path
                         || `${io.year}/${projCode}/${(io.io_number || '').replace(/\s+/g, '_')}.pdf`;
+                    const isPaid = !!io.paid_at;
+                    const paidBadge = isPaid
+                        ? `<span class="archief-paid-badge" title="Betaald op ${new Date(io.paid_at).toLocaleDateString('nl-NL')}">✓ Betaald</span>`
+                        : '';
+                    const safeIo = io.io_number.replace(/'/g, "\\'");
+                    const paidBtn = isPaid
+                        ? `<button onclick="adminMarkIoPaid('${safeIo}', false)" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-bg-tint);color:var(--app-ink-700);border:1px solid var(--app-line)" title="Markeer als open">↩</button>`
+                        : `<button onclick="adminMarkIoPaid('${safeIo}', true)" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Markeer als betaald">✓</button>`;
 
                     return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                         <div style="flex:1;min-width:0">
-                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${io.io_number}</div>
+                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${io.io_number} ${paidBadge}</div>
                             <div style="font-size:0.75rem;color:var(--muted)">${userName} · ${projLabel}</div>
                             <div style="font-size:0.7rem;color:var(--muted)">Week ${wekenTekst} · ${maandTekst} · ${datumTekst}</div>
                         </div>
                         <div style="display:flex;gap:4px;align-items:center">
-                            <button onclick="mailInkooporder('${storagePath}','${io.io_number.replace(/'/g, "\\'")}','${io.user_id}','${io.project_id}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Mailen naar opdrachtnemer">📧</button>
+                            ${paidBtn}
+                            <button onclick="mailInkooporder('${storagePath}','${safeIo}','${io.user_id}','${io.project_id}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0" title="Mailen naar opdrachtnemer">📧</button>
                             <button onclick="downloadInkooporder('${storagePath}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
-                            <button onclick="adminDeleteIO('${io.io_number.replace(/'/g, "\\'")}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
+                            <button onclick="adminDeleteIO('${safeIo}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -13240,6 +13405,33 @@
             }
         }
 
+        // ===== Archief-filter state voor facturen =====
+        // status: 'open' | 'paid' | 'all'   year: '' (alle) of jaartal als string
+        let _invFilter = { status: 'open', year: String(new Date().getFullYear()) };
+        function setInvFilter(status) {
+            _invFilter.status = status;
+            document.querySelectorAll('[data-inv-status]').forEach(b => {
+                b.classList.toggle('active', b.dataset.invStatus === status);
+            });
+            loadInvoices();
+        }
+        function setInvYearFilter(year) {
+            _invFilter.year = year || '';
+            loadInvoices();
+        }
+
+        async function adminMarkInvoicePaid(id, number, paid) {
+            const sb = getSupabase();
+            if (!sb) return;
+            const updates = paid
+                ? { paid_at: new Date().toISOString(), paid_by: currentUser?.id || null }
+                : { paid_at: null, paid_by: null };
+            const { error } = await sb.from('invoices').update(updates).eq('id', id);
+            if (error) { showToast('❌ ' + error.message); return; }
+            showToast(paid ? `✓ Factuur ${number} → betaald` : `↩ Factuur ${number} → open`);
+            loadInvoices();
+        }
+
         async function loadInvoices() {
             const sb = getSupabase();
             if (!sb) return;
@@ -13257,14 +13449,43 @@
                 // Filter op test/productie modus — combi-factuur (user_ids) telt mee als
                 // ten minste één van zijn users in het filter zit
                 const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
-                const filteredInvoices = (invoices || []).filter(inv => {
+                let filteredInvoices = (invoices || []).filter(inv => {
                     if (inv.user_id && filteredUserIds.has(inv.user_id)) return true;
                     if (Array.isArray(inv.user_ids) && inv.user_ids.some(uid => filteredUserIds.has(uid))) return true;
                     return false;
                 });
 
+                // Vul jaar-dropdown op basis van wat in DB zit
+                const yearsInData = [...new Set(filteredInvoices.map(i => i.year).filter(Boolean))].sort((a,b) => b-a);
+                const yearSel = document.getElementById('inv-year-filter');
+                if (yearSel) {
+                    const currentVal = _invFilter.year;
+                    const yearOpts = ['<option value="">Alle jaren</option>'].concat(
+                        yearsInData.map(y => `<option value="${y}"${String(y) === currentVal ? ' selected' : ''}>${y}</option>`)
+                    );
+                    yearSel.innerHTML = yearOpts.join('');
+                    // Restore selection als die nog bestaat, anders fallback
+                    if (currentVal && !yearsInData.includes(parseInt(currentVal))) {
+                        yearSel.value = '';
+                        _invFilter.year = '';
+                    } else {
+                        yearSel.value = currentVal;
+                    }
+                }
+
+                // Filter op archief-status
+                if (_invFilter.status === 'open')   filteredInvoices = filteredInvoices.filter(i => !i.paid_at);
+                if (_invFilter.status === 'paid')   filteredInvoices = filteredInvoices.filter(i =>  i.paid_at);
+                // Filter op jaar
+                if (_invFilter.year) filteredInvoices = filteredInvoices.filter(i => String(i.year) === _invFilter.year);
+
                 if (!filteredInvoices || filteredInvoices.length === 0) {
-                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Nog geen facturen gegenereerd</div>';
+                    const leegMsg = _invFilter.status === 'paid'
+                        ? 'Nog geen betaalde facturen in archief'
+                        : _invFilter.status === 'open'
+                            ? 'Geen open facturen — alles is betaald 🎉'
+                            : 'Nog geen facturen gegenereerd';
+                    listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">${leegMsg}</div>`;
                     return;
                 }
 
@@ -13286,16 +13507,25 @@
                     const projLabel = projMap[inv.project_id] || 'Onbekend';
                     const maandTekst = MONTHS_SHORT[(inv.month || 1) - 1] + ' ' + inv.year;
                     const datumTekst = new Date(inv.created_at).toLocaleDateString('nl-NL');
+                    const isPaid = !!inv.paid_at;
+                    const paidBadge = isPaid
+                        ? `<span class="archief-paid-badge" title="Betaald op ${new Date(inv.paid_at).toLocaleDateString('nl-NL')}">✓ Betaald</span>`
+                        : '';
+                    const safeNumber = inv.invoice_number.replace(/'/g, "\\'");
+                    const paidBtn = isPaid
+                        ? `<button onclick="adminMarkInvoicePaid('${inv.id}', '${safeNumber}', false)" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-bg-tint);color:var(--app-ink-700);border:1px solid var(--app-line)" title="Markeer als open">↩</button>`
+                        : `<button onclick="adminMarkInvoicePaid('${inv.id}', '${safeNumber}', true)" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Markeer als betaald">✓</button>`;
 
                     return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                         <div style="flex:1;min-width:0">
-                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🧾 ${inv.invoice_number}</div>
+                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🧾 ${inv.invoice_number} ${paidBadge}</div>
                             <div style="font-size:0.75rem;color:var(--muted)">${userLabel} · ${projLabel}</div>
                             <div style="font-size:0.7rem;color:var(--muted)">${maandTekst} · ${datumTekst}</div>
                         </div>
                         <div style="display:flex;gap:4px;align-items:center">
+                            ${paidBtn}
                             <button onclick="downloadInvoice('${inv.storage_path}')" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 10px">📄</button>
-                            <button onclick="adminDeleteInvoice('${inv.id}', '${inv.invoice_number.replace(/'/g, "\\'")}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
+                            <button onclick="adminDeleteInvoice('${inv.id}', '${safeNumber}')" class="btn btn-sm" style="white-space:nowrap;padding:6px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -14620,6 +14850,14 @@
         }
 
         // ===== WEEKSTATEN ADMIN =====
+        // Archief-filter state: alleen jaar (geen open/betaald — weekstaten hebben
+        // hun eigen status-flow en worden niet 'betaald').
+        let _wsFilter = { year: String(new Date().getFullYear()) };
+        function setWsYearFilter(year) {
+            _wsFilter.year = year || '';
+            loadWeekstaten();
+        }
+
         async function loadWeekstaten() {
             const sb = getSupabase();
             if (!sb) return;
@@ -14739,10 +14977,33 @@
                 const { data: weekRecords, error: wsErr } = await query;
                 if (wsErr) throw wsErr;
 
-                const filteredRecords = (weekRecords || []).filter(ws => filteredUserIds.has(ws.user_id));
+                let filteredRecords = (weekRecords || []).filter(ws => filteredUserIds.has(ws.user_id));
+
+                // Vul jaar-dropdown op basis van wat in DB zit
+                const yearsInData = [...new Set(filteredRecords.map(r => r.year).filter(Boolean))].sort((a,b) => b-a);
+                const yearSel = document.getElementById('ws-year-filter');
+                if (yearSel) {
+                    const currentVal = _wsFilter.year;
+                    const yearOpts = ['<option value="">Alle jaren</option>'].concat(
+                        yearsInData.map(y => `<option value="${y}"${String(y) === currentVal ? ' selected' : ''}>${y}</option>`)
+                    );
+                    yearSel.innerHTML = yearOpts.join('');
+                    if (currentVal && !yearsInData.includes(parseInt(currentVal))) {
+                        yearSel.value = '';
+                        _wsFilter.year = '';
+                    } else {
+                        yearSel.value = currentVal;
+                    }
+                }
+
+                // Filter op jaar
+                if (_wsFilter.year) filteredRecords = filteredRecords.filter(r => String(r.year) === _wsFilter.year);
 
                 if (!filteredRecords || filteredRecords.length === 0) {
-                    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">Geen verstuurde weekstaten gevonden</div>';
+                    const leegMsg = _wsFilter.year
+                        ? `Geen verstuurde weekstaten in ${_wsFilter.year}`
+                        : 'Geen verstuurde weekstaten gevonden';
+                    listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">${leegMsg}</div>`;
                     return;
                 }
 
