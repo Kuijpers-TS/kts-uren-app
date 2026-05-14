@@ -333,12 +333,24 @@
             border-radius: 8px;
             font-size: 0.85rem;
             font-weight: 600;
-            border: none;
+            border: 1px solid transparent;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 250ms ease, border-color 250ms ease, transform 250ms ease, box-shadow 250ms ease;
+            letter-spacing: 0.3px;
         }
-        .btn-primary { background: var(--kts-blue); color: white; }
-        .btn-primary:hover { background: #064a6d; }
+        /* Primary CTA — bg primary → accent-light on hover + lift (website-stijl) */
+        .btn-primary {
+            background: var(--kts-blue);
+            color: white;
+            border-color: var(--kts-blue);
+        }
+        .btn-primary:hover {
+            background: var(--kts-accent-light);
+            border-color: var(--kts-accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(7, 86, 127, 0.25);
+        }
+        .btn-primary:active { transform: translateY(0); box-shadow: none; }
         .btn-secondary { background: var(--app-bg-deep); color: var(--text); }
         .btn-success { background: var(--green); color: white; }
         .btn-block { width: 100%; }
@@ -2219,11 +2231,24 @@
 .app-btn-primary {
   background: var(--kts-blue);
   color: white;
+  border: 1px solid var(--kts-blue);
   box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.1) inset, 0 1px 2px rgba(7, 86, 127, 0.2);
+  letter-spacing: 0.4px;          /* website-stijl letter-spacing */
+  transition: background 250ms ease, border-color 250ms ease, transform 250ms ease, box-shadow 250ms ease;
 }
-.app-btn-primary:hover:not(:disabled) { background: var(--kts-blue-700); }
+.app-btn-primary:hover:not(:disabled) {
+  background: var(--kts-accent-light);
+  border-color: var(--kts-accent-light);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(7, 86, 127, 0.25);
+}
+.app-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.1) inset;
+}
 .app-btn-primary:disabled {
   background: var(--app-ink-300);
+  border-color: var(--app-ink-300);
   box-shadow: none;
   opacity: 1;
 }
