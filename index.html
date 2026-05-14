@@ -1914,12 +1914,13 @@
    ============================================================================= */
 
 :root {
-  /* --- KTS Brand --- */
-  --kts-blue: #07567F;
-  --kts-blue-700: #044560;
-  --kts-blue-900: #0A1628;
+  /* --- KTS Brand (aligned met website KTS_Huisstijl_RevA.pdf) --- */
+  --kts-blue: #07567F;          /* primary — PMS 7693 C */
+  --kts-blue-700: #043B56;      /* primary-dark — PMS 302 C (donker accent) */
+  --kts-blue-900: #0A1628;      /* primary-darker — PMS 5395 C (hero/footer bg) */
   --kts-blue-50: #EAF2F7;
   --kts-blue-100: #D5E5EE;
+  --kts-accent-light: #3A9CC5;  /* PMS 2191 C — eyebrows/highlights/links — KEY brand kleur */
 
   /* --- Surfaces — warm off-white --- */
   --app-bg: #FAFAF7;
@@ -1994,6 +1995,7 @@
   --kts-blue-900: #BDDDED;
   --kts-blue-50: #1A2F3D;
   --kts-blue-100: #243D4E;
+  --kts-accent-light: #5FB4DC;  /* lichter in dark mode voor contrast op donkere bg */
 
   /* --- Surfaces — cool dark slate --- */
   --app-bg: #0F1419;
@@ -4020,6 +4022,129 @@
 .app-zoom-btn-md  { font-size: 13px; }
 .app-zoom-btn-lg  { font-size: 16px; }
 
+/* ============================================================================
+   17z. KTS WEBSITE-STYLE COMPONENTEN
+   ============================================================================
+   Aligned met kuijpers-ts.nl design system (KTS_Huisstijl_RevA.pdf).
+   Doel: app krijgt dezelfde "vetheid" als de marketing website.
+   - Eyebrow labels boven schermtitels (uppercase, ls 0.04em, accent-light)
+   - Hero-stijl headline met accent-span
+   - Hero gradient + 60px grid-pattern overlay
+   - Buttons in website-stijl (accent bg → transparent hover + lift)
+   - Cards met 2px accent-strook die groeit op hover (PDF p.73)
+*/
+
+/* ----- EYEBROW (kleine uppercase label boven heading) ---------------------- */
+.kts-eyebrow {
+  display: inline-block;
+  color: var(--kts-accent-light);
+  font-family: var(--app-font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+/* ----- HERO HEADING (grote bold met accent-span) ---------------------------- */
+.kts-hero-title {
+  font-family: var(--app-font-sans);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--app-ink-900);
+  margin-bottom: 0.5rem;
+}
+.kts-hero-title .accent { color: var(--kts-accent-light); }
+
+/* ----- HERO GRADIENT BG + GRID PATTERN -------------------------------------- */
+.kts-hero-bg {
+  background: linear-gradient(135deg,
+    var(--kts-blue-900) 0%,
+    var(--kts-blue-700) 40%,
+    var(--kts-blue) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.kts-hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 60px,
+      rgba(255, 255, 255, 0.04) 60px, rgba(255, 255, 255, 0.04) 61px),
+    repeating-linear-gradient(90deg, transparent, transparent 60px,
+      rgba(255, 255, 255, 0.04) 60px, rgba(255, 255, 255, 0.04) 61px);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ----- WEBSITE BUTTONS (accent-light bg → transparent on hover + lift) ------ */
+.kts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 2rem;
+  background: var(--kts-accent-light);
+  color: var(--white, #ffffff);
+  text-decoration: none;
+  font-family: var(--app-font-sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1px solid var(--kts-accent-light);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 250ms ease;
+  letter-spacing: 0.5px;
+  font-feature-settings: 'kern';
+}
+.kts-btn:hover {
+  background: transparent;
+  border-color: #ffffff;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(7, 86, 127, 0.25);
+}
+.kts-btn:active { transform: translateY(0); }
+.kts-btn-ghost {
+  background: transparent;
+  color: var(--kts-accent-light);
+}
+.kts-btn-ghost:hover {
+  background: var(--kts-accent-light);
+  color: #ffffff;
+  border-color: var(--kts-accent-light);
+}
+
+/* ----- CARDS MET ACCENT-STROOK (PDF p.73 — subtieler dan dikke borders) ----- */
+.kts-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 250ms ease, box-shadow 250ms ease;
+}
+.kts-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 0;
+  background: var(--kts-accent-light);
+  transition: height 350ms ease;
+}
+.kts-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(7, 86, 127, 0.10);
+}
+.kts-card:hover::before { height: 100%; }
+
+
 /* ---------- 17b. ARCHIEF FILTER BAR (admin lijsten) ------------------------ */
 .archief-filter-bar {
   display: flex;
@@ -4268,19 +4393,11 @@
     </script>
 
     <!-- LOGIN OVERLAY -->
-    <div id="login-overlay" style="
+    <div id="login-overlay" class="kts-hero-bg" style="
         position:fixed;inset:0;z-index:9999;
         display:flex;align-items:center;justify-content:center;
-        background:linear-gradient(135deg, #0A1628 0%, #043B56 40%, #07567F 100%);
         overflow:hidden;
     ">
-        <!-- Subtle pattern overlay -->
-        <div style="position:absolute;inset:0;opacity:0.04;background-image:
-            radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
-            radial-gradient(circle at 80% 20%, white 1px, transparent 1px),
-            radial-gradient(circle at 60% 80%, white 1px, transparent 1px);
-            background-size:60px 60px,80px 80px,90px 90px;
-        "></div>
 
         <div style="position:relative;z-index:1;width:100%;max-width:680px;padding:24px">
             <!-- Login kaart: logo links + formulier rechts -->
@@ -4313,8 +4430,8 @@
                             KTS Inspectie
                         </button>
                     </div>
-                    <div id="login-app-label" style="font-family:var(--app-font-mono);font-size:11px;font-weight:500;color:var(--app-ink-400);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px">KTS Uren App</div>
-                    <div style="font-weight:600;font-size:20px;color:var(--app-ink-900);letter-spacing:-0.005em;margin-bottom:24px">Welkom terug</div>
+                    <div id="login-app-label" class="kts-eyebrow">KTS Uren App</div>
+                    <div class="kts-hero-title" style="font-size:1.65rem;margin-bottom:1.5rem">Welkom <span class="accent">terug</span></div>
 
                     <form onsubmit="event.preventDefault();doLogin()">
                     <div class="app-form-row">
