@@ -102,7 +102,7 @@
 
         /* ===== ADMIN TILES (mobile-friendly hover) ===== */
         .admin-tile {
-            background: white;
+            background: var(--app-surface);
             border-radius: 14px;
             padding: 18px 14px;
             cursor: pointer;
@@ -129,6 +129,12 @@
             opacity: 0.04;
             pointer-events: none;
             z-index: 0;
+            transition: opacity 200ms, filter 200ms;
+        }
+        /* Dark mode: watermerk subtiel blauw tinten + iets meer zichtbaar */
+        [data-theme="dark"] .watermark {
+            opacity: 0.07;
+            filter: brightness(0.6) sepia(1) hue-rotate(155deg) saturate(3);
         }
 
         /* ===== MAIN CONTAINER ===== */
@@ -187,7 +193,7 @@
         }
         .quick-btn {
             padding: 12px;
-            background: white;
+            background: var(--app-surface);
             border: 2px dashed var(--border);
             border-radius: 12px;
             text-align: center;
@@ -204,7 +210,7 @@
 
         /* ===== DAY CARDS ===== */
         .day-card {
-            background: white;
+            background: var(--app-surface);
             border-radius: 14px;
             margin-bottom: 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
@@ -231,7 +237,7 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        .day-badge.km { background: #f1f5f9; color: var(--muted); }
+        .day-badge.km { background: var(--app-bg-deep); color: var(--muted); }
         .day-badge.hotel { background: #eff6ff; color: var(--kts-blue); }
         .day-badge.thuis { background: #f0fdf4; color: #059669; }
 
@@ -264,14 +270,14 @@
             border: 2px solid var(--border);
             border-radius: 10px;
             font-size: 16px;
-            background: #f8fafc;
+            background: var(--app-bg-tint);
             transition: border-color 0.2s;
             min-height: 48px;
         }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
             border-color: var(--kts-blue);
-            background: white;
+            background: var(--app-surface);
             box-shadow: 0 0 0 3px rgba(7,86,127,0.08);
         }
         .form-group textarea { resize: none; height: 60px; }
@@ -288,7 +294,7 @@
         }
         .btn-primary { background: var(--kts-blue); color: white; }
         .btn-primary:hover { background: #064a6d; }
-        .btn-secondary { background: #f1f5f9; color: var(--text); }
+        .btn-secondary { background: var(--app-bg-deep); color: var(--text); }
         .btn-success { background: var(--green); color: white; }
         .btn-block { width: 100%; }
         .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
@@ -297,7 +303,7 @@
 
         /* ===== ENTRY CARDS ===== */
         .entry-card {
-            background: white;
+            background: var(--app-surface);
             border-radius: 12px;
             padding: 14px 16px;
             margin-bottom: 10px;
@@ -310,7 +316,7 @@
 
         /* ===== QUICK ROUTES ===== */
         .quick-routes-section {
-            background: white;
+            background: var(--app-surface);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 16px;
@@ -350,21 +356,21 @@
         }
         .route-btn {
             padding: 10px 12px;
-            background: #f8fafc;
+            background: var(--app-bg-tint);
             border: 1px solid var(--border);
             border-radius: 10px;
             cursor: pointer;
             text-align: left;
             transition: all 0.2s;
         }
-        .route-btn:hover { background: #f1f5f9; border-color: #93c5fd; }
+        .route-btn:hover { background: var(--app-bg-deep); border-color: #93c5fd; }
         .route-btn .route-icon { font-size: 0.75rem; font-weight: 600; color: var(--text); }
         .route-btn .route-name { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
         .route-btn .route-km { font-size: 0.65rem; color: #94a3b8; }
 
         /* ===== WEEK SUMMARY ===== */
         .week-summary {
-            background: white;
+            background: var(--app-surface);
             border-radius: 12px;
             padding: 20px;
             margin-top: 16px;
@@ -390,7 +396,7 @@
             margin-bottom: 16px;
         }
         .stat-card {
-            background: white;
+            background: var(--app-surface);
             border-radius: 12px;
             padding: 16px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -410,7 +416,7 @@
             font-size: 0.7rem;
             font-weight: 600;
         }
-        .status-draft { background: #f1f5f9; color: var(--muted); }
+        .status-draft { background: var(--app-bg-deep); color: var(--muted); }
         .status-saved { background: #fef3c7; color: #d97706; }
         .status-signed { background: #dbeafe; color: #2563eb; }
         .status-submitted { background: #dbeafe; color: #2563eb; }
@@ -440,7 +446,7 @@
         }
         .modal-overlay.active { display: flex; }
         .modal {
-            background: white;
+            background: var(--app-surface);
             border-radius: 20px 20px 0 0;
             width: 100%;
             max-width: 480px;
@@ -524,7 +530,7 @@
             padding: 12px 24px;
             border-radius: 14px;
             border: 2px solid var(--kts-blue);
-            background: white;
+            background: var(--app-surface);
             color: var(--kts-blue);
             font-family: inherit;
             font-size: 0.9rem;
@@ -597,7 +603,7 @@
             left: 0;
             right: 0;
             width: 100%;
-            background: white;
+            background: var(--app-surface);
             border-top: 1px solid var(--border);
             display: flex;
             padding: 6px 0;
@@ -614,7 +620,7 @@
 
         /* ===== ADMINISTRATIE TAB ===== */
         .admin-upload-card {
-            background: white;
+            background: var(--app-surface);
             border-radius: 12px;
             padding: 14px 16px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -646,7 +652,7 @@
         }
 
         .admin-tx-card {
-            background: white;
+            background: var(--app-surface);
             border-radius: 14px;
             padding: 16px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
@@ -686,7 +692,7 @@
             padding: 10px 14px;
             border-radius: 10px;
             border: 2px dashed var(--border);
-            background: #f8fafc;
+            background: var(--app-bg-tint);
             cursor: pointer;
             font-size: 0.85rem;
             width: 100%;
@@ -702,10 +708,10 @@
             border: 2px solid var(--border);
             border-radius: 10px;
             font-size: 0.9rem;
-            background: #f8fafc;
+            background: var(--app-bg-tint);
             min-height: 44px;
         }
-        .admin-search-input:focus { outline: none; border-color: var(--kts-blue); background: white; box-shadow: 0 0 0 3px rgba(7,86,127,0.08); }
+        .admin-search-input:focus { outline: none; border-color: var(--kts-blue); background: var(--app-surface); box-shadow: 0 0 0 3px rgba(7,86,127,0.08); }
 
         .admin-filter-chips {
             display: flex;
@@ -720,7 +726,7 @@
             font-weight: 600;
             cursor: pointer;
             border: 1.5px solid var(--border);
-            background: white;
+            background: var(--app-surface);
             transition: all 0.15s;
         }
         .admin-filter-chip.active { background: var(--kts-blue); color: white; border-color: var(--kts-blue); }
@@ -740,8 +746,8 @@
         @media (hover: hover) { .admin-list-row:hover { filter: brightness(0.97); } }
         .admin-list-row.status-open { background: #fefce8; border-left-color: #eab308; }
         .admin-list-row.status-matched { background: #f0fdf4; border-left-color: #22c55e; }
-        .admin-list-row.status-no_invoice { background: #f8fafc; border-left-color: #94a3b8; }
-        .admin-list-row.status-skipped { background: #f8fafc; border-left-color: #d4d4d8; }
+        .admin-list-row.status-no_invoice { background: var(--app-bg-tint); border-left-color: #94a3b8; }
+        .admin-list-row.status-skipped { background: var(--app-bg-tint); border-left-color: #d4d4d8; }
 
         .admin-stat-card {
             flex: 1;
@@ -803,6 +809,35 @@
           -webkit-font-smoothing: antialiased;
         }
         .insp-module *, .insp-module *::before, .insp-module *::after { box-sizing: border-box; }
+
+        /* ===== Inspecties — DARK MODE tokens ===== */
+        [data-theme="dark"] .insp-module {
+          --insp-bg: #0F1419;
+          --insp-bg-tint: #171C24;
+          --insp-surface: #1E2632;
+          --insp-surface-2: #252D3A;
+          --insp-ink-900: #E8EBF0;
+          --insp-ink-700: #C9CFD9;
+          --insp-ink-500: #9AA3B0;
+          --insp-ink-400: #7A828F;
+          --insp-ink-300: #5C6675;
+          --insp-line: #2D343F;
+          --insp-line-strong: #3D4450;
+          --insp-ok: #6BC58E;
+          --insp-ok-soft: #1A3024;
+          --insp-ok-line: #2E4E3A;
+          --insp-warn: #E0A45C;
+          --insp-warn-soft: #2E2419;
+          --insp-warn-line: #4A3A22;
+          --insp-alert: #E47481;
+          --insp-alert-soft: #2E1A1D;
+          --insp-alert-line: #4A2A2E;
+          --insp-idle: #7A828F;
+          --insp-idle-soft: #1F242D;
+          --insp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.4);
+          --insp-shadow:    0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+          --insp-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.4);
+        }
 
         /* Buttons */
         .insp-btn-primary {
@@ -2363,7 +2398,7 @@
   position: absolute;
   top: 2px; left: 2px;
   width: 18px; height: 18px;
-  background: white;
+  background: var(--app-surface);
   border-radius: 50%;
   transition: transform 200ms ease;
   box-shadow: 0 1px 2px rgba(15, 27, 45, 0.2);
@@ -2429,7 +2464,7 @@
   content: '';
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: white;
+  background: var(--app-surface);
   opacity: 0;
 }
 .app-check.is-checked .app-radio {
@@ -4084,14 +4119,14 @@
         <div style="position:relative;z-index:1;width:100%;max-width:680px;padding:24px">
             <!-- Login kaart: logo links + formulier rechts -->
             <div id="login-card" style="
-                background:white;border-radius:24px;overflow:hidden;
+                background:var(--app-surface);border-radius:24px;overflow:hidden;
                 box-shadow:0 12px 48px rgba(0,0,0,0.2);
                 display:flex;flex-direction:row;min-height:420px;
             ">
                 <!-- Linker paneel: logo -->
                 <div id="login-logo-panel" style="
                     flex:0 0 240px;
-                    background:white;
+                    background:var(--app-surface);
                     display:flex;flex-direction:column;align-items:center;justify-content:center;
                     padding:40px 28px;
                     border-right:3px solid var(--kts-blue);
@@ -4508,7 +4543,7 @@
                     <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:#fef2f2;color:#dc2626;border-color:#fecaca">🔓 Ontkoppelen</button>
                 </div>
                 <!-- Categorie picker -->
-                <div id="admin-category-picker" style="display:none;margin-top:8px;background:white;border-radius:12px;padding:12px;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
+                <div id="admin-category-picker" style="display:none;margin-top:8px;background:var(--app-surface);border-radius:12px;padding:12px;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
                     <div style="font-weight:600;font-size:0.82rem;margin-bottom:8px">Categorie toewijzen:</div>
                     <div id="admin-category-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
                 </div>
@@ -4534,7 +4569,7 @@
                     <h3 style="font-size:0.95rem;font-weight:700;margin:0" id="admin-preview-title">Factuur preview</h3>
                     <button onclick="closeModal('admin-preview-modal')" style="background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
                 </div>
-                <iframe id="admin-preview-iframe" style="flex:1;border:none;border-radius:8px;background:#f1f5f9" title="Factuur preview"></iframe>
+                <iframe id="admin-preview-iframe" style="flex:1;border:none;border-radius:8px;background:var(--app-bg-deep)" title="Factuur preview"></iframe>
             </div>
         </div>
 
@@ -4560,7 +4595,7 @@
                     <span id="env-label" style="font-size:0.7rem;font-weight:700;padding:3px 8px;border-radius:6px;background:#dcfce7;color:#16a34a">PRODUCTIE</span>
                     <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
                         <input type="checkbox" id="admin-test-toggle" onchange="toggleTestMode()" style="opacity:0;width:0;height:0">
-                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:22px;transition:.3s" id="env-slider"><span style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s"></span></span>
+                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:22px;transition:.3s" id="env-slider"><span style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--app-surface);border-radius:50%;transition:.3s"></span></span>
                     </label>
                 </div>
             </div>
@@ -4678,25 +4713,25 @@
                 <div id="dashboard-stats" class="stats-grid" style="margin-bottom:16px"></div>
 
                 <!-- Omzet grafiek -->
-                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                <div style="background:var(--app-surface);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Omzet per maand</div>
                     <canvas id="dashboard-chart" style="width:100%;max-height:200px"></canvas>
                 </div>
 
                 <!-- Sectie B: Medewerkers -->
-                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                <div style="background:var(--app-surface);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Medewerkers</div>
                     <div id="dashboard-medewerkers"></div>
                 </div>
 
                 <!-- Sectie C: Project voortgang -->
-                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                <div style="background:var(--app-surface);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Projecten</div>
                     <div id="dashboard-projecten"></div>
                 </div>
 
                 <!-- Sectie D: PO Status -->
-                <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
+                <div style="background:var(--app-surface);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:10px">Inkooporder status</div>
                     <div id="dashboard-io-status"></div>
                 </div>
@@ -4868,7 +4903,7 @@
                 <div id="inv-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
                     <div id="inv-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
-                    <div style="margin-top:14px;padding:12px;background:white;border:1px solid var(--border);border-radius:8px">
+                    <div style="margin-top:14px;padding:12px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px">
                         <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue);display:block;margin-bottom:4px">Factuurnummer</label>
                         <input type="text" id="inv-custom-number" placeholder="Bijv. 2026-01" style="width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;font-weight:600;box-sizing:border-box">
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Pas het nummer aan als je zelf een andere nummering hanteert</div>
@@ -4890,7 +4925,7 @@
             <!-- ===== ALGEMENE INSTELLINGEN TAB ===== -->
             <div id="admin-bedrijf" style="display:none">
                 <div style="font-weight:600;font-size:0.85rem;color:var(--muted);margin-bottom:12px">Algemene instellingen</div>
-                <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                <div style="background:var(--app-surface);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:12px;display:flex;align-items:center;gap:8px">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                         Opslagmappen (OneDrive)
@@ -5253,7 +5288,7 @@
             <!-- ZZP'er handtekening -->
             <div style="margin-bottom:16px">
                 <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Handtekening ZZP'er <span style="color:var(--red)">*</span></div>
-                <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
+                <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:var(--app-surface)">
                     <canvas id="sig-canvas-zzp" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
                     <button onclick="clearSignature('zzp')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
                 </div>
@@ -5272,7 +5307,7 @@
                         <input type="text" id="sig-client-name" placeholder="Naam opdrachtgever" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
                         <input type="email" id="sig-client-email" placeholder="E-mail" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
                     </div>
-                    <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:white">
+                    <div style="position:relative;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:var(--app-surface)">
                         <canvas id="sig-canvas-client" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
                         <button onclick="clearSignature('client')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.06);border:none;border-radius:6px;padding:4px 10px;font-size:0.7rem;cursor:pointer;color:var(--muted)">Wissen</button>
                     </div>
@@ -6064,7 +6099,7 @@
                 const heenVal = entry.kmHeen || 0;
                 const terugVal = entry.kmTerug || 0;
                 const totKm = heenVal + terugVal;
-                return `<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+                return `<div style="background:var(--app-bg-tint);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
                         <div style="font-size:1.1rem">🚗</div>
                         <div style="font-size:0.75rem;font-weight:600;color:var(--muted)">Kilometers (heen + terug)</div>
@@ -6073,14 +6108,14 @@
                         <div style="flex:1">
                             <div style="font-size:0.65rem;font-weight:600;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">↗ ${heenLabel}</div>
                             <div style="display:flex;align-items:center;gap:6px">
-                                <input type="number" value="${heenVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:white" onchange="updateEntry(${i},'kmHeen',this.value)">
+                                <input type="number" value="${heenVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface)" onchange="updateEntry(${i},'kmHeen',this.value)">
                                 <span style="font-size:0.75rem;color:var(--muted)">km</span>
                             </div>
                         </div>
                         <div style="flex:1">
                             <div style="font-size:0.65rem;font-weight:600;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">↗ ${terugLabel}</div>
                             <div style="display:flex;align-items:center;gap:6px">
-                                <input type="number" value="${terugVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:white" onchange="updateEntry(${i},'kmTerug',this.value)">
+                                <input type="number" value="${terugVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface)" onchange="updateEntry(${i},'kmTerug',this.value)">
                                 <span style="font-size:0.75rem;color:var(--muted)">km</span>
                             </div>
                         </div>
@@ -6089,7 +6124,7 @@
                 </div>`;
             }
             // Geen hotel: enkel km-veld
-            return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--app-bg-tint);border:1px solid var(--border);border-radius:10px">
                 <div style="font-size:1.1rem">🚗</div>
                 <div style="flex:1">
                     <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel; bijv. spullen halen of afspraak)' : ' (retour thuis ↔ project)'}</div>
@@ -6119,26 +6154,26 @@
                     </div>
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                        <div style="background:var(--app-surface);padding:12px;border-radius:10px;text-align:center">
                             <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${fmt(parseFloat(s.total_hours))}</div>
                             <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Uren</div>
                         </div>
-                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                        <div style="background:var(--app-surface);padding:12px;border-radius:10px;text-align:center">
                             <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${(s.total_km || 0).toLocaleString('nl-NL')}</div>
                             <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Kilometers</div>
                         </div>
                         ${s.hotel_nights > 0 ? `
-                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                        <div style="background:var(--app-surface);padding:12px;border-radius:10px;text-align:center">
                             <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${s.hotel_nights}</div>
                             <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Hotelnachten</div>
                         </div>` : ''}
-                        <div style="background:white;padding:12px;border-radius:10px;text-align:center">
+                        <div style="background:var(--app-surface);padding:12px;border-radius:10px;text-align:center">
                             <div style="font-size:1.3rem;font-weight:700;color:var(--kts-blue)">${fmtEuro(parseFloat(s.hourly_rate))}/u</div>
                             <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Tarief</div>
                         </div>
                     </div>
 
-                    <div style="background:white;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px">
+                    <div style="background:var(--app-surface);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px">
                         <div style="display:flex;justify-content:space-between;font-size:0.85rem">
                             <span style="color:var(--muted)">Uren (${fmt(parseFloat(s.total_hours))} × ${fmtEuro(parseFloat(s.hourly_rate))})</span>
                             <span style="font-weight:600">${fmtEuro(hoursAmt)}</span>
@@ -9317,7 +9352,7 @@
             document.getElementById('io-detail').innerHTML = `
                 <button class="btn btn-secondary btn-sm" onclick="closePODetail()" style="margin-bottom:16px">← Terug naar overzicht</button>
 
-                <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:16px">
+                <div style="background:var(--app-surface);border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:16px">
                     <!-- HEADER: KTS + Inkooporder -->
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">
                         <div>
@@ -9366,7 +9401,7 @@
                     </div>
 
                     <!-- PROJECT INFO -->
-                    <div style="font-size:0.8rem;margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:8px">
+                    <div style="font-size:0.8rem;margin-bottom:12px;padding:8px 12px;background:var(--app-bg-tint);border-radius:8px">
                         <span style="font-weight:700">Project:</span> ${io.project}<br>
                         <span style="font-weight:700">Klant:</span> ${io.client} · <span style="font-weight:700">Periode:</span> ${io.period}
                     </div>
@@ -10403,7 +10438,7 @@
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,27,45,0.45);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
                 const box = document.createElement('div');
-                box.style.cssText = 'background:white;border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
+                box.style.cssText = 'background:var(--app-surface);border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
                 const icon = iconSvg || '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>';
                 box.innerHTML = `
                     <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#EAF2F7;margin:0 auto 14px">${icon}</div>
@@ -10411,7 +10446,7 @@
                     <div style="text-align:center;font-size:13px;color:#5C6675;line-height:1.5;margin-bottom:20px">${message}</div>
                     <div style="display:flex;flex-direction:column;gap:8px">
                         <button id="continue-yes" style="padding:12px 20px;border-radius:10px;border:none;background:#07567F;color:white;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit">${confirmLabel}</button>
-                        <button id="continue-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:white;color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">${cancelLabel}</button>
+                        <button id="continue-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:var(--app-surface);color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">${cancelLabel}</button>
                     </div>
                 `;
                 overlay.appendChild(box);
@@ -10431,7 +10466,7 @@
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,27,45,0.45);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
                 const box = document.createElement('div');
-                box.style.cssText = 'background:white;border-radius:14px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
+                box.style.cssText = 'background:var(--app-surface);border-radius:14px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
                 box.innerHTML = `
                     <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#EAF2F7;margin:0 auto 14px">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -10440,7 +10475,7 @@
                     <div style="text-align:center;font-size:13px;color:#5C6675;line-height:1.5;margin-bottom:20px">Wil je deze week direct ondertekenen en versturen?</div>
                     <div style="display:flex;flex-direction:column;gap:8px">
                         <button id="sign-yes" style="padding:12px 20px;border-radius:10px;border:none;background:#07567F;color:white;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit">Ja, onderteken &amp; verstuur</button>
-                        <button id="sign-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:white;color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">Niet nu — doe ik later</button>
+                        <button id="sign-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:var(--app-surface);color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">Niet nu — doe ik later</button>
                     </div>
                 `;
                 overlay.appendChild(box);
@@ -10463,7 +10498,7 @@
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
                 const box = document.createElement('div');
-                box.style.cssText = 'background:white;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+                box.style.cssText = 'background:var(--app-surface);border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
                 const btnColor = destructive ? '#dc2626' : 'var(--kts-blue)';
                 const btnText = destructive ? 'Verwijderen' : 'Bevestigen';
                 box.innerHTML = `
@@ -10490,7 +10525,7 @@
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
                 const box = document.createElement('div');
-                box.style.cssText = 'background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+                box.style.cssText = 'background:var(--app-surface);border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
                 box.innerHTML = `
                     <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:#1e293b;margin-bottom:8px">${title}</div>
                     <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:18px">
@@ -10883,7 +10918,7 @@
                 slider.style.background = '#ccc';
             }
             // Slider bullet positie
-            slider.innerHTML = `<span style="position:absolute;height:16px;width:16px;left:${_adminTestMode ? '20px' : '3px'};bottom:3px;background:white;border-radius:50%;transition:.3s"></span>`;
+            slider.innerHTML = `<span style="position:absolute;height:16px;width:16px;left:${_adminTestMode ? '20px' : '3px'};bottom:3px;background:var(--app-surface);border-radius:50%;transition:.3s"></span>`;
             // Herlaad admin data met nieuwe filter (wacht tot klaar)
             await loadAdminData();
             // Herlaad ook actieve sub-tabs die eigen data hebben
@@ -11229,7 +11264,7 @@
                         } else if (ws && (ws.status === 'opgeslagen' || ws.status === 'ondertekend')) {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#fef3c7;color:#d97706;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
                         } else {
-                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#f1f5f9;color:#94a3b8;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: niet ingevuld">${wn}</span>`;
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-bg-deep);color:#94a3b8;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: niet ingevuld">${wn}</span>`;
                         }
                     }
                     d.setDate(d.getDate() + 1);
@@ -14120,7 +14155,7 @@
                 title = existing ? 'Bedrijf bewerken' : 'Nieuw bedrijf';
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Bedrijfsnaam B.V." value="${existing ? existing.name || '' : ''}"></div>
-                    <div style="margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--border)">
+                    <div style="margin-bottom:12px;padding:10px;background:var(--app-bg-tint);border-radius:10px;border:1px solid var(--border)">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                             <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue)">Contactpersonen</label>
                             <button type="button" class="btn btn-sm" style="padding:3px 10px;font-size:0.7rem" onclick="addExtraContact()">+ Toevoegen</button>
@@ -14850,7 +14885,7 @@
             if (!list) return;
             const row = document.createElement('div');
             row.className = 'extra-contact-row';
-            row.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:10px;padding:10px;background:white;border:1px solid var(--border);border-radius:8px;position:relative';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:10px;padding:10px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px;position:relative';
             row.innerHTML = `
                 <span class="ec-hoofdcontact-label" style="display:none;font-size:0.65rem;font-weight:700;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.5px">Hoofdcontact</span>
                 <button type="button" onclick="this.parentElement.remove();updateHoofdcontactLabel()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.9rem;padding:0" title="Verwijderen">✕</button>
@@ -15285,7 +15320,7 @@
                             <input type="number" id="anw-year" min="2024" max="2030" value="${yearToday}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
                         </div>
                     </div>
-                    <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;padding:10px;background:#f1f5f9;border-radius:8px;line-height:1.4">
+                    <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;padding:10px;background:var(--app-bg-deep);border-radius:8px;line-height:1.4">
                         💡 Na opslaan verschijnt deze in <strong>Concept weekstaten</strong>. Klik daar op ✍️ om te ondertekenen &amp; versturen namens de medewerker.
                     </div>
                 </div>`;
@@ -15474,7 +15509,7 @@
                             // Backwards-compat: oude rijen kunnen 'meals' hebben — map naar 'maaltijd'
                             const eCat = e.cat === 'meals' ? 'maaltijd' : e.cat;
                             return `
-                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:flex;flex-direction:column;gap:6px;padding:6px;background:white;border:1px solid var(--border);border-radius:8px">
+                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:flex;flex-direction:column;gap:6px;padding:6px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px">
                                 <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
                                     <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
                                         ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${eCat === k ? 'selected' : ''}>${v}</option>`).join('')}
@@ -15526,7 +15561,7 @@
             const row = document.createElement('div');
             row.className = 'aew-exp-row';
             // Geen data-exp-id → wordt nieuwe insert bij save
-            row.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:6px;background:white;border:1px solid var(--border);border-radius:8px';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:6px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px';
             row.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
                     <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">${catOptionsHtml}</select>
@@ -18414,7 +18449,7 @@
                             <span>${pct}%</span>
                         </span>
                     </div>
-                    <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden">
+                    <div style="background:var(--app-bg-deep);border-radius:4px;height:8px;overflow:hidden">
                         <div style="height:100%;border-radius:4px;display:flex">
                             <div style="background:#16a34a;width:${totalQ > 0 ? (totalGood / totalQ * 100) : 0}%;transition:width 0.3s"></div>
                             <div style="background:#dc2626;width:${totalQ > 0 ? (totalBad / totalQ * 100) : 0}%;transition:width 0.3s"></div>
@@ -18538,7 +18573,7 @@
             const modal = document.getElementById('admin-modal');
             modal.innerHTML = `
                 <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
-                    <div style="position:sticky;top:-16px;background:white;padding:14px 16px 12px 16px;margin:-16px -16px 12px -16px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:16px">
+                    <div style="position:sticky;top:-16px;background:var(--app-surface);padding:14px 16px 12px 16px;margin:-16px -16px 12px -16px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:16px">
                         <div style="display:flex;align-items:start;gap:12px;margin-bottom:10px">
                             <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
                             <div style="flex:1;min-width:0">
@@ -20420,8 +20455,8 @@
             document.getElementById('admin-list-stats').innerHTML = `
                 <div class="admin-stat-card" style="background:#f0fdf4;color:#16a34a"><span class="stat-num">${stats.matched}</span>Gekoppeld</div>
                 <div class="admin-stat-card" style="background:#fefce8;color:#a16207"><span class="stat-num">${stats.open}</span>Open</div>
-                <div class="admin-stat-card" style="background:#f8fafc;color:#64748b"><span class="stat-num">${stats.no_invoice}</span>Geen fact.</div>
-                <div class="admin-stat-card" style="background:#f8fafc;color:#a1a1aa"><span class="stat-num">${stats.skipped}</span>Overgesl.</div>
+                <div class="admin-stat-card" style="background:var(--app-bg-tint);color:#64748b"><span class="stat-num">${stats.no_invoice}</span>Geen fact.</div>
+                <div class="admin-stat-card" style="background:var(--app-bg-tint);color:#a1a1aa"><span class="stat-num">${stats.skipped}</span>Overgesl.</div>
             `;
 
             // Filter
