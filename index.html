@@ -13018,7 +13018,7 @@
                 { label: 'KTS-projectcode',      value: data.projectCodeKTS },
                 { label: 'Projectnummer klant',  value: data.projectNummer },
                 { label: 'Opdrachtnummer',       value: data.opdrachtNummer },
-                { label: 'PO nummer',            value: data.poNummer }
+                { label: 'Inkoopordernummer',    value: data.poNummer }
             ].filter(r => r.value);
             // Loonheffingen toevoegen als sub-section
             (data.loonheffingen || []).forEach(l => {
@@ -14045,7 +14045,7 @@
                 { label: 'PROJECT',         value: data.project.code },
                 { label: 'SCHEIDINGSTEKEN', value: data.separator },
                 { label: 'DATUM',           value: data.date },
-                { label: 'PO-NUMMER',       value: data.poNumber }
+                { label: 'INKOOPORDER-NR',  value: data.poNumber }
             ];
             infoCells.forEach((c, i) => {
                 const cx = ml + i * infoW;
