@@ -1716,17 +1716,19 @@
 
         /* Inspectie tab containers */
         .insp-page-section { padding: 16px 18px; }
+        /* Eyebrow-stijl gealigneerd met website .section-tag */
         .insp-page-label {
-          font-family: var(--insp-font-mono);
-          font-size: 11px;
-          color: var(--insp-ink-400);
-          letter-spacing: 0.08em;
+          font-family: var(--insp-font-sans);
+          font-size: 0.72rem;
+          color: var(--kts-accent-light);
+          letter-spacing: 0.04em;
           text-transform: uppercase;
           margin-bottom: 10px;
-          font-weight: 500;
+          font-weight: 700;
         }
 
-        /* Template-card (Nieuwe inspectie starten) */
+        /* Template-card (Nieuwe inspectie starten) — website-stijl met
+           accent-light strook hover (PDF p.73) */
         .insp-tpl-card {
           appearance: none;
           width: 100%;
@@ -1741,15 +1743,26 @@
           gap: 12px;
           cursor: pointer;
           box-shadow: var(--insp-shadow-sm);
-          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+          transition: transform 250ms ease, box-shadow 250ms ease, border-color 250ms ease;
           margin-bottom: 10px;
           color: var(--insp-ink-900);
+          position: relative;
+          overflow: hidden;
+        }
+        .insp-tpl-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0;
+          width: 2px; height: 0;
+          background: var(--kts-accent-light);
+          transition: height 350ms ease;
         }
         .insp-tpl-card:hover {
-          transform: translateY(-1px);
-          box-shadow: var(--insp-shadow);
-          border-color: var(--kts-blue);
+          transform: translateY(-3px);
+          box-shadow: 0 12px 28px rgba(7, 86, 127, 0.10);
+          border-color: rgba(58, 156, 197, 0.3);
         }
+        .insp-tpl-card:hover::before { height: 100%; }
         .insp-tpl-icon {
           width: 36px;
           height: 36px;
@@ -3313,7 +3326,11 @@
   letter-spacing: 0.01em;
 }
 .app-navitem.is-active,
-.app-navitem.active { color: var(--kts-blue); font-weight: 500; }
+.app-navitem.active {
+  color: var(--kts-accent-light);
+  font-weight: 600;
+}
+/* Bar wordt website-accent-light + groeit subtiel breder bij active */
 .app-navitem.is-active::after,
 .app-navitem.active::after {
   content: "";
@@ -3322,10 +3339,11 @@
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 22px;
-  height: 2px;
+  width: 28px;
+  height: 3px;
   border-radius: 999px;
-  background: var(--kts-blue);
+  background: var(--kts-accent-light);
+  box-shadow: 0 0 8px rgba(58, 156, 197, 0.4);
 }
 .app-navitem:hover:not(.is-active):not(.active) { color: var(--app-ink-700); }
 .app-nav-badge {
