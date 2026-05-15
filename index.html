@@ -387,6 +387,14 @@
         .btn-success { background: var(--green); color: white; }
         .btn-block { width: 100%; }
         .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+        /* Action-knoppen in beheer-lijsten (icoon-knoppen 📄 📧 ✓ ↩️ 🗑️):
+           subtiele lift + accent-tinted shadow op hover, scale op active.
+           Werkt voor alle .btn-sm met inline background-tokens. */
+        .btn-sm:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(7, 86, 127, 0.18);
+        }
+        .btn-sm:active { transform: translateY(0); box-shadow: none; }
         .form-actions { display: flex; gap: 8px; margin-top: 12px; }
         .form-actions .btn { flex: 1; }
 
@@ -588,7 +596,15 @@
             border-radius: 4px;
             margin: 0 auto 16px;
         }
-        .modal-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; }
+        .modal-title {
+            font-family: 'Daxline Pro', sans-serif;
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -0.005em;
+            line-height: 1.25;
+            margin-bottom: 16px;
+            color: var(--app-ink-900, var(--text));
+        }
 
         .divider {
             display: flex;
@@ -2784,18 +2800,22 @@
   flex-shrink: 0;
 }
 .app-modal-title {
-  font-size: 16px;
-  font-weight: 600;
+  /* Hero-titel stijl voor modals — iets groter en steviger dan voorheen */
+  font-family: var(--app-font-sans);
+  font-size: 1.15rem;
+  font-weight: 800;
   letter-spacing: -0.005em;
   margin: 0;
   color: var(--app-ink-900);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 .app-modal-subtitle {
-  font-family: var(--app-font-mono);
-  font-size: 11px;
-  color: var(--app-ink-400);
-  letter-spacing: 0.05em;
+  /* Eyebrow above modal title — accent-light, ls 0.04em, website-stijl */
+  font-family: var(--app-font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--kts-accent-light);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-bottom: 2px;
 }
@@ -3413,13 +3433,17 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: background 120ms, border-color 120ms;
+  /* Website-stijl: hover → accent-light + subtiele lift */
+  transition: background 250ms ease, border-color 250ms ease, transform 200ms ease, box-shadow 250ms ease;
   flex-shrink: 0;
 }
 .app-week-arrow:hover {
-  background: var(--kts-blue-700);
-  border-color: var(--kts-blue-700);
+  background: var(--kts-accent-light);
+  border-color: var(--kts-accent-light);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(58, 156, 197, 0.25);
 }
+.app-week-arrow:active { transform: translateY(0); box-shadow: none; }
 .app-week-arrow:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -4008,30 +4032,48 @@
 .app-profile-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 20px 16px;
+  gap: 16px;
+  padding: 22px 16px;
   background: var(--app-surface);
   border-bottom: 1px solid var(--app-line);
+  position: relative;
+}
+/* Subtiele accent-light onderlijn — herinnert aan de website hero-tag border */
+.app-profile-header::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: -1px;
+  width: 40px;
+  height: 2px;
+  background: var(--kts-accent-light);
+  opacity: 0.6;
 }
 .app-profile-avatar {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: var(--kts-blue);
+  background: linear-gradient(135deg, var(--kts-blue) 0%, var(--kts-blue-700) 100%);
   color: #fff;
-  font-family: var(--app-font-mono);
-  font-weight: 700;
-  font-size: 18px;
+  font-family: var(--app-font-sans);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: -0.005em;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  /* Accent-light ring eromheen — website-stijl glow */
+  box-shadow: 0 0 0 2px var(--app-surface), 0 0 0 4px var(--kts-accent-light);
+  position: relative;
 }
 .app-profile-info { flex: 1; min-width: 0; }
 .app-profile-name {
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--app-font-sans);
+  font-size: 1.1rem;
+  font-weight: 800;
   color: var(--app-ink-900);
   letter-spacing: -0.005em;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
