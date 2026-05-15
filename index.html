@@ -542,12 +542,14 @@
             font-size: 0.7rem;
             font-weight: 600;
         }
-        .status-draft { background: var(--app-bg-deep); color: var(--muted); }
-        .status-saved { background: #fef3c7; color: #d97706; }
-        .status-signed { background: #dbeafe; color: #2563eb; }
-        .status-submitted { background: #dbeafe; color: #2563eb; }
-        .status-approved { background: #d1fae5; color: #059669; }
-        .status-pending { background: #fef3c7; color: #d97706; }
+        /* Status-pills met token-based kleuren — werkt in light EN dark mode,
+           lineup met website functional colors (safe/warning/critical). */
+        .status-draft     { background: var(--app-idle-soft); color: var(--app-idle); border: 1px solid var(--app-line); }
+        .status-saved     { background: var(--app-warn-soft); color: var(--app-warn); border: 1px solid var(--app-warn-line); }
+        .status-signed    { background: var(--app-info-soft); color: var(--app-info); border: 1px solid var(--app-info-line); }
+        .status-submitted { background: var(--app-info-soft); color: var(--app-info); border: 1px solid var(--app-info-line); }
+        .status-approved  { background: var(--app-ok-soft);   color: var(--app-ok);   border: 1px solid var(--app-ok-line); }
+        .status-pending   { background: var(--app-warn-soft); color: var(--app-warn); border: 1px solid var(--app-warn-line); }
 
         /* ===== LOADING SPINNER ===== */
         .loading-spinner {
@@ -637,19 +639,23 @@
             max-width: calc(100vw - 40px);
         }
         .toast {
-            background: var(--kts-blue);
+            /* Website-stijl: KTS-blauw gradient + accent-light linker strook */
+            background: linear-gradient(135deg, var(--kts-blue) 0%, var(--kts-blue-700) 100%);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 22px 12px 20px;
             border-radius: 12px;
-            font-size: 0.85rem;
+            border-left: 3px solid var(--kts-accent-light);
+            font-size: 0.88rem;
             font-weight: 600;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            letter-spacing: 0.01em;
+            box-shadow: 0 8px 28px rgba(7, 86, 127, 0.35), 0 0 0 1px rgba(255,255,255,0.05);
             opacity: 0;
-            transition: opacity 0.3s;
+            transform: translateY(8px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
             white-space: normal;
             text-align: center;
         }
-        .toast.show { opacity: 1; }
+        .toast.show { opacity: 1; transform: translateY(0); }
 
         /* ===== KLOK IN/UIT ===== */
         .clock-btn-wrap {
@@ -1699,10 +1705,10 @@
           position: absolute;
           top: 14px;
           right: 14px;
-          width: 32px;
-          height: 32px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.9);
+          background: var(--insp-surface);
           backdrop-filter: blur(8px);
           border: 1px solid var(--insp-line);
           cursor: pointer;
@@ -1711,8 +1717,14 @@
           z-index: 10;
           display: grid;
           place-items: center;
+          transition: background 200ms ease, color 200ms ease, border-color 200ms ease, transform 200ms ease;
         }
-        .insp-modal-close:hover { background: var(--insp-surface); }
+        .insp-modal-close:hover {
+          background: var(--kts-accent-light);
+          border-color: var(--kts-accent-light);
+          color: white;
+          transform: rotate(90deg);
+        }
 
         /* Inspectie tab containers */
         .insp-page-section { padding: 16px 18px; }
@@ -5670,8 +5682,14 @@
                 </button>
             </div>
 
-            <div style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#B4BCC7;letter-spacing:0.05em;text-transform:uppercase;padding:8px 16px">
-                KTS Uren App
+            <div style="text-align:center;padding:20px 16px 12px 16px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div class="kts-eyebrow" style="font-size:0.65rem">Kuijpers Technical Services</div>
+                <div style="font-family:var(--app-font-sans);font-size:0.7rem;color:var(--app-ink-400);letter-spacing:0.02em">
+                    KTS Uren App · &copy; 2026 KTS BV
+                </div>
+                <div style="font-family:var(--app-font-sans);font-size:0.6rem;color:var(--app-ink-400);opacity:0.7;margin-top:2px">
+                    KvK 93410557 · Versie <span id="app-version-tag">175</span>
+                </div>
             </div>
         </div>
 
@@ -10435,22 +10453,26 @@
             document.querySelector('.app-content').style.display = 'none';
             document.querySelector('.bottom-nav').style.display = 'none';
 
-            // Maak fullscreen welkomst-overlay
+            // Maak fullscreen welkomst-overlay met hero-stijl (gradient + grid)
             const overlay = document.createElement('div');
             overlay.id = 'welcome-overlay';
-            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
+            overlay.className = 'kts-hero-bg';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
             overlay.innerHTML = `
-                <div style="max-width:420px;width:100%">
+                <div style="max-width:460px;width:100%;position:relative;z-index:1">
+                    <div class="kts-eyebrow" style="color:rgba(255,255,255,0.7);margin-bottom:6px;text-align:center">KTS UREN APP</div>
+                    <div class="kts-hero-title" style="color:white;text-align:center;margin-bottom:24px;font-size:1.8rem">Welkom<span class="accent" style="color:var(--kts-accent-light)">${name ? ', ' + name : ''}</span></div>
                     ${steps.map(s => `
-                        <div style="display:flex;gap:14px;padding:16px;margin-bottom:10px;background:#f0f9ff;border-radius:14px;border:1px solid #bfdbfe">
+                        <div style="display:flex;gap:14px;padding:16px;margin-bottom:10px;background:rgba(255,255,255,0.06);border-radius:12px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(8px);position:relative;overflow:hidden">
+                            <div style="position:absolute;top:0;left:0;width:2px;height:100%;background:var(--kts-accent-light)"></div>
                             <div style="font-size:1.6rem;flex-shrink:0">${s.icon}</div>
                             <div>
-                                <div style="font-weight:700;font-size:0.95rem;color:var(--kts-blue);margin-bottom:3px">${s.title}</div>
-                                <div style="font-size:0.84rem;color:var(--text);line-height:1.45">${s.text}</div>
+                                <div style="font-weight:700;font-size:0.95rem;color:var(--kts-accent-light);margin-bottom:3px;letter-spacing:-0.005em">${s.title}</div>
+                                <div style="font-size:0.84rem;color:rgba(255,255,255,0.85);line-height:1.5">${s.text}</div>
                             </div>
                         </div>
                     `).join('')}
-                    <button class="btn btn-primary btn-block" onclick="dismissWelcomeGuide()" style="margin-top:16px;padding:14px;border-radius:12px;font-size:0.95rem">
+                    <button class="kts-btn" onclick="dismissWelcomeGuide()" style="margin-top:18px;width:100%;justify-content:center;padding:14px">
                         ✓ Begrepen, aan de slag!
                     </button>
                 </div>`;
