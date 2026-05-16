@@ -624,6 +624,9 @@
             z-index: 200;
             align-items: flex-end;
             justify-content: center;
+            /* Houd ruimte vrij voor de bottom-nav (~64px hoog + safe-area)
+               zodat modal-knoppen niet onder de nav-balk verdwijnen op telefoon. */
+            padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
         }
         .modal-overlay.active { display: flex; }
         .modal {
