@@ -2394,6 +2394,53 @@
 }
 
 /* ============================================================================
+   ACCESSIBILITY: keyboard focus-visible globaal
+   ============================================================================
+   Maakt keyboard-navigatie (Tab) zichtbaar zonder muis-klikken te storen.
+   :focus-visible werkt alleen na keyboard-input — muis-clicks niet.
+*/
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--kts-accent-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Voor inputs die al een focus-border hebben: dubbel outline ziet er
+   gek uit. Daar gebruiken we alleen de bestaande focus-styling. */
+.app-input:focus-visible,
+.app-select:focus-visible,
+.app-textarea:focus-visible,
+.admin-search-input:focus-visible {
+  outline: none;
+}
+
+/* Skip-to-content link voor screen reader / keyboard users.
+   Verschijnt alleen bij focus, anders verborgen off-screen. */
+.kts-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  z-index: 100000;
+  background: var(--kts-blue-900);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.kts-skip-link:focus {
+  left: 8px;
+  top: 8px;
+}
+
+
+/* ============================================================================
    TOOLTIP-SYSTEEM — CSS-only, gebruik data-tip="tekst" op een element.
    Verschijnt na ~500ms hover; verdwijnt direct bij muis-uit. Mobile-veilig
    (alleen op hover-capable devices). Native title-attr blijft werken als
