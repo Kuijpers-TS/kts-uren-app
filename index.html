@@ -1067,20 +1067,26 @@
         .insp-btn-primary {
           background: var(--kts-blue);
           color: white;
-          border: none;
+          border: 1px solid var(--kts-blue);
           font-family: var(--insp-font-sans);
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
           padding: 14px 18px;
           border-radius: var(--insp-radius);
           cursor: pointer;
-          letter-spacing: 0.005em;
+          letter-spacing: 0.3px;
           min-height: 48px;
           width: 100%;
           box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.1) inset, 0 1px 2px rgba(7, 86, 127, 0.2);
-          transition: background 150ms ease;
+          transition: background 250ms ease, border-color 250ms ease, transform 250ms ease, box-shadow 250ms ease;
         }
-        .insp-btn-primary:hover { background: #044560; }
+        .insp-btn-primary:hover {
+          background: var(--kts-accent-light);
+          border-color: var(--kts-accent-light);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(7, 86, 127, 0.25);
+        }
+        .insp-btn-primary:active { transform: translateY(0); box-shadow: 0 1px 0 0 rgba(15, 27, 45, 0.1) inset; }
         .insp-btn-primary:disabled {
           background: var(--insp-ink-300);
           cursor: not-allowed;
@@ -1105,21 +1111,35 @@
           padding: 22px 18px 24px;
           background: linear-gradient(180deg, var(--insp-surface) 0%, var(--insp-surface-2) 100%);
           border-bottom: 1px solid var(--insp-line);
+          position: relative;
+        }
+        /* Korte accent-light strook links onderaan — website signature */
+        .insp-hero::after {
+          content: '';
+          position: absolute;
+          left: 18px;
+          bottom: -1px;
+          width: 44px;
+          height: 2px;
+          background: var(--kts-accent-light);
+          opacity: 0.7;
         }
         .insp-object-line {
-          font-family: var(--insp-font-mono);
-          font-size: 11px;
-          color: var(--insp-ink-400);
-          letter-spacing: 0.08em;
+          /* Eyebrow stijl — accent-light, sans bold, ls 0.04em */
+          font-family: var(--insp-font-sans);
+          font-size: 0.72rem;
+          color: var(--kts-accent-light);
+          letter-spacing: 0.04em;
           text-transform: uppercase;
           margin-bottom: 6px;
+          font-weight: 700;
         }
         .insp-hero-title {
           margin: 0 0 14px 0;
-          font-size: 22px;
-          font-weight: 600;
-          letter-spacing: -0.015em;
-          line-height: 1.25;
+          font-size: 1.5rem;
+          font-weight: 800;
+          letter-spacing: -0.01em;
+          line-height: 1.2;
           color: var(--insp-ink-900);
         }
         .insp-progress-row {
@@ -1151,9 +1171,9 @@
         }
         .insp-progressbar-fill {
           height: 100%;
-          background: linear-gradient(90deg, var(--kts-blue) 0%, #1B7BA8 100%);
+          background: linear-gradient(90deg, var(--kts-blue) 0%, var(--kts-accent-light) 100%);
           border-radius: 999px;
-          box-shadow: 0 0 0 1px rgba(7, 86, 127, 0.1) inset;
+          box-shadow: 0 0 0 1px rgba(7, 86, 127, 0.1) inset, 0 0 12px rgba(58, 156, 197, 0.25);
           transition: width 600ms cubic-bezier(.4,0,.2,1);
         }
         .insp-progress-stats {
@@ -1213,14 +1233,14 @@
           transition: background 180ms ease;
         }
         .insp-sectie-card:hover {
-          transform: translateY(-1px);
-          box-shadow: var(--insp-shadow);
-          border-color: var(--insp-line-strong);
+          transform: translateY(-3px);
+          box-shadow: 0 12px 28px rgba(7, 86, 127, 0.10);
+          border-color: rgba(58, 156, 197, 0.3);
         }
         .insp-sectie-card:focus-visible {
           outline: none;
-          box-shadow: var(--insp-shadow), 0 0 0 3px rgba(7, 86, 127, 0.15);
-          border-color: var(--kts-blue);
+          box-shadow: var(--insp-shadow), 0 0 0 3px rgba(58, 156, 197, 0.25);
+          border-color: var(--kts-accent-light);
         }
         .insp-sectie-card:active { transform: translateY(0) scale(0.99); }
         .insp-sectie-head {
@@ -1376,7 +1396,7 @@
         }
         .insp-micro-progress-fill {
           height: 100%;
-          background: var(--kts-blue);
+          background: var(--kts-accent-light);
           border-radius: 999px;
           transition: width 400ms cubic-bezier(.4,0,.2,1);
         }
@@ -1394,7 +1414,23 @@
           border-radius: var(--insp-radius-lg);
           box-shadow: var(--insp-shadow-sm);
           overflow: hidden;
+          position: relative;
+          transition: border-color 250ms ease, box-shadow 250ms ease;
         }
+        /* Accent-light strook links — actief bij focus-within (gebruiker beantwoordt) */
+        .insp-vraag::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0;
+          width: 2px; height: 0;
+          background: var(--kts-accent-light);
+          transition: height 300ms ease;
+        }
+        .insp-vraag:focus-within {
+          border-color: rgba(58, 156, 197, 0.3);
+          box-shadow: 0 8px 20px rgba(7, 86, 127, 0.08);
+        }
+        .insp-vraag:focus-within::before { height: 100%; }
         .insp-vraag-head { padding: 16px 16px 10px; }
         .insp-vraag-meta {
           display: flex;
