@@ -9350,6 +9350,13 @@
                 showToast('⚠️ Administratie niet beschikbaar');
                 return;
             }
+            // Open inspectie? Sluit hem voordat we wisselen van tab.
+            // Antwoorden zijn al inline opgeslagen via inspAnswer, dus geen
+            // dataverlies. Voorkomt dat de inspectie-modal boven het nieuwe
+            // scherm blijft hangen (z-index 200 staat over alles heen).
+            if (window._inspActive && typeof inspCloseForm === 'function') {
+                inspCloseForm();
+            }
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(`screen-${name}`).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
