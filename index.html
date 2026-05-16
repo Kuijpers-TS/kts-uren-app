@@ -559,7 +559,20 @@
             border-color: rgba(58, 156, 197, 0.25);
         }
         .stat-card:hover::before { height: 100%; }
-        .stat-value { font-size: 1.65rem; font-weight: 800; color: var(--kts-blue); letter-spacing: -0.01em; }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--kts-blue);
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Op zeer kleine schermen iets compacter zodat '€ 1.234,56' op één regel past */
+        @media (max-width: 380px) {
+            .stat-value { font-size: 1.3rem; }
+            .stat-card.highlight .stat-value { font-size: 1.5rem !important; }
+        }
         .stat-label {
             font-size: 0.7rem;
             color: var(--kts-accent-light);
@@ -12007,42 +12020,37 @@
 
             // Dynamische labels: jaar-view toont jaartotaal, maand-view toont maand
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-            const periodeNaam = isFullYear ? String(year) : (MONTHS_LONG[selectedMonth] + ' ' + year);
-            const omzetLabel = isFullYear ? `Omzet ${year}` : `Omzet ${MONTHS_LONG[selectedMonth]}`;
             const urenLabel  = isFullYear ? `Uren ${year}`  : `Uren ${MONTHS_LONG[selectedMonth]}`;
 
-            // Bij jaar-view: 'Vorige maand' wordt 'Gemiddeld per maand' (huidige
-            // jaarsom / aantal maanden tot nu). 'Totaal {jaar}' is dan dubbelop
-            // met de eerste tegel · daarom in jaar-view 'Vorig jaar' label
-            // tonen met dummy 0 als we geen 2025 data hebben gefetched.
+            // Layout: grote tegel toont altijd JAARTOTAAL (overzicht-cijfer).
+            // Daaronder 2 kleinere tegels naast elkaar:
+            //   bij maand-filter: Vorige maand · Deze maand
+            //   bij jaar-filter:  Gem. per maand · Actieve medewerkers
             const now = new Date();
             const maandenTotNu = (year === now.getFullYear()) ? (now.getMonth() + 1) : 12;
             const gemPerMaand = maandenTotNu > 0 ? (omzetJaar / maandenTotNu) : 0;
-
-            const tweedeTegelValue = isFullYear ? gemPerMaand : omzetVorig;
-            const tweedeTegelLabel = isFullYear ? 'Gem. per maand' : 'Vorige maand';
-
-            // In jaar-modus zijn omzetMaand en omzetJaar gelijk → laat 'Totaal jaar'
-            // dan weg om visuele duplicatie te voorkomen. Vul de plek in met
-            // 'Aantal medewerkers actief' (telt unieke users in monthEntries).
             const uniekeUsers = new Set(monthEntries.map(e => e.user_id)).size;
-            const derdeTegelValue = isFullYear ? uniekeUsers : fmtEuro(omzetJaar);
-            const derdeTegelValueDisplay = isFullYear ? uniekeUsers : fmtEuro(omzetJaar);
-            const derdeTegelLabel = isFullYear ? 'Actieve medewerkers' : `Totaal ${year}`;
+
+            const linksLabel = isFullYear ? 'Gem. per maand' : 'Vorige maand';
+            const linksValue = isFullYear ? fmtEuro(gemPerMaand) : fmtEuro(omzetVorig);
+            const rechtsLabel = isFullYear
+                ? 'Actieve medewerkers'
+                : `Omzet ${MONTHS_LONG[selectedMonth]}`;
+            const rechtsValue = isFullYear ? String(uniekeUsers) : fmtEuro(omzetMaand);
 
             const el = document.getElementById('dashboard-stats');
             el.innerHTML = `
                 <div class="stat-card highlight" style="grid-column:1/-1">
-                    <div class="stat-value" style="color:white;font-size:1.8rem">${fmtEuro(omzetMaand)}</div>
-                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${omzetLabel}</div>
-                </div>
-                <div class="stat-card" style="background:#059669;color:white">
-                    <div class="stat-value" style="color:white">${fmtEuro(tweedeTegelValue)}</div>
-                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${tweedeTegelLabel}</div>
+                    <div class="stat-value" style="color:white;font-size:1.8rem">${fmtEuro(omzetJaar)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal ${year}</div>
                 </div>
                 <div class="stat-card" style="background:#1e40af;color:white">
-                    <div class="stat-value" style="color:white">${derdeTegelValueDisplay}</div>
-                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${derdeTegelLabel}</div>
+                    <div class="stat-value" style="color:white">${linksValue}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${linksLabel}</div>
+                </div>
+                <div class="stat-card" style="background:#059669;color:white">
+                    <div class="stat-value" style="color:white">${rechtsValue}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${rechtsLabel}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">${fmt(totalUren)}</div>
