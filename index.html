@@ -619,8 +619,9 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(10, 22, 40, 0.65);
-            backdrop-filter: blur(4px);
+            background: rgba(10, 22, 40, 0.82);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             z-index: 200;
             align-items: flex-end;
             justify-content: center;
@@ -1801,11 +1802,18 @@
         .insp-nav-btn:hover { background: var(--insp-bg-tint); }
         .insp-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .insp-nav-btn.is-center {
-          background: var(--insp-ink-900);
+          background: var(--kts-blue);
           color: white;
-          border-color: var(--insp-ink-900);
+          border-color: var(--kts-blue);
+          border-radius: 10px;
+          transition: background 250ms ease, border-color 250ms ease, transform 200ms ease, box-shadow 250ms ease;
         }
-        .insp-nav-btn.is-center:hover { background: #0A1628; }
+        .insp-nav-btn.is-center:hover {
+          background: var(--kts-accent-light);
+          border-color: var(--kts-accent-light);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 14px rgba(58, 156, 197, 0.25);
+        }
         .insp-nav-btn svg { width: 14px; height: 14px; }
 
         /* Modal-content overrides voor inspecties (volle width, geen padding-shift) */
