@@ -421,13 +421,32 @@
         /* ===== ENTRY CARDS ===== */
         .entry-card {
             background: var(--app-surface);
-            border-radius: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--app-line);
             padding: 14px 16px;
             margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .entry-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 2px; height: 0;
+            background: var(--kts-accent-light);
+            transition: height 300ms ease;
+        }
+        @media (hover: hover) {
+            .entry-card:hover {
+                border-color: rgba(58, 156, 197, 0.25);
+                box-shadow: 0 6px 16px rgba(7, 86, 127, 0.08);
+            }
+            .entry-card:hover::before { height: 100%; }
         }
         .entry-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
 
@@ -829,10 +848,16 @@
 
         .admin-tx-card {
             background: var(--app-surface);
-            border-radius: 14px;
+            border-radius: 10px;
+            border: 1px solid var(--app-line);
             padding: 16px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             margin-bottom: 12px;
+            transition: border-color 200ms ease, box-shadow 200ms ease;
+        }
+        .admin-tx-card:hover {
+            border-color: rgba(58, 156, 197, 0.22);
+            box-shadow: 0 6px 14px rgba(7, 86, 127, 0.06);
         }
         .admin-tx-detail { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
         .admin-tx-amount { font-size: 1.1rem; font-weight: 700; }
@@ -881,13 +906,19 @@
         .admin-search-input {
             width: 100%;
             padding: 10px 12px 10px 36px;
-            border: 2px solid var(--border);
+            border: 1px solid var(--app-line-strong);
             border-radius: 10px;
             font-size: 0.9rem;
             background: var(--app-bg-tint);
             min-height: 44px;
+            transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
         }
-        .admin-search-input:focus { outline: none; border-color: var(--kts-blue); background: var(--app-surface); box-shadow: 0 0 0 3px rgba(7,86,127,0.08); }
+        .admin-search-input:focus {
+            outline: none;
+            border-color: var(--kts-accent-light);
+            background: var(--app-surface);
+            box-shadow: 0 0 0 3px rgba(58, 156, 197, 0.18);
+        }
 
         .admin-filter-chips {
             display: flex;
