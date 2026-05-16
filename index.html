@@ -16570,14 +16570,14 @@
                 // anders past de hoofdrij niet meer op smalle telefoons. Daar staan ze
                 // naast elkaar samen met de actie-knoppen (Standaard / Niet gewerkt).
                 const kmExtra = showKm
-                    ? `<label style="display:inline-flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--muted)">
+                    ? `<label style="display:inline-flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--app-ink-500)">
                         <span style="font-weight:600">🚗 Km</span>
-                        <input type="number" step="1" min="0" class="aew-km" value="${kmVal}" placeholder="0" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:right;width:84px;box-sizing:border-box" title="Kilometers (heen + terug)">
+                        <input type="number" step="1" min="0" class="aew-km" value="${kmVal}" placeholder="0" style="padding:5px 6px;border:1px solid var(--app-line-strong);border-radius:6px;font-size:0.85rem;text-align:right;width:84px;box-sizing:border-box;background:var(--app-surface);color:var(--app-ink-900)" title="Kilometers (heen + terug)">
                        </label>`
                     : '';
                 const hotelExtra = showHotel
-                    ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--muted);cursor:pointer;user-select:none">
-                        <input type="checkbox" class="aew-hotel" ${hotelVal ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--kts-blue)"> 🏨 Hotelovernachting
+                    ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--app-ink-500);cursor:pointer;user-select:none">
+                        <input type="checkbox" class="aew-hotel" ${hotelVal ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--kts-accent-light)"> 🏨 Hotelovernachting
                        </label>`
                     : '';
 
@@ -16585,27 +16585,30 @@
                 // op de row gezet zodat adminFillDefaultDay() ze inline kan toepassen
                 // zonder de project/user-data opnieuw op te halen.
                 const dKmDefault = showKm ? kmRetour : 0;
-                rows += `<div class="aew-row" style="background:${d>=5?'#f8fafc':'#fff'};border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px"
+                const rowBg = d >= 5 ? 'var(--app-warn-soft)' : 'var(--app-surface)';
+                const rowBorder = d >= 5 ? 'var(--app-warn-line)' : 'var(--app-line)';
+                const inputStyle = 'border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-900)';
+                rows += `<div class="aew-row" style="background:${rowBg};border:1px solid ${rowBorder};border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;overflow:hidden"
                     data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}" data-day-idx="${d}"
                     data-default-start="07:00" data-default-end="16:00" data-default-hours="8" data-default-break="60"
                     data-default-km="${dKmDefault}" data-default-loc="${escapeHtml(defaultLocation)}" data-default-desc="${escapeHtml(defaultDescription)}">
                     <div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;font-size:0.85rem">
-                        <span style="font-weight:700;color:${d>=5?'var(--kts-blue)':'inherit'}">${dagNamen[d]} ${date.getDate()}</span>
-                        <input type="time" class="aew-start" value="${startVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                        <input type="time" class="aew-end" value="${endVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                        <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Wordt automatisch berekend uit start/eind − pauze. Handmatig overschrijven mag.">
-                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" oninput="adminRecalcDayHours(this)" style="padding:6px 2px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Pauze in minuten">
+                        <span style="font-weight:700;color:${d>=5?'var(--app-warn)':'var(--app-ink-900)'};letter-spacing:0.02em">${dagNamen[d]} ${date.getDate()}</span>
+                        <input type="time" class="aew-start" value="${startVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;${inputStyle};border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                        <input type="time" class="aew-end" value="${endVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;${inputStyle};border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                        <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;${inputStyle};border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Wordt automatisch berekend uit start/eind − pauze. Handmatig overschrijven mag.">
+                        <input type="number" step="5" min="0" max="120" class="aew-break" value="${breakVal}" placeholder="0" oninput="adminRecalcDayHours(this)" style="padding:6px 2px;${inputStyle};border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Pauze in minuten">
                     </div>
-                    <input type="text" class="aew-loc" value="${escapeHtml(locVal)}" placeholder="Locatie" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
-                    <input type="text" class="aew-desc" value="${escapeHtml(descVal)}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                    <input type="text" class="aew-loc" value="${escapeHtml(locVal)}" placeholder="Locatie" style="margin-top:6px;padding:6px 8px;${inputStyle};border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
+                    <input type="text" class="aew-desc" value="${escapeHtml(descVal)}" placeholder="Werkzaamheden" style="margin-top:6px;padding:6px 8px;${inputStyle};border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
                         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                             ${kmExtra}
                             ${hotelExtra}
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button type="button" class="aew-default-btn" onclick="adminFillDefaultDay(this)" style="padding:4px 10px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid #93c5fd;border-radius:6px;cursor:pointer;font-weight:600" title="Standaard tijden (07:00-16:00, 8u, 60 min) invullen">🕒 Standaard</button>
-                            <button type="button" class="aew-clear-btn" onclick="adminClearDayRow(this)" style="padding:4px 10px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid var(--app-warn-line);border-radius:6px;cursor:pointer;font-weight:600">🚫 Niet gewerkt</button>
+                            <button type="button" class="aew-default-btn" onclick="adminFillDefaultDay(this)" style="padding:5px 12px;font-size:0.72rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:0.02em;transition:transform 200ms ease,box-shadow 200ms ease" title="Standaard tijden (07:00-16:00, 8u, 60 min) invullen">🕒 Standaard</button>
+                            <button type="button" class="aew-clear-btn" onclick="adminClearDayRow(this)" style="padding:5px 12px;font-size:0.72rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:0.02em;transition:transform 200ms ease,box-shadow 200ms ease">🚫 Niet gewerkt</button>
                         </div>
                     </div>
                 </div>`;
