@@ -2337,6 +2337,108 @@
   --app-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.4);
 }
 
+/* ============================================================================
+   SKELETON LOADERS — vervangen 'Laden...' tekst voor pulsende placeholders.
+   Voelt visueel sneller dan tekst. Gebruik via class="kts-skeleton".
+*/
+@keyframes ktsSkeletonPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.85; }
+}
+.kts-skeleton {
+  background: linear-gradient(90deg,
+    var(--app-bg-tint) 0%,
+    var(--app-line) 50%,
+    var(--app-bg-tint) 100%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  display: inline-block;
+  animation: ktsSkeletonPulse 1.4s ease-in-out infinite;
+  color: transparent !important;
+  user-select: none;
+  pointer-events: none;
+}
+.kts-skeleton-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.kts-skeleton-line {
+  height: 14px;
+  width: 100%;
+  background: var(--app-bg-tint);
+  border-radius: 6px;
+  animation: ktsSkeletonPulse 1.4s ease-in-out infinite;
+}
+.kts-skeleton-line.is-short { width: 40%; }
+.kts-skeleton-line.is-mid   { width: 70%; }
+.kts-skeleton-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+/* ============================================================================
+   PAGE TRANSITIONS — subtiele fade-in op screen-wissel (geen flikker).
+   Werkt op de .screen.active class die door switchScreen() wordt gezet.
+*/
+@keyframes ktsScreenFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen.active {
+  animation: ktsScreenFadeIn 220ms ease-out;
+}
+
+/* ============================================================================
+   TOOLTIP-SYSTEEM — CSS-only, gebruik data-tip="tekst" op een element.
+   Verschijnt na ~500ms hover; verdwijnt direct bij muis-uit. Mobile-veilig
+   (alleen op hover-capable devices). Native title-attr blijft werken als
+   fallback maar is traag.
+
+   Gebruik:
+     <button data-tip="Verwijderen">🗑️</button>
+   Optioneel: data-tip-pos="bottom" (default = top)
+*/
+@media (hover: hover) {
+  [data-tip] { position: relative; }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--kts-blue-900, #0A1628);
+    color: #fff;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease 400ms, transform 180ms ease 400ms;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+  [data-tip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  [data-tip-pos="bottom"]::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+    transform: translateX(-50%) translateY(-4px);
+  }
+  [data-tip-pos="bottom"]:hover::after {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 /* Signature-pad in dark mode: pen blijft zwart in canvas-data (PDF-export
    wil dat) maar wordt visueel ge-invert zodat user een witte handtekening
    ziet op de donkere achtergrond. Filter werkt op gerenderde pixels, niet
