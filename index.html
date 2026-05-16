@@ -9587,6 +9587,29 @@
             else top.classList.remove('active');
         });
 
+        // ===== KEYBOARD SHORTCUTS (admin) =====
+        // '/' of 'k' focust het zichtbare zoekveld in beheer-lijsten.
+        // Werkt alleen als focus NIET in een input/textarea zit (voorkomt
+        // dat de letter in je tekst-input belandt).
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== '/' && e.key !== 'k') return;
+            // Skip als modifier-toets ingedrukt (laat Ctrl+K naar browser)
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            // Skip als focus al in een input-veld zit
+            const t = e.target;
+            if (t.matches('input, textarea, select, [contenteditable]')) return;
+            // Zoek eerste zichtbare admin-search-input
+            const searches = document.querySelectorAll('[id^="admin-search-"], #admin-list-search, #admin-invoice-search');
+            for (const s of searches) {
+                if (s.offsetParent !== null) {
+                    e.preventDefault();
+                    s.focus();
+                    s.select && s.select();
+                    return;
+                }
+            }
+        });
+
         // ===== PROJECT SWITCHER =====
         async function openProjectSwitcher() {
             const modal = document.getElementById('project-modal');
