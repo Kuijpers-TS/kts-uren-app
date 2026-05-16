@@ -16536,19 +16536,17 @@
                 .order('entry_date');
 
             const hasExistingEntries = (entries || []).length > 0;
-            const dagNamen = ['ma','di','wo','do','vr','za','zo'];
+            const dagNamenLang = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+            const maandenKort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
             const modal = document.getElementById('admin-modal');
             document.getElementById('admin-modal-title').textContent = `✏️ ${userName} · Week ${weekNumber}/${year}`;
 
-            // 5-koloms grid voor de tijden-rij: Dag, Start, Eind, Uren, Pauze.
-            // Km en hotel zijn naar de "extras"-rij onderaan verhuisd zodat de hoofdrij
-            // overal past · ook op smalle telefoons. minmax(0, 1fr) op de tijd-kolommen
-            // zodat ze flexibel meebewegen met de beschikbare ruimte.
-            const gridCols = '54px minmax(0, 1fr) minmax(0, 1fr) 56px 56px';
-            // Header-labels gecentreerd boven de input-kolommen ·"Dag" links omdat de
-            // dag-naam ook links staat in de body.
+            // 4-koloms grid: Start, Eind, Uren, Pauze. De dag-titel staat als
+            // aparte regel boven elke rij zodat de tijd-velden voldoende ruimte
+            // krijgen om 'HH:MM' volledig te tonen op smalle telefoons.
+            const gridCols = 'minmax(0, 1fr) minmax(0, 1fr) 64px 64px';
             const headerCenter = 'text-align:center';
-            const headerLabels = `<span>Dag</span><span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span>`;
+            const headerLabels = `<span style="${headerCenter}">Start</span><span style="${headerCenter}">Eind</span><span style="${headerCenter}">Uren</span><span style="${headerCenter}">Pauze</span>`;
 
             let rows = '';
             for (let d = 0; d < 7; d++) {
@@ -16596,12 +16594,14 @@
                 const rowBg = d >= 5 ? 'var(--app-warn-soft)' : 'var(--app-surface)';
                 const rowBorder = d >= 5 ? 'var(--app-warn-line)' : 'var(--app-line)';
                 const inputStyle = 'border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-900)';
+                const dagTitelKleur = d >= 5 ? 'var(--app-warn)' : 'var(--app-ink-900)';
+                const dagTitel = `${dagNamenLang[d]} ${date.getDate()} ${maandenKort[date.getMonth()]}`;
                 rows += `<div class="aew-row" style="background:${rowBg};border:1px solid ${rowBorder};border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;overflow:hidden"
                     data-entry-id="${id}" data-date="${dateStr}" data-user="${userId}" data-project="${projectId}" data-day-idx="${d}"
                     data-default-start="07:00" data-default-end="16:00" data-default-hours="8" data-default-break="60"
                     data-default-km="${dKmDefault}" data-default-loc="${escapeHtml(defaultLocation)}" data-default-desc="${escapeHtml(defaultDescription)}">
+                    <div style="font-weight:700;font-size:0.9rem;color:${dagTitelKleur};letter-spacing:-0.005em;margin-bottom:8px">${dagTitel}</div>
                     <div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;font-size:0.85rem">
-                        <span style="font-weight:700;color:${d>=5?'var(--app-warn)':'var(--app-ink-900)'};letter-spacing:0.02em">${dagNamen[d]} ${date.getDate()}</span>
                         <input type="time" class="aew-start" value="${startVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;${inputStyle};border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                         <input type="time" class="aew-end" value="${endVal}" oninput="adminRecalcDayHours(this)" style="padding:6px 4px;${inputStyle};border-radius:6px;font-size:0.85rem;width:100%;box-sizing:border-box">
                         <input type="number" step="0.25" class="aew-hours" value="${hoursVal}" placeholder="0" style="padding:6px 2px;${inputStyle};border-radius:6px;font-size:0.85rem;text-align:center;width:100%;box-sizing:border-box" title="Wordt automatisch berekend uit start/eind − pauze. Handmatig overschrijven mag.">
