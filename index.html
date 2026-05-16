@@ -7877,9 +7877,9 @@
             // Info-bar (links onder titel)
             y = mt + 14;
             const colA = ml, colB = ml + 95;
-            doc.setFontSize(8);
-            doc.setFont(pdfFont, 'normal');
-            doc.setTextColor(...ink400);
+            doc.setFontSize(7.5);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsAccent);     // eyebrow-stijl labels (website match)
             // Label "OPDRACHTNEMER" als zzp via BV werkt — dan tonen we "BV | Naam"
             // i.p.v. alleen de naam. "Opdrachtnemer" is in zzp-context het meer
             // toepasselijke label dan "naam".
@@ -7896,9 +7896,9 @@
             doc.text(naamText, colA, y + 5, { maxWidth: 90 });
             doc.text(`Week ${data.weekNumber}  ·  ${data.year}`, colB, y + 5);
             y += 10;
-            doc.setFontSize(8);
-            doc.setFont(pdfFont, 'normal');
-            doc.setTextColor(...ink400);
+            doc.setFontSize(7.5);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsAccent);     // eyebrow-stijl labels (website match)
             doc.text('PROJECT', colA, y);
             doc.text('OPDRACHTGEVER', colB, y);
             doc.setFontSize(10);
@@ -13542,6 +13542,7 @@
 
             const pw = 210, ph = 297, ml = 12, mr = 12, mt = 12, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
+            const ktsAccent = [58, 156, 197];  // accent-light (#3A9CC5) — website match
             const ink900 = [15, 27, 45];
             const ink500 = [92, 102, 117];
             const ink400 = [138, 147, 161];
@@ -13572,6 +13573,12 @@
             }
             doc.text('FACTUUR', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
 
+            // Accent-light hairline onder titel — website-stijl signature
+            const titleX_inv = ml + (TANDWIEL ? iconSize + 3 : 0);
+            const titleW_inv = doc.getTextWidth('FACTUUR');
+            doc.setFillColor(...ktsAccent);
+            doc.rect(titleX_inv, titleY + 2, Math.min(titleW_inv, 35), 0.8, 'F');
+
             const logoW = 30.8;
             const logoH = logoW * (200 / 204);
             const addrLines = ['Nieuwboerweg 2A  |  1738BB Waarland', '+31 6 5123 9050  |  info@kuijpers-ts.nl'];
@@ -13594,8 +13601,8 @@
             // Klant-blok onder titel
             y = titleY + 8;
             doc.setFontSize(7);
-            doc.setFont(pdfFont, 'normal');
-            doc.setTextColor(...ink400);
+            doc.setFont(pdfFont, 'bold');
+            doc.setTextColor(...ktsAccent);     // eyebrow-stijl 'AAN' (website match)
             doc.text('AAN', ml, y);
             y += 4;
             doc.setFontSize(10);
@@ -13627,8 +13634,8 @@
                 doc.setLineWidth(0.15);
                 doc.rect(icx, y, c.w, infoH);
                 doc.setFontSize(7);
-                doc.setFont(pdfFont, 'normal');
-                doc.setTextColor(...ink400);
+                doc.setFont(pdfFont, 'bold');
+                doc.setTextColor(...ktsAccent);     // eyebrow-stijl labels (website match)
                 doc.text(c.label, icx + 3, y + 4);
                 doc.setFont(pdfFont, 'bold');
                 doc.setTextColor(...ink900);
@@ -14630,6 +14637,7 @@
 
             const pw = 210, ph = 297, ml = 12, mr = 12, mt = 12, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
+            const ktsAccent = [58, 156, 197];  // accent-light (#3A9CC5) — website match
             const ink900 = [15, 27, 45];
             const ink500 = [92, 102, 117];
             const ink400 = [138, 147, 161];
@@ -14659,6 +14667,12 @@
                 try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 3, iconSize, iconSize); } catch (e) {}
             }
             doc.text('INKOOPORDER', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
+
+            // Accent-light hairline onder titel — website-stijl signature
+            const titleX_io = ml + (TANDWIEL ? iconSize + 3 : 0);
+            const titleW_io = doc.getTextWidth('INKOOPORDER');
+            doc.setFillColor(...ktsAccent);
+            doc.rect(titleX_io, titleY + 2, Math.min(titleW_io, 50), 0.8, 'F');
 
             const logoW = 30.8;
             const logoH = logoW * (200 / 204);
@@ -14698,8 +14712,8 @@
                 doc.setLineWidth(0.15);
                 doc.rect(cx, y, infoW, infoH);
                 doc.setFontSize(7);
-                doc.setFont(pdfFont, 'normal');
-                doc.setTextColor(...ink400);
+                doc.setFont(pdfFont, 'bold');
+                doc.setTextColor(...ktsAccent);     // eyebrow-stijl labels (website match)
                 doc.text(c.label, cx + 3, y + 4);
                 doc.setFontSize(11);
                 doc.setFont(pdfFont, 'bold');
