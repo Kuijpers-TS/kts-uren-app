@@ -4382,15 +4382,34 @@
   font-family: var(--app-font-sans);
   font-weight: 700;
   cursor: pointer;
-  transition: all 120ms;
+  transition: background 200ms ease, color 200ms ease, border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
   display: grid;
   place-items: center;
+  position: relative;
 }
-.app-zoom-btn:hover { background: var(--app-bg-tint); }
+.app-zoom-btn:hover {
+  background: var(--app-bg-tint);
+  border-color: rgba(58, 156, 197, 0.4);
+  color: var(--kts-accent-light);
+  transform: translateY(-1px);
+}
 .app-zoom-btn.is-active {
-  border-color: var(--kts-blue);
-  background: var(--app-info-soft);
+  border-color: var(--kts-accent-light);
+  background: rgba(58, 156, 197, 0.12);
   color: var(--kts-blue);
+}
+/* Subtiele accent-bar onderaan de actieve knop (zoals bottom-nav) */
+.app-zoom-btn.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--kts-accent-light);
+  box-shadow: 0 0 6px rgba(58, 156, 197, 0.4);
 }
 .app-zoom-btn-sm  { font-size: 10px; }
 .app-zoom-btn-md  { font-size: 13px; }
