@@ -816,19 +816,36 @@
         /* ===== ADMINISTRATIE TAB ===== */
         .admin-upload-card {
             background: var(--app-surface);
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 14px 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
             margin-bottom: 8px;
-            border: 2px solid transparent;
-            transition: all 0.15s;
+            border: 1px solid var(--app-line);
+            transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+            position: relative;
+            overflow: hidden;
         }
-        .admin-upload-card:active { border-color: var(--kts-blue); transform: scale(0.98); }
-        @media (hover: hover) { .admin-upload-card:hover { border-color: var(--kts-blue); } }
+        .admin-upload-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 2px; height: 0;
+            background: var(--kts-accent-light);
+            transition: height 300ms ease;
+        }
+        .admin-upload-card:hover::before { height: 100%; }
+        .admin-upload-card:active { border-color: var(--kts-accent-light); transform: scale(0.98); }
+        @media (hover: hover) {
+            .admin-upload-card:hover {
+                transform: translateY(-2px);
+                border-color: rgba(58, 156, 197, 0.3);
+                box-shadow: 0 8px 20px rgba(7, 86, 127, 0.10);
+            }
+        }
         .admin-upload-card.completed { border-left: 3px solid var(--green); }
 
         .admin-progress-bar {
