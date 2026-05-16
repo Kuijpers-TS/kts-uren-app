@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 · Pagina niet gevonden — KTS Uren App</title>
+    <link rel="icon" type="image/png" href="favicon-32-v2.png">
+    <meta name="theme-color" content="#0A1628">
+    <meta http-equiv="refresh" content="3; url=/">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --kts-blue: #07567F;
+            --kts-blue-700: #043B56;
+            --kts-blue-900: #0A1628;
+            --kts-accent-light: #3A9CC5;
+        }
+        html, body {
+            height: 100%;
+            font-family: 'Daxline Pro', -apple-system, 'Segoe UI', system-ui, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--kts-blue-900) 0%, var(--kts-blue-700) 40%, var(--kts-blue) 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 60px,
+                    rgba(255, 255, 255, 0.04) 60px, rgba(255, 255, 255, 0.04) 61px),
+                repeating-linear-gradient(90deg, transparent, transparent 60px,
+                    rgba(255, 255, 255, 0.04) 60px, rgba(255, 255, 255, 0.04) 61px);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .wrap {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 460px;
+        }
+        .eyebrow {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--kts-accent-light);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        h1 {
+            font-size: clamp(3rem, 12vw, 5rem);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+        h1 .accent { color: var(--kts-accent-light); }
+        p {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.75);
+            line-height: 1.55;
+            margin-bottom: 28px;
+        }
+        a.btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.9rem 2rem;
+            background: var(--kts-accent-light);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: 1px solid var(--kts-accent-light);
+            border-radius: 10px;
+            letter-spacing: 0.3px;
+            transition: all 250ms ease;
+        }
+        a.btn:hover {
+            background: transparent;
+            border-color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        }
+        .hint {
+            margin-top: 18px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 0.02em;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="eyebrow">Kuijpers Technical Services</div>
+        <h1>4<span class="accent">0</span>4</h1>
+        <p>Deze pagina bestaat niet of is verplaatst.<br>Je wordt over 3 seconden teruggestuurd naar de app.</p>
+        <a href="/" class="btn">Terug naar app</a>
+        <div class="hint">KTS Uren App</div>
+    </div>
+</body>
+</html>
