@@ -288,19 +288,39 @@
         /* ===== DAY CARDS ===== */
         .day-card {
             background: var(--app-surface);
-            border-radius: 14px;
+            border-radius: 12px;
             margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             overflow: hidden;
-            transition: all 0.25s ease;
-            border: 1px solid transparent;
+            transition: transform 250ms ease, box-shadow 250ms ease, border-color 250ms ease;
+            border: 1px solid var(--app-line);
+            position: relative;
+        }
+        /* Accent-light strook links die zichtbaar wordt bij hover EN bij expanded */
+        .day-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 2px; height: 0;
+            background: var(--kts-accent-light);
+            transition: height 350ms ease;
+        }
+        @media (hover: hover) {
+            .day-card:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 20px rgba(7, 86, 127, 0.08);
+                border-color: rgba(58, 156, 197, 0.2);
+            }
+            .day-card:hover::before { height: 100%; }
         }
         .day-card.expanded {
             box-shadow: 0 6px 20px rgba(7,86,127,0.12);
-            border-color: rgba(7,86,127,0.15);
+            border-color: rgba(58, 156, 197, 0.3);
         }
-        .day-card.weekend-card { background: #fefce8; }
-        .day-card.weekend-card.expanded { border-color: rgba(245,158,11,0.2); box-shadow: 0 6px 20px rgba(245,158,11,0.1); }
+        .day-card.expanded::before { height: 100%; }
+        .day-card.weekend-card { background: var(--app-warn-soft); }
+        .day-card.weekend-card.expanded { border-color: var(--app-warn-line); box-shadow: 0 6px 20px rgba(165, 106, 31, 0.1); }
+        .day-card.weekend-card::before { background: var(--app-warn); }
         /* .day-header legacy — Fase 2 .app-day-top vervangt visuele rules */
         .day-header {
             cursor: pointer;
@@ -353,9 +373,9 @@
         }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
-            border-color: var(--kts-blue);
+            border-color: var(--kts-accent-light);
             background: var(--app-surface);
-            box-shadow: 0 0 0 3px rgba(7,86,127,0.08);
+            box-shadow: 0 0 0 3px rgba(58, 156, 197, 0.18);
         }
         .form-group textarea { resize: none; height: 60px; }
 
@@ -1983,14 +2003,18 @@
         }
         .insp-empty-state {
           text-align: center;
-          padding: 40px 20px;
-          color: var(--insp-ink-400);
-          font-size: 13px;
+          padding: 48px 20px;
+          color: var(--insp-ink-500);
+          font-size: 0.85rem;
+          background: var(--insp-bg-tint);
+          border: 1px dashed var(--insp-line-strong);
+          border-radius: var(--insp-radius-lg);
         }
         .insp-empty-state .icon {
-          font-size: 24px;
-          margin-bottom: 8px;
-          color: var(--insp-ink-300);
+          font-size: 28px;
+          margin-bottom: 10px;
+          color: var(--kts-accent-light);
+          opacity: 0.7;
         }
 
         /* Filter dropdown — design-stijl */
@@ -2203,6 +2227,28 @@
   --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.4);
   --app-shadow:    0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
   --app-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* =============================================================================
+   1d. DARK MODE — custom scrollbar
+   =============================================================================
+   Subtiele scrollbar die past in de dark theme — vermijdt de scherpe witte
+   default scrollbar die op donker scherm te helder is. Werkt op Chromium
+   en WebKit (Firefox heeft eigen color-scheme support). */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--app-bg);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--app-line-strong);
+  border-radius: 6px;
+  border: 2px solid var(--app-bg);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--kts-accent-light);
 }
 
 /* =============================================================================
@@ -2478,8 +2524,9 @@
 .app-input:focus,
 .app-select:focus,
 .app-textarea:focus {
-  border-color: var(--kts-blue);
-  box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.08);
+  /* Focus accent — website-stijl met accent-light glow */
+  border-color: var(--kts-accent-light);
+  box-shadow: 0 0 0 3px rgba(58, 156, 197, 0.18);
 }
 .app-input::placeholder,
 .app-textarea::placeholder {
@@ -2539,8 +2586,8 @@
   min-height: 44px;
 }
 .app-input-group:focus-within {
-  border-color: var(--kts-blue);
-  box-shadow: 0 0 0 3px rgba(7, 86, 127, 0.08);
+  border-color: var(--kts-accent-light);
+  box-shadow: 0 0 0 3px rgba(58, 156, 197, 0.18);
 }
 .app-input-group input {
   flex: 1;
@@ -3286,21 +3333,27 @@
   border-radius: 999px;
   background: var(--app-surface);
   cursor: pointer;
-  transition: border-color 120ms, background 120ms;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
 }
-.app-user-pill:hover { border-color: var(--app-line-strong); background: var(--app-bg-tint); }
+.app-user-pill:hover {
+  border-color: var(--kts-accent-light);
+  background: var(--app-bg-tint);
+  box-shadow: 0 4px 12px rgba(58, 156, 197, 0.15);
+  transform: translateY(-1px);
+}
 .app-avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--kts-blue);
+  background: linear-gradient(135deg, var(--kts-blue) 0%, var(--kts-blue-700) 100%);
   color: #fff;
-  font-family: var(--app-font-mono);
-  font-weight: 700;
+  font-family: var(--app-font-sans);
+  font-weight: 800;
   font-size: 10px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px var(--app-surface), 0 0 0 2.5px rgba(58, 156, 197, 0.45);
 }
 .app-avatar.is-lg {
   width: 32px;
@@ -4168,12 +4221,26 @@
   font-family: var(--app-font-sans);
   text-align: left;
   cursor: pointer;
-  transition: background 120ms;
+  transition: background 200ms ease, padding-left 200ms ease;
   color: inherit;
   min-height: 56px;
+  position: relative;
 }
 .app-action-row:last-child { border-bottom: 0; }
-.app-action-row:hover { background: var(--app-bg-tint); }
+/* Accent-light strook links bij hover — past bij website-stijl */
+.app-action-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background: var(--kts-accent-light);
+  transition: height 250ms ease;
+}
+.app-action-row:hover { background: var(--app-bg-tint); padding-left: 20px; }
+.app-action-row:hover::before { height: 60%; }
 .app-action-row:active { background: var(--app-bg-deep); }
 .app-action-row-icon {
   width: 36px;
@@ -4481,6 +4548,20 @@
   box-shadow: 0 1px 2px rgba(7, 86, 127, 0.08), 0 2px 6px rgba(7, 86, 127, 0.06);
 }
 
+/* Forgot-password link: subtiele website-stijl underline-grow animatie */
+.kts-forgot-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--kts-accent-light);
+  transition: width 250ms ease;
+}
+.kts-forgot-link:hover { color: var(--kts-blue); }
+.kts-forgot-link:hover::after { width: 100%; }
+
 /* ---------- 18b. THEME CONTROL (segmented Licht/Auto/Donker) ----------------- */
 .app-theme-control {
   display: flex;
@@ -4683,7 +4764,7 @@
                         Inloggen
                     </button>
                     <div style="text-align:center;margin-top:14px">
-                        <a href="#" onclick="event.preventDefault();forgotPassword()" style="font-family:var(--app-font-sans);font-size:13px;color:var(--kts-blue);text-decoration:none;font-weight:500">Wachtwoord vergeten?</a>
+                        <a href="#" onclick="event.preventDefault();forgotPassword()" class="kts-forgot-link" style="font-family:var(--app-font-sans);font-size:13px;color:var(--kts-accent-light);text-decoration:none;font-weight:500;position:relative;display:inline-block;padding-bottom:2px">Wachtwoord vergeten?</a>
                     </div>
                     </form>
 
@@ -5115,7 +5196,7 @@
                     <span id="env-label" style="font-size:0.65rem;font-weight:700;padding:4px 10px;border-radius:6px;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line);letter-spacing:0.04em;text-transform:uppercase">PRODUCTIE</span>
                     <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
                         <input type="checkbox" id="admin-test-toggle" onchange="toggleTestMode()" style="opacity:0;width:0;height:0">
-                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:22px;transition:.3s" id="env-slider"><span style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--app-surface);border-radius:50%;transition:.3s"></span></span>
+                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--app-ink-300);border-radius:22px;transition:background .3s ease" id="env-slider"><span style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--app-surface);border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></span></span>
                     </label>
                 </div>
             </div>
