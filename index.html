@@ -11915,14 +11915,14 @@
             window._dashboardExportData = { monthEntries, yearEntries, users, projects, calcRevenue, currentYear, selectedMonth, isFullYear };
 
             // Render alle secties
-            renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, currentYear, calcRevenue);
+            renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, currentYear, calcRevenue, isFullYear);
             renderDashboardChart(yearEntries, currentYear, calcRevenue);
             renderMedewerkerOverzicht(monthEntries, weekStatuses, users, selectedMonth, currentYear);
             renderProjectCards(monthEntries, projects, users, selectedMonth, currentYear, calcRevenue);
             renderPOStatus(weekStatuses, ioWeeks, users, projects, currentYear);
         }
 
-        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, year, calcRevenue) {
+        function renderDashboardStats(monthEntries, yearEntries, weekStatuses, ioWeeks, selectedMonth, year, calcRevenue, isFullYear) {
             const omzetMaand = calcRevenue(monthEntries);
 
             // Vorige maand
@@ -11936,8 +11936,8 @@
             // Jaar totaal
             const omzetJaar = calcRevenue(yearEntries);
 
-            // Totaal uren deze maand
-            const totalUrenMaand = monthEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
+            // Totaal uren in periode
+            const totalUren = monthEntries.reduce((s, e) => s + (parseFloat(e.total_hours) || 0), 0);
 
             // Openstaande weken (verstuurd maar nog niet op IO)
             const verstuurdeWeken = weekStatuses.filter(w => w.status === 'verstuurd');
@@ -11947,23 +11947,48 @@
             // Wachtend op goedkeuring
             const pendingApprovals = weekStatuses.filter(w => w.approval_status === 'ter_goedkeuring');
 
+            // Dynamische labels: jaar-view toont jaartotaal, maand-view toont maand
+            const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            const periodeNaam = isFullYear ? String(year) : (MONTHS_LONG[selectedMonth] + ' ' + year);
+            const omzetLabel = isFullYear ? `Omzet ${year}` : `Omzet ${MONTHS_LONG[selectedMonth]}`;
+            const urenLabel  = isFullYear ? `Uren ${year}`  : `Uren ${MONTHS_LONG[selectedMonth]}`;
+
+            // Bij jaar-view: 'Vorige maand' wordt 'Gemiddeld per maand' (huidige
+            // jaarsom / aantal maanden tot nu). 'Totaal {jaar}' is dan dubbelop
+            // met de eerste tegel — daarom in jaar-view 'Vorig jaar' label
+            // tonen met dummy 0 als we geen 2025 data hebben gefetched.
+            const now = new Date();
+            const maandenTotNu = (year === now.getFullYear()) ? (now.getMonth() + 1) : 12;
+            const gemPerMaand = maandenTotNu > 0 ? (omzetJaar / maandenTotNu) : 0;
+
+            const tweedeTegelValue = isFullYear ? gemPerMaand : omzetVorig;
+            const tweedeTegelLabel = isFullYear ? 'Gem. per maand' : 'Vorige maand';
+
+            // In jaar-modus zijn omzetMaand en omzetJaar gelijk → laat 'Totaal jaar'
+            // dan weg om visuele duplicatie te voorkomen. Vul de plek in met
+            // 'Aantal medewerkers actief' (telt unieke users in monthEntries).
+            const uniekeUsers = new Set(monthEntries.map(e => e.user_id)).size;
+            const derdeTegelValue = isFullYear ? uniekeUsers : fmtEuro(omzetJaar);
+            const derdeTegelValueDisplay = isFullYear ? uniekeUsers : fmtEuro(omzetJaar);
+            const derdeTegelLabel = isFullYear ? 'Actieve medewerkers' : `Totaal ${year}`;
+
             const el = document.getElementById('dashboard-stats');
             el.innerHTML = `
                 <div class="stat-card highlight" style="grid-column:1/-1">
                     <div class="stat-value" style="color:white;font-size:1.8rem">${fmtEuro(omzetMaand)}</div>
-                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Omzet deze maand</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${omzetLabel}</div>
                 </div>
                 <div class="stat-card" style="background:#059669;color:white">
-                    <div class="stat-value" style="color:white">${fmtEuro(omzetVorig)}</div>
-                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Vorige maand</div>
+                    <div class="stat-value" style="color:white">${fmtEuro(tweedeTegelValue)}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${tweedeTegelLabel}</div>
                 </div>
                 <div class="stat-card" style="background:#1e40af;color:white">
-                    <div class="stat-value" style="color:white">${fmtEuro(omzetJaar)}</div>
-                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">Totaal ${year}</div>
+                    <div class="stat-value" style="color:white">${derdeTegelValueDisplay}</div>
+                    <div class="stat-label" style="color:rgba(255,255,255,0.7)">${derdeTegelLabel}</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">${fmt(totalUrenMaand)}</div>
-                    <div class="stat-label">Uren deze maand</div>
+                    <div class="stat-value">${fmt(totalUren)}</div>
+                    <div class="stat-label">${urenLabel}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" style="${pendingApprovals.length > 0 ? 'color:#f59e0b' : 'color:#10b981'}">${pendingApprovals.length}</div>
