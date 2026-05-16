@@ -7811,6 +7811,7 @@
 
             const pw = 297, ph = 210, ml = 12, mr = 12, mt = 12, uw = pw - ml - mr;
             const ktsBlue = [7, 86, 127];
+            const ktsAccent = [58, 156, 197];  // accent-light (#3A9CC5) — website match
             const ink900 = [15, 27, 45];
             const ink500 = [92, 102, 117];
             const ink400 = [138, 147, 161];
@@ -7844,6 +7845,13 @@
                 try { doc.addImage(TANDWIEL, 'PNG', ml, titleY - iconSize + 3, iconSize, iconSize); } catch (e) {}
             }
             doc.text('WEEKSTAAT', ml + (TANDWIEL ? iconSize + 3 : 0), titleY);
+
+            // Accent-light hairline onder de titel — website-stijl signature
+            // (zoals .hero-tag border-bottom op kuijpers-ts.nl)
+            const titleX = ml + (TANDWIEL ? iconSize + 3 : 0);
+            const titleW = doc.getTextWidth('WEEKSTAAT');
+            doc.setFillColor(...ktsAccent);
+            doc.rect(titleX, titleY + 2, Math.min(titleW, 40), 0.8, 'F');
 
             // Logo + adres rechts (gecentreerd boven tekst)
             const logoW = 30.8;
