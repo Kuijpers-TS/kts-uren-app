@@ -16666,36 +16666,38 @@
 
             // HTML voor expenses-sectie. Elke bestaande rij krijgt z'n DB-id zodat we
             // bij save kunnen update'n (i.p.v. delete+insert).
+            // Token-based styling — werkt in light en dark mode
+            const expInputStyle = 'padding:5px;border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-900);border-radius:5px;font-size:0.8rem';
             const expensesHtml = `
-                <div id="aew-expenses-section" style="margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fafafa">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                        <div style="font-weight:600;font-size:0.85rem;color:var(--kts-blue)">💶 Extra kosten</div>
-                        <button type="button" onclick="adminAddExpenseRow(this)" class="btn btn-sm" style="padding:4px 10px;font-size:0.7rem;background:#dcfce7;color:#166534;border:1px solid #86efac">+ Toevoegen</button>
+                <div id="aew-expenses-section" style="margin-top:14px;padding:12px;border:1px solid var(--app-line);border-radius:10px;background:var(--app-bg-tint)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-weight:700;font-size:0.85rem;color:var(--kts-accent-light);letter-spacing:0.04em;text-transform:uppercase">💶 Extra kosten</div>
+                        <button type="button" onclick="adminAddExpenseRow(this)" class="btn btn-sm" style="padding:4px 12px;font-size:0.72rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line);border-radius:6px;font-weight:600;letter-spacing:0.02em">+ Toevoegen</button>
                     </div>
-                    <div id="aew-expenses-list" style="display:flex;flex-direction:column;gap:6px">
+                    <div id="aew-expenses-list" style="display:flex;flex-direction:column;gap:8px">
                         ${existingExpenses.map(e => {
                             // Backwards-compat: oude rijen kunnen 'meals' hebben · map naar 'maaltijd'
                             const eCat = e.cat === 'meals' ? 'maaltijd' : e.cat;
                             return `
-                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:flex;flex-direction:column;gap:6px;padding:6px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px">
+                            <div class="aew-exp-row" data-exp-id="${e.id}" style="display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--app-surface);border:1px solid var(--app-line);border-radius:8px">
                                 <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
-                                    <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                                    <select class="aew-exp-cat" style="${expInputStyle}">
                                         ${Object.entries(expCatLabels).map(([k, v]) => `<option value="${k}" ${eCat === k ? 'selected' : ''}>${v}</option>`).join('')}
                                     </select>
                                     <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line);border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
                                 </div>
-                                <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                                <input type="text" class="aew-exp-desc" value="${escapeHtml(e.description || '')}" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="${expInputStyle};padding:5px 8px">
                                 <div style="display:grid;grid-template-columns:60px 80px 1fr 90px;gap:6px;align-items:center">
-                                    <input type="number" step="1" min="0" class="aew-exp-qty" value="${e.quantity || ''}" placeholder="Aantal" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Aantal stuks (optioneel)">
-                                    <input type="number" step="0.01" min="0" class="aew-exp-unit" value="${e.unit_price || ''}" placeholder="€/stuk" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Prijs per stuk (optioneel)">
-                                    <span style="font-size:0.7rem;color:var(--muted);text-align:right;padding-right:4px">Totaal €</span>
-                                    <input type="number" step="0.01" min="0" class="aew-exp-amount" value="${e.amount || ''}" placeholder="0,00" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right;font-weight:600">
+                                    <input type="number" step="1" min="0" class="aew-exp-qty" value="${e.quantity || ''}" placeholder="Aantal" oninput="adminRecalcExpRow(this)" style="${expInputStyle};text-align:right" title="Aantal stuks (optioneel)">
+                                    <input type="number" step="0.01" min="0" class="aew-exp-unit" value="${e.unit_price || ''}" placeholder="€/stuk" oninput="adminRecalcExpRow(this)" style="${expInputStyle};text-align:right" title="Prijs per stuk (optioneel)">
+                                    <span style="font-size:0.7rem;color:var(--app-ink-500);text-align:right;padding-right:4px">Totaal €</span>
+                                    <input type="number" step="0.01" min="0" class="aew-exp-amount" value="${e.amount || ''}" placeholder="0,00" style="${expInputStyle};text-align:right;font-weight:600">
                                 </div>
                             </div>
                         `;
                         }).join('')}
                     </div>
-                    <div id="aew-expenses-empty" style="display:${existingExpenses.length === 0 ? 'block' : 'none'};text-align:center;padding:8px;color:var(--muted);font-size:0.75rem">Geen extra kosten · klik "+ Toevoegen" voor parkeerkaart, brandstof, etc.</div>
+                    <div id="aew-expenses-empty" style="display:${existingExpenses.length === 0 ? 'block' : 'none'};text-align:center;padding:10px;color:var(--app-ink-500);font-size:0.78rem">Geen extra kosten · klik "+ Toevoegen" voor parkeerkaart, brandstof, etc.</div>
                 </div>`;
 
             document.getElementById('admin-modal-fields').innerHTML = `
@@ -16729,18 +16731,19 @@
             const row = document.createElement('div');
             row.className = 'aew-exp-row';
             // Geen data-exp-id → wordt nieuwe insert bij save
-            row.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:6px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--app-surface);border:1px solid var(--app-line);border-radius:8px';
+            const expInputStyle = 'padding:5px;border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-900);border-radius:5px;font-size:0.8rem';
             row.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr 24px;gap:6px;align-items:center">
-                    <select class="aew-exp-cat" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">${catOptionsHtml}</select>
+                    <select class="aew-exp-cat" style="${expInputStyle}">${catOptionsHtml}</select>
                     <button type="button" onclick="adminRemoveExpenseRow(this)" style="background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line);border-radius:4px;padding:0;width:24px;height:24px;cursor:pointer;font-size:0.8rem" title="Verwijderen">×</button>
                 </div>
-                <input type="text" class="aew-exp-desc" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem">
+                <input type="text" class="aew-exp-desc" placeholder="Omschrijving (bv. 7 stuks afblindpluggen)" style="${expInputStyle};padding:5px 8px">
                 <div style="display:grid;grid-template-columns:60px 80px 1fr 90px;gap:6px;align-items:center">
-                    <input type="number" step="1" min="0" class="aew-exp-qty" placeholder="Aantal" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Aantal stuks (optioneel)">
-                    <input type="number" step="0.01" min="0" class="aew-exp-unit" placeholder="€/stuk" oninput="adminRecalcExpRow(this)" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right" title="Prijs per stuk (optioneel)">
-                    <span style="font-size:0.7rem;color:var(--muted);text-align:right;padding-right:4px">Totaal €</span>
-                    <input type="number" step="0.01" min="0" class="aew-exp-amount" placeholder="0,00" style="padding:5px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;text-align:right;font-weight:600">
+                    <input type="number" step="1" min="0" class="aew-exp-qty" placeholder="Aantal" oninput="adminRecalcExpRow(this)" style="${expInputStyle};text-align:right" title="Aantal stuks (optioneel)">
+                    <input type="number" step="0.01" min="0" class="aew-exp-unit" placeholder="€/stuk" oninput="adminRecalcExpRow(this)" style="${expInputStyle};text-align:right" title="Prijs per stuk (optioneel)">
+                    <span style="font-size:0.7rem;color:var(--app-ink-500);text-align:right;padding-right:4px">Totaal €</span>
+                    <input type="number" step="0.01" min="0" class="aew-exp-amount" placeholder="0,00" style="${expInputStyle};text-align:right;font-weight:600">
                 </div>
             `;
             list.appendChild(row);
