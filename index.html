@@ -335,7 +335,7 @@
             white-space: nowrap;
         }
         .day-badge.km { background: var(--app-bg-deep); color: var(--muted); }
-        .day-badge.hotel { background: #eff6ff; color: var(--kts-blue); }
+        .day-badge.hotel { background: var(--app-info-soft); color: var(--kts-blue); }
         .day-badge.thuis { background: #f0fdf4; color: #059669; }
 
         /* ===== FORMS ===== */
@@ -485,7 +485,7 @@
         .retour-btn {
             width: 100%;
             padding: 14px 16px;
-            background: #eff6ff;
+            background: var(--app-info-soft);
             border: 2px solid #bfdbfe;
             border-radius: 12px;
             cursor: pointer;
@@ -3074,7 +3074,7 @@ a:focus-visible,
 .app-pill.is-idle  { background: var(--app-idle-soft);  color: var(--app-ink-500); border-color: var(--app-line-strong); }
 .app-pill.is-idle  .app-pdot { background: var(--app-ink-400); }
 /* Definitief: donkergroen, zwaarder dan is-ok zodat het visueel "afgerond" leest */
-.app-pill.is-final { background: #dcfce7; color: #14532d; border-color: #86efac; font-weight: 700; }
+.app-pill.is-final { background: var(--app-ok-soft); color: var(--app-ok); border-color: #86efac; font-weight: 700; }
 .app-pill.is-final .app-pdot { background: #16a34a; }
 
 
@@ -5426,7 +5426,7 @@ a:focus-visible,
                     <button class="btn btn-secondary" onclick="adminShowCategoryPicker()">📁 Categorie</button>
                     <button class="btn btn-secondary" onclick="adminTxAction('skipped')">Overslaan</button>
                     <button class="btn btn-primary" id="admin-btn-link" onclick="adminTxAction('matched')" disabled>✅ Koppelen</button>
-                    <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:#fef2f2;color:#dc2626;border-color:#fecaca">🔓 Ontkoppelen</button>
+                    <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:var(--app-alert-soft);color:#dc2626;border-color:#fecaca">🔓 Ontkoppelen</button>
                 </div>
                 <!-- Categorie picker -->
                 <div id="admin-category-picker" style="display:none;margin-top:8px;background:var(--app-surface);border-radius:12px;padding:12px;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
@@ -5731,7 +5731,7 @@ a:focus-visible,
                     </div>
                     <button class="btn btn-primary" onclick="previewPO()" style="width:100%;margin-top:8px">👁 Preview</button>
                 </div>
-                <div id="io-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
+                <div id="io-preview" style="margin-top:20px;padding:16px;background:var(--app-surface);border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
                     <div id="io-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
                     <button class="btn btn-primary app-btn app-btn-primary app-btn-block app-btn-lg" onclick="generateIOPDF()" style="margin-top:16px">
@@ -5802,7 +5802,7 @@ a:focus-visible,
                     </label>
                     <button class="btn btn-primary" onclick="previewInvoice()" style="width:100%;margin-top:8px">👁 Preview Factuur</button>
                 </div>
-                <div id="inv-preview" style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);display:none">
+                <div id="inv-preview" style="margin-top:20px;padding:16px;background:var(--app-surface);border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
                     <div id="inv-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
                     <div style="margin-top:14px;padding:12px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px">
@@ -5904,7 +5904,7 @@ a:focus-visible,
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Inspectie-formulieren</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:#f0f9ff;color:#0369a1;border:1px solid var(--app-info-line);font-size:0.75rem;display:inline-flex;align-items:center;gap:5px">
+                        <button class="btn btn-sm" onclick="inspExportTemplatesExcel()" style="background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);font-size:0.75rem;display:inline-flex;align-items:center;gap:5px">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Exporteer Excel
                         </button>
@@ -7246,7 +7246,7 @@ a:focus-visible,
                 // Build badges (oude .day-badge styling blijft werken)
                 let badges = '';
                 if (isDayOff) {
-                    badges += '<span class="day-badge" style="background:#fef3c7;color:#92400e">Vrij</span>';
+                    badges += '<span class="day-badge" style="background:var(--app-warn-soft);color:var(--app-warn)">Vrij</span>';
                 } else if (isFilled) {
                     if (userHasThuiswerk() && entry.thuiswerk) badges += '<span class="day-badge thuis">Thuis</span>';
                     if (userHasKm() && entry.km > 0) badges += '<span class="day-badge km">' + entry.km + ' km</span>';
@@ -11569,7 +11569,7 @@ a:focus-visible,
                 box.innerHTML = `
                     <div style="font-size:0.9rem;line-height:1.5;color:#1e293b;white-space:pre-line;margin-bottom:20px">${message}</div>
                     <div style="display:flex;gap:10px;justify-content:flex-end">
-                        <button id="cd-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
+                        <button id="cd-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
                         <button id="cd-ok" style="padding:10px 20px;border-radius:10px;border:none;background:${btnColor};color:white;font-size:0.85rem;cursor:pointer;font-weight:600">${btnText}</button>
                     </div>
                 `;
@@ -11595,7 +11595,7 @@ a:focus-visible,
                     <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:#1e293b;margin-bottom:8px">${title}</div>
                     <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:18px">
                     <div style="display:flex;gap:10px;justify-content:flex-end">
-                        <button id="pa-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
+                        <button id="pa-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
                         <button id="pa-ok" style="padding:10px 20px;border-radius:10px;border:none;background:var(--kts-blue);color:white;font-size:0.85rem;cursor:pointer;font-weight:600">OK</button>
                     </div>
                 `;
@@ -12669,7 +12669,7 @@ a:focus-visible,
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:6px;cursor:pointer" onclick="openAdminModal('project', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(p.name)}${p.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(p.name)}${p.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(p.project_code)} · ${escapeHtml(p.location || '')} · ${escapeHtml(p.client_name || '')}</div>
                             </div>
                             <span class="status-badge ${p.status === 'active' ? 'status-approved' : 'status-draft'}">${p.status}</span>
@@ -12741,7 +12741,7 @@ a:focus-visible,
                     const testBadge = u.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : '';
                     const archivedBadge = isArchived ? ' <span style="background:#e2e8f0;color:#475569;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Afgesloten op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' ·' + escapeHtml(u.archive_reason) : '') + '">🔒 AFGESLOTEN</span>' : '';
                     const pausedBadge = isPaused ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gepauzeerd op ' + new Date(u.paused_at).toLocaleDateString('nl-NL') + (u.pause_reason ? ' ·' + escapeHtml(u.pause_reason) : '') + '">⏸️ GEPAUZEERD</span>' : '';
-                    const anonBadge = isAnonymized ? ' <span style="background:#fce7f3;color:#9d174d;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="PII verwijderd op ' + new Date(u.anonymized_at).toLocaleDateString('nl-NL') + '">🕶️ ANONIEM</span>' : '';
+                    const anonBadge = isAnonymized ? ' <span style="background:var(--app-alert-soft);color:var(--app-alert);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="PII verwijderd op ' + new Date(u.anonymized_at).toLocaleDateString('nl-NL') + '">🕶️ ANONIEM</span>' : '';
 
                     // Test-modus → harde DELETE-knop.
                     // Productie:
@@ -12755,7 +12755,7 @@ a:focus-visible,
                         actionBtn = `<button onclick="event.stopPropagation();adminUnarchiveUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Heractiveren · gebruiker weer actief">↩️</button>`;
                         const archivedAge = (Date.now() - new Date(u.archived_at).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
                         if (archivedAge >= 7 && !isAnonymized) {
-                            actionBtn += `<button onclick="event.stopPropagation();adminAnonymizeUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4" title="PII verwijderen (>7 jaar oud)">🕶️</button>`;
+                            actionBtn += `<button onclick="event.stopPropagation();adminAnonymizeUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="PII verwijderen (>7 jaar oud)">🕶️</button>`;
                         }
                     } else if (isPaused) {
                         actionBtn = `<button onclick="event.stopPropagation();adminUnpauseUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Pauze opheffen · gebruiker kan weer inloggen">▶️</button>`;
@@ -12819,7 +12819,7 @@ a:focus-visible,
                         <div style="display:flex;justify-content:space-between;align-items:flex-start">
                             <div>
                                 ${contactHtml}
-                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
                             </div>
                             <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
                         </div>
@@ -13460,7 +13460,7 @@ a:focus-visible,
             if (userIdsList.length === 0) {
                 const preview = document.getElementById('inv-preview');
                 const content = document.getElementById('inv-preview-content');
-                content.innerHTML = `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
+                content.innerHTML = `<div style="background:var(--app-alert-soft);border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
                     Alle weken zijn al gefactureerd. Er zijn geen nieuwe (medewerker, week) combinaties om te factureren.
                 </div>`;
                 preview.style.display = 'block';
@@ -13624,14 +13624,14 @@ a:focus-visible,
                     const userName = userById[pw.user_id] ? (userById[pw.user_id].name || userById[pw.user_id].email) : 'Onbekend';
                     return `${userName} W${pw.week_number} (${detail ? detail.invoice : '?'})`;
                 }).join(', ');
-                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
+                html += `<div style="background:var(--app-warn-soft);border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
                     ⚠️ ${skippedIoWeeks.length === 1 ? 'is' : 'zijn'} al gefactureerd en ${skippedIoWeeks.length === 1 ? 'wordt' : 'worden'} overgeslagen: ${skippedDetails}
                 </div>`;
             }
 
             // Als geen perUser meer over (alles al gefactureerd of geen uren)
             if (Object.keys(perUser).length === 0) {
-                html += `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
+                html += `<div style="background:var(--app-alert-soft);border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
                     Geen factureerbare uren gevonden voor deze selectie.
                 </div>`;
                 content.innerHTML = html;
@@ -13642,7 +13642,7 @@ a:focus-visible,
             html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? clientCompany.name : '(Geen klant ingesteld op project)'}</div>`;
             const userNames = Object.keys(perUser).map(uid => perUser[uid].user?.name || perUser[uid].user?.email || 'Onbekend').join(', ');
             const headerLabel = isCombi
-                ? `<span style="background:#dcfce7;color:#14532d;padding:2px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;margin-right:6px">👥 COMBI</span>${userNames}`
+                ? `<span style="background:var(--app-ok-soft);color:var(--app-ok);padding:2px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;margin-right:6px">👥 COMBI</span>${userNames}`
                 : userNames;
             html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${isCombi ? 'Medewerkers' : 'Medewerker'}: ${headerLabel} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
 
@@ -13657,7 +13657,7 @@ a:focus-visible,
                 const userHotelRate = bucket.hotelRate;
 
                 if (isCombi) {
-                    html += `<tr style="background:#f0f9ff"><td colspan="4" style="padding:6px;font-weight:700;color:var(--kts-blue);border-top:2px solid var(--kts-blue)">👤 ${userName}</td></tr>`;
+                    html += `<tr style="background:var(--app-info-soft)"><td colspan="4" style="padding:6px;font-weight:700;color:var(--kts-blue);border-top:2px solid var(--kts-blue)">👤 ${userName}</td></tr>`;
                 }
 
                 Object.keys(bucket.weekData).sort().forEach(weekKey => {
@@ -14485,7 +14485,7 @@ a:focus-visible,
                     let userLabel;
                     if (Array.isArray(inv.user_ids) && inv.user_ids.length > 0) {
                         const names = inv.user_ids.map(uid => userMap[uid] || 'Onbekend').join(' + ');
-                        userLabel = `<span style="background:#dcfce7;color:#14532d;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;margin-right:4px">👥 COMBI</span>${names}`;
+                        userLabel = `<span style="background:var(--app-ok-soft);color:var(--app-ok);padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;margin-right:4px">👥 COMBI</span>${names}`;
                     } else {
                         userLabel = userMap[inv.user_id] || 'Onbekend';
                     }
@@ -14771,7 +14771,7 @@ a:focus-visible,
 
             // Waarschuwing bij overgeslagen weken (al op eerdere inkooporder)
             if (ioData.skippedWeeks && ioData.skippedWeeks.length > 0) {
-                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
+                html += `<div style="background:var(--app-warn-soft);border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
                     ⚠️ <strong>Week ${ioData.skippedWeeks.sort((a,b) => a-b).join(', ')}</strong> staat al op een eerdere inkooporder en is overgeslagen.
                 </div>`;
             }
@@ -14779,7 +14779,7 @@ a:focus-visible,
             // Waarschuwing bij weken die wachten op goedkeuring
             if (ioData.wachtOpGoedkeuring && ioData.wachtOpGoedkeuring.length > 0) {
                 const waitWeeks = ioData.wachtOpGoedkeuring.map(ws => `Week ${ws.week_number}`).join(', ');
-                html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
+                html += `<div style="background:var(--app-warn-soft);border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
                     ⏳ <strong>${waitWeeks}</strong> wacht${ioData.wachtOpGoedkeuring.length === 1 ? '' : 'en'} nog op goedkeuring door de opdrachtgever. Alleen goedgekeurde weken worden meegenomen.
                 </div>`;
             }
@@ -15938,7 +15938,7 @@ a:focus-visible,
                             const projName = projNameMap[ws.project_id] || '';
                             const statusBadge = ws.status === 'ondertekend'
                                 ? '<span style="font-size:0.65rem;background:var(--app-info-soft);color:var(--app-info);padding:2px 6px;border-radius:4px;font-weight:600">✍️ Ondertekend</span>'
-                                : '<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-weight:600">📝 Opgeslagen</span>';
+                                : '<span style="font-size:0.65rem;background:var(--app-warn-soft);color:var(--app-warn);padding:2px 6px;border-radius:4px;font-weight:600">📝 Opgeslagen</span>';
                             return `<div class="entry-card" style="display:flex;justify-content:space-between;align-items:center;gap:6px;border-left:3px solid #f59e0b">
                                 <div style="flex:1;min-width:0">
                                     <div style="font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -15951,7 +15951,7 @@ a:focus-visible,
                                 <div style="display:flex;gap:4px;flex-shrink:0">
                                     <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Ondertekenen & versturen namens gebruiker">✍️</button>
                                     <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bekijken">👁️</button>
-                                    <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid #fecaca" title="Concept verwijderen">🗑️</button>
+                                    <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Concept verwijderen">🗑️</button>
                                 </div>
                             </div>`;
                         }).join('')}
@@ -16027,7 +16027,7 @@ a:focus-visible,
                         approvalAction = `<button onclick="event.stopPropagation();openConfirmationModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Bevestiging naar klant versturen">📩</button>`;
                     } else if (approvalStatus === 'ter_goedkeuring') {
                         approvalBadge = '<span style="font-size:0.65rem;background:var(--app-warn-soft);color:var(--app-warn);padding:2px 6px;border-radius:4px;font-weight:600">⏳ Ter goedkeuring</span>';
-                        approvalAction = `<button onclick="event.stopPropagation();copyApprovalLink('${ws.approval_token}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid var(--app-warn-line)" title="Link kopiëren">🔗</button>`;
+                        approvalAction = `<button onclick="event.stopPropagation();copyApprovalLink('${ws.approval_token}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Link kopiëren">🔗</button>`;
                     } else if (approvalStatus === 'afgewezen') {
                         approvalBadge = '<span style="font-size:0.65rem;background:var(--app-alert-soft);color:var(--app-alert);padding:2px 6px;border-radius:4px;font-weight:600">❌ Afgewezen</span>';
                         approvalAction = `<button onclick="event.stopPropagation();openApprovalModal('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem" title="Opnieuw versturen">📩</button>`;
@@ -16049,8 +16049,8 @@ a:focus-visible,
                             ${approvalAction}
                             <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bewerken">✏️</button>
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}','${ws.user_id}','${ws.project_id}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
-                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid var(--app-warn-line)" title="Terugzetten naar concept">↩️</button>
-                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid #fecaca" title="Weekstaat verwijderen">🗑️</button>
+                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Terugzetten naar concept">↩️</button>
+                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Weekstaat verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -16182,7 +16182,7 @@ a:focus-visible,
                 html += '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:0.8rem"><input type="checkbox" id="imp-test-mode"' + (_adminTestMode ? ' checked' : '') + '> Markeer als test-data</label>';
 
                 html += '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">';
-                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db">Annuleren</button>';
+                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:#f3f4f6;color:var(--app-ink-700);border:1px solid #d1d5db">Annuleren</button>';
                 html += '<button class="btn btn-primary btn-sm" id="imp-confirm-btn">✓ Importeer ' + rows.length + ' rijen</button>';
                 html += '</div>';
 
@@ -17730,7 +17730,7 @@ a:focus-visible,
             const companyId = (project && project.client_company_id) ? (typeof project.client_company_id === 'object' ? project.client_company_id.id : project.client_company_id) : '';
 
             const content = `
-                <div style="margin-bottom:16px;padding:12px;background:#f0f9ff;border-radius:8px;font-size:0.85rem">
+                <div style="margin-bottom:16px;padding:12px;background:var(--app-info-soft);border-radius:8px;font-size:0.85rem">
                     <div><strong>Medewerker:</strong> ${userName}</div>
                     <div><strong>Project:</strong> ${projCode} ·${projName}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
@@ -17916,7 +17916,7 @@ a:focus-visible,
             // CC-ontvangers uit project (uitzonderingsveld) · comma-separated
             const ccRaw = (project && project.cc_emails_weekstaat) || '';
             const ccBanner = ccRaw.trim()
-                ? `<div style="margin-bottom:12px;padding:10px;background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;font-size:0.78rem;color:#1e40af;line-height:1.4">
+                ? `<div style="margin-bottom:12px;padding:10px;background:#dbeafe;border:1px solid var(--app-info-line);border-radius:8px;font-size:0.78rem;color:#1e40af;line-height:1.4">
                     <strong>📧 CC bij verzenden:</strong> ${escapeHtml(ccRaw)}<br>
                     <span style="opacity:0.85">Ingesteld op project · pas aan via Beheer → Projecten als nodig.</span>
                    </div>`
@@ -18839,15 +18839,15 @@ a:focus-visible,
                 const questions = (sec.questions || []).map((q, qi) => {
                     const typeLabel = { 'ja_nee': 'Ja/Nee', 'goed_fout': 'Goed/Fout/Nvt', 'goed_matig_slecht': 'Goed/Matig/Slecht', 'conditiescore': 'Conditiescore (1-6)', 'numeriek': 'Numeriek', 'meting': 'Meting', 'tekst': 'Tekst', 'foto': 'Foto', 'handtekening': 'Handtekening', 'selectie': 'Selectie', 'datum': 'Datum' };
                     return `
-                        <div style="display:flex;align-items:start;gap:6px;padding:8px;background:#f9fafb;border-radius:6px;margin-bottom:4px">
+                        <div style="display:flex;align-items:start;gap:6px;padding:8px;background:var(--app-surface);border-radius:6px;margin-bottom:4px">
                             <div style="flex:1;min-width:0">
                                 <div style="font-size:0.8rem;font-weight:500">${q.text || 'Nieuwe vraag'}</div>
                                 <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
                                     <span style="font-size:0.6rem;background:#e0f2fe;padding:1px 6px;border-radius:3px">${typeLabel[q.type] || q.type}</span>
-                                    ${q.required ? '<span style="font-size:0.6rem;background:#fee2e2;padding:1px 6px;border-radius:3px">Verplicht</span>' : ''}
+                                    ${q.required ? '<span style="font-size:0.6rem;background:var(--app-alert-soft);padding:1px 6px;border-radius:3px">Verplicht</span>' : ''}
                                     ${q.unit ? `<span style="font-size:0.6rem;background:#f3f4f6;padding:1px 6px;border-radius:3px">${q.unit}</span>` : ''}
                                     ${q.component ? `<span style="font-size:0.6rem;background:#ede9fe;padding:1px 6px;border-radius:3px">${q.component}</span>` : ''}
-                                    ${q.manufacturer ? `<span style="font-size:0.6rem;background:#fef3c7;padding:1px 6px;border-radius:3px">${q.manufacturer}</span>` : ''}
+                                    ${q.manufacturer ? `<span style="font-size:0.6rem;background:var(--app-warn-soft);padding:1px 6px;border-radius:3px">${q.manufacturer}</span>` : ''}
                                     ${q.tools ? `<span style="font-size:0.6rem;background:#d1fae5;padding:1px 6px;border-radius:3px">🔧 ${q.tools}</span>` : ''}
                                 </div>
                             </div>
@@ -18863,7 +18863,7 @@ a:focus-visible,
                             <button onclick="inspRemoveSection(${si})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:4px;margin-left:8px" title="Sectie verwijderen">🗑</button>
                         </div>
                         <div>${questions}</div>
-                        <button onclick="inspAddQuestion(${si})" class="btn btn-sm" style="width:100%;margin-top:6px;font-size:0.75rem;background:#f0f9ff;color:var(--kts-blue);border:1px dashed var(--kts-blue)">+ Vraag toevoegen</button>
+                        <button onclick="inspAddQuestion(${si})" class="btn btn-sm" style="width:100%;margin-top:6px;font-size:0.75rem;background:var(--app-info-soft);color:var(--kts-blue);border:1px dashed var(--kts-blue)">+ Vraag toevoegen</button>
                     </div>`;
             }).join('');
         }
@@ -18921,7 +18921,7 @@ a:focus-visible,
             ].map(([v, l]) => `<option value="${v}" ${q.type === v ? 'selected' : ''}>${l}</option>`).join('');
 
             const html = `
-                <div style="padding:12px;background:#f0f9ff;border-radius:8px;margin-bottom:10px">
+                <div style="padding:12px;background:var(--app-info-soft);border-radius:8px;margin-bottom:10px">
                     <div style="font-weight:600;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px">Vraag bewerken</div>
                     <div class="form-group" style="margin-bottom:8px">
                         <label style="font-size:0.75rem">Vraagtekst *</label>
@@ -19991,7 +19991,7 @@ a:focus-visible,
             if (insp.status === 'concept') {
                 footerHtml = `
                     <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:#92400e;background:#fef3c7;border:1px solid var(--app-warn-line);padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
+                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:var(--app-warn);background:var(--app-warn-soft);border:1px solid var(--app-warn-line);padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
                         <button id="insp-finish-btn" onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem;${totalDone < totalQ ? 'opacity:0.5;cursor:not-allowed' : ''}" ${totalDone < totalQ ? 'disabled' : ''}>✓ Inspectie afronden</button>
                     </div>`;
             } else {
@@ -20016,9 +20016,9 @@ a:focus-visible,
                                 <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(tpl.name || 'Inspectie')}</div>
                                 <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${insp.inspection_number || ''}${insp.inspection_date ? ' · ' + new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}</div>
                                 <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-                                    ${tpl.category ? `<span style="font-size:0.65rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.category)}</span>` : ''}
-                                    ${tpl.frequency ? `<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.frequency)}</span>` : ''}
-                                    ${insp.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(insp.location)}</span>` : (tpl.location ? `<span style="font-size:0.65rem;background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px">${escapeHtml(tpl.location)}</span>` : '')}
+                                    ${tpl.category ? `<span style="font-size:0.65rem;background:var(--app-info-soft);color:var(--app-info);padding:2px 6px;border-radius:4px">${escapeHtml(tpl.category)}</span>` : ''}
+                                    ${tpl.frequency ? `<span style="font-size:0.65rem;background:var(--app-warn-soft);color:var(--app-warn);padding:2px 6px;border-radius:4px">${escapeHtml(tpl.frequency)}</span>` : ''}
+                                    ${insp.location ? `<span style="font-size:0.65rem;background:var(--app-ok-soft);color:var(--app-ok);padding:2px 6px;border-radius:4px">${escapeHtml(insp.location)}</span>` : (tpl.location ? `<span style="font-size:0.65rem;background:var(--app-ok-soft);color:var(--app-ok);padding:2px 6px;border-radius:4px">${escapeHtml(tpl.location)}</span>` : '')}
                                 </div>
                             </div>
                             <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
@@ -21891,8 +21891,8 @@ a:focus-visible,
             const stats = { total: _adminCurrentTxs.length, open: 0, matched: 0, no_invoice: 0, skipped: 0 };
             for (const tx of _adminCurrentTxs) stats[tx.status] = (stats[tx.status] || 0) + 1;
             document.getElementById('admin-list-stats').innerHTML = `
-                <div class="admin-stat-card" style="background:#f0fdf4;color:#16a34a"><span class="stat-num">${stats.matched}</span>Gekoppeld</div>
-                <div class="admin-stat-card" style="background:#fefce8;color:#a16207"><span class="stat-num">${stats.open}</span>Open</div>
+                <div class="admin-stat-card" style="background:var(--app-ok-soft);color:#16a34a"><span class="stat-num">${stats.matched}</span>Gekoppeld</div>
+                <div class="admin-stat-card" style="background:var(--app-warn-soft);color:#a16207"><span class="stat-num">${stats.open}</span>Open</div>
                 <div class="admin-stat-card" style="background:var(--app-bg-tint);color:#64748b"><span class="stat-num">${stats.no_invoice}</span>Geen fact.</div>
                 <div class="admin-stat-card" style="background:var(--app-bg-tint);color:#a1a1aa"><span class="stat-num">${stats.skipped}</span>Overgesl.</div>
             `;
