@@ -926,7 +926,7 @@
             transition: all 0.15s;
             font-size: 0.85rem;
         }
-        .admin-suggestion:active, .admin-suggestion.selected { border-color: var(--kts-blue); background: #f0f7ff; }
+        .admin-suggestion:active, .admin-suggestion.selected { border-color: var(--kts-blue); background: var(--app-info-soft); }
         @media (hover: hover) { .admin-suggestion:hover { border-color: var(--kts-blue); } }
 
         .admin-wizard-nav {
@@ -951,7 +951,7 @@
             transition: all 0.15s;
         }
         .admin-folder-btn:active { border-color: var(--kts-blue); }
-        .admin-folder-btn.linked { border-style: solid; border-color: var(--green); background: #f0fdf4; }
+        .admin-folder-btn.linked { border-style: solid; border-color: var(--green); background: var(--app-ok-soft); }
 
         .admin-search-input {
             width: 100%;
@@ -1001,8 +1001,8 @@
         }
         .admin-list-row:active { transform: scale(0.99); }
         @media (hover: hover) { .admin-list-row:hover { filter: brightness(0.97); } }
-        .admin-list-row.status-open { background: #fefce8; border-left-color: #eab308; }
-        .admin-list-row.status-matched { background: #f0fdf4; border-left-color: #22c55e; }
+        .admin-list-row.status-open { background: var(--app-warn-soft); border-left-color: #eab308; }
+        .admin-list-row.status-matched { background: var(--app-ok-soft); border-left-color: #22c55e; }
         .admin-list-row.status-no_invoice { background: var(--app-bg-tint); border-left-color: #94a3b8; }
         .admin-list-row.status-skipped { background: var(--app-bg-tint); border-left-color: #d4d4d8; }
 
@@ -4913,7 +4913,7 @@ a:focus-visible,
 .app-week-row.is-alert::before  { background: var(--app-alert); }
 .app-week-row.is-idle::before   { background: var(--app-ink-200); }
 .app-week-row.is-final::before  { background: #16a34a; }
-.app-week-row.is-final         { background: #f0fdf4; }
+.app-week-row.is-final         { background: var(--app-ok-soft); }
 .app-week-row.is-current        { background: var(--app-info-soft); }
 .app-week-row.is-current::before { background: var(--kts-blue); }
 
@@ -10326,9 +10326,9 @@ a:focus-visible,
 
         function renderPOList() {
             const statusColors = {
-                concept: { bg: '#f1f5f9', color: '#64748b', label: 'Concept' },
-                verstuurd: { bg: '#dbeafe', color: '#2563eb', label: 'Verstuurd' },
-                goedgekeurd: { bg: '#d1fae5', color: '#059669', label: 'Goedgekeurd' }
+                concept: { bg:'var(--app-idle-soft)',color:'var(--app-idle)', label: 'Concept' },
+                verstuurd: { bg:'var(--app-info-soft)',color:'var(--app-info)', label: 'Verstuurd' },
+                goedgekeurd: { bg:'var(--app-ok-soft)',color:'var(--app-ok)', label: 'Goedgekeurd' }
             };
 
             document.getElementById('io-list').innerHTML = ioEntries.map(io => {
@@ -10563,7 +10563,7 @@ a:focus-visible,
                 const errorEl = document.getElementById('login-error');
                 if (errorEl) {
                     errorEl.style.display = 'block';
-                    errorEl.style.background = '#ecfdf5';
+                    errorEl.style.background = 'var(--app-ok-soft)';
                     errorEl.style.color = '#065f46';
                     errorEl.style.border = '1px solid #a7f3d0';
                     errorEl.style.padding = '10px 14px';
@@ -10576,7 +10576,7 @@ a:focus-visible,
                 const errorEl = document.getElementById('login-error');
                 if (errorEl) {
                     errorEl.style.display = 'block';
-                    errorEl.style.background = '#fef2f2';
+                    errorEl.style.background = 'var(--app-alert-soft)';
                     errorEl.style.color = '#991b1b';
                     errorEl.style.border = '1px solid #fecaca';
                     errorEl.style.padding = '10px 14px';
@@ -12819,7 +12819,7 @@ a:focus-visible,
                         <div style="display:flex;justify-content:space-between;align-items:flex-start">
                             <div>
                                 ${contactHtml}
-                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:var(--app-bg-deep);color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
                             </div>
                             <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
                         </div>
@@ -15581,7 +15581,7 @@ a:focus-visible,
                         </div>
                         <div class="form-group" id="adm-tar-km-wrap"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
                     </div>
-                    <div class="form-group" style="margin-top:12px;padding:10px 12px;background:#FEF3E0;border-radius:8px;border:1px solid #F4D9A0">
+                    <div class="form-group" style="margin-top:12px;padding:10px 12px;background:var(--app-warn-soft);border-radius:8px;border:1px solid #F4D9A0">
                         <label style="display:block;margin-bottom:4px"><strong>Verkooptarief (€/u)</strong> <span style="color:var(--muted);font-weight:400">: wat KTS aan eindklant factureert</span></label>
                         <input type="number" step="0.01" id="adm-tar-hourly-sale" placeholder="Leeg = gebruik inkooptarief" value="${existing && existing.hourly_rate_sale ? existing.hourly_rate_sale : ''}" style="width:100%">
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">⚠️ Dit veld is alleen zichtbaar voor admins. Wordt gebruikt op factuur (KTS → klant). Laat leeg om hetzelfde tarief te factureren als de inkoop.</div>
@@ -16182,7 +16182,7 @@ a:focus-visible,
                 html += '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:0.8rem"><input type="checkbox" id="imp-test-mode"' + (_adminTestMode ? ' checked' : '') + '> Markeer als test-data</label>';
 
                 html += '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">';
-                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:#f3f4f6;color:var(--app-ink-700);border:1px solid #d1d5db">Annuleren</button>';
+                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:var(--app-bg-deep);color:var(--app-ink-700);border:1px solid #d1d5db">Annuleren</button>';
                 html += '<button class="btn btn-primary btn-sm" id="imp-confirm-btn">✓ Importeer ' + rows.length + ' rijen</button>';
                 html += '</div>';
 
@@ -17923,7 +17923,7 @@ a:focus-visible,
                 : '';
 
             const content = `
-                <div style="margin-bottom:16px;padding:12px;background:#d1fae5;border-radius:8px;font-size:0.85rem">
+                <div style="margin-bottom:16px;padding:12px;background:var(--app-ok-soft);border-radius:8px;font-size:0.85rem">
                     <div style="font-weight:700;color:#059669;margin-bottom:4px">✅ Weekstaat goedgekeurd</div>
                     <div><strong>Medewerker:</strong> ${userName}</div>
                     <div><strong>Project:</strong> ${projCode} ·${projName}</div>
@@ -18845,10 +18845,10 @@ a:focus-visible,
                                 <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
                                     <span style="font-size:0.6rem;background:#e0f2fe;padding:1px 6px;border-radius:3px">${typeLabel[q.type] || q.type}</span>
                                     ${q.required ? '<span style="font-size:0.6rem;background:var(--app-alert-soft);padding:1px 6px;border-radius:3px">Verplicht</span>' : ''}
-                                    ${q.unit ? `<span style="font-size:0.6rem;background:#f3f4f6;padding:1px 6px;border-radius:3px">${q.unit}</span>` : ''}
-                                    ${q.component ? `<span style="font-size:0.6rem;background:#ede9fe;padding:1px 6px;border-radius:3px">${q.component}</span>` : ''}
+                                    ${q.unit ? `<span style="font-size:0.6rem;background:var(--app-bg-deep);padding:1px 6px;border-radius:3px">${q.unit}</span>` : ''}
+                                    ${q.component ? `<span style="font-size:0.6rem;background:var(--app-info-soft);padding:1px 6px;border-radius:3px">${q.component}</span>` : ''}
                                     ${q.manufacturer ? `<span style="font-size:0.6rem;background:var(--app-warn-soft);padding:1px 6px;border-radius:3px">${q.manufacturer}</span>` : ''}
-                                    ${q.tools ? `<span style="font-size:0.6rem;background:#d1fae5;padding:1px 6px;border-radius:3px">🔧 ${q.tools}</span>` : ''}
+                                    ${q.tools ? `<span style="font-size:0.6rem;background:var(--app-ok-soft);padding:1px 6px;border-radius:3px">🔧 ${q.tools}</span>` : ''}
                                 </div>
                             </div>
                             <button onclick="inspEditQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Bewerken">✏️</button>
@@ -19120,7 +19120,7 @@ a:focus-visible,
                     const tplName = insp.inspection_templates?.name || 'Onbekend formulier';
                     const user = (window._adminUsers || []).find(u => u.id === insp.user_id);
                     const userName = user ? user.name : 'Onbekend';
-                    const statusColors = { 'concept': '#fef3c7', 'afgerond': '#d1fae5', 'archief': '#e2e8f0', 'goedgekeurd': '#d1fae5', 'afgekeurd': '#fee2e2' };
+                    const statusColors = { 'concept': 'var(--app-warn-soft)', 'afgerond': 'var(--app-ok-soft)', 'archief': 'var(--app-idle-soft)', 'goedgekeurd': '#d1fae5', 'afgekeurd': '#fee2e2' };
                     const statusLabels = { 'concept': '📝 Concept', 'afgerond': '✅ Afgerond', 'archief': '📦 Gearchiveerd', 'goedgekeurd': '✅ Goedgekeurd', 'afgekeurd': '❌ Afgekeurd' };
                     const pct = insp.total_questions > 0 ? Math.round(insp.answered_questions / insp.total_questions * 100) : 0;
 
@@ -19135,7 +19135,7 @@ a:focus-visible,
                                     </div>
                                     <div style="display:flex;gap:6px;margin-top:6px">
                                         <span style="font-size:0.65rem;background:${statusColors[insp.status] || '#f3f4f6'};padding:2px 8px;border-radius:4px;font-weight:600">${statusLabels[insp.status] || insp.status}</span>
-                                        ${insp.total_questions > 0 ? `<span style="font-size:0.65rem;background:#f3f4f6;padding:2px 8px;border-radius:4px">${pct}% ingevuld</span>` : ''}
+                                        ${insp.total_questions > 0 ? `<span style="font-size:0.65rem;background:var(--app-bg-deep);padding:2px 8px;border-radius:4px">${pct}% ingevuld</span>` : ''}
                                     </div>
                                 </div>
                                 ${insp.inspection_number ? `<div style="font-size:0.7rem;color:var(--kts-blue);font-weight:600;white-space:nowrap">${insp.inspection_number}</div>` : ''}
@@ -20011,7 +20011,7 @@ a:focus-visible,
                 <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
                     <div style="position:sticky;top:-16px;background:var(--app-surface);padding:14px 16px 12px 16px;margin:-16px -16px 12px -16px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:16px">
                         <div style="display:flex;align-items:start;gap:12px;margin-bottom:10px">
-                            <div style="width:40px;height:40px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
+                            <div style="width:40px;height:40px;border-radius:10px;background:var(--app-info-soft);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
                             <div style="flex:1;min-width:0">
                                 <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(tpl.name || 'Inspectie')}</div>
                                 <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${insp.inspection_number || ''}${insp.inspection_date ? ' · ' + new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}</div>
@@ -21930,7 +21930,7 @@ a:focus-visible,
 
                 let rightHtml = '';
                 if (tx.status === 'matched' && tx.invoicePath) {
-                    rightHtml = '<button class="btn btn-sm" onclick="event.stopPropagation(); adminPreviewInvoice(\'' + tx.invoicePath.replace(/'/g, "\\'") + '\')" style="font-size:1.15rem;padding:8px 12px;background:#d1fae5;border:none;border-radius:6px;cursor:pointer" title="Factuur bekijken">👁️</button>';
+                    rightHtml = '<button class="btn btn-sm" onclick="event.stopPropagation(); adminPreviewInvoice(\'' + tx.invoicePath.replace(/'/g, "\\'") + '\')" style="font-size:1.15rem;padding:8px 12px;background:var(--app-ok-soft);border:none;border-radius:6px;cursor:pointer" title="Factuur bekijken">👁️</button>';
                 }
 
                 let statusIcon = '';
@@ -22191,7 +22191,7 @@ a:focus-visible,
             list.innerHTML = ADMIN_CATEGORIES.map(cat =>
                 '<button onclick="adminSetCategory(\'' + cat.id + '\')" style="' +
                 'padding:8px 12px;border-radius:8px;border:1px solid ' + (currentCat === cat.id ? '#2563eb' : '#e2e8f0') + ';' +
-                'background:' + (currentCat === cat.id ? '#eff6ff' : 'white') + ';' +
+                'background:' + (currentCat === cat.id ? 'var(--app-info-soft)' : 'var(--app-surface)') + ';' +
                 'cursor:pointer;font-size:0.8rem;font-weight:500;white-space:nowrap;' +
                 'transition:all 0.1s" title="' + cat.desc + '">' +
                 cat.label + '</button>'
