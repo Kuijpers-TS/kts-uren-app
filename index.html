@@ -364,13 +364,29 @@
         .form-group input, .form-group select, .form-group textarea {
             width: 100%;
             padding: 12px 12px;
-            border: 2px solid var(--border);
+            border: 2px solid var(--app-line);
             border-radius: 10px;
             font-size: 16px;
             background: var(--app-bg-tint);
-            transition: border-color 0.2s;
+            color: var(--app-ink-900);
+            transition: border-color 0.2s, background 0.2s;
             min-height: 48px;
+            font-family: inherit;
         }
+        .form-group select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235C6675' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 14px;
+            padding-right: 36px;
+        }
+        [data-theme="dark"] .form-group select {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AA3B0' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+        }
+        .form-group textarea::placeholder,
+        .form-group input::placeholder { color: var(--app-ink-400); }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
             border-color: var(--kts-accent-light);
@@ -7058,16 +7074,16 @@ a:focus-visible,
                     </div>
                     <div style="display:flex;gap:10px;margin-bottom:8px">
                         <div style="flex:1">
-                            <div style="font-size:0.65rem;font-weight:600;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">↗ ${heenLabel}</div>
+                            <div style="font-size:0.65rem;font-weight:600;color:var(--kts-accent-light);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">↗ ${heenLabel}</div>
                             <div style="display:flex;align-items:center;gap:6px">
-                                <input type="number" value="${heenVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface)" onchange="updateEntry(${i},'kmHeen',this.value)">
-                                <span style="font-size:0.75rem;color:var(--muted)">km</span>
+                                <input type="number" value="${heenVal}" style="width:70px;padding:6px 10px;border:1px solid var(--app-line-strong);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface);color:var(--app-ink-900)" onchange="updateEntry(${i},'kmHeen',this.value)">
+                                <span style="font-size:0.75rem;color:var(--app-ink-500)">km</span>
                             </div>
                         </div>
                         <div style="flex:1">
-                            <div style="font-size:0.65rem;font-weight:600;color:var(--kts-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">↗ ${terugLabel}</div>
+                            <div style="font-size:0.65rem;font-weight:600;color:var(--kts-accent-light);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">↗ ${terugLabel}</div>
                             <div style="display:flex;align-items:center;gap:6px">
-                                <input type="number" value="${terugVal}" style="width:70px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface)" onchange="updateEntry(${i},'kmTerug',this.value)">
+                                <input type="number" value="${terugVal}" style="width:70px;padding:6px 10px;border:1px solid var(--app-line-strong);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface);color:var(--app-ink-900)" onchange="updateEntry(${i},'kmTerug',this.value)">
                                 <span style="font-size:0.75rem;color:var(--muted)">km</span>
                             </div>
                         </div>
@@ -7080,7 +7096,7 @@ a:focus-visible,
                 <div style="font-size:1.1rem">🚗</div>
                 <div style="flex:1">
                     <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:4px">Kilometers${entry.thuiswerk ? ' (optioneel; bijv. spullen halen of afspraak)' : ' (retour thuis ↔ project)'}</div>
-                    <input type="number" value="${entry.km||0}" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:16px;font-weight:600" onchange="updateEntry(${i},'km',this.value)">
+                    <input type="number" value="${entry.km||0}" style="width:80px;padding:6px 10px;border:1px solid var(--app-line-strong);border-radius:6px;font-size:16px;font-weight:600;background:var(--app-surface);color:var(--app-ink-900)" onchange="updateEntry(${i},'km',this.value)">
                     <span style="font-size:0.8rem;color:var(--muted);margin-left:6px">km · ${fmtEuro((entry.km||0) * KM_RATE)}</span>
                 </div>
             </div>`;
@@ -7304,13 +7320,13 @@ a:focus-visible,
                         ${workHtml}
                         ${badges ? '<div class="day-badges" style="margin-top:6px">' + badges + '</div>' : ''}
                         <div class="day-form" onclick="event.stopPropagation()">
-                            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isDayOff?'#fef3c7':'#f8fafc'};border:1px solid ${isDayOff?'#fbbf24':'var(--border)'};border-radius:10px;cursor:pointer;margin-bottom:12px" onclick="event.stopPropagation();toggleDayOff(${i})">
-                                <div style="width:20px;height:20px;border-radius:4px;border:2px solid ${isDayOff?'#d97706':'#cbd5e1'};background:${isDayOff?'#d97706':'white'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isDayOff?'var(--app-warn-soft)':'var(--app-bg-tint)'};border:1px solid ${isDayOff?'var(--app-warn-line)':'var(--app-line)'};border-radius:10px;cursor:pointer;margin-bottom:12px" onclick="event.stopPropagation();toggleDayOff(${i})">
+                                <div style="width:20px;height:20px;border-radius:4px;border:2px solid ${isDayOff?'var(--app-warn)':'var(--app-line-strong)'};background:${isDayOff?'var(--app-warn)':'var(--app-surface)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
                                     ${isDayOff ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : ''}
                                 </div>
                                 <div style="flex:1">
-                                    <div style="font-weight:600;font-size:0.85rem;color:${isDayOff?'#92400e':'var(--muted)'}">🚫 Niet gewerkt</div>
-                                    <div style="font-size:0.75rem;color:var(--muted)">Markeer als vrije dag (geen uren)</div>
+                                    <div style="font-weight:600;font-size:0.85rem;color:${isDayOff?'var(--app-warn)':'var(--app-ink-700)'}">🚫 Niet gewerkt</div>
+                                    <div style="font-size:0.75rem;color:var(--app-ink-500)">Markeer als vrije dag (geen uren)</div>
                                 </div>
                             </div>
                             <div style="${isDayOff ? 'display:none' : ''}">
@@ -7356,26 +7372,26 @@ a:focus-visible,
                             <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
 
                                 <!-- Thuiswerk toggle (alleen als gebruiker thuiswerk mag) -->
-                                ${userHasThuiswerk() ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.thuiswerk?'#f0fdf4':'#f8fafc') + ';border:1px solid ' + (entry.thuiswerk?'#86efac':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(' + i + ')">' +
-                                    '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.thuiswerk?'#059669':'#cbd5e1') + ';background:' + (entry.thuiswerk?'#059669':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+                                ${userHasThuiswerk() ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.thuiswerk?'var(--app-ok-soft)':'var(--app-bg-tint)') + ';border:1px solid ' + (entry.thuiswerk?'var(--app-ok-line)':'var(--app-line)') + ';border-radius:10px;cursor:pointer" onclick="toggleThuiswerk(' + i + ')">' +
+                                    '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.thuiswerk?'var(--app-ok)':'var(--app-line-strong)') + ';background:' + (entry.thuiswerk?'var(--app-ok)':'var(--app-surface)') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
                                         (entry.thuiswerk ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
                                     '</div>' +
                                     '<div style="flex:1">' +
-                                        '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.thuiswerk?'#059669':'var(--muted)') + '">🏠 Thuiswerk</div>' +
-                                        '<div style="font-size:0.75rem;color:var(--muted)">' + (userHasKm() ? 'Geen reiskilometers' : 'Werken vanuit huis') + '</div>' +
+                                        '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.thuiswerk?'var(--app-ok)':'var(--app-ink-700)') + '">🏠 Thuiswerk</div>' +
+                                        '<div style="font-size:0.75rem;color:var(--app-ink-500)">' + (userHasKm() ? 'Geen reiskilometers' : 'Werken vanuit huis') + '</div>' +
                                     '</div>' +
                                 '</div>' : ''}
 
                                 <!-- Hotel toggle (alleen als gebruiker hotel mag en niet thuiswerk) -->
-                                ${userHasHotel() && !entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'#eff6ff':'#f8fafc') + ';border:1px solid ' + (entry.hotel?'#93c5fd':'var(--border)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
-                                    '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + ';background:' + (entry.hotel?'var(--kts-blue)':'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+                                ${userHasHotel() && !entry.thuiswerk ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (entry.hotel?'var(--app-info-soft)':'var(--app-bg-tint)') + ';border:1px solid ' + (entry.hotel?'var(--app-info-line)':'var(--app-line)') + ';border-radius:10px;cursor:pointer" onclick="toggleHotel(' + i + ')">' +
+                                    '<div style="width:20px;height:20px;border-radius:4px;border:2px solid ' + (entry.hotel?'var(--kts-blue)':'var(--app-line-strong)') + ';background:' + (entry.hotel?'var(--kts-blue)':'var(--app-surface)') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
                                         (entry.hotel ? '<span style="color:white;font-size:14px;font-weight:bold">✓</span>' : '') +
                                     '</div>' +
                                     '<div style="flex:1">' +
-                                        '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.hotel?'var(--kts-blue)':'var(--muted)') + '">🏨 Hotelovernachting</div>' +
-                                        '<div style="font-size:0.75rem;color:var(--muted)">Vast tarief ' + fmtEuro(HOTEL_RATE) + ' · km worden hotel↔project</div>' +
+                                        '<div style="font-weight:600;font-size:0.85rem;color:' + (entry.hotel?'var(--kts-blue)':'var(--app-ink-700)') + '">🏨 Hotelovernachting</div>' +
+                                        '<div style="font-size:0.75rem;color:var(--app-ink-500)">Vast tarief ' + fmtEuro(HOTEL_RATE) + ' · km worden hotel↔project</div>' +
                                     '</div>' +
-                                    '<div style="font-weight:700;font-size:0.9rem;color:' + (entry.hotel?'var(--kts-blue)':'#cbd5e1') + '">' + fmtEuro(HOTEL_RATE) + '</div>' +
+                                    '<div style="font-weight:700;font-size:0.9rem;color:' + (entry.hotel?'var(--kts-blue)':'var(--app-ink-400)') + '">' + fmtEuro(HOTEL_RATE) + '</div>' +
                                 '</div>' : ''}
 
                                 <!-- Km veld(en) -->
@@ -7385,7 +7401,7 @@ a:focus-visible,
                             <div class="form-actions" style="flex-wrap:wrap;margin-top:12px">
                                 <button class="btn btn-secondary btn-sm" onclick="clearDay(${i})">Wissen</button>
                                 <button class="btn btn-primary btn-sm" onclick="saveDayEntry(${i})">Opslaan</button>
-                                ${i < 6 ? '<button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
+                                ${i < 6 ? '<button class="btn btn-sm" style="background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
                             </div>
                             </div>
                         </div>
