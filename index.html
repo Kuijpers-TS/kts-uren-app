@@ -5594,7 +5594,7 @@ a:focus-visible,
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Excel
                         </button>
-                        <select id="dashboard-month-filter" onchange="loadDashboard()" style="padding:6px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem"></select>
+                        <select id="dashboard-month-filter" onchange="loadDashboard()" style="padding:6px 10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem"></select>
                     </div>
                 </div>
 
@@ -5639,7 +5639,7 @@ a:focus-visible,
                     </div>
                     <input type="file" id="import-file-project" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('project', this)">
                 </div>
-                <input type="text" id="admin-search-project" placeholder="Zoek project..." oninput="filterAdminListDebounced('project')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
+                <input type="text" id="admin-search-project" placeholder="Zoek project..." oninput="filterAdminListDebounced('project')" style="width:100%;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -5657,7 +5657,7 @@ a:focus-visible,
                     <input type="file" id="import-file-persoon" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('persoon', this)">
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." oninput="filterAdminListDebounced('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." oninput="filterAdminListDebounced('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer"><input type="checkbox" id="admin-show-archived" onchange="loadAdminData('personen')" style="width:14px;height:14px"> Archief</label>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
@@ -5681,7 +5681,7 @@ a:focus-visible,
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project / medewerker</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
-                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." oninput="filterAdminListDebounced('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
+                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." oninput="filterAdminListDebounced('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -5692,13 +5692,13 @@ a:focus-visible,
                     <div class="form-row">
                         <div class="form-group" style="flex:1">
                             <label>Project</label>
-                            <select id="io-filter-project" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-project" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer project --</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label>Medewerker</label>
-                            <select id="io-filter-user" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-user" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer medewerker --</option>
                             </select>
                         </div>
@@ -5706,13 +5706,13 @@ a:focus-visible,
                     <div class="form-row">
                         <div class="form-group" style="flex:1">
                             <label>Jaar</label>
-                            <select id="io-filter-year" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-year" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer jaar --</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label>Maand</label>
-                            <select id="io-filter-month" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-month" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer maand --</option>
                             </select>
                         </div>
@@ -5724,7 +5724,7 @@ a:focus-visible,
                     <div id="io-week-selector" style="display:none">
                         <div class="form-group">
                             <label>Week</label>
-                            <select id="io-filter-week" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="io-filter-week" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer week --</option>
                             </select>
                         </div>
@@ -5765,13 +5765,13 @@ a:focus-visible,
                     <div class="form-row">
                         <div class="form-group" style="flex:1">
                             <label>Project</label>
-                            <select id="inv-filter-project" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="inv-filter-project" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer project --</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label>Medewerker</label>
-                            <select id="inv-filter-user" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="inv-filter-user" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer medewerker --</option>
                             </select>
                         </div>
@@ -5779,13 +5779,13 @@ a:focus-visible,
                     <div class="form-row">
                         <div class="form-group" style="flex:1">
                             <label>Jaar</label>
-                            <select id="inv-filter-year" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="inv-filter-year" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer jaar --</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label>Maand</label>
-                            <select id="inv-filter-month" style="padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                            <select id="inv-filter-month" style="padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                                 <option value="">-- Selecteer maand --</option>
                             </select>
                         </div>
@@ -5807,7 +5807,7 @@ a:focus-visible,
                     <div id="inv-preview-content" style="font-size:0.85rem;line-height:1.5"></div>
                     <div style="margin-top:14px;padding:12px;background:var(--app-surface);border:1px solid var(--border);border-radius:8px">
                         <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue);display:block;margin-bottom:4px">Factuurnummer</label>
-                        <input type="text" id="inv-custom-number" placeholder="Bijv. 2026-01" style="width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;font-weight:600;box-sizing:border-box">
+                        <input type="text" id="inv-custom-number" placeholder="Bijv. 2026-01" style="width:100%;padding:8px 10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;font-weight:600;box-sizing:border-box">
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Pas het nummer aan als je zelf een andere nummering hanteert</div>
                     </div>
                     <button class="btn btn-primary app-btn app-btn-primary app-btn-block app-btn-lg" onclick="generateInvoicePDF()" style="margin-top:12px">
@@ -5872,10 +5872,10 @@ a:focus-visible,
             <!-- ===== WEEKSTATEN TAB ===== -->
             <div id="admin-weekstaten" style="display:none">
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-                    <select id="ws-filter-project" onchange="loadWeekstaten()" style="flex:1 1 140px;min-width:0;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <select id="ws-filter-project" onchange="loadWeekstaten()" style="flex:1 1 140px;min-width:0;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                         <option value="">Alle projecten</option>
                     </select>
-                    <select id="ws-filter-user" onchange="loadWeekstaten()" style="flex:1 1 140px;min-width:0;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <select id="ws-filter-user" onchange="loadWeekstaten()" style="flex:1 1 140px;min-width:0;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                         <option value="">Alle medewerkers</option>
                     </select>
                 </div>
@@ -5928,13 +5928,13 @@ a:focus-visible,
                     <button class="btn btn-primary btn-sm" onclick="inspStartNew()">+ Nieuwe inspectie</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-                    <select id="insp-filter-template" onchange="inspLoadInspections()" style="flex:1;min-width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                    <select id="insp-filter-template" onchange="inspLoadInspections()" style="flex:1;min-width:120px;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         <option value="">Alle formulieren</option>
                     </select>
-                    <select id="insp-filter-user" onchange="inspLoadInspections()" style="flex:1;min-width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                    <select id="insp-filter-user" onchange="inspLoadInspections()" style="flex:1;min-width:120px;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         <option value="">Alle medewerkers</option>
                     </select>
-                    <select id="insp-filter-status" onchange="inspLoadInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.8rem">
+                    <select id="insp-filter-status" onchange="inspLoadInspections()" style="flex:1;min-width:100px;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         <option value="">Actieve (concept + afgerond)</option>
                         <option value="concept">Concept</option>
                         <option value="afgerond">Afgerond</option>
@@ -6205,7 +6205,7 @@ a:focus-visible,
             <!-- Opmerkingen (optioneel) -->
             <div style="margin-bottom:16px">
                 <div style="font-size:0.8rem;font-weight:700;color:var(--kts-blue);margin-bottom:6px">Opmerkingen <span style="font-weight:400;color:var(--muted)">(optioneel)</span></div>
-                <textarea id="sig-opmerkingen" placeholder="Eventuele opmerkingen bij deze weekstaat..." style="width:100%;min-height:60px;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;resize:vertical;font-family:inherit"></textarea>
+                <textarea id="sig-opmerkingen" placeholder="Eventuele opmerkingen bij deze weekstaat..." style="width:100%;min-height:60px;padding:10px 12px;border:2px solid var(--app-line);border-radius:10px;font-size:0.85rem;resize:vertical;font-family:inherit"></textarea>
             </div>
 
             <!-- ZZP'er handtekening -->
@@ -6227,8 +6227,8 @@ a:focus-visible,
                 </label>
                 <div id="sig-client-section" style="display:none">
                     <div style="display:flex;gap:8px;margin-bottom:8px">
-                        <input type="text" id="sig-client-name" placeholder="Naam opdrachtgever" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
-                        <input type="email" id="sig-client-email" placeholder="E-mail" style="flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                        <input type="text" id="sig-client-name" placeholder="Naam opdrachtgever" style="flex:1;padding:8px 10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.82rem;font-family:inherit">
+                        <input type="email" id="sig-client-email" placeholder="E-mail" style="flex:1;padding:8px 10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.82rem;font-family:inherit">
                     </div>
                     <div style="position:relative;border:2px solid var(--app-line);border-radius:10px;overflow:hidden;background:var(--app-surface)">
                         <canvas id="sig-canvas-client" width="380" height="140" style="width:100%;height:140px;touch-action:none"></canvas>
@@ -6607,16 +6607,16 @@ a:focus-visible,
                             ${DAYS_FULL[i].substring(0,2)}
                         </label>
                         <div class="wd-row-${i}" style="display:flex;gap:5px;align-items:center;flex:1">
-                            <select ${dis} style="padding:8px 6px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;flex:1;min-width:0" data-field="start" data-day="${i}">
+                            <select ${dis} style="padding:8px 6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;flex:1;min-width:0" data-field="start" data-day="${i}">
                                 <option value="">—</option>
                                 ${generateTimeOptions(d.start)}
                             </select>
                             <span style="color:var(--muted);font-size:0.8rem">–</span>
-                            <select ${dis} style="padding:8px 6px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;flex:1;min-width:0" data-field="end" data-day="${i}">
+                            <select ${dis} style="padding:8px 6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;flex:1;min-width:0" data-field="end" data-day="${i}">
                                 <option value="">—</option>
                                 ${generateTimeOptions(d.end)}
                             </select>
-                            <select ${dis} style="padding:8px 6px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;min-width:0" data-field="breakMin" data-day="${i}">
+                            <select ${dis} style="padding:8px 6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;min-width:0" data-field="breakMin" data-day="${i}">
                                 <option value="0" ${d.breakMin===0?'selected':''}>0:00</option>
                                 <option value="15" ${d.breakMin===15?'selected':''}>0:15</option>
                                 <option value="30" ${d.breakMin===30?'selected':''}>0:30</option>
@@ -11506,12 +11506,12 @@ a:focus-visible,
                 box.style.cssText = 'background:var(--app-surface);border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
                 const icon = iconSvg || '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>';
                 box.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#EAF2F7;margin:0 auto 14px">${icon}</div>
-                    <div style="text-align:center;font-size:16px;font-weight:600;color:#0F1B2D;margin-bottom:6px">${title}</div>
-                    <div style="text-align:center;font-size:13px;color:#5C6675;line-height:1.5;margin-bottom:20px">${message}</div>
+                    <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--app-info-soft);margin:0 auto 14px">${icon}</div>
+                    <div style="text-align:center;font-size:16px;font-weight:600;color:var(--app-ink-900);margin-bottom:6px">${title}</div>
+                    <div style="text-align:center;font-size:13px;color:var(--app-ink-500);line-height:1.5;margin-bottom:20px">${message}</div>
                     <div style="display:flex;flex-direction:column;gap:8px">
                         <button id="continue-yes" style="padding:12px 20px;border-radius:10px;border:none;background:#07567F;color:white;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit">${confirmLabel}</button>
-                        <button id="continue-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:var(--app-surface);color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">${cancelLabel}</button>
+                        <button id="continue-no" style="padding:12px 20px;border-radius:10px;border:1px solid var(--app-line);background:var(--app-surface);color:var(--app-ink-500);font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">${cancelLabel}</button>
                     </div>
                 `;
                 overlay.appendChild(box);
@@ -11533,14 +11533,14 @@ a:focus-visible,
                 const box = document.createElement('div');
                 box.style.cssText = 'background:var(--app-surface);border-radius:14px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:"IBM Plex Sans",sans-serif';
                 box.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#EAF2F7;margin:0 auto 14px">
+                    <div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--app-info-soft);margin:0 auto 14px">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </div>
-                    <div style="text-align:center;font-size:16px;font-weight:600;color:#0F1B2D;margin-bottom:6px">Week ${weekNumber} opgeslagen</div>
-                    <div style="text-align:center;font-size:13px;color:#5C6675;line-height:1.5;margin-bottom:20px">Wil je deze week direct ondertekenen en versturen?</div>
+                    <div style="text-align:center;font-size:16px;font-weight:600;color:var(--app-ink-900);margin-bottom:6px">Week ${weekNumber} opgeslagen</div>
+                    <div style="text-align:center;font-size:13px;color:var(--app-ink-500);line-height:1.5;margin-bottom:20px">Wil je deze week direct ondertekenen en versturen?</div>
                     <div style="display:flex;flex-direction:column;gap:8px">
                         <button id="sign-yes" style="padding:12px 20px;border-radius:10px;border:none;background:#07567F;color:white;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit">Ja, onderteken &amp; verstuur</button>
-                        <button id="sign-no" style="padding:12px 20px;border-radius:10px;border:1px solid #E7E4DD;background:var(--app-surface);color:#5C6675;font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">Niet nu · doe ik later</button>
+                        <button id="sign-no" style="padding:12px 20px;border-radius:10px;border:1px solid var(--app-line);background:var(--app-surface);color:var(--app-ink-500);font-size:14px;cursor:pointer;font-weight:500;font-family:inherit">Niet nu · doe ik later</button>
                     </div>
                 `;
                 overlay.appendChild(box);
@@ -11564,12 +11564,12 @@ a:focus-visible,
                 overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
                 const box = document.createElement('div');
                 box.style.cssText = 'background:var(--app-surface);border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
-                const btnColor = destructive ? '#dc2626' : 'var(--kts-blue)';
+                const btnColor = destructive ? 'var(--app-alert)' : 'var(--kts-blue)';
                 const btnText = destructive ? 'Verwijderen' : 'Bevestigen';
                 box.innerHTML = `
-                    <div style="font-size:0.9rem;line-height:1.5;color:#1e293b;white-space:pre-line;margin-bottom:20px">${message}</div>
+                    <div style="font-size:0.9rem;line-height:1.5;color:var(--app-ink-900);white-space:pre-line;margin-bottom:20px">${message}</div>
                     <div style="display:flex;gap:10px;justify-content:flex-end">
-                        <button id="cd-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
+                        <button id="cd-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
                         <button id="cd-ok" style="padding:10px 20px;border-radius:10px;border:none;background:${btnColor};color:white;font-size:0.85rem;cursor:pointer;font-weight:600">${btnText}</button>
                     </div>
                 `;
@@ -11592,10 +11592,10 @@ a:focus-visible,
                 const box = document.createElement('div');
                 box.style.cssText = 'background:var(--app-surface);border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
                 box.innerHTML = `
-                    <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:#1e293b;margin-bottom:8px">${title}</div>
-                    <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:18px">
+                    <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:var(--app-ink-900);margin-bottom:8px">${title}</div>
+                    <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" style="width:100%;padding:10px 12px;border:2px solid var(--app-line);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:18px">
                     <div style="display:flex;gap:10px;justify-content:flex-end">
-                        <button id="pa-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid #d1d5db;background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
+                        <button id="pa-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
                         <button id="pa-ok" style="padding:10px 20px;border-radius:10px;border:none;background:var(--kts-blue);color:white;font-size:0.85rem;cursor:pointer;font-weight:600">OK</button>
                     </div>
                 `;
@@ -15484,7 +15484,7 @@ a:focus-visible,
                         <input type="text" id="adm-proj-cc-weekstaat"
                             placeholder="bv. info@levvel-epc.nl, ander@klant.nl"
                             value="${existing ? (existing.cc_emails_weekstaat || '').replace(/"/g,'&quot;') : ''}"
-                            style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+                            style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;box-sizing:border-box">
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:3px;line-height:1.4">
                             Voor uitzonderlijke gevallen · bv. detachering waarbij de weekstaat ook naar
                             een 2e partij moet zonder dat de facturering via hen loopt. Comma-gescheiden.
@@ -15492,7 +15492,7 @@ a:focus-visible,
                     </div>
                     <div class="form-group" style="margin-bottom:12px">
                         <label>Notities</label>
-                        <textarea id="adm-proj-notes" rows="3" placeholder="Afspraken, contactmomenten, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
+                        <textarea id="adm-proj-notes" rows="3" placeholder="Afspraken, contactmomenten, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
                     </div>
                     <div style="margin-bottom:12px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
@@ -15552,7 +15552,7 @@ a:focus-visible,
                     </div>
                     <div class="form-group" style="margin-top:12px">
                         <label>Notities</label>
-                        <textarea id="adm-pers-notes" rows="3" placeholder="Afspraken, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
+                        <textarea id="adm-pers-notes" rows="3" placeholder="Afspraken, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
                     </div>
                     <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
@@ -16149,7 +16149,7 @@ a:focus-visible,
                 dbFields.forEach((field, i) => {
                     html += '<div style="font-weight:500">' + dbLabels[i] + '</div>';
                     html += '<div style="text-align:center;color:#999">←</div>';
-                    html += '<select id="imp-map-' + field + '" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem">';
+                    html += '<select id="imp-map-' + field + '" style="padding:4px 6px;border:1px solid var(--app-line-strong);border-radius:6px;font-size:0.8rem">';
                     html += '<option value="">Overslaan</option>';
                     excelCols.forEach(col => {
                         const selected = mapping[col] === field ? ' selected' : '';
@@ -16182,7 +16182,7 @@ a:focus-visible,
                 html += '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:0.8rem"><input type="checkbox" id="imp-test-mode"' + (_adminTestMode ? ' checked' : '') + '> Markeer als test-data</label>';
 
                 html += '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">';
-                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:var(--app-bg-deep);color:var(--app-ink-700);border:1px solid #d1d5db">Annuleren</button>';
+                html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:var(--app-bg-deep);color:var(--app-ink-700);border:1px solid var(--app-line-strong)">Annuleren</button>';
                 html += '<button class="btn btn-primary btn-sm" id="imp-confirm-btn">✓ Importeer ' + rows.length + ' rijen</button>';
                 html += '</div>';
 
@@ -16730,24 +16730,24 @@ a:focus-visible,
                 <div style="display:flex;flex-direction:column;gap:10px">
                     <div>
                         <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">MEDEWERKER</label>
-                        <select id="anw-user" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem">
+                        <select id="anw-user" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem">
                             ${users.map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">PROJECT</label>
-                        <select id="anw-project" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem">
+                        <select id="anw-project" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem">
                             ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('')}
                         </select>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                         <div>
                             <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">WEEK</label>
-                            <input type="number" id="anw-week" min="1" max="53" value="${isoWeekToday}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
+                            <input type="number" id="anw-week" min="1" max="53" value="${isoWeekToday}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
                         </div>
                         <div>
                             <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">JAAR</label>
-                            <input type="number" id="anw-year" min="2024" max="2030" value="${yearToday}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
+                            <input type="number" id="anw-year" min="2024" max="2030" value="${yearToday}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;box-sizing:border-box">
                         </div>
                     </div>
                     <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;padding:10px;background:var(--app-bg-deep);border-radius:8px;line-height:1.4">
@@ -17737,11 +17737,11 @@ a:focus-visible,
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
-                    <input type="email" id="approval-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="email" id="approval-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>Naam opdrachtgever</label>
-                    <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:0.8rem;color:var(--muted);cursor:pointer">
                     <input type="checkbox" id="approval-save-default" checked style="width:16px;height:16px;accent-color:var(--kts-blue)">
@@ -17932,11 +17932,11 @@ a:focus-visible,
                 <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever met de weekstaat PDF als bijlage.</div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
-                    <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>Naam opdrachtgever</label>
-                    <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 ${ccBanner}
                 <div id="confirm-status" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:0.8rem"></div>
@@ -18752,35 +18752,35 @@ a:focus-visible,
             const content = `
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Naam formulier *</label>
-                    <input type="text" id="insp-tpl-name" value="${existing ? existing.name : ''}" placeholder="bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="insp-tpl-name" value="${existing ? existing.name : ''}" placeholder="bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Beschrijving</label>
-                    <textarea id="insp-tpl-desc" placeholder="Uitgebreide beschrijving van het taakplan..." style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;min-height:60px">${existing ? existing.description || '' : ''}</textarea>
+                    <textarea id="insp-tpl-desc" placeholder="Uitgebreide beschrijving van het taakplan..." style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;min-height:60px">${existing ? existing.description || '' : ''}</textarea>
                 </div>
                 <div style="display:flex;gap:8px;margin-bottom:10px">
                     <div class="form-group" style="flex:1">
                         <label>Categorie</label>
-                        <select id="insp-tpl-cat" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">${categorieOptions}</select>
+                        <select id="insp-tpl-cat" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">${categorieOptions}</select>
                     </div>
                     <div class="form-group" style="flex:1">
                         <label>Frequentie</label>
-                        <select id="insp-tpl-freq" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">${frequencyOptions}</select>
+                        <select id="insp-tpl-freq" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">${frequencyOptions}</select>
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;margin-bottom:10px">
                     <div class="form-group" style="flex:1">
                         <label>Locatie</label>
-                        <input type="text" id="insp-tpl-location" value="${existing ? existing.location || '' : ''}" placeholder="bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                        <input type="text" id="insp-tpl-location" value="${existing ? existing.location || '' : ''}" placeholder="bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     </div>
                     <div class="form-group" style="flex:1">
                         <label>Installatie</label>
-                        <input type="text" id="insp-tpl-install" value="${existing ? existing.installation || '' : ''}" placeholder="bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                        <input type="text" id="insp-tpl-install" value="${existing ? existing.installation || '' : ''}" placeholder="bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px">
                     <label>Asset</label>
-                    <input type="text" id="insp-tpl-asset" value="${existing ? existing.asset || '' : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="insp-tpl-asset" value="${existing ? existing.asset || '' : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
 
                 <div style="border-top:2px solid var(--border);padding-top:12px;margin-top:4px">
@@ -18857,7 +18857,7 @@ a:focus-visible,
                 }).join('');
 
                 return `
-                    <div style="border:2px solid var(--border);border-radius:10px;padding:12px">
+                    <div style="border:2px solid var(--app-line);border-radius:10px;padding:12px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                             <input type="text" value="${sec.title || ''}" onchange="window._inspTplSections[${si}].title=this.value" placeholder="Sectienaam (bijv. Bekabeling)" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-weight:600">
                             <button onclick="inspRemoveSection(${si})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:4px;margin-left:8px" title="Sectie verwijderen">🗑</button>
@@ -19951,12 +19951,12 @@ a:focus-visible,
                     } else if (q.type === 'meting' || q.type === 'numeriek') {
                         inputHtml = `
                             <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-                                <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
+                                <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
                                 ${q.unit ? `<span style="font-size:0.85rem;color:var(--muted)">${q.unit}</span>` : ''}
                             </div>`;
                     } else {
                         inputHtml = `
-                            <textarea id="insp-input-${key}" onchange="inspAnswer('${key}',this.value)" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:6px;min-height:44px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
+                            <textarea id="insp-input-${key}" onchange="inspAnswer('${key}',this.value)" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;margin-top:6px;min-height:44px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
                     }
 
                     sectionsHtml += `
@@ -21596,7 +21596,7 @@ a:focus-visible,
                 container.innerHTML = fields.map(f => `
                     <div class="form-group" style="margin-bottom:10px">
                         <label style="font-size:0.82rem;font-weight:600">${f.label}${f.required ? ' *' : ''}</label>
-                        <select id="admin-colmap-${f.key}" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem">
+                        <select id="admin-colmap-${f.key}" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                             <option value="">-- Kies kolom --</option>
                             ${headers.map((h, i) => '<option value="' + i + '">' + h + '</option>').join('')}
                         </select>
@@ -22779,7 +22779,7 @@ a:focus-visible,
 
             return '<!DOCTYPE html>\n<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
                 '<title>Administratie Overzicht ·' + today + '</title>' +
-                '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px 24px;background:#f8fafc;color:#1e293b}' +
+                '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px 24px;background:#f8fafc;color:var(--app-ink-900)}' +
                 'a:hover{text-decoration:underline!important}' +
                 'table{box-shadow:0 1px 3px rgba(0,0,0,0.08);border-radius:8px;overflow:hidden}' +
                 'tr:hover td{filter:brightness(0.97)}' +
