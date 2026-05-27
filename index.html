@@ -9434,6 +9434,7 @@ a:focus-visible,
             const desc = document.getElementById('exp-desc').value;
             if (!amount || !desc) { showToast('⚠️ Vul alle velden in'); return; }
 
+            let invalidatedAfterChange = false;
             const sb = getSupabase();
             // Persistent: schrijf naar expenses-tabel als we ingelogd zijn op huidige
             // week/project. Anders fallback naar in-memory expEntries (bv. demo-modus).
@@ -9461,6 +9462,9 @@ a:focus-visible,
                     } else {
                         // Reload expenses uit DB zodat in-memory cache klopt
                         await loadExpEntriesForWeek(sb, currentUser.id, currentProject.id, currentWeekNumber, currentYear);
+                        // Als de weekstaat al ondertekend/goedgekeurd was: terug naar concept zodat
+                        // de PDF/handtekening niet verouderd raakt door de nieuwe declaratie.
+                        invalidatedAfterChange = await invalidateApprovalOnChange(currentUser.id, currentProject.id, currentWeekNumber, currentYear);
                     }
                 } catch (e) {
                     console.warn('expense insert exception:', e);
@@ -9474,10 +9478,15 @@ a:focus-visible,
             renderExpenses();
             renderOverview();
             closeModal('expense-modal');
-            showToast('✓ Declaratie toegevoegd');
+            if (invalidatedAfterChange) {
+                showToast('✓ Declaratie toegevoegd · weekstaat teruggezet naar concept (opnieuw ondertekenen nodig)');
+            } else {
+                showToast('✓ Declaratie toegevoegd');
+            }
         }
 
         async function deleteExpense(id) {
+            let invalidatedAfterChange = false;
             const sb = getSupabase();
             // Bij DB-load expenses krijgen ze id 'db-0', 'db-1', etc · moeten via cat+amount+desc
             // gematched worden. Bij in-memory expenses heb je een numeric id.
@@ -9497,13 +9506,21 @@ a:focus-visible,
                     const { error } = await q;
                     if (error && !/relation.*expenses.*does not exist/i.test(error.message || '')) {
                         console.warn('expense delete mislukt:', error.message);
+                    } else if (!error) {
+                        // Verwijderen van een declaratie verandert de inhoud van de weekstaat.
+                        // Was deze al ondertekend/goedgekeurd? Dan terug naar concept.
+                        invalidatedAfterChange = await invalidateApprovalOnChange(currentUser.id, currentProject.id, currentWeekNumber, currentYear);
                     }
                 } catch (e) { /* fallback · verwijder alleen in-memory */ }
             }
             expEntries = expEntries.filter(e => e.id !== id);
             renderExpenses();
             renderOverview();
-            showToast('✓ Declaratie verwijderd');
+            if (invalidatedAfterChange) {
+                showToast('✓ Declaratie verwijderd · weekstaat teruggezet naar concept (opnieuw ondertekenen nodig)');
+            } else {
+                showToast('✓ Declaratie verwijderd');
+            }
         }
 
         // ===== NAV =====
@@ -11111,6 +11128,14 @@ a:focus-visible,
                 // Mark week als laatst-aangepast · voor admin-zichtbaarheid
                 await touchWeekstaatModified(sb, currentUser.id, currentProject.id,
                     currentWeekNumber, currentYear, currentUser.id);
+                // Edge case: ZZP'er past uren aan ná al ondertekend te hebben (bv. via
+                // terug-navigatie). Reset de weekstaat dan naar concept zodat de oude
+                // PDF/handtekening niet onsync raakt. No-op als nog niet ondertekend.
+                const wasInvalidated = await invalidateApprovalOnChange(currentUser.id, currentProject.id,
+                    currentWeekNumber, currentYear);
+                if (wasInvalidated) {
+                    showToast('⚠️ Uren gewijzigd na ondertekening · weekstaat staat weer in concept');
+                }
                 return true;
             } catch (err) {
                 console.error('saveWeekToSupabase fout:', err);
@@ -16435,6 +16460,90 @@ a:focus-visible,
             }
         }
 
+        // Helper: zet weekstaat automatisch terug naar concept als er na ondertekening/goedkeuring
+        // nog wijzigingen worden gedaan (extra kosten, uren aangepast, etc.). Anders blijft de
+        // PDF/handtekening verouderd terwijl de data al gewijzigd is. Verwijdert ook de oude PDF.
+        // Geeft true terug als er gereset is, false als er niets te invalideren was.
+        async function invalidateApprovalOnChange(userId, projectId, weekNumber, year) {
+            const sb = getSupabase();
+            if (!sb || !userId || !projectId || !weekNumber || !year) return false;
+            try {
+                const { data: ws } = await sb.from('week_status')
+                    .select('status, approval_status, signed_at')
+                    .eq('user_id', userId).eq('project_id', projectId)
+                    .eq('week_number', weekNumber).eq('year', year).maybeSingle();
+                if (!ws) return false;
+                // Alleen resetten als er echt iets te invalideren is. Concept/opgeslagen zonder
+                // approval_status hoeven niet aangeraakt te worden.
+                const needsReset = ws.status === 'verstuurd'
+                    || ws.status === 'ondertekend'
+                    || ws.approval_status === 'ter_goedkeuring'
+                    || ws.approval_status === 'goedgekeurd'
+                    || !!ws.signed_at;
+                if (!needsReset) return false;
+
+                // Probeer eerst de volledige reset (incl. submitted_at, last_modified_at)
+                const fullPayload = {
+                    status: 'opgeslagen',
+                    approval_status: null,
+                    approval_token: null,
+                    approval_completed_at: null,
+                    approver_name: null,
+                    approver_email: null,
+                    client_signature_url: null,
+                    approval_comments: null,
+                    signed_at: null,
+                    submitted_at: null,
+                    last_modified_at: new Date().toISOString()
+                };
+                let { error } = await sb.from('week_status').update(fullPayload)
+                    .eq('user_id', userId).eq('project_id', projectId)
+                    .eq('week_number', weekNumber).eq('year', year);
+                // Fallback voor DB zonder last_modified kolommen
+                if (error && /last_modified|submitted_at/.test(error.message || '')) {
+                    const fallback = { ...fullPayload };
+                    delete fallback.last_modified_at;
+                    delete fallback.submitted_at;
+                    ({ error } = await sb.from('week_status').update(fallback)
+                        .eq('user_id', userId).eq('project_id', projectId)
+                        .eq('week_number', weekNumber).eq('year', year));
+                }
+                if (error) {
+                    console.warn('invalidateApprovalOnChange update mislukt:', error.message);
+                    return false;
+                }
+
+                // Oude PDF opruimen zodat klant/admin niet de verouderde versie ziet
+                try {
+                    const folderPath = `${year}/week-${weekNumber}`;
+                    const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
+                    if (files && files.length > 0) {
+                        const { data: proj } = await sb.from('projects').select('code').eq('id', projectId).maybeSingle();
+                        const { data: usr } = await sb.from('users').select('full_name').eq('id', userId).maybeSingle();
+                        const projCode = proj?.code || '';
+                        const userSlug = (usr?.full_name || '').replace(/\s+/g, '_');
+                        const match = files.find(f =>
+                            (projCode && f.name.includes(projCode))
+                            && (userSlug && f.name.includes(userSlug))
+                        );
+                        if (match) {
+                            await sb.storage.from('weekstaten').remove([`${folderPath}/${match.name}`]);
+                            console.log('Verouderde PDF verwijderd na wijziging:', match.name);
+                        }
+                    }
+                } catch (storageErr) {
+                    console.warn('PDF cleanup overgeslagen:', storageErr.message || storageErr);
+                }
+
+                // Caller toont een eigen toast met de invalidate-status erbij;
+                // we tonen hier geen aparte toast omdat die direct overschreven zou worden.
+                return true;
+            } catch (e) {
+                console.warn('invalidateApprovalOnChange exception:', e.message || e);
+                return false;
+            }
+        }
+
         async function adminResetWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
             if (!await confirmAsync(`Weekstaat terugzetten naar concept?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDe status wordt teruggezet naar 'opgeslagen' en de oude PDF wordt verwijderd uit storage. De ingevulde uren blijven behouden. Je kunt daarna opnieuw ondertekenen & versturen.`, true)) return;
             const sb = getSupabase();
@@ -17370,14 +17479,22 @@ a:focus-visible,
                 console.error('Expenses opslaan exception:', expSaveErr);
             }
 
-            // Toast: combineer dag-save resultaat + eventuele expense-fout
+            // Als de weekstaat al ondertekend/goedgekeurd was: terug naar concept.
+            // Reden: na deze save zijn de uren/extra kosten gewijzigd, dus de oude PDF/handtekening
+            // is verouderd. Beter expliciet resetten dan een onsync ondertekende staat houden.
+            const invalidated = await invalidateApprovalOnChange(userId, projectId, weekNumber, year);
+
+            // Toast: combineer dag-save resultaat + eventuele expense-fout + invalidation
             if (expensesError) {
                 showToast(`⚠️ ${saved} dagen opgeslagen · extra kosten faalden: ${expensesError}`);
             } else if (errors) {
                 showToast(`⚠️ ${saved} opgeslagen, ${errors} fouten`);
             } else {
                 const expSuffix = expensesCount > 0 ? ` + ${expensesCount} extra kost${expensesCount === 1 ? '' : 'en'}` : '';
-                showToast(`✓ ${saved} dagen opgeslagen${expSuffix} · staat klaar in Concept om te ondertekenen`);
+                const tail = invalidated
+                    ? ' · teruggezet naar Concept (opnieuw ondertekenen nodig)'
+                    : ' · staat klaar in Concept om te ondertekenen';
+                showToast(`✓ ${saved} dagen opgeslagen${expSuffix}${tail}`);
             }
             // closeModal i.p.v. directe classList · die verwijdert ook modal-wide cleanup
             closeModal('admin-modal');
