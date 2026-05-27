@@ -14834,21 +14834,21 @@ a:focus-visible,
                 // Regular hours
                 if (week.regHours > 0) {
                     const amount = week.regHours * ioData.rate.hourly_rate;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Reguliere uren (ma-vr) ·${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.regHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
+                    html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Reguliere uren (ma-vr) ·${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.regHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
 
                 // Saturday hours
                 if (week.satHours > 0) {
                     const amount = week.satHours * ioData.rate.hourly_rate * ioData.rate.saturday_multiplier;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zaterdaguren ·${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.satHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate * ioData.rate.saturday_multiplier)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
+                    html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Zaterdaguren ·${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.satHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate * ioData.rate.saturday_multiplier)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
 
                 // Sunday hours
                 if (week.sunHours > 0) {
                     const amount = week.sunHours * ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier;
-                    html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Zondaguren ·${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.sunHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
+                    html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Zondaguren ·${weekLabel}</td><td style="text-align:right;padding:6px">${fmtDecimal(week.sunHours)}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.hourly_rate * ioData.rate.sunday_holiday_multiplier)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(amount)}</td></tr>`;
                     subtotal += amount;
                 }
             });
@@ -14858,7 +14858,7 @@ a:focus-visible,
             Object.values(ioData.weekData).forEach(w => totalKm += w.totalKm);
             if (totalKm > 0) {
                 const kmAmount = totalKm * ioData.rate.km_rate;
-                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.km_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
+                html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.km_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
                 subtotal += kmAmount;
             }
 
@@ -14867,17 +14867,17 @@ a:focus-visible,
             Object.values(ioData.weekData).forEach(w => totalHotel += w.hotelNights);
             if (totalHotel > 0) {
                 const hotelAmount = totalHotel * ioData.hotelRate;
-                html += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.hotelRate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
+                html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Hotelovernachtingen</td><td style="text-align:right;padding:6px">${totalHotel}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.hotelRate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(hotelAmount)}</td></tr>`;
                 subtotal += hotelAmount;
             }
 
-            // Totals
+            // Totals · gebruik tokens zodat dark mode netjes blijft
             const btw = subtotal * 0.21;
             const total = subtotal + btw;
 
-            html += '<tr style="background:#f3f4f6"><td colspan="3" style="padding:8px;text-align:right;font-weight:600">Subtotaal</td><td style="text-align:right;padding:8px;font-weight:600">' + fmtEuroPdf(subtotal) + '</td></tr>';
-            html += '<tr style="background:#f3f4f6"><td colspan="3" style="padding:8px;text-align:right;font-weight:600">BTW 21%</td><td style="text-align:right;padding:8px;font-weight:600">' + fmtEuroPdf(btw) + '</td></tr>';
-            html += '<tr style="background:#dbeafe;font-weight:600"><td colspan="3" style="padding:8px;text-align:right">Totaal incl. BTW</td><td style="text-align:right;padding:8px;color:var(--kts-blue)">' + fmtEuroPdf(total) + '</td></tr>';
+            html += '<tr style="background:var(--app-bg-tint)"><td colspan="3" style="padding:8px;text-align:right;font-weight:600">Subtotaal</td><td style="text-align:right;padding:8px;font-weight:600">' + fmtEuroPdf(subtotal) + '</td></tr>';
+            html += '<tr style="background:var(--app-bg-tint)"><td colspan="3" style="padding:8px;text-align:right;font-weight:600">BTW 21%</td><td style="text-align:right;padding:8px;font-weight:600">' + fmtEuroPdf(btw) + '</td></tr>';
+            html += '<tr style="background:rgba(58,156,197,0.15);font-weight:600"><td colspan="3" style="padding:8px;text-align:right">Totaal incl. BTW</td><td style="text-align:right;padding:8px;color:var(--kts-accent-light)">' + fmtEuroPdf(total) + '</td></tr>';
             html += '</table>';
 
             // Store ioData globally for PDF generation
