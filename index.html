@@ -7002,11 +7002,12 @@ a:focus-visible,
         };
 
         function fmt(n) {
-            // Toon als decimaal met komma (bijv. 47,5 of 8,0)
+            // Toon uren als decimaal met komma en 2 decimalen (bijv. 11,75 of 8,00).
+            // 2 decimalen voorkomt dat kwartieren (0,25/0,75) verkeerd worden afgerond
+            // naar 0,3/0,8 in de weergave. Heel-uren krijgen ',00' voor consistentie
+            // met euro-bedragen (€ 12,00).
             if (n === 0) return '0';
-            // Rond af op 1 decimaal, verwijder trailing 0 alleen als het een heel getal is
-            const rounded = Math.round(n * 10) / 10;
-            return rounded.toFixed(1).replace('.', ',');
+            return n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
         function fmtDecimal(n) { return n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function fmtEuro(n) { return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -8182,8 +8183,8 @@ a:focus-visible,
             y += headerH;
             const fmtNum = (n) => {
                 if (n === 0 || n == null) return '0';
-                const r = Math.round(n * 10) / 10;
-                return r.toFixed(1).replace('.', ',');
+                // 2 decimalen consistent met fmt() in de app
+                return n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             };
 
             let totalHours = 0, totalKm = 0, weekdayHours = 0, satHours = 0, sunHours = 0;
