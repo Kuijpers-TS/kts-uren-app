@@ -16435,7 +16435,7 @@ a:focus-visible,
         }
 
         async function adminResetWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
-            if (!await confirmAsync(`Weekstaat terugzetten naar concept?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDe status wordt teruggezet naar 'opgeslagen' en de oude PDF wordt verwijderd uit storage. Je kunt daarna opnieuw ondertekenen & versturen.`, true)) return;
+            if (!await confirmAsync(`Weekstaat terugzetten naar concept?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDe status wordt teruggezet naar 'opgeslagen' en de oude PDF wordt verwijderd uit storage. De ingevulde uren blijven behouden. Je kunt daarna opnieuw ondertekenen & versturen.`, true)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             try {
@@ -17132,7 +17132,10 @@ a:focus-visible,
             if (hotelEl) hotelEl.checked = false;
             if (locEl)   locEl.value = '';
             if (descEl)  descEl.value = '';
-            // Visuele feedback: rij iets vergrijzen
+            // Markeer expliciet als 'te verwijderen' bij save — voorkomt dat een
+            // bestaande DB-entry blijft staan als de save-detectie via empty-fields
+            // niet klopt. Plus visuele feedback (opacity).
+            row.dataset.cleared = 'true';
             row.style.opacity = '0.55';
         }
 
@@ -17159,6 +17162,7 @@ a:focus-visible,
             for (const row of rows) {
                 const entryId = row.dataset.entryId;
                 const dateStr = row.dataset.date;
+                const cleared = row.dataset.cleared === 'true';
                 const start = row.querySelector('.aew-start').value || null;
                 const end = row.querySelector('.aew-end').value || null;
                 const hours = parseFloat(row.querySelector('.aew-hours').value) || 0;
@@ -17171,6 +17175,17 @@ a:focus-visible,
                 const loc = locInput ? locInput.value.trim() : '';
                 const km = kmInput ? (parseFloat(kmInput.value) || 0) : 0;
                 const hotel = hotelInput ? !!hotelInput.checked : false;
+
+                // EXPLICIET GEWIST via 'Niet gewerkt'-knop: bestaande entry hard verwijderen,
+                // ongeacht of hours/desc per ongeluk nog iets bevatten.
+                if (cleared) {
+                    if (entryId) {
+                        const { error: delErr } = await sb.from('time_entries').delete().eq('id', entryId);
+                        if (delErr) { errors++; console.error('Delete cleared entry mislukt:', delErr); }
+                        else saved++;
+                    }
+                    continue; // skip de save-branch
+                }
 
                 if (hours > 0 || desc) {
                     totalHours += hours;
@@ -17196,9 +17211,10 @@ a:focus-visible,
                     if (result.error) { errors++; console.error(result.error); }
                     else saved++;
                 } else if (entryId && hours === 0 && !desc) {
-                    // Verwijder lege entry
-                    await sb.from('time_entries').delete().eq('id', entryId);
-                    saved++;
+                    // Verwijder lege entry (fallback voor handmatig wissen)
+                    const { error: delErr } = await sb.from('time_entries').delete().eq('id', entryId);
+                    if (delErr) { errors++; console.error('Delete empty entry mislukt:', delErr); }
+                    else saved++;
                 }
             }
 
