@@ -15700,10 +15700,13 @@ a:focus-visible,
             saveBtn.style.display = '';
             saveBtn.textContent = 'Opslaan';
             saveBtn.onclick = () => saveAdminItem(type);
-            // Verwijder-knop tonen bij bewerken van tarieven
+            // Verwijder-knop tonen bij bewerken van tarieven, projecten en bedrijven.
+            // deleteAdminItem checkt foreign-key koppelingen en biedt archiveren aan
+            // als hard delete niet kan.
             const delBtn = document.getElementById('admin-modal-delete');
             if (delBtn) {
-                delBtn.style.display = (isEdit && type === 'tarief') ? 'block' : 'none';
+                const canDelete = isEdit && (type === 'tarief' || type === 'project' || type === 'persoon');
+                delBtn.style.display = canDelete ? 'block' : 'none';
                 delBtn.dataset.type = type;
             }
             modal.classList.add('active');
@@ -18372,21 +18375,116 @@ a:focus-visible,
             if (!_editingId) return;
             const delBtn = document.getElementById('admin-modal-delete');
             const type = delBtn ? delBtn.dataset.type : '';
-            if (!await confirmAsync('Weet je zeker dat je dit item wilt verwijderen?', true)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
-            let table = '';
-            if (type === 'tarief') table = 'rates';
-            else if (type === 'project') table = 'projects';
-            else if (type === 'persoon') table = 'companies';
-            if (!table) return;
-            const { error } = await sb.from(table).delete().eq('id', _editingId);
-            if (error) {
-                showToast('⚠️ Verwijderen mislukt: ' + error.message);
-            } else {
-                showToast('✓ Verwijderd');
+
+            // Tarief: simpele delete · geen foreign-key complicaties
+            if (type === 'tarief') {
+                if (!await confirmAsync('Weet je zeker dat je dit tarief wilt verwijderen?', true)) return;
+                const { error } = await sb.from('rates').delete().eq('id', _editingId);
+                if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                showToast('✓ Tarief verwijderd');
                 closeModal('admin-modal');
                 loadAdminData();
+                return;
+            }
+
+            // Project: check eerst of er gekoppelde data is. Bij geen koppelingen
+            // kan hard delete. Bij wel koppelingen: bied archiveren aan (status=closed).
+            if (type === 'project') {
+                const projName = document.getElementById('adm-proj-name')?.value || 'dit project';
+                if (!await confirmAsync(`Project "${projName}" verwijderen?\n\nWe checken eerst of er nog uren, weekstaten of tarieven aan gekoppeld zijn.`, true)) return;
+
+                // Tel gekoppelde records. Gebruik head-only count zodat we geen rows ophalen.
+                const safeCount = async (table, col) => {
+                    try {
+                        const { count } = await sb.from(table).select('id', { count: 'exact', head: true }).eq(col, _editingId);
+                        return count || 0;
+                    } catch (e) { return 0; }
+                };
+                const [uren, weekstaten, tarieven, toewijzingen, kosten] = await Promise.all([
+                    safeCount('time_entries', 'project_id'),
+                    safeCount('week_status', 'project_id'),
+                    safeCount('rates', 'project_id'),
+                    safeCount('user_projects', 'project_id'),
+                    safeCount('expenses', 'project_id')
+                ]);
+                const total = uren + weekstaten + tarieven + toewijzingen + kosten;
+
+                if (total === 0) {
+                    // Niets gekoppeld · hard delete
+                    const { error } = await sb.from('projects').delete().eq('id', _editingId);
+                    if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                    showToast('✓ Project verwijderd');
+                    closeModal('admin-modal');
+                    loadAdminData();
+                    return;
+                }
+
+                // Er zit data aan vast · bied archiveren aan
+                const details = [
+                    uren > 0 ? `· ${uren} uren-invoer${uren === 1 ? '' : 'en'}` : '',
+                    weekstaten > 0 ? `· ${weekstaten} weekstaten` : '',
+                    tarieven > 0 ? `· ${tarieven} tariefregel${tarieven === 1 ? '' : 's'}` : '',
+                    toewijzingen > 0 ? `· ${toewijzingen} gebruikerstoewijzing${toewijzingen === 1 ? '' : 'en'}` : '',
+                    kosten > 0 ? `· ${kosten} declaratie${kosten === 1 ? '' : 's'}` : ''
+                ].filter(Boolean).join('\n');
+                const archive = await confirmAsync(
+                    `Kan niet hard verwijderen · er zit nog data aan vast:\n\n${details}\n\nWil je het project archiveren in plaats daarvan?\n(Status wordt 'Afgesloten'. De data blijft behouden, het project verdwijnt uit de keuzelijsten.)`,
+                    true
+                );
+                if (!archive) return;
+                const { error } = await sb.from('projects').update({ status: 'closed' }).eq('id', _editingId);
+                if (error) { showToast('⚠️ Archiveren mislukt: ' + error.message); return; }
+                showToast('✓ Project gearchiveerd (afgesloten)');
+                closeModal('admin-modal');
+                loadAdminData();
+                return;
+            }
+
+            // Persoon (companies): check FK op users + projects, hard delete of archive
+            if (type === 'persoon') {
+                const compName = document.getElementById('adm-pers-name')?.value || 'dit bedrijf';
+                if (!await confirmAsync(`Bedrijf "${compName}" verwijderen?\n\nWe checken eerst of er nog gebruikers of projecten aan gekoppeld zijn.`, true)) return;
+
+                const safeCount = async (table, col) => {
+                    try {
+                        const { count } = await sb.from(table).select('id', { count: 'exact', head: true }).eq(col, _editingId);
+                        return count || 0;
+                    } catch (e) { return 0; }
+                };
+                const [gebruikers, projFactuur, projIo] = await Promise.all([
+                    safeCount('users', 'company_id'),
+                    safeCount('projects', 'client_company_id'),
+                    safeCount('projects', 'io_company_id')
+                ]);
+                const total = gebruikers + projFactuur + projIo;
+
+                if (total === 0) {
+                    const { error } = await sb.from('companies').delete().eq('id', _editingId);
+                    if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                    showToast('✓ Bedrijf verwijderd');
+                    closeModal('admin-modal');
+                    loadAdminData();
+                    return;
+                }
+
+                const details = [
+                    gebruikers > 0 ? `· ${gebruikers} gebruiker${gebruikers === 1 ? '' : 's'}` : '',
+                    projFactuur > 0 ? `· ${projFactuur} project${projFactuur === 1 ? '' : 'en'} (als factuur-bedrijf)` : '',
+                    projIo > 0 ? `· ${projIo} project${projIo === 1 ? '' : 'en'} (als inkooporder-bedrijf)` : ''
+                ].filter(Boolean).join('\n');
+                const archive = await confirmAsync(
+                    `Kan niet hard verwijderen · er zijn koppelingen:\n\n${details}\n\nWil je het bedrijf archiveren in plaats daarvan?\n(Verdwijnt uit keuzelijsten, blijft in de DB voor de bestaande koppelingen.)`,
+                    true
+                );
+                if (!archive) return;
+                const { error } = await sb.from('companies').update({ archived: true }).eq('id', _editingId);
+                if (error) { showToast('⚠️ Archiveren mislukt: ' + error.message); return; }
+                showToast('✓ Bedrijf gearchiveerd');
+                closeModal('admin-modal');
+                loadAdminData();
+                return;
             }
         }
 
