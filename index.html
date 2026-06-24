@@ -1840,7 +1840,13 @@
           overflow: hidden;
           max-width: 480px;
           width: 100%;
-          max-height: 92vh;
+          /* De .modal-overlay verankert onderaan (align-items:flex-end). Een te
+             hoge modal schuift met z'n bovenkant achter de sticky .app-header.
+             Daarom hoogte begrenzen op viewport minus ruimte voor header (boven)
+             en bottom-nav + safe-area (onder), zodat de sectie-titel altijd
+             volledig zichtbaar blijft. */
+          max-height: calc(100vh - 84px - 76px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+          max-height: calc(100dvh - 84px - 76px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
           display: flex;
           flex-direction: column;
         }
