@@ -19685,28 +19685,50 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
 
-            // Templates ophalen (niet-gearchiveerd)
+            // Templates ophalen · alleen actieve formulieren. Respecteer test-modus
+            // net als de formulieren-lijst (is_test), zodat de admin in test-modus
+            // test-formulieren ziet en in productie de echte.
             let templates = [];
             try {
-                const { data, error } = await sb.from('inspection_templates')
-                    .select('id, name, category, asset, location, installation, archived')
-                    .order('name');
+                let q = sb.from('inspection_templates')
+                    .select('id, name, category, asset, location, installation')
+                    .eq('is_active', true);
+                if (_adminTestMode) {
+                    q = q.eq('is_test', true);
+                } else {
+                    q = q.or('is_test.eq.false,is_test.is.null');
+                }
+                const { data, error } = await q.order('name');
                 if (error) throw error;
-                templates = (data || []).filter(t => !t.archived);
+                templates = data || [];
             } catch (e) {
                 showToast('⚠️ Templates laden mislukt: ' + e.message);
                 return;
             }
             if (templates.length === 0) {
-                showToast('⚠️ Maak eerst een inspectie-formulier aan (Beheer → Formulieren)');
+                showToast('⚠️ Geen actieve formulieren · maak er een aan via Beheer → Formulieren');
                 return;
             }
 
-            // Actieve medewerkers + projecten uit admin cache
-            const users = (window._adminUsers || [])
-                .filter(u => !u.archived_at && !u.paused_at)
-                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            // goToAdmin() start loadAdminData() zonder await, dus bij een snelle klik
+            // kan de medewerkers/projecten-cache nog leeg zijn. Laad 'm dan eerst zodat
+            // we geen misleidende "geen medewerkers/projecten" melding tonen.
+            if ((!window._adminUsers || window._adminUsers.length === 0 ||
+                 !window._adminProjects || window._adminProjects.length === 0)
+                && typeof loadAdminData === 'function') {
+                try { await loadAdminData(); } catch (e) { /* fallback hieronder vangt lege cache */ }
+            }
+
+            // Actieve medewerkers + projecten uit admin cache. De cache bevat zowel
+            // test- als productie-records · filter daarom op test-modus net als de rest
+            // van het beheer. getFilteredUsers() doet test/archived/paused filtering al.
+            const users = (typeof getFilteredUsers === 'function'
+                ? getFilteredUsers()
+                : (window._adminUsers || []).filter(u =>
+                    (_adminTestMode ? u.is_test === true : u.is_test !== true) && !u.archived_at && !u.paused_at)
+            ).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             const projects = (window._adminProjects || [])
+                .filter(p => (_adminTestMode ? p.is_test === true : p.is_test !== true))
                 .filter(p => p.status === 'active')
                 .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             if (users.length === 0) { showToast('⚠️ Geen actieve medewerkers'); return; }
