@@ -6119,6 +6119,12 @@ a:focus-visible,
         </div>
     </div>
 
+    <!-- INSPECTIE FILL MODAL · eigen overlay zodat de inspectie-invulweergave
+         NIET de gedeelde #admin-modal scaffold (title/fields/save/delete)
+         overschrijft. Anders breken alle generieke admin-modals nadat je een
+         inspectie hebt geopend. -->
+    <div class="modal-overlay" id="insp-fill-modal"></div>
+
     <!-- PROJECT SWITCHER MODAL -->
     <div class="modal-overlay" id="project-modal">
         <div class="modal">
@@ -20377,7 +20383,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     </div>`;
             }
 
-            const modal = document.getElementById('admin-modal');
+            const modal = document.getElementById('insp-fill-modal');
             modal.innerHTML = `
                 <div class="modal-content insp-modal-content insp-module">
                     <button class="insp-modal-close" onclick="inspCloseForm()" aria-label="Sluiten">${_inspIconClose()}</button>
@@ -20582,7 +20588,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     <button class="insp-nav-btn" onclick="inspOpenSectionView(${si + 1})" ${hasNext ? '' : 'disabled'}>Volgende ${_inspIconArrowRight()}</button>
                 </div>`;
 
-            const modal = document.getElementById('admin-modal');
+            const modal = document.getElementById('insp-fill-modal');
             modal.innerHTML = `
                 <div class="modal-content insp-modal-content insp-module">
                     <button class="insp-modal-close" onclick="inspCloseForm()" aria-label="Sluiten">${_inspIconClose()}</button>
@@ -20789,7 +20795,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
 
         // Sluiten + opslaan
         function inspCloseForm() {
-            closeModal('admin-modal');
+            closeModal('insp-fill-modal');
             inspLoadUserInspections();
             window._inspActive = null;
         }
@@ -21096,7 +21102,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 completed_at: new Date().toISOString()
             }).eq('id', window._inspActive.id);
 
-            closeModal('admin-modal');
+            closeModal('insp-fill-modal');
             showToast('✓ Inspectie afgerond');
             inspLoadUserInspections();
             window._inspActive = null;
