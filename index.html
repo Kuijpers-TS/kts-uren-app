@@ -19678,9 +19678,187 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             }
         }
 
-        // Placeholder: nieuwe inspectie starten
-        function inspStartNew() {
-            showToast('ℹ️ Nieuwe inspectie starten · komt in fase 2');
+        // Admin-flow: nieuwe inspectie aanmaken voor een medewerker.
+        // Verschilt van inspStartFromTemplate (monteur-flow) doordat hier de
+        // admin ook kiest WIE de inspectie moet doen en op welk project.
+        async function inspStartNew() {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            // Templates ophalen (niet-gearchiveerd)
+            let templates = [];
+            try {
+                const { data, error } = await sb.from('inspection_templates')
+                    .select('id, name, category, asset, location, installation, archived')
+                    .order('name');
+                if (error) throw error;
+                templates = (data || []).filter(t => !t.archived);
+            } catch (e) {
+                showToast('⚠️ Templates laden mislukt: ' + e.message);
+                return;
+            }
+            if (templates.length === 0) {
+                showToast('⚠️ Maak eerst een inspectie-formulier aan (Beheer → Formulieren)');
+                return;
+            }
+
+            // Actieve medewerkers + projecten uit admin cache
+            const users = (window._adminUsers || [])
+                .filter(u => !u.archived_at && !u.paused_at)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            const projects = (window._adminProjects || [])
+                .filter(p => p.status === 'active')
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            if (users.length === 0) { showToast('⚠️ Geen actieve medewerkers'); return; }
+            if (projects.length === 0) { showToast('⚠️ Geen actieve projecten'); return; }
+
+            // Default datum = vandaag
+            const today = toLocalDateStr(new Date());
+            // Default project = laatst geselecteerd, anders eerste
+            const defaultProjectId = (currentProject && projects.find(p => p.id === currentProject.id))
+                ? currentProject.id : projects[0].id;
+
+            const tplOptions = templates.map(t =>
+                `<option value="${t.id}" data-asset="${escapeHtml(t.asset || '')}">${escapeHtml(t.name)}${t.category ? ' · ' + escapeHtml(t.category) : ''}</option>`
+            ).join('');
+            const userOptions = users.map(u =>
+                `<option value="${u.id}">${escapeHtml(u.name || u.email || 'Onbekend')}</option>`
+            ).join('');
+            const projOptions = projects.map(p =>
+                `<option value="${p.id}" ${p.id === defaultProjectId ? 'selected' : ''}>${escapeHtml(p.project_code || '')} · ${escapeHtml(p.name || '')}</option>`
+            ).join('');
+
+            const firstAsset = (templates[0].asset && templates[0].asset.trim()) || 'NSM-PG1';
+            const fields = `
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>Formulier</label>
+                    <select id="inew-template">${tplOptions}</select>
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>Medewerker</label>
+                    <select id="inew-user">${userOptions}</select>
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>Project</label>
+                    <select id="inew-project">${projOptions}</select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Asset / locatie code</label>
+                        <input type="text" id="inew-asset" placeholder="Bijv. NSM-PG1" value="${escapeHtml(firstAsset)}">
+                    </div>
+                    <div class="form-group">
+                        <label>Inspectiedatum</label>
+                        <input type="date" id="inew-date" value="${today}">
+                    </div>
+                </div>
+                <div style="font-size:0.72rem;color:var(--muted);line-height:1.4;margin-top:4px">
+                    De inspectie komt klaar als <b>Concept</b> in de lijst van de gekozen medewerker. De asset-code komt in het inspectienummer (INS-${new Date().getFullYear()}-XXXX-asset) en in de PDF-titel.
+                </div>
+            `;
+
+            const modal = document.getElementById('admin-modal');
+            const titleEl = document.getElementById('admin-modal-title');
+            const fieldsEl = document.getElementById('admin-modal-fields');
+            const saveBtn = document.getElementById('admin-modal-save');
+            const delBtn = document.getElementById('admin-modal-delete');
+            if (!modal || !titleEl || !fieldsEl) {
+                showToast('⚠️ Modal niet beschikbaar');
+                return;
+            }
+            titleEl.textContent = 'Nieuwe inspectie aanmaken';
+            fieldsEl.innerHTML = fields;
+            if (saveBtn) {
+                saveBtn.style.display = 'inline-flex';
+                saveBtn.textContent = 'Aanmaken';
+                saveBtn.onclick = inspCreateFromAdmin;
+            }
+            if (delBtn) delBtn.style.display = 'none';
+            modal.classList.add('active');
+
+            // Bij template-wissel: vul asset code automatisch in als het veld leeg is
+            // of nog op de oude template-default staat.
+            const tplSel = document.getElementById('inew-template');
+            const assetEl = document.getElementById('inew-asset');
+            let lastSuggestedAsset = firstAsset;
+            tplSel.addEventListener('change', function() {
+                const opt = tplSel.options[tplSel.selectedIndex];
+                const tplAsset = opt?.dataset?.asset?.trim() || '';
+                if (!tplAsset) return;
+                // Alleen overschrijven als de gebruiker het veld nog niet handmatig wijzigde
+                if (!assetEl.value || assetEl.value === lastSuggestedAsset) {
+                    assetEl.value = tplAsset;
+                    lastSuggestedAsset = tplAsset;
+                }
+            });
+        }
+
+        async function inspCreateFromAdmin() {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+
+            const templateId = document.getElementById('inew-template')?.value;
+            const userId = document.getElementById('inew-user')?.value;
+            const projectId = document.getElementById('inew-project')?.value;
+            const assetRaw = document.getElementById('inew-asset')?.value || '';
+            const inspDate = document.getElementById('inew-date')?.value || toLocalDateStr(new Date());
+
+            if (!templateId) { showToast('⚠️ Kies een formulier'); return; }
+            if (!userId) { showToast('⚠️ Kies een medewerker'); return; }
+            if (!projectId) { showToast('⚠️ Kies een project'); return; }
+            const assetCode = assetRaw.trim();
+            if (!assetCode) { showToast('⚠️ Asset code is verplicht'); return; }
+            const cleanAsset = assetCode.replace(/\s+/g, '_');
+
+            // Haal template op voor location/installation/sections
+            const { data: tpl, error: tplErr } = await sb.from('inspection_templates')
+                .select('*').eq('id', templateId).single();
+            if (tplErr || !tpl) { showToast('⚠️ Template niet gevonden'); return; }
+
+            // Inspectienummer · zelfde patroon als monteur-flow
+            const year = parseInt(inspDate.slice(0, 4)) || new Date().getFullYear();
+            const { data: lastInsp } = await sb.from('inspections')
+                .select('inspection_number')
+                .ilike('inspection_number', `INS-${year}-%`)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            let nextSeq = 1;
+            if (lastInsp && lastInsp.length > 0) {
+                const parts = lastInsp[0].inspection_number.split('-');
+                nextSeq = (parseInt(parts[2]) || 0) + 1;
+            }
+            const inspNumber = `INS-${year}-${String(nextSeq).padStart(4, '0')}-${cleanAsset}`;
+
+            // Tel vragen voor totaal
+            const sections = tpl.sections || [];
+            let totalQ = 0;
+            sections.forEach(s => { totalQ += (s.questions || []).length; });
+
+            // Aanmaken
+            const { data: newInsp, error: insErr } = await sb.from('inspections').insert({
+                template_id: templateId,
+                project_id: projectId,
+                user_id: userId,
+                inspection_number: inspNumber,
+                inspection_date: inspDate,
+                location: tpl.location || '',
+                installation: tpl.installation || '',
+                asset: cleanAsset,
+                description: tpl.name + ' · ' + cleanAsset,
+                answers: {},
+                status: 'concept',
+                total_questions: totalQ,
+                answered_questions: 0,
+                passed_questions: 0,
+                failed_questions: 0
+            }).select().single();
+
+            if (insErr) { showToast('⚠️ Aanmaken mislukt: ' + insErr.message); return; }
+
+            const userName = (window._adminUsers || []).find(u => u.id === userId)?.name || 'medewerker';
+            showToast(`✓ Inspectie ${inspNumber} klaargezet voor ${userName}`);
+            closeModal('admin-modal');
+            inspLoadInspections();
         }
 
         // ===== INSPECTIE · MONTEUR SCHERM =====
