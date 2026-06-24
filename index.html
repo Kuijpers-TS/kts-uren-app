@@ -496,8 +496,8 @@
             margin-bottom: 12px;
             transition: all 0.2s;
         }
-        .retour-btn:hover { background: #dbeafe; border-color: #93c5fd; }
-        .retour-btn .route-label { font-weight: 600; font-size: 0.9rem; color: #1d4ed8; }
+        .retour-btn:hover { background: var(--app-info-soft); border-color: var(--app-info-line); }
+        .retour-btn .route-label { font-weight: 600; font-size: 0.9rem; color: var(--app-info); }
         .retour-btn .route-detail { font-size: 0.75rem; color: #60a5fa; margin-top: 2px; }
         .retour-btn .route-amount { font-weight: 700; color: #2563eb; font-size: 0.9rem; }
 
@@ -622,7 +622,7 @@
         /* ===== LOADING SPINNER ===== */
         .loading-spinner {
             width: 18px; height: 18px;
-            border: 2.5px solid #e2e8f0;
+            border: 2.5px solid var(--app-line);
             border-top-color: var(--kts-blue);
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
@@ -2123,7 +2123,7 @@
           background: var(--insp-alert-soft);
         }
         .insp-action-btn.is-danger:hover {
-          background: #F8D6D9;
+          background: var(--insp-alert-line);
         }
         .insp-empty-state {
           text-align: center;
@@ -7128,7 +7128,7 @@ a:focus-visible,
             const totalAmt = hoursAmt + kmAmt + hotelAmt;
 
             container.innerHTML = `
-                <div style="background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);border:2px solid var(--kts-blue);border-radius:16px;padding:20px;margin-bottom:12px">
+                <div style="background:var(--app-surface);border:2px solid var(--kts-blue);border-radius:16px;padding:20px;margin-bottom:12px">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
                         <div style="width:40px;height:40px;border-radius:10px;background:var(--kts-blue);color:white;display:flex;align-items:center;justify-content:center;font-size:1.1rem">📋</div>
                         <div>
@@ -8440,7 +8440,7 @@ a:focus-visible,
             if (icon) icon.textContent = '✅';
             if (label) label.textContent = folderName;
             if (path) path.textContent = 'PDF\'s worden hier opgeslagen';
-            if (picker) { picker.style.borderColor = 'var(--kts-blue)'; picker.style.background = '#f0f9ff'; }
+            if (picker) { picker.style.borderColor = 'var(--kts-blue)'; picker.style.background = 'var(--app-info-soft)'; }
         }
 
         function updateFolderUIByType(type, folderName) {
@@ -10714,7 +10714,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         </thead>
                         <tbody>
                             ${io.lines.map(l => `
-                                <tr style="border-bottom:1px solid var(--border)${l.qty === 0 ? ';color:#cbd5e1' : ''}">
+                                <tr style="border-bottom:1px solid var(--border)${l.qty === 0 ? ';color:var(--muted)' : ''}">
                                     <td style="padding:6px 8px">${l.nr}</td>
                                     <td style="padding:6px 8px">${l.desc}</td>
                                     <td style="text-align:right;padding:6px 8px">${l.qty} ${l.unit}</td>
@@ -12728,7 +12728,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         } else if (ws && (ws.status === 'opgeslagen' || ws.status === 'ondertekend')) {
                             weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-warn-soft);color:var(--app-warn);font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: ${ws.status}">${wn}</span>`;
                         } else {
-                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-bg-deep);color:#94a3b8;font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: niet ingevuld">${wn}</span>`;
+                            weekBadges += `<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:var(--app-bg-deep);color:var(--muted);font-size:0.6rem;text-align:center;line-height:20px;font-weight:700" title="Week ${wn}: niet ingevuld">${wn}</span>`;
                         }
                     }
                     d.setDate(d.getDate() + 1);
@@ -12744,7 +12744,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     else actief = `<span style="color:var(--muted);font-size:0.65rem">${Math.floor(diff/1440)}d geleden</span>`;
                 }
 
-                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
                     <div style="min-width:0">
                         <div style="font-weight:600;font-size:0.8rem;display:flex;align-items:center;gap:6px">${escapeHtml(u.name || u.email)} ${actief}</div>
                         <div style="display:flex;gap:2px;margin-top:4px;flex-wrap:wrap">${weekBadges}</div>
@@ -12778,7 +12778,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     return u ? (u.name || u.email).split(' ')[0] : '?';
                 }).join(', ');
 
-                html += `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9">
+                html += `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start">
                         <div>
                             <div style="font-weight:700;font-size:0.8rem;color:var(--kts-blue)">${escapeHtml(p.project_code)}</div>
@@ -12845,7 +12845,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     ? '<span style="color:#10b981;font-size:0.65rem">Alle weken op inkooporder</span>'
                     : `<span style="color:#f59e0b;font-size:0.65rem">${openCount} ${openCount === 1 ? 'week' : 'weken'} nog open</span>`;
 
-                html += `<div style="padding:8px 0;border-bottom:1px solid #f1f5f9">
+                html += `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
                     <div style="display:flex;justify-content:space-between;align-items:center">
                         <div style="font-weight:600;font-size:0.8rem">${userName} · <span style="color:var(--kts-blue)">${projCode}</span></div>
                         ${statusText}
@@ -13030,7 +13030,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     const isAnonymized = !!u.anonymized_at;
                     const safeName = escapeHtml(u.name || u.email).replace(/'/g, "\\'");
                     const testBadge = u.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : '';
-                    const archivedBadge = isArchived ? ' <span style="background:#e2e8f0;color:#475569;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Afgesloten op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' ·' + escapeHtml(u.archive_reason) : '') + '">🔒 AFGESLOTEN</span>' : '';
+                    const archivedBadge = isArchived ? ' <span style="background:var(--app-idle-soft);color:var(--muted);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Afgesloten op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' ·' + escapeHtml(u.archive_reason) : '') + '">🔒 AFGESLOTEN</span>' : '';
                     const pausedBadge = isPaused ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gepauzeerd op ' + new Date(u.paused_at).toLocaleDateString('nl-NL') + (u.pause_reason ? ' ·' + escapeHtml(u.pause_reason) : '') + '">⏸️ GEPAUZEERD</span>' : '';
                     const anonBadge = isAnonymized ? ' <span style="background:var(--app-alert-soft);color:var(--app-alert);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="PII verwijderd op ' + new Date(u.anonymized_at).toLocaleDateString('nl-NL') + '">🕶️ ANONIEM</span>' : '';
 
@@ -13053,7 +13053,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     } else {
                         // Actief: pauzeer + afsluit naast elkaar
                         actionBtn = `<button onclick="event.stopPropagation();adminPauseUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Pauzeer (tijdelijk geen login, reversibel)">⏸️</button>`;
-                        actionBtn += `<button onclick="event.stopPropagation();adminArchiveUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1" title="Afsluiten (definitief, data blijft 7 jaar bewaard voor AVG)">🔒</button>`;
+                        actionBtn += `<button onclick="event.stopPropagation();adminArchiveUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-idle-soft);color:var(--muted);border:1px solid var(--border)" title="Afsluiten (definitief, data blijft 7 jaar bewaard voor AVG)">🔒</button>`;
                     }
 
                     const cardOpacity = (isArchived || isPaused) ? '0.65' : '1';
@@ -16456,17 +16456,17 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 // Preview (eerste 5 rijen)
                 const previewRows = rows.slice(0, 5);
                 html += '<div style="font-weight:600;font-size:0.85rem;margin-bottom:6px">Preview (eerste ' + Math.min(5, rows.length) + ' rijen)</div>';
-                html += '<div style="overflow-x:auto;max-height:200px;border:1px solid #e5e7eb;border-radius:8px">';
+                html += '<div style="overflow-x:auto;max-height:200px;border:1px solid var(--border);border-radius:8px">';
                 html += '<table style="width:100%;font-size:0.75rem;border-collapse:collapse">';
-                html += '<thead><tr style="background:#f3f4f6">';
+                html += '<thead><tr style="background:var(--app-bg-deep)">';
                 excelCols.forEach(col => {
-                    html += '<th style="padding:4px 6px;text-align:left;white-space:nowrap;border-bottom:1px solid #e5e7eb">' + col + '</th>';
+                    html += '<th style="padding:4px 6px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border)">' + col + '</th>';
                 });
                 html += '</tr></thead><tbody>';
                 previewRows.forEach(row => {
                     html += '<tr>';
                     excelCols.forEach(col => {
-                        html += '<td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;white-space:nowrap">' + (row[col] != null ? String(row[col]).substring(0, 40) : '') + '</td>';
+                        html += '<td style="padding:3px 6px;border-bottom:1px solid var(--border);white-space:nowrap">' + (row[col] != null ? String(row[col]).substring(0, 40) : '') + '</td>';
                     });
                     html += '</tr>';
                 });
@@ -18318,7 +18318,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             // CC-ontvangers uit project (uitzonderingsveld) · comma-separated
             const ccRaw = (project && project.cc_emails_weekstaat) || '';
             const ccBanner = ccRaw.trim()
-                ? `<div style="margin-bottom:12px;padding:10px;background:#dbeafe;border:1px solid var(--app-info-line);border-radius:8px;font-size:0.78rem;color:#1e40af;line-height:1.4">
+                ? `<div style="margin-bottom:12px;padding:10px;background:var(--app-info-soft);border:1px solid var(--app-info-line);border-radius:8px;font-size:0.78rem;color:var(--app-info);line-height:1.4">
                     <strong>📧 CC bij verzenden:</strong> ${escapeHtml(ccRaw)}<br>
                     <span style="opacity:0.85">Ingesteld op project · pas aan via Beheer → Projecten als nodig.</span>
                    </div>`
@@ -18326,7 +18326,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
 
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:var(--app-ok-soft);border-radius:8px;font-size:0.85rem">
-                    <div style="font-weight:700;color:#059669;margin-bottom:4px">✅ Weekstaat goedgekeurd</div>
+                    <div style="font-weight:700;color:var(--app-ok);margin-bottom:4px">✅ Weekstaat goedgekeurd</div>
                     <div><strong>Medewerker:</strong> ${userName}</div>
                     <div><strong>Project:</strong> ${projCode} ·${projName}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
@@ -18381,8 +18381,8 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             function showStatus(msg, isError) {
                 if (!statusEl) return;
                 statusEl.style.display = '';
-                statusEl.style.background = isError ? '#fee2e2' : '#dbeafe';
-                statusEl.style.color = isError ? '#dc2626' : '#1e40af';
+                statusEl.style.background = isError ? 'var(--app-alert-soft)' : 'var(--app-info-soft)';
+                statusEl.style.color = isError ? 'var(--app-alert)' : 'var(--app-info)';
                 statusEl.textContent = msg;
             }
 
@@ -19374,7 +19374,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                             <div style="flex:1;min-width:0">
                                 <div style="font-size:0.8rem;font-weight:500">${q.text || 'Nieuwe vraag'}</div>
                                 <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-                                    <span style="font-size:0.6rem;background:#e0f2fe;padding:1px 6px;border-radius:3px">${typeLabel[q.type] || q.type}</span>
+                                    <span style="font-size:0.6rem;background:var(--app-info-soft);padding:1px 6px;border-radius:3px">${typeLabel[q.type] || q.type}</span>
                                     ${q.required ? '<span style="font-size:0.6rem;background:var(--app-alert-soft);padding:1px 6px;border-radius:3px">Verplicht</span>' : ''}
                                     ${q.unit ? `<span style="font-size:0.6rem;background:var(--app-bg-deep);padding:1px 6px;border-radius:3px">${q.unit}</span>` : ''}
                                     ${q.component ? `<span style="font-size:0.6rem;background:var(--app-info-soft);padding:1px 6px;border-radius:3px">${q.component}</span>` : ''}
@@ -20654,9 +20654,9 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     if (q.type === 'goed_fout') {
                         inputHtml = `
                             <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">
-                                <button onclick="inspAnswer('${key}','goed')" id="insp-btn-${key}-goed" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'goed' ? '#16a34a' : 'var(--border)'};border-radius:6px;background:${val.value === 'goed' ? '#dcfce7' : 'white'};color:${val.value === 'goed' ? '#16a34a' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✓ Goed</button>
-                                <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'fout' ? '#dc2626' : 'var(--border)'};border-radius:6px;background:${val.value === 'fout' ? '#fee2e2' : 'white'};color:${val.value === 'fout' ? '#dc2626' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✗ Fout</button>
-                                <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'nvt' ? '#6b7280' : 'var(--border)'};border-radius:6px;background:${val.value === 'nvt' ? '#f3f4f6' : 'white'};color:${val.value === 'nvt' ? '#6b7280' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">N.v.t.</button>
+                                <button onclick="inspAnswer('${key}','goed')" id="insp-btn-${key}-goed" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'goed' ? 'var(--app-ok)' : 'var(--border)'};border-radius:6px;background:${val.value === 'goed' ? 'var(--app-ok-soft)' : 'var(--app-surface)'};color:${val.value === 'goed' ? 'var(--app-ok)' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✓ Goed</button>
+                                <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'fout' ? 'var(--app-alert)' : 'var(--border)'};border-radius:6px;background:${val.value === 'fout' ? 'var(--app-alert-soft)' : 'var(--app-surface)'};color:${val.value === 'fout' ? 'var(--app-alert)' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✗ Fout</button>
+                                <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'nvt' ? 'var(--app-idle)' : 'var(--border)'};border-radius:6px;background:${val.value === 'nvt' ? 'var(--app-idle-soft)' : 'var(--app-surface)'};color:${val.value === 'nvt' ? 'var(--muted)' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">N.v.t.</button>
                             </div>`;
                     } else if (q.type === 'conditiescore') {
                         // NEN 2767 conditiescores 1 t/m 6
@@ -20673,7 +20673,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         for (let s = 1; s <= 6; s++) {
                             const [c, bg] = scoreColors[s - 1];
                             const active = val.value === String(s);
-                            btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} ·${scoreLabels[s-1]}" style="flex:1;padding:8px 4px;border:1.5px solid ${active ? c : 'var(--border)'};border-radius:6px;background:${active ? bg : 'white'};color:${active ? c : 'var(--text)'};font-weight:700;font-size:0.85rem;cursor:pointer">${s}</button>`;
+                            btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} ·${scoreLabels[s-1]}" style="flex:1;padding:8px 4px;border:1.5px solid ${active ? c : 'var(--border)'};border-radius:6px;background:${active ? bg : 'var(--app-surface)'};color:${active ? c : 'var(--text)'};font-weight:700;font-size:0.85rem;cursor:pointer">${s}</button>`;
                         }
                         const currentLabel = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreLabels[Number(val.value) - 1] : '';
                         inputHtml = `
@@ -20691,16 +20691,16 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     }
 
                     sectionsHtml += `
-                        <div id="insp-q-${key}" style="background:${isFout ? '#fef2f2' : (answered ? '#f0fdf4' : 'white')};border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid ${isFout ? '#fecaca' : (answered ? '#bbf7d0' : 'var(--border)')};transition:all 0.2s">
+                        <div id="insp-q-${key}" style="background:${isFout ? 'var(--app-alert-soft)' : (answered ? 'var(--app-ok-soft)' : 'var(--app-surface)')};border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid ${isFout ? 'var(--app-alert-line)' : (answered ? 'var(--app-ok-line)' : 'var(--border)')};transition:all 0.2s">
                             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
                                 <div style="flex:1;min-width:0">
                                     <div style="font-size:0.85rem;font-weight:600;line-height:1.3">${q.text || 'Vraag ' + (qi + 1)}</div>
                                     ${q.component ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">${q.component}${q.discipline ? ' · ' + q.discipline : ''}</div>` : ''}
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
-                                    <label for="insp-camera-${key}" title="Foto maken met camera" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
+                                    <label for="insp-camera-${key}" title="Foto maken met camera" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? 'var(--app-info-soft)' : 'var(--app-surface)'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
                                     <input type="file" id="insp-camera-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
-                                    <label for="insp-photo-${key}" title="Uit galerij/bestanden" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? '#dbeafe' : 'white'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">🖼️</label>
+                                    <label for="insp-photo-${key}" title="Uit galerij/bestanden" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? 'var(--app-info-soft)' : 'var(--app-surface)'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">🖼️</label>
                                     <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
                                 </div>
                             </div>
@@ -22622,10 +22622,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             const stats = { total: _adminCurrentTxs.length, open: 0, matched: 0, no_invoice: 0, skipped: 0 };
             for (const tx of _adminCurrentTxs) stats[tx.status] = (stats[tx.status] || 0) + 1;
             document.getElementById('admin-list-stats').innerHTML = `
-                <div class="admin-stat-card" style="background:var(--app-ok-soft);color:#16a34a"><span class="stat-num">${stats.matched}</span>Gekoppeld</div>
-                <div class="admin-stat-card" style="background:var(--app-warn-soft);color:#a16207"><span class="stat-num">${stats.open}</span>Open</div>
-                <div class="admin-stat-card" style="background:var(--app-bg-tint);color:#64748b"><span class="stat-num">${stats.no_invoice}</span>Geen fact.</div>
-                <div class="admin-stat-card" style="background:var(--app-bg-tint);color:#a1a1aa"><span class="stat-num">${stats.skipped}</span>Overgesl.</div>
+                <div class="admin-stat-card" style="background:var(--app-ok-soft);color:var(--app-ok)"><span class="stat-num">${stats.matched}</span>Gekoppeld</div>
+                <div class="admin-stat-card" style="background:var(--app-warn-soft);color:var(--app-warn)"><span class="stat-num">${stats.open}</span>Open</div>
+                <div class="admin-stat-card" style="background:var(--app-bg-tint);color:var(--muted)"><span class="stat-num">${stats.no_invoice}</span>Geen fact.</div>
+                <div class="admin-stat-card" style="background:var(--app-bg-tint);color:var(--muted)"><span class="stat-num">${stats.skipped}</span>Overgesl.</div>
             `;
 
             // Filter
@@ -22676,9 +22676,9 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 }
                 else if (tx.status === 'no_invoice') {
                     const cat = tx.category ? ADMIN_CATEGORIES.find(c => c.id === tx.category) : null;
-                    statusIcon = '<span style="font-size:0.7rem;color:#94a3b8">' + (cat ? cat.label : 'Geen factuur') + '</span>';
+                    statusIcon = '<span style="font-size:0.7rem;color:var(--muted)">' + (cat ? cat.label : 'Geen factuur') + '</span>';
                 }
-                else if (tx.status === 'skipped') statusIcon = '<span style="font-size:0.7rem;color:#a1a1aa">Overgeslagen</span>';
+                else if (tx.status === 'skipped') statusIcon = '<span style="font-size:0.7rem;color:var(--muted)">Overgeslagen</span>';
 
                 return `<div class="admin-list-row status-${tx.status}" onclick="adminOpenTxFromList(${globalIdx})">
                     <div style="font-size:0.75rem;color:var(--muted);min-width:42px">${dateStr}</div>
@@ -22817,7 +22817,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             if (inv.extractedAmount) infoParts.push('€ ' + inv.extractedAmount.toLocaleString('nl-NL', {minimumFractionDigits:2}));
             if (inv.extractedName) infoParts.push(inv.extractedName.slice(0, 35));
             if (infoParts.length === 0 && inv.quarterFolder) infoParts.push(inv.quarterFolder);
-            const subtitleHtml = infoParts.length > 0 ? '<div style="font-size:0.75rem;color:#6b7280;margin-top:1px">' + infoParts.join(' · ') + '</div>' : '';
+            const subtitleHtml = infoParts.length > 0 ? '<div style="font-size:0.75rem;color:var(--muted);margin-top:1px">' + infoParts.join(' · ') + '</div>' : '';
 
             // Match tags (only if tx provided)
             let tagsHtml = '';
