@@ -5867,6 +5867,22 @@ a:focus-visible,
                         </div>
                     </div>
                 </div>
+
+                <!-- Database backup sectie -->
+                <div style="background:var(--app-surface);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:14px">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        Database backup
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+                        Maak een complete backup van alle data uit Supabase (gebruikers, projecten, weekstaten, uren, facturen, inkooporders, inspecties) plus alle PDF's uit Storage.<br>
+                        <b>Aanbeveling:</b> bewaar dit in <code>OneDrive\Administratie KTS BV\Backups\</code> zodat OneDrive zelf ook versie-historie houdt.
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="adminBackupSupabase()" style="display:inline-flex;align-items:center;gap:6px">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Backup nu
+                    </button>
+                </div>
             </div>
 
             <!-- ===== WEEKSTATEN TAB ===== -->
@@ -8433,6 +8449,251 @@ a:focus-visible,
                 el.textContent = '✅ ' + folderName;
                 el.style.color = 'var(--kts-blue)';
             }
+        }
+
+        // ===== DATABASE BACKUP =====
+        // Volledige backup van alle Supabase tabellen + Storage buckets naar een door
+        // de gebruiker gekozen lokale map (typisch OneDrive). Maakt een tijdgestempelde
+        // submap met database.json + per-bucket subfolders + manifest.json + README.
+        async function adminBackupSupabase() {
+            if (!window.showDirectoryPicker) {
+                showToast('⚠️ Je browser ondersteunt geen mapkiezer · gebruik Chrome of Edge');
+                return;
+            }
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden met database'); return; }
+
+            let folderHandle;
+            try {
+                folderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            } catch (e) {
+                if (e.name !== 'AbortError') showToast('⚠️ Map kiezen mislukt: ' + e.message);
+                return;
+            }
+
+            const ok = await confirmAsync(
+                `Backup maken naar map "${folderHandle.name}"?\n\nAlle tabellen + PDF's uit Storage worden gedownload.\nDit kan een paar minuten duren afhankelijk van de hoeveelheid data.`,
+                true
+            );
+            if (!ok) return;
+
+            // Tijdgestempelde submap aanmaken
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+            const backupName = `kts-backup-${stamp}`;
+            let backupDir;
+            try {
+                backupDir = await folderHandle.getDirectoryHandle(backupName, { create: true });
+            } catch (e) {
+                showToast('⚠️ Submap aanmaken mislukt: ' + e.message);
+                return;
+            }
+
+            const progress = showBackupProgress();
+            const errors = [];
+
+            // === DATABASE TABELLEN ===
+            // Lijst van bekende tabellen. Onbekende of niet-toegankelijke worden
+            // gelogd in manifest met error · backup faalt niet op een enkele tabel.
+            const TABLES = [
+                'users', 'companies', 'projects', 'user_projects',
+                'time_entries', 'week_status', 'week_summaries', 'expenses', 'rates',
+                'inkooporders', 'inkooporder_weeks', 'invoices', 'facturen',
+                'inspection_templates', 'inspections',
+                'document_numbers', 'error_log', 'audit_log'
+            ];
+            const dbDump = { exportedAt: now.toISOString(), tables: {} };
+            const tableCounts = {};
+            let totalRecords = 0;
+            for (const table of TABLES) {
+                progress.update(`Tabel: ${table}…`);
+                try {
+                    const { data, error } = await sb.from(table).select('*');
+                    if (error) {
+                        // Onbekende tabel of RLS · niet fataal, maar wel loggen
+                        dbDump.tables[table] = { error: error.message, rows: [] };
+                        tableCounts[table] = { error: error.message, count: 0 };
+                        continue;
+                    }
+                    dbDump.tables[table] = { count: data.length, rows: data };
+                    tableCounts[table] = { count: data.length };
+                    totalRecords += data.length;
+                } catch (e) {
+                    dbDump.tables[table] = { error: e.message, rows: [] };
+                    tableCounts[table] = { error: e.message, count: 0 };
+                }
+            }
+
+            progress.update('Database dump schrijven…');
+            try {
+                await backupWriteJson(backupDir, 'database.json', dbDump);
+            } catch (e) {
+                progress.close();
+                showToast('⚠️ Database dump schrijven mislukt: ' + e.message);
+                return;
+            }
+
+            // === STORAGE BUCKETS ===
+            // Bekende buckets in dit project. Onbekende worden overgeslagen.
+            const BUCKETS = ['weekstaten', 'facturen', 'inkooporders', 'inspecties', 'logos', 'handtekeningen'];
+            const bucketCounts = {};
+            let totalFiles = 0;
+            for (const bucket of BUCKETS) {
+                progress.update(`Storage: ${bucket}…`);
+                try {
+                    const bucketDir = await backupDir.getDirectoryHandle(bucket, { create: true });
+                    const downloaded = await backupDownloadBucket(sb, bucket, bucketDir, progress);
+                    bucketCounts[bucket] = { count: downloaded };
+                    totalFiles += downloaded;
+                } catch (e) {
+                    // Bucket bestaat niet of geen rechten · overslaan
+                    bucketCounts[bucket] = { count: 0, error: e.message };
+                }
+            }
+
+            // === MANIFEST + README ===
+            progress.update('Manifest schrijven…');
+            const manifest = {
+                backupName,
+                exportedAt: now.toISOString(),
+                appVersion: 'v213',
+                totalRecords,
+                totalFiles,
+                tables: tableCounts,
+                storage: bucketCounts
+            };
+            try {
+                await backupWriteJson(backupDir, 'manifest.json', manifest);
+                await backupWriteText(backupDir, 'README.md', backupBuildReadme(manifest));
+            } catch (e) {
+                progress.close();
+                showToast('⚠️ Manifest schrijven mislukt: ' + e.message);
+                return;
+            }
+
+            progress.close();
+            showToast(`✅ Backup klaar · ${totalRecords} records + ${totalFiles} bestanden in ${backupName}`);
+        }
+
+        async function backupDownloadBucket(sb, bucket, dir, progress, prefix = '') {
+            let count = 0;
+            const { data: items, error } = await sb.storage.from(bucket).list(prefix, { limit: 1000 });
+            if (error) throw new Error(error.message);
+            for (const item of (items || [])) {
+                const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+                // Supabase storage: mappen hebben id===null, bestanden hebben een id.
+                if (!item.id) {
+                    try {
+                        const safeFolderName = item.name.replace(/[<>:"/\\|?*]/g, '_');
+                        const subDir = await dir.getDirectoryHandle(safeFolderName, { create: true });
+                        count += await backupDownloadBucket(sb, bucket, subDir, progress, itemPath);
+                    } catch (e) {
+                        console.warn(`Submap ${bucket}/${itemPath} overgeslagen:`, e.message);
+                    }
+                } else {
+                    progress.update(`Storage: ${bucket}/${itemPath}`);
+                    try {
+                        const { data, error: dlErr } = await sb.storage.from(bucket).download(itemPath);
+                        if (dlErr) { console.warn(`Download ${bucket}/${itemPath}:`, dlErr.message); continue; }
+                        const safeName = item.name.replace(/[<>:"/\\|?*]/g, '_');
+                        await backupWriteBlob(dir, safeName, data);
+                        count++;
+                    } catch (e) {
+                        console.warn(`Download error ${bucket}/${itemPath}:`, e.message);
+                    }
+                }
+            }
+            return count;
+        }
+
+        async function backupWriteJson(dir, name, obj) {
+            const h = await dir.getFileHandle(name, { create: true });
+            const w = await h.createWritable();
+            await w.write(JSON.stringify(obj, null, 2));
+            await w.close();
+        }
+        async function backupWriteText(dir, name, text) {
+            const h = await dir.getFileHandle(name, { create: true });
+            const w = await h.createWritable();
+            await w.write(text);
+            await w.close();
+        }
+        async function backupWriteBlob(dir, name, blob) {
+            const h = await dir.getFileHandle(name, { create: true });
+            const w = await h.createWritable();
+            await w.write(blob);
+            await w.close();
+        }
+
+        function backupBuildReadme(m) {
+            const ts = new Date(m.exportedAt).toLocaleString('nl-NL');
+            const tableLines = Object.entries(m.tables)
+                .map(([t, info]) => info.error
+                    ? `- ${t}: overgeslagen (${info.error})`
+                    : `- ${t}: ${info.count} rijen`)
+                .join('\n');
+            const storageLines = Object.entries(m.storage)
+                .map(([b, info]) => info.error
+                    ? `- ${b}: niet beschikbaar`
+                    : `- ${b}: ${info.count} bestanden`)
+                .join('\n');
+            return `# KTS Uren App · Backup ${m.backupName}
+
+Gemaakt op: ${ts}
+App-versie: ${m.appVersion}
+
+## Inhoud
+- ${m.totalRecords} database records
+- ${m.totalFiles} storage-bestanden
+
+## Tabellen
+${tableLines}
+
+## Storage
+${storageLines}
+
+## Bestanden in deze map
+- database.json · alle tabellen als JSON
+- manifest.json · samenvatting met aantallen
+- weekstaten/, facturen/, inkooporders/, etc. · originele PDF's per bucket
+
+## Restore
+Als je data wilt terugzetten:
+1. Voor database: open database.json en importeer per tabel via Supabase SQL editor of een Node.js script. Volg de volgorde: companies → users → projects → user_projects → rates → time_entries → week_status → expenses → invoices → inkooporders → inkooporder_weeks → inspecties.
+2. Voor storage-bestanden: upload de mappen terug naar de bijbehorende Supabase Storage buckets met behoud van pad-structuur.
+
+Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-historie houdt.
+`;
+        }
+
+        function showBackupProgress() {
+            let overlay = document.getElementById('backup-progress-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'backup-progress-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+                overlay.innerHTML = `
+                    <div style="background:var(--app-surface);color:var(--text);padding:24px;border-radius:14px;min-width:280px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid var(--border)">
+                        <div style="font-weight:700;font-size:1rem;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                            <span style="font-size:1.2rem">📦</span> Backup wordt gemaakt…
+                        </div>
+                        <div id="backup-progress-msg" style="font-size:0.85rem;color:var(--muted);min-height:1.4em;word-break:break-all">Bezig…</div>
+                        <div style="margin-top:14px;height:4px;background:var(--app-bg-deep);border-radius:2px;overflow:hidden;position:relative">
+                            <div style="position:absolute;top:0;height:100%;background:var(--kts-accent-light);border-radius:2px;animation:bkpPulse 1.6s ease-in-out infinite"></div>
+                        </div>
+                        <style>@keyframes bkpPulse { 0% { left:-30%; width:30% } 50% { left:35%; width:40% } 100% { left:100%; width:30% } }</style>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            }
+            return {
+                update: (msg) => {
+                    const el = document.getElementById('backup-progress-msg');
+                    if (el) el.textContent = msg;
+                },
+                close: () => { if (overlay && overlay.parentNode) overlay.remove(); }
+            };
         }
 
         // Haal de juiste folder handle op voor een document type
