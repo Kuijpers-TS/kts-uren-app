@@ -1132,10 +1132,10 @@
                     if (userProjects && userProjects.length > 0) {
                         currentProject = userProjects[0].projects;
                     } else {
-                        // Fallback: pak eerste actieve project
-                        const { data: anyProj } = await sb.from('projects')
-                            .select('*').eq('status', 'active').limit(1);
-                        if (anyProj && anyProj.length > 0) currentProject = anyProj[0];
+                        // Geen toewijzing: gebruik het placeholder-project i.p.v.
+                        // een willekeurig actief project (anders komt de inspectie
+                        // onder andermans project te hangen)
+                        currentProject = await getPlaceholderProject(sb);
                     }
                 } catch(e) { console.warn('Project auto-load mislukt:', e); }
 

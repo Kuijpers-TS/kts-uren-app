@@ -3931,6 +3931,7 @@
                                 <div style="display:flex;gap:4px;flex-shrink:0">
                                     <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Ondertekenen & versturen namens gebruiker">✍️</button>
                                     <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bekijken">👁️</button>
+                                    <button onclick="event.stopPropagation();adminMoveWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-idle-soft);color:var(--muted);border:1px solid var(--border)" title="Verplaats naar ander project">🔀</button>
                                     <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Concept verwijderen">🗑️</button>
                                 </div>
                             </div>`;
@@ -4495,6 +4496,112 @@
             } catch (e) {
                 console.warn('invalidateApprovalOnChange exception:', e.message || e);
                 return false;
+            }
+        }
+
+        // Weekstaat (uren + weekstatus + declaraties) verplaatsen naar een ander
+        // project. Bedoeld voor weekstaten die onder "Nog toe te wijzen" (of een
+        // verkeerd project) zijn opgeslagen doordat de gebruiker nog geen
+        // projecttoewijzing had. Alleen voor concept-weekstaten · verstuurde
+        // eerst terugzetten naar concept (↩️) zodat PDF/handtekening niet
+        // uit de pas lopen.
+        function adminMoveWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
+            const projects = (window._adminProjects || [])
+                .filter(p => (_adminTestMode ? p.is_test === true : p.is_test !== true))
+                .filter(p => p.status === 'active' && p.id !== projectId)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            if (projects.length === 0) { showToast('⚠️ Geen andere actieve projecten om naartoe te verplaatsen'); return; }
+
+            const options = projects.map(p =>
+                `<option value="${p.id}">${escapeHtml(p.project_code || '')} · ${escapeHtml(p.name || '')}</option>`
+            ).join('');
+            const fields = `
+                <div style="margin-bottom:14px;padding:12px;background:var(--app-info-soft);border-radius:8px;font-size:0.85rem">
+                    <div><strong>Medewerker:</strong> ${escapeHtml(userName)}</div>
+                    <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
+                    <div><strong>Nu onder:</strong> ${escapeHtml(projCode)}</div>
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>Verplaats naar project</label>
+                    <select id="move-ws-target">${options}</select>
+                </div>
+                <div style="font-size:0.75rem;color:var(--muted);line-height:1.5">
+                    Verplaatst de uren, de weekstatus en eventuele declaraties van deze week in één keer.
+                    Tarieven van het doelproject gaan daarna gelden voor deze weekstaat.
+                </div>`;
+
+            const modal = document.getElementById('admin-modal');
+            const titleEl = document.getElementById('admin-modal-title');
+            const fieldsEl = document.getElementById('admin-modal-fields');
+            const saveBtn = document.getElementById('admin-modal-save');
+            const delBtn = document.getElementById('admin-modal-delete');
+            if (!modal || !titleEl || !fieldsEl) { showToast('⚠️ Modal niet beschikbaar'); return; }
+            titleEl.textContent = 'Weekstaat verplaatsen';
+            fieldsEl.innerHTML = fields;
+            if (delBtn) delBtn.style.display = 'none';
+            if (saveBtn) {
+                saveBtn.style.display = 'inline-flex';
+                saveBtn.textContent = 'Verplaatsen';
+                saveBtn.onclick = () => _adminMoveWeekstaatExec(userId, projectId, weekNumber, year);
+            }
+            modal.classList.add('active');
+        }
+
+        async function _adminMoveWeekstaatExec(userId, oldProjectId, weekNumber, year) {
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            const targetSel = document.getElementById('move-ws-target');
+            const newProjectId = targetSel ? targetSel.value : '';
+            if (!newProjectId) { showToast('⚠️ Kies een doelproject'); return; }
+
+            const saveBtn = document.getElementById('admin-modal-save');
+            if (saveBtn) { if (saveBtn.disabled) return; saveBtn.disabled = true; saveBtn.textContent = 'Bezig...'; }
+            try {
+                // Conflict-check: bestaat er al een weekstaat voor (user, doelproject, week)?
+                const { data: conflict } = await sb.from('week_status').select('status')
+                    .eq('user_id', userId).eq('project_id', newProjectId)
+                    .eq('week_number', weekNumber).eq('year', year).maybeSingle();
+                if (conflict) {
+                    showToast('⚠️ Er bestaat al een weekstaat voor deze week op het doelproject (' + conflict.status + ')');
+                    return;
+                }
+
+                // Weekbereik bepalen voor de time_entries (die zijn per datum, niet per week)
+                const monday = getWeekMondayFromWeekNumber(year, weekNumber);
+                const sunday = new Date(monday);
+                sunday.setDate(sunday.getDate() + 6);
+                const mondayStr = toLocalDateStr(monday);
+                const sundayStr = toLocalDateStr(sunday);
+
+                // 1. Uren
+                const { error: teErr } = await sb.from('time_entries')
+                    .update({ project_id: newProjectId })
+                    .eq('user_id', userId).eq('project_id', oldProjectId)
+                    .gte('entry_date', mondayStr).lte('entry_date', sundayStr);
+                if (teErr) throw new Error('uren: ' + teErr.message);
+
+                // 2. Weekstatus
+                const { error: wsErr } = await sb.from('week_status')
+                    .update({ project_id: newProjectId })
+                    .eq('user_id', userId).eq('project_id', oldProjectId)
+                    .eq('week_number', weekNumber).eq('year', year);
+                if (wsErr) throw new Error('weekstatus: ' + wsErr.message);
+
+                // 3. Declaraties (niet fataal als de tabel ontbreekt)
+                try {
+                    await sb.from('expenses')
+                        .update({ project_id: newProjectId })
+                        .eq('user_id', userId).eq('project_id', oldProjectId)
+                        .eq('week_number', weekNumber).eq('year', year);
+                } catch (expErr) { console.warn('Declaraties verplaatsen overgeslagen:', expErr); }
+
+                showToast('✓ Weekstaat verplaatst naar het gekozen project');
+                closeModal('admin-modal');
+                loadWeekstaten();
+            } catch (err) {
+                showToast('❌ Verplaatsen mislukt: ' + err.message);
+            } finally {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Opslaan'; }
             }
         }
 

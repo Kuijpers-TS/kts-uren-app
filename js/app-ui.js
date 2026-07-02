@@ -1560,6 +1560,36 @@
             } catch (e) { console.warn('touchWeekstaatModified exception:', e.message || e); }
         }
 
+        // Vast opvang-project voor gebruikers zonder projecttoewijzing. Uren komen
+        // hieronder terecht (PDF toont dan "Nog toe te wijzen" i.p.v. een verkeerd
+        // project) totdat de admin ze via 🔀 in Beheer > Weekstaten naar het echte
+        // project verplaatst. Aanmaken kan alleen als admin (RLS) · zzp'ers doen
+        // alleen de select.
+        const PLACEHOLDER_PROJECT_CODE = 'KTS0000_00';
+        async function getPlaceholderProject(sb) {
+            try {
+                const { data: existing } = await sb.from('projects').select('*')
+                    .eq('project_code', PLACEHOLDER_PROJECT_CODE).maybeSingle();
+                if (existing) return existing;
+                // Bestaat nog niet: alleen een admin mag projecten aanmaken
+                const { data: created, error } = await sb.from('projects').insert({
+                    project_code: PLACEHOLDER_PROJECT_CODE,
+                    name: 'Nog toe te wijzen',
+                    client_name: '',
+                    location: '',
+                    status: 'active'
+                }).select().single();
+                if (error) {
+                    console.warn('Placeholder-project niet beschikbaar:', error.message);
+                    return null;
+                }
+                return created;
+            } catch (e) {
+                console.warn('Placeholder-project ophalen mislukt:', e.message || e);
+                return null;
+            }
+        }
+
         async function saveWeekToSupabase(options) {
             options = options || {};
             // forceAllDays = bij ondertekenen-en-versturen: bevestig alle 7 dagen
@@ -1571,20 +1601,21 @@
             const sb = getSupabase();
 
             try {
-                // Haal huidig project op (of maak aan)
+                // Geen project toegewezen? Sla op onder het placeholder-project.
+                // VOORHEEN werd hier het eerste willekeurige project uit de DB
+                // gepakt (limit 1), waardoor uren onder andermans project met
+                // verkeerde opdrachtgever op de PDF belandden.
                 if (!currentProject) {
-                    const { data: projects } = await sb.from('projects').select('*').limit(1);
-                    if (projects && projects.length > 0) {
-                        currentProject = projects[0];
-                    } else {
-                        const { data: newProject } = await sb.from('projects').insert({
-                            project_code: 'KTS2026_01',
-                            name: 'Demo Project',
-                            client_name: '',
-                            location: ''
-                        }).select().single();
-                        currentProject = newProject;
+                    currentProject = await getPlaceholderProject(sb);
+                    if (!currentProject) {
+                        showToast('⚠️ Je bent nog niet aan een project gekoppeld · vraag de beheerder om je toe te wijzen');
+                        return false;
                     }
+                    showToast('⚠️ Nog geen project toegewezen · uren opgeslagen onder "Nog toe te wijzen"');
+                    const pn = document.querySelector('.project-name');
+                    const pm = document.querySelector('.project-meta');
+                    if (pn) pn.textContent = currentProject.name;
+                    if (pm) pm.textContent = currentProject.project_code;
                 }
 
                 let saveErrors = 0;
