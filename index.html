@@ -39,6 +39,11 @@
     <!-- Plex fonts voor inspectie-module (sans + mono) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Preconnect naar Supabase + CDN's: bespaart DNS+TLS handshake (~100-300ms
+         op mobiel) voor de eerste API-call en de library-downloads -->
+    <link rel="preconnect" href="https://fvrbirghjydkxslbewny.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ===== DAXLINE PRO FONTS ===== */
@@ -4975,8 +4980,10 @@ a:focus-visible,
 </head>
 <body>
 
-    <!-- PDF afbeeldingen als base64 (apart bestand, 31KB) -->
-    <script src="kts-pdf-images.js"></script>
+    <!-- PDF afbeeldingen als base64 (apart bestand, ~99KB) · defer zodat het
+         parsen van de body niet blokkeert; de consumer hieronder wacht op
+         DOMContentLoaded en deferred scripts draaien daar gegarandeerd voor -->
+    <script src="kts-pdf-images.js" defer></script>
     <script>
     // Stel CSS watermark en login logo in vanuit base64 (geen losse bestanden nodig)
     document.addEventListener('DOMContentLoaded', function() {
@@ -12348,50 +12355,63 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 document.head.appendChild(s);
             }
 
-            loadScript(jspdfUrls, 0, 'jsPDF', function() {
-                loadScript(autoTableUrls, 0, 'AutoTable', function() {
-                    console.log('jsPDF + AutoTable volledig geladen!');
-                    // DaxlinePro TTF fonts laden voor PDF
-                    var fs = document.createElement('script');
-                    fs.src = 'daxline-pdf-fonts.js';
-                    fs.onload = function() { console.log('DaxlinePro PDF fonts geladen'); };
-                    fs.onerror = function() { console.warn('DaxlinePro fonts niet gevonden · PDF gebruikt Helvetica'); };
-                    document.head.appendChild(fs);
+            // Zware libraries (jsPDF ~350KB, fonts ~500KB, Chart.js, SheetJS,
+            // PDF.js · samen ~2MB) pas NA first paint laden. Ze zijn alleen
+            // nodig bij PDF-genereren, dashboard-grafieken, Excel-import en
+            // bank-parsing · nooit in de eerste seconden. Alle call-sites hebben
+            // al "library nog niet geladen"-guards of wait-loops, dus uitstel is
+            // veilig. Scheelt merkbaar opstarttijd op telefoons.
+            function startHeavyLibs() {
+                loadScript(jspdfUrls, 0, 'jsPDF', function() {
+                    loadScript(autoTableUrls, 0, 'AutoTable', function() {
+                        console.log('jsPDF + AutoTable volledig geladen!');
+                        // DaxlinePro TTF fonts laden voor PDF
+                        var fs = document.createElement('script');
+                        fs.src = 'daxline-pdf-fonts.js';
+                        fs.onload = function() { console.log('DaxlinePro PDF fonts geladen'); };
+                        fs.onerror = function() { console.warn('DaxlinePro fonts niet gevonden · PDF gebruikt Helvetica'); };
+                        document.head.appendChild(fs);
+                    });
                 });
-            });
 
-            // Chart.js laden voor dashboard grafieken
-            const chartUrls = [
-                'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-                'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
-                'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
-            ];
-            loadScript(chartUrls, 0, 'Chart.js', function() {
-                console.log('Chart.js geladen!');
-            });
+                // Chart.js laden voor dashboard grafieken
+                const chartUrls = [
+                    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+                    'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
+                    'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
+                ];
+                loadScript(chartUrls, 0, 'Chart.js', function() {
+                    console.log('Chart.js geladen!');
+                });
 
-            // SheetJS (xlsx) laden voor Excel import
-            const xlsxUrls = [
-                'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-                'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-                'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
-            ];
-            loadScript(xlsxUrls, 0, 'SheetJS', function() {
-                console.log('SheetJS geladen!');
-            });
+                // SheetJS (xlsx) laden voor Excel import
+                const xlsxUrls = [
+                    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+                    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+                ];
+                loadScript(xlsxUrls, 0, 'SheetJS', function() {
+                    console.log('SheetJS geladen!');
+                });
 
-            // PDF.js laden voor PDF parsing (transactieoverzichten)
-            const pdfjsUrls = [
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-                'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
-                'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'
-            ];
-            loadScript(pdfjsUrls, 0, 'PDF.js', function() {
-                console.log('PDF.js geladen!');
-                if (window.pdfjsLib) {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                }
-            });
+                // PDF.js laden voor PDF parsing (transactieoverzichten)
+                const pdfjsUrls = [
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+                    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+                    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'
+                ];
+                loadScript(pdfjsUrls, 0, 'PDF.js', function() {
+                    console.log('PDF.js geladen!');
+                    if (window.pdfjsLib) {
+                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    }
+                });
+            }
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(startHeavyLibs, { timeout: 2000 });
+            } else {
+                setTimeout(startHeavyLibs, 800);
+            }
         })();
 
         // ===== ADMIN ZOEKFILTER =====
