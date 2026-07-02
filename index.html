@@ -6412,6 +6412,15 @@ a:focus-visible,
             return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
         }
 
+        // Voor al-ge-escapeHtml'de waarden die BINNEN een onclick="fn('...')"
+        // JS-string terechtkomen: de HTML-parser decodeert &#039; terug naar een
+        // rauwe apostrof voordat de JS geparsed wordt, waardoor de string breekt
+        // (en injectie mogelijk wordt). Deze helper zet de entiteit om naar \'
+        // zodat de gedecodeerde JS een geldige geescapede quote bevat.
+        function jsStr(s) {
+            return String(s == null ? '' : s).replace(/&#039;/g, "\\'");
+        }
+
         function toLocalDateStr(d) {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -7736,6 +7745,13 @@ a:focus-visible,
         }
 
         // ===== DOCUMENT NUMMERING =====
+        // DEPRECATED 2026-07-02 · getNextDocumentNumber en saveDocumentNumber worden
+        // alleen nog aangeroepen vanuit generateMonthlyInvoice(), waarvan de
+        // trigger-knop is uitgecommentarieerd (regel ~5255). De RPC
+        // next_document_number en het brede document_numbers-schema bestaan niet
+        // in de database; de live facturatie loopt via de invoices-tabel met
+        // handmatige/eigen nummering. Bewaard tot de maandfactuur-feature echt
+        // gebouwd wordt · dan eerst RPC + schema-migratie aanmaken.
         async function getNextDocumentNumber(docType) {
             const sb = getSupabase();
             const year = new Date().getFullYear();
@@ -8751,16 +8767,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             }
         }
 
-        async function downloadInkooporder() {
-            const ioNum = await getNextDocumentNumber('inkooporder');
-            const doc = generateInkooporder(ioNum);
-            if (doc) {
-                const fileName = ktsInkooporderName(currentYear, currentWeekNumber, currentProject ? currentProject.code : '');
-                const saved = await savePdfToFolder(doc, fileName, 'inkooporders');
-                if (!saved) doc.save(fileName);
-                showToast(saved ? '✓ Inkooporder opgeslagen in map' : '✓ Inkooporder gedownload (concept · nog niet opgeslagen)');
-            }
-        }
+        // VERWIJDERD 2026-07-02: hier stond een tweede (parameterloze) functie
+        // downloadInkooporder() die de latere downloadInkooporder(path) op regel
+        // ~13480 volledig overschaduwde (laatste declaratie wint in JS). De dode
+        // versie gebruikte bovendien currentProject.code (bestaat niet · heet
+        // project_code) en het legacy document_numbers-pad.
 
         // ===== HANDTEKENING CANVAS =====
         let signatureData = { zzp: null, client: null, clientName: '', clientEmail: '' };
@@ -8788,6 +8799,17 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
 
             sigCanvases[type] = canvas;
             sigContexts[type] = ctx;
+
+            // Guard tegen dubbele listeners: de modal kan meerdere keren geopend
+            // worden en dit canvas-element blijft in de DOM bestaan. De maat/stijl-
+            // reset hierboven moet elke keer, maar de listeners maar een keer ·
+            // anders tekent elke mousemove dubbel/driedubbel. De oude closures
+            // blijven geldig (zelfde canvas + zelfde 2d-context object).
+            if (canvas._sigListenersAttached) {
+                if (canvas._resetStrokes) canvas._resetStrokes();
+                return;
+            }
+            canvas._sigListenersAttached = true;
 
             let drawing = false;
             let hasStrokes = false;
@@ -9706,6 +9728,15 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             const desc = document.getElementById('exp-desc').value;
             if (!amount || !desc) { showToast('⚠️ Vul alle velden in'); return; }
 
+            // Dubbel-klik bescherming: knop uit tijdens de async insert, anders
+            // kan een snelle tweede klik dezelfde declaratie twee keer opslaan.
+            const expSaveBtn = document.querySelector('#expense-modal [onclick="addExpense()"]');
+            if (expSaveBtn) {
+                if (expSaveBtn.disabled) return;
+                expSaveBtn.disabled = true;
+            }
+            try {
+
             let invalidatedAfterChange = false;
             const sb = getSupabase();
             // Persistent: schrijf naar expenses-tabel als we ingelogd zijn op huidige
@@ -9754,6 +9785,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 showToast('✓ Declaratie toegevoegd · weekstaat teruggezet naar concept (opnieuw ondertekenen nodig)');
             } else {
                 showToast('✓ Declaratie toegevoegd');
+            }
+
+            } finally {
+                if (expSaveBtn) expSaveBtn.disabled = false;
             }
         }
 
@@ -10110,7 +10145,28 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             document.getElementById('month-total').textContent = '';
         }
 
+        // Reentrancy-guard: renderOverview wordt na elke save/navigatie aangeroepen
+        // en doet meerdere await-queries. Twee gelijktijdige runs kunnen elkaars
+        // DOM-writes doorkruisen (oude data overschrijft nieuwe). We laten maximaal
+        // een run tegelijk toe; een tweede aanvraag tijdens een run wordt gequeued
+        // zodat de laatste altijd met verse data eindigt.
+        let _overviewBusy = false;
+        let _overviewQueued = false;
         async function renderOverview() {
+            if (_overviewBusy) { _overviewQueued = true; return; }
+            _overviewBusy = true;
+            try {
+                await _renderOverviewInner();
+            } finally {
+                _overviewBusy = false;
+                if (_overviewQueued) {
+                    _overviewQueued = false;
+                    renderOverview();
+                }
+            }
+        }
+
+        async function _renderOverviewInner() {
           try {
             const MONTHS_LONG = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
 
@@ -11151,12 +11207,14 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 const expired = pending.filter(ws => new Date(ws.approval_requested_at) < cutoff);
                 if (expired.length === 0) return;
 
-                // Auto-goedkeuren
+                // Auto-goedkeuren · kolomnamen moeten matchen met de rest van de
+                // approval-flow: approval_completed_at + approver_name (approved_at
+                // en approved_by bestaan niet · de update faalde daardoor stil)
                 for (const ws of expired) {
                     await sb.from('week_status').update({
                         approval_status: 'goedgekeurd',
-                        approved_at: new Date().toISOString(),
-                        approved_by: 'Auto-goedgekeurd (geen reactie binnen 3 werkdagen)'
+                        approval_completed_at: new Date().toISOString(),
+                        approver_name: 'Auto-goedgekeurd (geen reactie binnen 3 werkdagen)'
                     }).eq('user_id', ws.user_id)
                       .eq('project_id', ws.project_id)
                       .eq('week_number', ws.week_number)
@@ -12427,7 +12485,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             });
         }
 
-        function goToAdmin() {
+        async function goToAdmin() {
             if (!currentUser || currentUser.role !== 'admin') {
                 showToast('⚠️ Alleen voor beheerders');
                 return;
@@ -12438,7 +12496,12 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelector('.project-selector').style.display = 'none';
             showAdminTiles();
-            loadAdminData();
+            // Promise bewaren zodat sub-flows (modals, dropdowns) erop kunnen
+            // wachten; awaiten zodat de caches gegarandeerd vol zijn voordat de
+            // gebruiker een lijst/modal opent. Scherm is al zichtbaar (tiles),
+            // dus dit blokkeert de navigatie niet merkbaar.
+            window._adminDataPromise = loadAdminData();
+            await window._adminDataPromise;
         }
 
         function switchAdminTab(tab) {
@@ -13080,7 +13143,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     const isArchived = !!u.archived_at;
                     const isPaused = !!u.paused_at;
                     const isAnonymized = !!u.anonymized_at;
-                    const safeName = escapeHtml(u.name || u.email).replace(/'/g, "\\'");
+                    // Volgorde is essentieel: EERST backslash-escapen voor de
+                    // JS-string context, DAN escapeHtml voor het attribuut. De HTML-
+                    // parser decodeert &#039; terug naar ' voordat de onclick-JS
+                    // geparsed wordt · andersom breekt een naam met apostrof de handler.
+                    const safeName = escapeHtml((u.name || u.email || '').replace(/'/g, "\\'"));
                     const testBadge = u.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : '';
                     const archivedBadge = isArchived ? ' <span style="background:var(--app-idle-soft);color:var(--muted);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Afgesloten op ' + new Date(u.archived_at).toLocaleDateString('nl-NL') + (u.archive_reason ? ' ·' + escapeHtml(u.archive_reason) : '') + '">🔒 AFGESLOTEN</span>' : '';
                     const pausedBadge = isPaused ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gepauzeerd op ' + new Date(u.paused_at).toLocaleDateString('nl-NL') + (u.pause_reason ? ' ·' + escapeHtml(u.pause_reason) : '') + '">⏸️ GEPAUZEERD</span>' : '';
@@ -13162,9 +13229,9 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         <div style="display:flex;justify-content:space-between;align-items:flex-start">
                             <div>
                                 ${contactHtml}
-                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? c.name + ' · ' : ''}${c.city || ''}${c.kvk_number ? ' · KVK ' + c.kvk_number : ''}${c.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:var(--app-bg-deep);color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--muted)">${showCompanyLine ? escapeHtml(c.name) + ' · ' : ''}${escapeHtml(c.city || '')}${c.kvk_number ? ' · KVK ' + escapeHtml(c.kvk_number) : ''}${c.is_test ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">TEST</span>' : ''}${c.archived ? ' <span style="background:var(--app-bg-deep);color:#6b7280;padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle">ARCHIEF</span>' : ''}</div>
                             </div>
-                            <span class="status-badge status-draft" style="text-transform:uppercase">${c.type}</span>
+                            <span class="status-badge status-draft" style="text-transform:uppercase">${escapeHtml(c.type || '')}</span>
                         </div>
                     </div>`;
                 }).join('');
@@ -13192,14 +13259,14 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     const idx = (window._adminRates || []).indexOf(r);
                     const proj = r.project_id || {};
                     const userName = r.user_id ? (userMap[r.user_id] || 'Onbekende gebruiker') : 'Alle medewerkers';
-                    const funcTitle = r.function_title ? ` · ${r.function_title}` : '';
+                    const funcTitle = r.function_title ? ` · ${escapeHtml(r.function_title)}` : '';
                     return `
                     <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="openAdminModal('tarief', ${idx})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
-                                <div style="font-weight:700;font-size:0.9rem">${proj.name || 'Onbekend project'}</div>
+                                <div style="font-weight:700;font-size:0.9rem">${escapeHtml(proj.name || 'Onbekend project')}</div>
                                 <div style="font-size:0.75rem;color:var(--muted)">${userName}${funcTitle}</div>
-                                <div style="font-size:0.7rem;color:var(--muted)">${proj.project_code || ''} · vanaf ${r.valid_from}${r.valid_to ? ' t/m ' + r.valid_to : ''}</div>
+                                <div style="font-size:0.7rem;color:var(--muted)">${escapeHtml(proj.project_code || '')} · vanaf ${r.valid_from}${r.valid_to ? ' t/m ' + r.valid_to : ''}</div>
                             </div>
                             <div style="text-align:right">
                                 <div style="font-weight:700;color:var(--kts-blue)" title="Inkooptarief · wat KTS aan zzp betaalt">€${r.hourly_rate}/u <span style="font-size:0.65rem;color:var(--muted);font-weight:500">in</span></div>
@@ -13964,8 +14031,8 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             if (skippedIoWeeks.length > 0) {
                 const skippedDetails = skippedIoWeeks.map(pw => {
                     const detail = invoicedWeekDetails.find(d => d.week === pw.week_number && d.user_id === pw.user_id);
-                    const userName = userById[pw.user_id] ? (userById[pw.user_id].name || userById[pw.user_id].email) : 'Onbekend';
-                    return `${userName} W${pw.week_number} (${detail ? detail.invoice : '?'})`;
+                    const userName = escapeHtml(userById[pw.user_id] ? (userById[pw.user_id].name || userById[pw.user_id].email) : 'Onbekend');
+                    return `${userName} W${pw.week_number} (${detail ? escapeHtml(detail.invoice) : '?'})`;
                 }).join(', ');
                 html += `<div style="background:var(--app-warn-soft);border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem">
                     ⚠️ ${skippedIoWeeks.length === 1 ? 'is' : 'zijn'} al gefactureerd en ${skippedIoWeeks.length === 1 ? 'wordt' : 'worden'} overgeslagen: ${skippedDetails}
@@ -13982,12 +14049,12 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 return;
             }
 
-            html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? clientCompany.name : '(Geen klant ingesteld op project)'}</div>`;
-            const userNames = Object.keys(perUser).map(uid => perUser[uid].user?.name || perUser[uid].user?.email || 'Onbekend').join(', ');
+            html += `<div style="font-weight:600;color:var(--kts-blue);margin-bottom:8px">Factuur aan: ${clientCompany ? escapeHtml(clientCompany.name) : '(Geen klant ingesteld op project)'}</div>`;
+            const userNames = Object.keys(perUser).map(uid => escapeHtml(perUser[uid].user?.name || perUser[uid].user?.email || 'Onbekend')).join(', ');
             const headerLabel = isCombi
                 ? `<span style="background:var(--app-ok-soft);color:var(--app-ok);padding:2px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;margin-right:6px">👥 COMBI</span>${userNames}`
                 : userNames;
-            html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${isCombi ? 'Medewerkers' : 'Medewerker'}: ${headerLabel} · Project: ${project?.project_code || ''} · Maand: ${mo}/${yr}</div>`;
+            html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">${isCombi ? 'Medewerkers' : 'Medewerker'}: ${headerLabel} · Project: ${escapeHtml(project?.project_code || '')} · Maand: ${mo}/${yr}</div>`;
 
             html += '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
             html += '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px;font-weight:600">Beschrijving</th><th style="text-align:right;padding:6px;font-weight:600">Aantal</th><th style="text-align:right;padding:6px;font-weight:600">Tarief</th><th style="text-align:right;padding:6px;font-weight:600">Bedrag</th></tr>';
@@ -13995,7 +14062,9 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             let subtotal = 0;
             Object.keys(perUser).forEach(uid => {
                 const bucket = perUser[uid];
-                const userName = bucket.user?.name || bucket.user?.email || 'Onbekend';
+                // escapeHtml aan de bron · userName wordt hieronder op 4 plekken in
+                // innerHTML geinterpoleerd (combi-header, km-, hotel- en kostenrijen)
+                const userName = escapeHtml(bucket.user?.name || bucket.user?.email || 'Onbekend');
                 const userRate = bucket.rate;
                 const userHotelRate = bucket.hotelRate;
 
@@ -14045,7 +14114,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 if (bucket.expenses && bucket.expenses.length > 0) {
                     bucket.expenses.forEach(exp => {
                         const catLbl = expCatLabelsInv[exp.cat] || 'Overig';
-                        const desc = exp.description ? `: ${exp.description}` : '';
+                        const desc = exp.description ? `: ${escapeHtml(exp.description)}` : '';
                         // Aantal kolom: bij quantity+unit_price gebruiken, anders 1×
                         const qty = exp.quantity && exp.quantity > 0 ? exp.quantity : 1;
                         const unit = exp.unit_price && exp.unit_price > 0 ? exp.unit_price : exp.amount;
@@ -15795,9 +15864,9 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 _editingId = existing ? existing.id : null;
                 title = existing ? 'Project bewerken' : 'Nieuw project';
                 fields = `
-                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026_02" value="${existing ? existing.project_code || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Projectnaam | Omschrijving" value="${existing ? existing.name || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam (weergave)</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? existing.client_name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectcode</label><input type="text" id="adm-proj-code" placeholder="Bijv. KTS2026_02" value="${existing ? escapeHtml(existing.project_code || '') : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Projectnaam</label><input type="text" id="adm-proj-name" placeholder="Bijv. Projectnaam | Omschrijving" value="${existing ? escapeHtml(existing.name || '') : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Klantnaam (weergave)</label><input type="text" id="adm-proj-client" placeholder="Bijv. PepsiCo Netherlands B.V." value="${existing ? escapeHtml(existing.client_name || '') : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>📩 Factuur-ontvanger <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(opdrachtgever / eindklant)</span></label>
                         <select id="adm-proj-factuur-company" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem">
                             <option value="">Geen bedrijf gekoppeld</option>
@@ -15810,11 +15879,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         </select>
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">Inkooporders worden naar dit bedrijf gestuurd (als leeg: zelfde als factuur)</div>
                     </div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.location || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? existing.default_description || '' : ''}"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? existing.default_location || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Locatie</label><input type="text" id="adm-proj-location" placeholder="Bijv. Broek op Langedijk" value="${existing ? escapeHtml(existing.location || '') : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Standaard omschrijving werkzaamheden</label><input type="text" id="adm-proj-desc" placeholder="Bijv. commissioning, I/O checks, vendor overleg..." value="${existing ? escapeHtml(existing.default_description || '') : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Standaard locatie dagkaart</label><input type="text" id="adm-proj-deflocation" placeholder="Bijv. Broek op Langedijk" value="${existing ? escapeHtml(existing.default_location || '') : ''}"></div>
                     <!-- Km en hotelprijs staan nu bij gebruikersinstellingen -->
-                    <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? existing.start_date || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Startdatum</label><input type="date" id="adm-proj-start" value="${existing ? escapeHtml(existing.start_date || '') : ''}"></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Status</label>
                         <select id="adm-proj-status">
                             <option value="active" ${!existing || existing.status === 'active' ? 'selected' : ''}>Actief</option>
@@ -15850,7 +15919,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 _editingId = existing ? existing.id : null;
                 title = existing ? 'Bedrijf bewerken' : 'Nieuw bedrijf';
                 fields = `
-                    <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Bedrijfsnaam B.V." value="${existing ? existing.name || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Bedrijfsnaam</label><input type="text" id="adm-pers-name" placeholder="Bijv. Bedrijfsnaam B.V." value="${existing ? escapeHtml(existing.name || '') : ''}"></div>
                     <div style="margin-bottom:12px;padding:10px;background:var(--app-bg-tint);border-radius:10px;border:1px solid var(--border)">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                             <label style="font-weight:600;font-size:0.8rem;color:var(--kts-blue)">Contactpersonen</label>
@@ -15866,11 +15935,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         </select>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Adres</label><input type="text" id="adm-pers-addr" placeholder="Straat + nr" value="${existing ? existing.address || '' : ''}"></div>
+                        <div class="form-group"><label>Adres</label><input type="text" id="adm-pers-addr" placeholder="Straat + nr" value="${existing ? escapeHtml(existing.address || '') : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB / 66280" value="${existing ? existing.postcode || '' : ''}"></div>
-                        <div class="form-group"><label>Plaats</label><input type="text" id="adm-pers-city" placeholder="Zeewolde" value="${existing ? existing.city || '' : ''}"></div>
+                        <div class="form-group"><label>Postcode</label><input type="text" id="adm-pers-postcode" placeholder="1234 AB / 66280" value="${existing ? escapeHtml(existing.postcode || '') : ''}"></div>
+                        <div class="form-group"><label>Plaats</label><input type="text" id="adm-pers-city" placeholder="Zeewolde" value="${existing ? escapeHtml(existing.city || '') : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
                         <div class="form-group"><label>Land</label>
@@ -15880,11 +15949,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                                 <option value="België" ${existing && existing.country === 'België' ? 'selected' : ''}>België</option>
                             </select>
                         </div>
-                        <div class="form-group"><label>Telefoon</label><input type="tel" id="adm-pers-phone" placeholder="+31 6 12345678" value="${existing ? existing.phone || '' : ''}"></div>
+                        <div class="form-group"><label>Telefoon</label><input type="tel" id="adm-pers-phone" placeholder="+31 6 12345678" value="${existing ? escapeHtml(existing.phone || '') : ''}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>KVK / Handelsregister</label><input type="text" id="adm-pers-kvk" placeholder="89133315 / HRB 101387" value="${existing ? existing.kvk_number || '' : ''}"></div>
-                        <div class="form-group"><label>BTW / USt-IdNr.</label><input type="text" id="adm-pers-btw" placeholder="NL... / DE..." value="${existing ? existing.btw_number || '' : ''}"></div>
+                        <div class="form-group"><label>KVK / Handelsregister</label><input type="text" id="adm-pers-kvk" placeholder="89133315 / HRB 101387" value="${existing ? escapeHtml(existing.kvk_number || '') : ''}"></div>
+                        <div class="form-group"><label>BTW / USt-IdNr.</label><input type="text" id="adm-pers-btw" placeholder="NL... / DE..." value="${existing ? escapeHtml(existing.btw_number || '') : ''}"></div>
                     </div>
                     <div class="form-group" style="margin-top:12px">
                         <label>Betalingstermijn</label>
@@ -15916,13 +15985,13 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 fields = `
                     <div class="form-group" style="margin-bottom:12px"><label>Project</label><select id="adm-tar-project" onchange="updateTariffKmVisibility()"><option value="">Laden...</option></select></div>
                     <div class="form-group" style="margin-bottom:12px"><label>Medewerker</label><select id="adm-tar-user" onchange="updateTariffKmVisibility()"><option value="">Projectbreed (alle medewerkers)</option></select></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Functie</label><input type="text" id="adm-tar-function" placeholder="Bijv. Maintenance Engineer A" value="${existing ? existing.function_title || '' : ''}"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Functie</label><input type="text" id="adm-tar-function" placeholder="Bijv. Maintenance Engineer A" value="${existing ? escapeHtml(existing.function_title || '') : ''}"></div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Inkooptarief (€/u) <span style="color:var(--muted);font-weight:400">: wat KTS aan zzp betaalt</span></label>
-                            <input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? existing.hourly_rate || '' : ''}">
+                            <input type="number" step="0.01" id="adm-tar-hourly" placeholder="84.00" value="${existing ? escapeHtml(existing.hourly_rate || '') : ''}">
                         </div>
-                        <div class="form-group" id="adm-tar-km-wrap"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? existing.km_rate || '' : ''}"></div>
+                        <div class="form-group" id="adm-tar-km-wrap"><label>Km-tarief (€)</label><input type="number" step="0.01" id="adm-tar-km" placeholder="0.60" value="${existing ? escapeHtml(existing.km_rate || '') : ''}"></div>
                     </div>
                     <div class="form-group" style="margin-top:12px;padding:10px 12px;background:var(--app-warn-soft);border-radius:8px;border:1px solid #F4D9A0">
                         <label style="display:block;margin-bottom:4px"><strong>Verkooptarief (€/u)</strong> <span style="color:var(--muted);font-weight:400">: wat KTS aan eindklant factureert</span></label>
@@ -15934,8 +16003,8 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         <div class="form-group"><label>Zo-toeslag (%)</label><input type="number" step="1" id="adm-tar-sun" placeholder="200" value="${existing ? Math.round(existing.sunday_holiday_multiplier * 100) : '200'}"></div>
                     </div>
                     <div class="form-row" style="margin-top:12px">
-                        <div class="form-group"><label>Geldig vanaf</label><input type="date" id="adm-tar-from" value="${existing ? existing.valid_from || '' : ''}"></div>
-                        <div class="form-group"><label>Geldig t/m (optioneel)</label><input type="date" id="adm-tar-to" value="${existing ? existing.valid_to || '' : ''}"></div>
+                        <div class="form-group"><label>Geldig vanaf</label><input type="date" id="adm-tar-from" value="${existing ? escapeHtml(existing.valid_from || '') : ''}"></div>
+                        <div class="form-group"><label>Geldig t/m (optioneel)</label><input type="date" id="adm-tar-to" value="${existing ? escapeHtml(existing.valid_to || '') : ''}"></div>
                     </div>
                 `;
             } else if (type === 'gebruiker') {
@@ -16296,8 +16365,8 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
                                     <button onclick="event.stopPropagation();adminSignForUser('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year})" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Ondertekenen & versturen namens gebruiker">✍️</button>
-                                    <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bekijken">👁️</button>
-                                    <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Concept verwijderen">🗑️</button>
+                                    <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bekijken">👁️</button>
+                                    <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Concept verwijderen">🗑️</button>
                                 </div>
                             </div>`;
                         }).join('')}
@@ -16393,10 +16462,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                         <div style="display:flex;gap:4px;flex-shrink:0">
                             ${adminApproveBtn}
                             ${approvalAction}
-                            <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bewerken">✏️</button>
+                            <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bewerken">✏️</button>
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}','${ws.user_id}','${ws.project_id}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
-                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Terugzetten naar concept">↩️</button>
-                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${userName}','${projCode}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Weekstaat verwijderen">🗑️</button>
+                            <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Terugzetten naar concept">↩️</button>
+                            <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Weekstaat verwijderen">🗑️</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -16838,10 +16907,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     const folderPath = `${year}/week-${weekNumber}`;
                     const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
                     if (files && files.length > 0) {
-                        const { data: proj } = await sb.from('projects').select('code').eq('id', projectId).maybeSingle();
-                        const { data: usr } = await sb.from('users').select('full_name').eq('id', userId).maybeSingle();
-                        const projCode = proj?.code || '';
-                        const userSlug = (usr?.full_name || '').replace(/\s+/g, '_');
+                        const { data: proj } = await sb.from('projects').select('project_code').eq('id', projectId).maybeSingle();
+                        const { data: usr } = await sb.from('users').select('name').eq('id', userId).maybeSingle();
+                        const projCode = proj?.project_code || '';
+                        const userSlug = (usr?.name || '').replace(/\s+/g, '_');
                         const match = files.find(f =>
                             (projCode && f.name.includes(projCode))
                             && (userSlug && f.name.includes(userSlug))
@@ -17569,7 +17638,29 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             row.style.opacity = '0.55';
         }
 
+        // Wrapper met dubbel-klik bescherming: de save doet tientallen await-calls
+        // (per dag + expenses) · een tweede klik tijdens het opslaan zou dubbele
+        // inserts geven. Knop uit + in-flight flag tot de inner klaar is.
+        let _adminSaveWeekBusy = false;
         async function adminSaveWeekEntries(userId, projectId, weekNumber, year) {
+            if (_adminSaveWeekBusy) return;
+            _adminSaveWeekBusy = true;
+            const _saveBtn = document.getElementById('admin-modal-save');
+            if (_saveBtn) { _saveBtn.disabled = true; _saveBtn.textContent = 'Bezig...'; }
+            try {
+                await _adminSaveWeekEntriesInner(userId, projectId, weekNumber, year);
+            } finally {
+                _adminSaveWeekBusy = false;
+                if (_saveBtn) {
+                    _saveBtn.disabled = false;
+                    // Bij early-return (bv. 0 uren) heeft de inner het label niet
+                    // teruggezet · herstel dan zelf
+                    if (_saveBtn.textContent === 'Bezig...') _saveBtn.textContent = 'Opslaan';
+                }
+            }
+        }
+
+        async function _adminSaveWeekEntriesInner(userId, projectId, weekNumber, year) {
             const sb = getSupabase();
             if (!sb) return;
             const rows = document.querySelectorAll('#admin-modal-fields [data-date]');
@@ -17634,9 +17725,13 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     };
                     let result;
                     if (entryId) {
+                        // UPDATE: alleen de form-velden meesturen · thuiswerk/day_off/
+                        // km_heen/km_terug NIET meesturen zodat door de medewerker
+                        // gezette waarden niet overschreven worden.
                         result = await sb.from('time_entries').update(data).eq('id', entryId);
                     } else {
-                        result = await sb.from('time_entries').insert(data);
+                        // INSERT: status meegeven zoals de medewerker-flow dat ook doet
+                        result = await sb.from('time_entries').insert({ ...data, status: 'draft' });
                     }
                     if (result.error) { errors++; console.error(result.error); }
                     else saved++;
@@ -18185,17 +18280,17 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
 
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:var(--app-info-soft);border-radius:8px;font-size:0.85rem">
-                    <div><strong>Medewerker:</strong> ${userName}</div>
-                    <div><strong>Project:</strong> ${projCode} ·${projName}</div>
+                    <div><strong>Medewerker:</strong> ${escapeHtml(userName)}</div>
+                    <div><strong>Project:</strong> ${escapeHtml(projCode)} ·${escapeHtml(projName)}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
-                    <input type="email" id="approval-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="email" id="approval-email" placeholder="bijv. info@kenphelan.nl" value="${escapeHtml(clientEmail)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>Naam opdrachtgever</label>
-                    <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${escapeHtml(clientName)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:0.8rem;color:var(--muted);cursor:pointer">
                     <input type="checkbox" id="approval-save-default" checked style="width:16px;height:16px;accent-color:var(--kts-blue)">
@@ -18227,6 +18322,15 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
 
             const sb = getSupabase();
             if (!sb) return;
+
+            // Dubbel-klik bescherming · tweede klik zou een tweede goedkeurings-
+            // mail sturen en de approval-token overschrijven
+            const _apprBtn = document.querySelector('#admin-modal-fields [onclick^="sendApprovalRequest"]');
+            if (_apprBtn) {
+                if (_apprBtn.disabled) return;
+                _apprBtn.disabled = true;
+                _apprBtn.textContent = '⏳ Bezig met versturen...';
+            }
 
             try {
                 // Contactgegevens opslaan als standaard indien gewenst
@@ -18347,6 +18451,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 loadWeekstaten(); // Lijst verversen
             } catch (err) {
                 showToast('❌ Fout: ' + err.message);
+                // Bij een fout blijft de modal open · knop weer bruikbaar maken
+                if (_apprBtn) {
+                    _apprBtn.disabled = false;
+                    _apprBtn.textContent = '📩 Verstuur ter goedkeuring';
+                }
             }
         }
 
@@ -18379,22 +18488,22 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:var(--app-ok-soft);border-radius:8px;font-size:0.85rem">
                     <div style="font-weight:700;color:var(--app-ok);margin-bottom:4px">✅ Weekstaat goedgekeurd</div>
-                    <div><strong>Medewerker:</strong> ${userName}</div>
-                    <div><strong>Project:</strong> ${projCode} ·${projName}</div>
+                    <div><strong>Medewerker:</strong> ${escapeHtml(userName)}</div>
+                    <div><strong>Project:</strong> ${escapeHtml(projCode)} ·${escapeHtml(projName)}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
                 </div>
                 <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever met de weekstaat PDF als bijlage.</div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
-                    <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${clientEmail}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${escapeHtml(clientEmail)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>Naam opdrachtgever</label>
-                    <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${clientName}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${escapeHtml(clientName)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 ${ccBanner}
                 <div id="confirm-status" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:0.8rem"></div>
-                <button id="confirm-send-btn" onclick="sendConfirmationToClient('${userId}','${projectId}',${weekNumber},${year},'${projCode}','${userSlug}')" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;background:#059669">📩 Verstuur bevestiging met PDF</button>
+                <button id="confirm-send-btn" onclick="sendConfirmationToClient('${userId}','${projectId}',${weekNumber},${year},'${escapeHtml(String(projCode).replace(/'/g, "\\'"))}','${escapeHtml(String(userSlug).replace(/'/g, "\\'"))}')" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;background:#059669">📩 Verstuur bevestiging met PDF</button>
             `;
 
             const modal = document.getElementById('admin-modal');
@@ -18702,7 +18811,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
                 showToast('✓ Tarief verwijderd');
                 closeModal('admin-modal');
-                loadAdminData();
+                await loadAdminData();
                 return;
             }
 
@@ -18752,7 +18861,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     if (error) { showToast('⚠️ Archiveren mislukt: ' + error.message); return; }
                     showToast('✓ Project gearchiveerd (afgesloten)');
                     closeModal('admin-modal');
-                    loadAdminData();
+                    await loadAdminData();
                     return;
                 }
 
@@ -18780,7 +18889,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
                     showToast('✓ Project + setup verwijderd');
                     closeModal('admin-modal');
-                    loadAdminData();
+                    await loadAdminData();
                     return;
                 }
 
@@ -18789,7 +18898,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
                 showToast('✓ Project verwijderd');
                 closeModal('admin-modal');
-                loadAdminData();
+                await loadAdminData();
                 return;
             }
 
@@ -18816,7 +18925,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
                     showToast('✓ Bedrijf verwijderd');
                     closeModal('admin-modal');
-                    loadAdminData();
+                    await loadAdminData();
                     return;
                 }
 
@@ -18834,7 +18943,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 if (error) { showToast('⚠️ Archiveren mislukt: ' + error.message); return; }
                 showToast('✓ Bedrijf gearchiveerd');
                 closeModal('admin-modal');
-                loadAdminData();
+                await loadAdminData();
                 return;
             }
         }
@@ -18996,7 +19105,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 }
 
                 _editingId = null;
-                loadAdminData();
+                // Await: de lijst-HTML en de cache (window._adminProjects etc.)
+                // moeten synchroon blijven · openAdminModal gebruikt indexen in
+                // die cache, dus een klik direct na opslaan mag geen verouderde
+                // index/cache-combinatie treffen.
+                await loadAdminData();
             }
         }
 
@@ -19280,8 +19393,15 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     return;
                 }
 
-                // Upsert per template
+                // Upsert per template · is_test + created_by meesturen zoals de
+                // editor-flow dat ook doet, anders verdwijnen geimporteerde
+                // templates in test-modus (is_test default false) en ontbreekt
+                // de audit-trail.
                 let successCount = 0, errCount = 0;
+                let importAuthUid = null;
+                try {
+                    importAuthUid = (await sb.auth.getUser()).data.user?.id || null;
+                } catch (e) { /* anonieme client · created_by blijft leeg */ }
                 for (const t of tplsArray) {
                     const payload = {
                         name: t.name,
@@ -19295,9 +19415,13 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     };
                     let result;
                     if (existingByName[t.name]) {
+                        // UPDATE: is_test/created_by NIET aanraken · anders flipt een
+                        // re-import in test-modus een productie-template naar test
                         result = await sb.from('inspection_templates').update(payload).eq('id', existingByName[t.name]);
                     } else {
-                        result = await sb.from('inspection_templates').insert(payload);
+                        const insertPayload = { ...payload, is_test: _adminTestMode };
+                        if (importAuthUid) insertPayload.created_by = importAuthUid;
+                        result = await sb.from('inspection_templates').insert(insertPayload);
                     }
                     if (result.error) {
                         console.error('Import error voor', t.name, result.error);
@@ -19335,7 +19459,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             const content = `
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Naam formulier *</label>
-                    <input type="text" id="insp-tpl-name" value="${existing ? existing.name : ''}" placeholder="bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="insp-tpl-name" value="${existing ? escapeHtml(existing.name || '') : ''}" placeholder="bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Beschrijving</label>
@@ -19354,16 +19478,16 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 <div style="display:flex;gap:8px;margin-bottom:10px">
                     <div class="form-group" style="flex:1">
                         <label>Locatie</label>
-                        <input type="text" id="insp-tpl-location" value="${existing ? existing.location || '' : ''}" placeholder="bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                        <input type="text" id="insp-tpl-location" value="${existing ? escapeHtml(existing.location || '') : ''}" placeholder="bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     </div>
                     <div class="form-group" style="flex:1">
                         <label>Installatie</label>
-                        <input type="text" id="insp-tpl-install" value="${existing ? existing.installation || '' : ''}" placeholder="bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                        <input type="text" id="insp-tpl-install" value="${existing ? escapeHtml(existing.installation || '') : ''}" placeholder="bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px">
                     <label>Asset</label>
-                    <input type="text" id="insp-tpl-asset" value="${existing ? existing.asset || '' : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="insp-tpl-asset" value="${existing ? escapeHtml(existing.asset || '') : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
 
                 <div style="border-top:2px solid var(--border);padding-top:12px;margin-top:4px">
@@ -20050,7 +20174,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspCopyForObject('${ins.id}','${ins.template_id}')" title="Kopieer voor ander object">${copyIcon} Kopieer</button>`);
                 if (showArchive) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspArchive('${ins.id}', true)">${archiveIcon} Archiveer</button>`);
                 if (showUnarchive) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspArchive('${ins.id}', false)">${undoIcon} Terug</button>`);
-                actions.push(`<button class="insp-action-btn is-danger" onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(templateName).replace(/'/g, "\\'")}')">${trashIcon} Verwijder</button>`);
+                actions.push(`<button class="insp-action-btn is-danger" onclick="event.stopPropagation();inspDelete('${ins.id}','${escapeHtml(String(templateName).replace(/'/g, "\\'"))}')">${trashIcon} Verwijder</button>`);
 
                 return `
                     <div class="${entryClass}" onclick="inspOpenInspection('${ins.id}')">
@@ -22867,8 +22991,9 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             // Build subtitle: amount + company name (from PDF), no filename repeat
             const infoParts = [];
             if (inv.extractedAmount) infoParts.push('€ ' + inv.extractedAmount.toLocaleString('nl-NL', {minimumFractionDigits:2}));
-            if (inv.extractedName) infoParts.push(inv.extractedName.slice(0, 35));
-            if (infoParts.length === 0 && inv.quarterFolder) infoParts.push(inv.quarterFolder);
+            // extractedName komt uit PDF-inhoud van derden · altijd escapen
+            if (inv.extractedName) infoParts.push(escapeHtml(inv.extractedName.slice(0, 35)));
+            if (infoParts.length === 0 && inv.quarterFolder) infoParts.push(escapeHtml(inv.quarterFolder));
             const subtitleHtml = infoParts.length > 0 ? '<div style="font-size:0.75rem;color:var(--muted);margin-top:1px">' + infoParts.join(' · ') + '</div>' : '';
 
             // Match tags (only if tx provided)
@@ -22890,13 +23015,13 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
 
             return `
                 <div class="admin-suggestion ${_adminSelectedInvoices.has(inv.filename) ? 'selected' : ''}"
-                     onclick="adminSelectInvoice('${inv.filename.replace(/'/g, "\\'")}')">
+                     onclick="adminSelectInvoice('${escapeHtml(inv.filename.replace(/'/g, "\\'"))}')">
                     <span style="font-size:1.1rem">${_adminSelectedInvoices.has(inv.filename) ? '☑️' : '⬜'}</span>
                     <div style="flex:1;min-width:0">
-                        <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem">${inv.filename}</div>
+                        <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem">${escapeHtml(inv.filename)}</div>
                         ${subtitleHtml}${tagsHtml}
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${inv.path.replace(/'/g, "\\'")}')" style="font-size:1.35rem;padding:10px 14px;min-width:50px">👁️</button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); adminPreviewInvoice('${escapeHtml(inv.path.replace(/'/g, "\\'"))}')" style="font-size:1.35rem;padding:10px 14px;min-width:50px">👁️</button>
                 </div>`;
         }
 
