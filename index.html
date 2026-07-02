@@ -10169,8 +10169,48 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             const totalKmRevenue = totalMonthKm * KM_RATE;
             const totalHotelTotal = totalHotelNights * HOTEL_RATE;
 
-            // TODO: maandelijks expenses ophalen
-            const totalMonthExp = totalHotelTotal;
+            // Declaraties (expenses) van deze maand ophalen. De expenses-tabel is per
+            // week_number/year georganiseerd, niet per datum · wijs daarom elke ISO-week
+            // toe aan de maand waarin de donderdag valt. Zo telt elke week in precies
+            // één maand mee (geen dubbeltelling op maandgrenzen).
+            let totalDeclaraties = 0;
+            if (sb && currentUser && currentUser.id) {
+                try {
+                    const weekPairs = [];
+                    const cursor = getWeekMonday(new Date(overviewYear, overviewMonth, 1));
+                    const monthEndDate = new Date(overviewYear, overviewMonth + 1, 0);
+                    while (cursor <= monthEndDate) {
+                        const thursday = new Date(cursor);
+                        thursday.setDate(thursday.getDate() + 3);
+                        if (thursday.getMonth() === overviewMonth && thursday.getFullYear() === overviewYear) {
+                            weekPairs.push({ y: getISOYear(cursor), w: getISOWeek(cursor) });
+                        }
+                        cursor.setDate(cursor.getDate() + 7);
+                    }
+                    // Groepeer per ISO-jaar · rond de jaarwisseling kunnen dat er 2 zijn
+                    const weeksByYear = {};
+                    weekPairs.forEach(p => { (weeksByYear[p.y] = weeksByYear[p.y] || []).push(p.w); });
+                    for (const isoYear of Object.keys(weeksByYear)) {
+                        let expQ = sb.from('expenses').select('amount')
+                            .eq('user_id', currentUser.id)
+                            .eq('year', parseInt(isoYear))
+                            .in('week_number', weeksByYear[isoYear]);
+                        if (currentProject) expQ = expQ.eq('project_id', currentProject.id);
+                        const { data: expData, error: expErr } = await expQ;
+                        if (expErr) {
+                            if (!/relation.*expenses.*does not exist/i.test(expErr.message || '')) {
+                                console.warn('Maand-declaraties laden mislukt:', expErr.message);
+                            }
+                            continue;
+                        }
+                        (expData || []).forEach(r => { totalDeclaraties += parseFloat(r.amount) || 0; });
+                    }
+                } catch (expEx) {
+                    console.warn('Maand-declaraties exception:', expEx);
+                }
+            }
+
+            const totalMonthExp = totalHotelTotal + totalDeclaraties;
             const grandTotal = totalMonthRevenue + totalKmRevenue + totalMonthExp;
 
             // Stats grid · verberg alles als er geen uren zijn
