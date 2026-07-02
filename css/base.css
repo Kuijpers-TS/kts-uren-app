@@ -672,8 +672,11 @@
             max-width: calc(100vw - 40px);
         }
         .toast {
-            /* Website-stijl: KTS-blauw gradient + accent-light linker strook */
-            background: linear-gradient(135deg, var(--kts-blue) 0%, var(--kts-blue-700) 100%);
+            /* Website-stijl: KTS-blauw gradient + accent-light linker strook.
+               VASTE kleuren i.p.v. tokens: --kts-blue(-700) keert in donkere
+               modus om naar lichtblauw waardoor de witte toast-tekst slecht
+               leesbaar werd. De toast hoort altijd donker navy te zijn. */
+            background: linear-gradient(135deg, #07567F 0%, #043B56 100%);
             color: white;
             padding: 12px 22px 12px 20px;
             border-radius: 12px;
