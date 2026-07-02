@@ -1352,8 +1352,8 @@
             }
 
             // === STORAGE BUCKETS ===
-            // Bekende buckets in dit project. Onbekende worden overgeslagen.
-            const BUCKETS = ['weekstaten', 'facturen', 'inkooporders', 'inspecties', 'logos', 'handtekeningen'];
+            // Werkelijke bucketnamen · geverifieerd via storage.buckets 2026-07-02
+            const BUCKETS = ['weekstaten', 'approvals', 'facturen', 'inkooporders', 'inspections'];
             const bucketCounts = {};
             let totalFiles = 0;
             for (const bucket of BUCKETS) {

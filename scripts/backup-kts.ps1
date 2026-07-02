@@ -128,7 +128,8 @@ try {
 }
 
 # --- 3. Storage-buckets downloaden (recursief) ---
-$buckets = @('weekstaten', 'facturen', 'inkooporders', 'inspecties', 'logos', 'handtekeningen')
+# Werkelijke bucketnamen · geverifieerd via storage.buckets query 2026-07-02
+$buckets = @('weekstaten', 'approvals', 'facturen', 'inkooporders', 'inspections')
 
 function Get-BucketFiles($bucket, $prefix) {
     # Recursief bestandslijst opbouwen · mappen hebben geen id in de response
