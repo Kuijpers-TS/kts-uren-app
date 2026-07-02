@@ -1445,7 +1445,7 @@
             overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
             overlay.innerHTML = `
                 <div style="max-width:460px;width:100%;position:relative;z-index:1">
-                    <div class="kts-eyebrow" style="color:rgba(255,255,255,0.7);margin-bottom:6px;text-align:center">KTS UREN APP</div>
+                    <div class="kts-eyebrow" style="display:block;width:100%;color:rgba(255,255,255,0.7);margin-bottom:6px;text-align:center">KTS UREN APP</div>
                     <div class="kts-hero-title" style="color:white;text-align:center;margin-bottom:24px;font-size:1.8rem">Welkom<span class="accent" style="color:var(--kts-accent-light)">${name ? ', ' + name : ''}</span></div>
                     ${steps.map(s => `
                         <div style="display:flex;gap:14px;padding:16px;margin-bottom:10px;background:rgba(255,255,255,0.06);border-radius:12px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(8px);position:relative;overflow:hidden">

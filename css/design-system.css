@@ -2440,10 +2440,15 @@ a:focus-visible,
 
 /* ----- HERO GRADIENT BG + GRID PATTERN -------------------------------------- */
 .kts-hero-bg {
+  /* VASTE merk-kleuren, bewust GEEN tokens: de --kts-blue-* tokens worden in
+     donkere modus juist LICHTER gemaakt (voor tekstcontrast op donkere
+     vlakken), waardoor de hero-gradient in dark mode lichtblauw werd terwijl
+     alle content erop (welkomstgids, login-footer) wit is. De hero hoort
+     altijd donker navy te zijn · identiek aan de website en 404-pagina. */
   background: linear-gradient(135deg,
-    var(--kts-blue-900) 0%,
-    var(--kts-blue-700) 40%,
-    var(--kts-blue) 100%);
+    #0A1628 0%,
+    #043B56 40%,
+    #07567F 100%);
   position: relative;
   overflow: hidden;
 }
