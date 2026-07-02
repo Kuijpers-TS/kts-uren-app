@@ -225,12 +225,15 @@
                                 <!-- Km veld(en) -->
                                 ${renderKmSection(entry, i)}
                             </div>
+                            </div>
 
+                            <!-- Knoppen BUITEN de verborgen wrapper hierboven · anders
+                                 verdwijnt de Opslaan-knop zodra "Niet gewerkt" is
+                                 aangevinkt en kan de dag niet opgeslagen worden -->
                             <div class="form-actions" style="flex-wrap:wrap;margin-top:12px">
                                 <button class="btn btn-secondary btn-sm" onclick="clearDay(${i})">Wissen</button>
                                 <button class="btn btn-primary btn-sm" onclick="saveDayEntry(${i})">Opslaan</button>
                                 ${i < 6 ? '<button class="btn btn-sm" style="background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line);width:100%;margin-top:6px" onclick="copyDayToNext('+i+')">📋 Kopieer naar ' + DAYS_FULL[i+1] + '</button>' : ''}
-                            </div>
                             </div>
                         </div>
                     </div>`;
@@ -471,7 +474,10 @@
         }
 
         function clearDay(i) {
-            weekData[i] = { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, hours: 0 };
+            weekData[i] = { start: '', end: '', breakMin: 0, desc: '', location: '', km: 0, kmHeen: 0, kmTerug: 0, hotel: false, thuiswerk: false, dayOff: false, hours: 0 };
+            // markDirty: zonder deze vlag werd een gewiste dag niet mee-opgeslagen
+            // bij week-wissel/opslaan en kwam de oude invulling terug
+            markDirty();
             renderDays();
         }
 
