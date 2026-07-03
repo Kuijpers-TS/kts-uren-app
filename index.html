@@ -214,6 +214,14 @@
         <!-- ===== UREN SCREEN ===== -->
         <div class="screen active" id="screen-uren">
             <div id="reminder-container"></div>
+            <!-- Gemachtigden-balk · alleen zichtbaar als deze gebruiker uren mag
+                 invullen voor collega's (fill_delegates) -->
+            <div id="delegate-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:12px;background:var(--app-bg-tint);border:1px solid var(--border);border-radius:10px">
+                <span style="font-size:0.8rem;font-weight:600;color:var(--app-ink-700);flex-shrink:0">👥 Invullen voor</span>
+                <select id="delegate-select" onchange="switchFillUser(this.value)" style="flex:1;padding:8px 10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;background:var(--app-bg-tint);color:var(--app-ink-900)">
+                    <option value="self">Mijzelf</option>
+                </select>
+            </div>
             <div class="clock-btn-wrap" id="clock-wrap">
                 <button class="clock-btn" id="clock-btn" onclick="toggleClock()">
                     <span class="clock-dot"></span>

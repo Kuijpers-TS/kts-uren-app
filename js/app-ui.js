@@ -1291,6 +1291,7 @@
             // Laad data vanuit Supabase
             await loadDataFromSupabase();
             startSessionMonitor();
+            initDelegateBar();
             logAudit('ingelogd', { device: /Mobi/i.test(navigator.userAgent) ? 'mobiel' : 'desktop' });
             updateClockUI();
             checkWeekReminder();
@@ -1497,6 +1498,7 @@
                     document.getElementById('user-badge-name').innerHTML = formatBadgeName(currentUser.name);
                     await loadDataFromSupabase();
                     startSessionMonitor();
+                    initDelegateBar();
                     autoApproveExpiredWeekstaten();
                 }
             } catch (err) {
@@ -1859,6 +1861,92 @@
         }
 
         // ===== LADEN UIT SUPABASE =====
+        // ===== GEMACHTIGDEN · uren invullen namens een collega =====
+        // Wie voor wie mag invullen staat in fill_delegates (beheer: admin >
+        // gebruiker bewerken). De gemachtigde krijgt op de Uren-tab een
+        // keuzemenu; bij wisselen wordt currentUser tijdelijk vervangen door
+        // het profiel van de collega (auth blijft de eigen login · RLS-policies
+        // met is_delegate_for staan de schrijfacties toe).
+        let _realUser = null;      // eigen profiel zolang we "namens" invullen
+        let _delegators = [];      // profielen waarvoor deze gebruiker mag invullen
+
+        async function initDelegateBar() {
+            const bar = document.getElementById('delegate-bar');
+            const sel = document.getElementById('delegate-select');
+            if (!bar || !sel || !currentUser || !currentUser.id) return;
+            const sb = getSupabase();
+            if (!sb) return;
+            try {
+                const { data, error } = await sb.from('fill_delegates')
+                    .select('delegator_id')
+                    .eq('delegate_id', currentUser.id);
+                if (error) {
+                    // Tabel bestaat nog niet (migratie-gemachtigden.sql niet gedraaid)
+                    if (!/relation.*fill_delegates/i.test(error.message || '')) {
+                        console.warn('Delegaties laden mislukt:', error.message);
+                    }
+                    bar.style.display = 'none';
+                    return;
+                }
+                const ids = (data || []).map(r => r.delegator_id);
+                if (ids.length === 0) { bar.style.display = 'none'; return; }
+                const { data: profiles } = await sb.from('users').select('*').in('id', ids);
+                _delegators = (profiles || []).filter(u => !u.archived_at && !u.paused_at);
+                if (_delegators.length === 0) { bar.style.display = 'none'; return; }
+                sel.innerHTML = '<option value="self">Mijzelf</option>' + _delegators.map(u =>
+                    `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`
+                ).join('');
+                sel.value = 'self';
+                bar.style.display = 'flex';
+            } catch (e) {
+                console.warn('Delegaties laden mislukt:', e.message || e);
+                bar.style.display = 'none';
+            }
+        }
+
+        async function switchFillUser(value) {
+            // Huidige week eerst veiligstellen voordat we van gebruiker wisselen
+            if (weekDataDirty && currentUser && currentUser.id) {
+                try { await saveWeekToSupabase(); } catch (e) { console.warn('Auto-save bij wisselen faalde:', e); }
+            }
+            if (value === 'self') {
+                if (!_realUser) return; // al op eigen uren
+                currentUser = _realUser;
+                _realUser = null;
+            } else {
+                const target = _delegators.find(u => u.id === value);
+                if (!target) return;
+                if (!_realUser) _realUser = currentUser;
+                currentUser = target;
+            }
+
+            // Context volledig herladen voor de nu actieve gebruiker
+            currentProject = null;
+            weekData = defaultWeekData();
+            weekSummary = null;
+            markClean();
+            expandedDay = -1;
+
+            // Visuele indicatie: badge in de header + oranje rand op de balk
+            const badge = document.getElementById('user-badge-name');
+            if (badge) {
+                badge.innerHTML = formatBadgeName(currentUser.name)
+                    + (_realUser ? ' <span style="font-size:0.6rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);padding:1px 6px;border-radius:4px;font-weight:700;vertical-align:middle">NAMENS</span>' : '');
+            }
+            const bar = document.getElementById('delegate-bar');
+            if (bar) {
+                bar.style.borderColor = _realUser ? 'var(--app-warn)' : 'var(--border)';
+                bar.style.background = _realUser ? 'var(--app-warn-soft)' : 'var(--app-bg-tint)';
+            }
+
+            await loadDataFromSupabase();
+            renderDays();
+            renderExpenses();
+            showToast(_realUser
+                ? '👥 Je vult nu in namens ' + (currentUser.name || currentUser.email)
+                : '✓ Terug naar je eigen uren');
+        }
+
         async function loadDataFromSupabase() {
             if (!getSupabase() || !currentUser || !currentUser.id) return;
 

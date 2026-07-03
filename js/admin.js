@@ -3639,6 +3639,15 @@
                         <div class="form-group" id="adm-user-km-wrap" style="${existing && existing.allow_km === false ? 'display:none' : ''}"><label>Km enkele reis</label><input type="number" step="0.1" id="adm-user-kmsingle" placeholder="Bijv. 96" value="${existing && existing.km_single_trip ? existing.km_single_trip : ''}"></div>
                         <div class="form-group" id="adm-user-hotel-wrap" style="${existing && existing.allow_hotel === false ? 'display:none' : ''}"><label>Hotelprijs (€/nacht)</label><input type="number" step="0.01" id="adm-user-hotel-rate" placeholder="Bijv. 110" value="${existing && existing.hotel_rate ? existing.hotel_rate : ''}"></div>
                     </div>
+                    ${existing ? `<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+                        <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px">🤝 Mag uren invullen voor</div>
+                        <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;line-height:1.4">Deze gebruiker krijgt op de Uren-tab een keuzemenu en kan uren, kosten en weekstaten invullen namens de gekozen collega's.</div>
+                        <div id="adm-user-delegations" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"><div style="color:var(--muted);font-size:0.8rem">Laden...</div></div>
+                        <div style="display:flex;gap:8px">
+                            <select id="adm-user-delegate-select" style="flex:1"><option value="">-- Kies collega --</option></select>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addFillDelegation()" style="flex-shrink:0">Toevoegen</button>
+                        </div>
+                    </div>` : ''}
                     ${existing ? '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px"><button type="button" class="btn btn-sm" onclick="inviteUser(\'' + existing.email + '\', \'' + (existing.name || '').replace(/'/g, "\\'") + '\')" style="font-size:0.8rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)">📧 Uitnodigen voor de app</button><button type="button" class="btn btn-sm btn-secondary" onclick="resetWelcomeGuide(\'' + existing.id + '\', \'' + (existing.name || existing.email) + '\')" style="font-size:0.8rem">🔄 Welkomstgids opnieuw tonen bij volgende login</button></div>' : ''}
                 `;
             }
@@ -3736,6 +3745,8 @@
                         ivSel.value = existing.invoice_via_company_id;
                     }
                 }
+                // Gemachtigden-sectie vullen (alleen bij bestaande gebruiker)
+                if (existing && existing.id) loadFillDelegations(existing.id);
             }
 
             // Vul bedrijf-dropdowns bij project
@@ -6467,6 +6478,80 @@
             }
             showToast('✓ Toewijzing verwijderd');
             await loadProjectAssignments(_editingId);
+        }
+
+        // ===== GEMACHTIGDEN BEHEER (admin · gebruiker-modal) =====
+        // fill_delegates: delegator = wiens uren, delegate = wie mag invullen.
+        // In de modal van gebruiker X beheren we voor wie X mag invullen.
+        async function loadFillDelegations(delegateUserId) {
+            const sb = getSupabase();
+            const listEl = document.getElementById('adm-user-delegations');
+            const sel = document.getElementById('adm-user-delegate-select');
+            if (!sb || !listEl || !sel) return;
+
+            // Dropdown: alle actieve gebruikers behalve deze gebruiker zelf
+            const candidates = getFilteredUsers().filter(u => u.id !== delegateUserId);
+            sel.innerHTML = '<option value="">-- Kies collega --</option>' + candidates.map(u =>
+                `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`
+            ).join('');
+
+            const { data, error } = await sb.from('fill_delegates')
+                .select('delegator_id')
+                .eq('delegate_id', delegateUserId);
+            if (error) {
+                if (/relation.*fill_delegates/i.test(error.message || '')) {
+                    listEl.innerHTML = '<div style="color:var(--app-warn);font-size:0.75rem;line-height:1.4">Tabel ontbreekt nog · draai migratie-gemachtigden.sql in de Supabase SQL Editor.</div>';
+                } else {
+                    listEl.innerHTML = '<div style="color:var(--app-alert);font-size:0.75rem">Laden mislukt: ' + escapeHtml(error.message) + '</div>';
+                }
+                return;
+            }
+            const ids = (data || []).map(r => r.delegator_id);
+            if (ids.length === 0) {
+                listEl.innerHTML = '<div style="color:var(--muted);font-size:0.8rem">Nog geen machtigingen</div>';
+                return;
+            }
+            const nameById = {};
+            (window._adminUsers || []).forEach(u => { nameById[u.id] = u.name || u.email; });
+            listEl.innerHTML = ids.map(id => `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--app-bg-tint);border:1px solid var(--border);border-radius:8px">
+                    <span style="font-size:0.85rem">${escapeHtml(nameById[id] || 'Onbekende gebruiker')}</span>
+                    <button type="button" class="btn btn-sm" onclick="removeFillDelegation('${id}')" style="padding:3px 10px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)">Verwijderen</button>
+                </div>`).join('');
+        }
+
+        async function addFillDelegation() {
+            const sb = getSupabase();
+            const sel = document.getElementById('adm-user-delegate-select');
+            const delegatorId = sel ? sel.value : '';
+            if (!delegatorId || !_editingId) { showToast('⚠️ Kies eerst een collega'); return; }
+            const { error } = await sb.from('fill_delegates').insert({
+                delegator_id: delegatorId,
+                delegate_id: _editingId
+            });
+            if (error) {
+                if (/duplicate|unique/i.test(error.message || '')) {
+                    showToast('⚠️ Deze machtiging bestaat al');
+                } else if (/relation.*fill_delegates/i.test(error.message || '')) {
+                    showToast('⚠️ Draai eerst migratie-gemachtigden.sql');
+                } else {
+                    showToast('⚠️ Toevoegen mislukt: ' + error.message);
+                }
+                return;
+            }
+            showToast('✓ Machtiging toegevoegd');
+            await loadFillDelegations(_editingId);
+        }
+
+        async function removeFillDelegation(delegatorId) {
+            const sb = getSupabase();
+            if (!sb || !_editingId) return;
+            const { error } = await sb.from('fill_delegates').delete()
+                .eq('delegator_id', delegatorId)
+                .eq('delegate_id', _editingId);
+            if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+            showToast('✓ Machtiging verwijderd');
+            await loadFillDelegations(_editingId);
         }
 
         async function deleteAdminItem() {
