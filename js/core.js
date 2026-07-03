@@ -352,7 +352,8 @@
             });
             // Label bovenaan formulier
             const label = document.getElementById('login-app-label');
-            if (label) label.textContent = (app === 'inspectie') ? 'KTS Inspectie App' : 'KTS Uren App';
+            // Label toont altijd de merknaam · de toggle-knoppen zelf maken de modus al duidelijk
+            if (label) label.textContent = 'KTS Uren & Inspecties App';
         }
         // Init bij laden · herstel laatste keuze
         (function initLoginApp() {

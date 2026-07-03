@@ -1304,7 +1304,7 @@
                     ? `- ${b}: niet beschikbaar`
                     : `- ${b}: ${info.count} bestanden`)
                 .join('\n');
-            return `# KTS Uren App · Backup ${m.backupName}
+            return `# KTS Uren & Inspecties App · Backup ${m.backupName}
 
 Gemaakt op: ${ts}
 App-versie: ${m.appVersion}

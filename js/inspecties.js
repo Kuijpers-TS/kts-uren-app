@@ -2332,7 +2332,7 @@
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
             doc.text(`Gegenereerd: ${new Date().toLocaleString('nl-NL')}`, ml, y);
-            doc.text('Kuijpers Technical Services BV · KTS Uren App', ml, y + 4);
+            doc.text('Kuijpers Technical Services BV · KTS Uren & Inspecties App', ml, y + 4);
 
             // === BIJLAGE: FOTO'S ===
             if (photoBijlage.length > 0) {

@@ -6355,10 +6355,10 @@
             if (!pw) return;
             const appUrl = window.location.origin;
             const aanhef = name ? name.split(' ')[0] : '';
-            const subject = encodeURIComponent('Uitnodiging KTS Uren App');
+            const subject = encodeURIComponent('Uitnodiging KTS Uren & Inspecties App');
             const body = encodeURIComponent(
                 `Hoi ${aanhef},\n\n` +
-                `Je hebt toegang gekregen tot de KTS Uren App.\n\n` +
+                `Je hebt toegang gekregen tot de KTS Uren & Inspecties App.\n\n` +
                 `App: ${appUrl}\n` +
                 `E-mail: ${email}\n` +
                 `Wachtwoord: ${pw}\n\n` +
