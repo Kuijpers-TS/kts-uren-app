@@ -1995,10 +1995,18 @@
                     document.querySelector('.project-meta').textContent =
                         (currentProject.client_name || '') + ' · ' + (currentProject.location || '') + ' · ' + currentProject.project_code;
                 } else {
-                    // Geen projecten: toon welkomstmelding
+                    // Geen projecten
                     document.querySelector('.project-name').textContent = 'Geen project';
                     document.querySelector('.project-meta').textContent = 'Neem contact op met je beheerder';
-                    showWelcomeGuide();
+                    if (_realUser) {
+                        // Gemachtigden-modus: NIET het onboarding-scherm over de app
+                        // heen leggen · gewoon melden dat de collega nog geen
+                        // projecttoewijzing heeft (uren invullen kan wel · die landen
+                        // dan onder het placeholder-project "Nog toe te wijzen")
+                        showToast('⚠️ ' + (currentUser.name || 'Deze collega') + ' is nog niet aan een project gekoppeld');
+                    } else {
+                        showWelcomeGuide();
+                    }
                 }
 
                 // Feature flags staan nu op users tabel (currentUser), geen aparte query nodig
