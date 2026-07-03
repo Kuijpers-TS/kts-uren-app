@@ -2005,8 +2005,54 @@
 
         // ===== PWA SERVICE WORKER =====
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(() => {
+            navigator.serviceWorker.register('sw.js').then((reg) => {
                 console.log('Service Worker geregistreerd');
+
+                // Update-melding: zodra er een nieuwe versie van de app is
+                // geinstalleerd (nieuwe sw.js cache-versie), toon een blijvende
+                // toast met ververs-knop. Zonder dit zien gebruikers een nieuwe
+                // release pas na een handmatige refresh.
+                function meldNieuweVersie() {
+                    // Niet stapelen als de melding al staat
+                    if (document.getElementById('update-toast')) return;
+                    const container = document.getElementById('toast-container');
+                    if (!container) return;
+                    const t = document.createElement('div');
+                    t.id = 'update-toast';
+                    t.className = 'toast';
+                    t.style.pointerEvents = 'auto';
+                    t.style.display = 'flex';
+                    t.style.alignItems = 'center';
+                    t.style.gap = '10px';
+                    const span = document.createElement('span');
+                    span.textContent = '🔄 Nieuwe versie beschikbaar';
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = 'Vernieuwen';
+                    btn.style.cssText = 'flex-shrink:0;padding:5px 14px;border-radius:6px;border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.15);color:white;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:inherit';
+                    btn.onclick = () => location.reload();
+                    t.appendChild(span);
+                    t.appendChild(btn);
+                    container.appendChild(t);
+                    requestAnimationFrame(() => t.classList.add('show'));
+                    // Blijft staan tot de gebruiker klikt of zelf ververst
+                }
+
+                reg.addEventListener('updatefound', () => {
+                    const nieuw = reg.installing;
+                    if (!nieuw) return;
+                    nieuw.addEventListener('statechange', () => {
+                        // 'installed' terwijl er al een controller is = update
+                        // (bij de allereerste installatie is er geen controller)
+                        if (nieuw.state === 'installed' && navigator.serviceWorker.controller) {
+                            meldNieuweVersie();
+                        }
+                    });
+                });
+
+                // PWA's blijven vaak dagen open staan · check elke 30 min actief
+                // op een nieuwe versie (registratie-update triggert updatefound)
+                setInterval(() => { reg.update().catch(() => {}); }, 30 * 60 * 1000);
             }).catch(err => console.warn('SW registratie mislukt:', err));
         }
 
