@@ -166,6 +166,47 @@
             }
         });
 
+        // ===== TERUG-KNOP (Android / browser-back) =====
+        // De hardware terug-knop werkt als "terug" binnen de app:
+        //   1. open modal → sluit de bovenste modal
+        //   2. niet op de Uren-tab → ga naar de Uren-tab
+        //   3. op de Uren-tab → dubbel-terug binnen 2s sluit de app
+        // Werkt via een buffer-entry in de history zodat elke terug-druk eerst
+        // bij ons uitkomt in plaats van de app direct te verlaten.
+        (function initBackButton() {
+            let exitArmed = false;
+            const pushBuffer = () => { try { history.pushState({ kts: true }, ''); } catch (e) { /* ignore */ } };
+            pushBuffer();
+            window.addEventListener('popstate', function() {
+                // 1. Bovenste open modal sluiten (incl. inspectie-invulscherm)
+                const actives = Array.from(document.querySelectorAll('.modal-overlay.active'));
+                if (actives.length > 0) {
+                    const top = actives[actives.length - 1];
+                    if (top.id) closeModal(top.id);
+                    else top.classList.remove('active');
+                    pushBuffer();
+                    return;
+                }
+                // 2. Niet op de Uren-tab? Terug naar de thuis-tab
+                const urenScreen = document.getElementById('screen-uren');
+                if (currentUser && urenScreen && !urenScreen.classList.contains('active')) {
+                    try { switchScreen('uren'); } catch (e) { /* ignore */ }
+                    pushBuffer();
+                    return;
+                }
+                // 3. Thuis-tab: dubbel-terug om echt af te sluiten
+                if (!exitArmed) {
+                    exitArmed = true;
+                    showToast('Druk nogmaals op terug om de app af te sluiten', 2000);
+                    setTimeout(() => { exitArmed = false; }, 2000);
+                    pushBuffer();
+                } else {
+                    // Tweede druk: verlaat de app echt (originele history-entry)
+                    history.back();
+                }
+            });
+        })();
+
         // ===== PROJECT SWITCHER =====
         async function openProjectSwitcher() {
             const modal = document.getElementById('project-modal');
@@ -298,6 +339,47 @@
                 setTimeout(() => t.remove(), 350);
             }, duration || 5000);
             // Max 5 toasts visible
+            while (container.children.length > 5) container.firstChild.remove();
+        }
+
+        // Toast met Annuleren-knop: de actie (onExecute) wordt pas na delayMs
+        // echt uitgevoerd. Klik op Annuleren binnen die tijd voorkomt de actie
+        // en draait onUndo (bv. item terugzetten in de lijst). Gebruikt voor
+        // verwijder-acties zodat een misklik nog te stoppen is.
+        function showUndoToast(msg, onExecute, onUndo, delayMs) {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.style.pointerEvents = 'auto';
+            t.style.display = 'flex';
+            t.style.alignItems = 'center';
+            t.style.gap = '10px';
+            const span = document.createElement('span');
+            span.textContent = msg;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = 'Annuleren';
+            btn.style.cssText = 'flex-shrink:0;padding:5px 14px;border-radius:6px;border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.12);color:white;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:inherit';
+            t.appendChild(span);
+            t.appendChild(btn);
+            container.appendChild(t);
+            requestAnimationFrame(() => t.classList.add('show'));
+
+            let afgehandeld = false;
+            const dismiss = () => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); };
+            const timer = setTimeout(async () => {
+                if (afgehandeld) return;
+                afgehandeld = true;
+                dismiss();
+                try { await onExecute(); } catch (e) { console.error('Undo-toast actie faalde:', e); }
+            }, delayMs || 5000);
+            btn.onclick = () => {
+                if (afgehandeld) return;
+                afgehandeld = true;
+                clearTimeout(timer);
+                dismiss();
+                if (onUndo) onUndo();
+            };
             while (container.children.length > 5) container.firstChild.remove();
         }
 

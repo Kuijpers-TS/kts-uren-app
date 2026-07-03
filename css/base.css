@@ -350,7 +350,14 @@
             background: var(--app-surface);
             box-shadow: 0 0 0 3px rgba(58, 156, 197, 0.18);
         }
-        .form-group textarea { resize: none; height: 60px; }
+        .form-group textarea { resize: none; min-height: 60px; height: auto; }
+        /* Tekstvakken groeien mee met de inhoud (werkzaamheden-beschrijving e.d.).
+           field-sizing wordt ondersteund in Chrome/Edge 123+; voor Safari zit er
+           een JS-fallback in core.js (auto-grow op input). */
+        textarea {
+            field-sizing: content;
+            max-height: 40vh;
+        }
 
         /* ===== BUTTONS ===== */
         .btn {

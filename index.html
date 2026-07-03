@@ -567,12 +567,14 @@
                         Beheer
                     </h2>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                    <span id="env-label" style="font-size:0.65rem;font-weight:700;padding:4px 10px;border-radius:6px;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line);letter-spacing:0.04em;text-transform:uppercase">PRODUCTIE</span>
-                    <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
-                        <input type="checkbox" id="admin-test-toggle" onchange="toggleTestMode()" style="opacity:0;width:0;height:0">
-                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--app-ink-300);border-radius:22px;transition:background .3s ease" id="env-slider"><span style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--app-surface);border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></span></span>
-                    </label>
+                <!-- Test-modus uitgefaseerd 2026-07-03: toggle verwijderd, app draait
+                     permanent in productie. De is_test code-paden blijven bestaan
+                     (onschadelijk zonder testdata) · volledige strip in een latere
+                     opruimronde. Testdata opruimen: opruim-testdata.sql -->
+                <div style="display:none">
+                    <span id="env-label"></span>
+                    <input type="checkbox" id="admin-test-toggle" style="display:none">
+                    <span id="env-slider" style="display:none"></span>
                 </div>
             </div>
 

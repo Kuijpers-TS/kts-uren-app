@@ -2589,40 +2589,59 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
         }
 
         async function deleteExpense(id) {
-            let invalidatedAfterChange = false;
-            const sb = getSupabase();
             // Bij DB-load expenses krijgen ze id 'db-0', 'db-1', etc · moeten via cat+amount+desc
             // gematched worden. Bij in-memory expenses heb je een numeric id.
-            // Pak de entry uit expEntries om te bepalen hoe te verwijderen.
             const entry = expEntries.find(e => e.id === id);
-            if (entry && sb && currentUser && currentUser.id && currentProject) {
-                // Probeer DB-delete op basis van inhoud (cat + amount + description + week + year)
-                try {
-                    let q = sb.from('expenses').delete()
-                        .eq('user_id', currentUser.id)
-                        .eq('project_id', currentProject.id)
-                        .eq('week_number', currentWeekNumber)
-                        .eq('year', currentYear)
-                        .eq('cat', entry.cat)
-                        .eq('amount', entry.amount);
-                    if (entry.desc) q = q.eq('description', entry.desc);
-                    const { error } = await q;
-                    if (error && !/relation.*expenses.*does not exist/i.test(error.message || '')) {
-                        console.warn('expense delete mislukt:', error.message);
-                    } else if (!error) {
-                        // Verwijderen van een declaratie verandert de inhoud van de weekstaat.
-                        // Was deze al ondertekend/goedgekeurd? Dan terug naar concept.
-                        invalidatedAfterChange = await invalidateApprovalOnChange(currentUser.id, currentProject.id, currentWeekNumber, currentYear);
-                    }
-                } catch (e) { /* fallback · verwijder alleen in-memory */ }
-            }
+            if (!entry) return;
+            // Context vastleggen op het moment van klikken · de gebruiker kan
+            // tijdens de undo-periode van week/project wisselen
+            const ctx = {
+                userId: currentUser && currentUser.id,
+                projectId: currentProject && currentProject.id,
+                weekNumber: currentWeekNumber,
+                year: currentYear
+            };
+
+            // Optimistisch uit de lijst · de echte DB-delete volgt pas na de
+            // undo-periode zodat een misklik nog te annuleren is
             expEntries = expEntries.filter(e => e.id !== id);
             renderExpenses();
             renderOverview();
-            if (invalidatedAfterChange) {
-                showToast('✓ Declaratie verwijderd · weekstaat teruggezet naar concept (opnieuw ondertekenen nodig)');
-            } else {
-                showToast('✓ Declaratie verwijderd');
-            }
+
+            showUndoToast('🗑️ Declaratie verwijderd', async () => {
+                // Definitief verwijderen uit de database
+                const sb = getSupabase();
+                let invalidatedAfterChange = false;
+                if (sb && ctx.userId && ctx.projectId) {
+                    try {
+                        let q = sb.from('expenses').delete()
+                            .eq('user_id', ctx.userId)
+                            .eq('project_id', ctx.projectId)
+                            .eq('week_number', ctx.weekNumber)
+                            .eq('year', ctx.year)
+                            .eq('cat', entry.cat)
+                            .eq('amount', entry.amount);
+                        if (entry.desc) q = q.eq('description', entry.desc);
+                        const { error } = await q;
+                        if (error && !/relation.*expenses.*does not exist/i.test(error.message || '')) {
+                            console.warn('expense delete mislukt:', error.message);
+                        } else if (!error) {
+                            // Verwijderen van een declaratie verandert de inhoud van de
+                            // weekstaat. Was deze al ondertekend/goedgekeurd? Dan terug
+                            // naar concept.
+                            invalidatedAfterChange = await invalidateApprovalOnChange(ctx.userId, ctx.projectId, ctx.weekNumber, ctx.year);
+                        }
+                    } catch (e) { /* fallback · alleen in-memory verwijderd */ }
+                }
+                if (invalidatedAfterChange) {
+                    showToast('⚠️ Weekstaat teruggezet naar concept (opnieuw ondertekenen nodig)');
+                }
+            }, () => {
+                // Geannuleerd: declaratie terugzetten in de lijst
+                expEntries.push(entry);
+                renderExpenses();
+                renderOverview();
+                showToast('↩️ Verwijderen geannuleerd');
+            });
         }
 

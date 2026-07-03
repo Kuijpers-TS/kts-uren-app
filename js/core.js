@@ -256,6 +256,20 @@
             document.documentElement.classList.add('zoom-' + saved);
         })();
 
+        // Auto-grow fallback voor tekstvakken in browsers zonder CSS
+        // field-sizing (o.a. Safari). Chrome/Edge regelen dit via de
+        // CSS-regel `textarea { field-sizing: content }` in base.css.
+        // Globale delegate zodat ook dynamisch gerenderde textareas meedoen.
+        (function initTextareaAutoGrow() {
+            if (window.CSS && CSS.supports && CSS.supports('field-sizing', 'content')) return;
+            document.addEventListener('input', function(e) {
+                const t = e.target;
+                if (!t || t.tagName !== 'TEXTAREA') return;
+                t.style.height = 'auto';
+                t.style.height = Math.min(t.scrollHeight + 2, window.innerHeight * 0.4) + 'px';
+            });
+        })();
+
         // ============================================================
         // THEME (Licht / Donker / Systeem) · vergelijkbaar met Windows
         // Opslag in localStorage: 'light' | 'dark' | 'auto' (default = auto)
