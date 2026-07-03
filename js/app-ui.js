@@ -127,6 +127,19 @@
             // generieke admin-modal-opening per ongeluk te breed blijft.
             const innerModal = el.querySelector('.modal');
             if (innerModal) innerModal.classList.remove('modal-wide');
+            // Ondertekenen-namens vangnet: sluit de admin het teken-venster via
+            // ESC, de telefoon-terugknop of een backdrop-klik ZONDER te voltooien,
+            // draai dan de tijdelijke identiteitswissel (currentUser = doelgebruiker)
+            // altijd terug. Tijdens de echte onderteken-flow staat _signFlowBusy
+            // aan en herstelt de flow zelf via zijn finally. Zonder dit vangnet
+            // bleef de admin als de doelgebruiker door de app lopen.
+            if (id === 'signature-modal'
+                && typeof _adminSignOverride !== 'undefined' && _adminSignOverride
+                && typeof _signFlowBusy !== 'undefined' && !_signFlowBusy
+                && typeof restoreAdminSignOverride === 'function') {
+                restoreAdminSignOverride();
+                showToast('↩️ Ondertekenen geannuleerd');
+            }
         }
 
         // Globale Escape-handler voor alle .modal-overlay elementen die `.active` zijn.
@@ -320,7 +333,12 @@
 
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) { overlay.classList.remove('active'); }
+                // Via closeModal zodat modal-specifieke opruimlogica (zoals het
+                // terugdraaien van ondertekenen-namens) op ELK sluitpad draait
+                if (e.target === overlay) {
+                    if (overlay.id) closeModal(overlay.id);
+                    else overlay.classList.remove('active');
+                }
             });
         });
 

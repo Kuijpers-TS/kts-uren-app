@@ -2529,14 +2529,20 @@
             const dateFrom = toLocalDateStr(extendedFrom);
             const dateTo = toLocalDateStr(extendedTo);
 
-            // Bepaal welke ISO weken bij deze maand horen
-            // (een week hoort bij de maand als de maandag van die week in de maand valt)
+            // Bepaal welke ISO weken bij deze maand horen. Weken worden als
+            // "isoJaar-weekNr" gesleuteld: rond de jaarwisseling kan week 1 van
+            // het nieuwe ISO-jaar al in december vallen (en week 52/53 van het
+            // oude jaar in januari) · zonder het ISO-jaar erbij zou week 1 van
+            // 2027 (29-31 dec) botsen met week 1 van 2026 (januari).
+            const isoKey = (jr, wk) => `${jr}-${wk}`;
             const monthWeeks = new Set();
             const d = new Date(firstDay);
             while (d <= lastDay) {
-                monthWeeks.add(getISOWeek(new Date(d.getTime())));
+                monthWeeks.add(isoKey(getISOYear(new Date(d.getTime())), getISOWeek(new Date(d.getTime()))));
                 d.setDate(d.getDate() + 1);
             }
+            // ISO-jaren die deze maand kunnen raken (dec: yr en yr+1 · jan: yr-1 en yr)
+            const isoYears = [yr - 1, yr, yr + 1];
 
             // Query time_entries met uitgebreid datumfilter
             let query = sb.from('time_entries').select('*')
@@ -2551,24 +2557,26 @@
                 return null;
             }
 
-            // Haal week_status op · alleen 'verstuurd' + 'goedgekeurd' weken mee te nemen
-            const { data: weekStatuses } = await sb.from('week_status').select('week_number, status, approval_status')
+            // Haal week_status op · alleen 'verstuurd' + 'goedgekeurd' weken mee te nemen.
+            // .in op isoYears i.p.v. .eq(yr): week_status.year is het ISO-jaar en
+            // dat kan rond de jaarwisseling afwijken van het kalenderjaar.
+            const { data: weekStatuses } = await sb.from('week_status').select('week_number, year, status, approval_status')
                 .eq('user_id', userId)
                 .eq('project_id', projectId)
-                .eq('year', yr)
+                .in('year', isoYears)
                 .eq('status', 'verstuurd');
-            const goedgekeurdeWeken = new Set((weekStatuses || []).filter(ws => ws.approval_status === 'goedgekeurd').map(ws => ws.week_number));
+            const goedgekeurdeWeken = new Set((weekStatuses || []).filter(ws => ws.approval_status === 'goedgekeurd').map(ws => isoKey(ws.year, ws.week_number)));
             const wachtOpGoedkeuring = (weekStatuses || []).filter(ws => ws.approval_status !== 'goedgekeurd');
             console.log('PO: goedgekeurde weken:', [...goedgekeurdeWeken]);
-            if (wachtOpGoedkeuring.length > 0) console.log('PO: weken wachtend op goedkeuring:', wachtOpGoedkeuring.map(ws => `W${ws.week_number} (${ws.approval_status || 'geen'})`));
+            if (wachtOpGoedkeuring.length > 0) console.log('PO: weken wachtend op goedkeuring:', wachtOpGoedkeuring.map(ws => `W${ws.week_number}/${ws.year} (${ws.approval_status || 'geen'})`));
 
             // Check welke weken al op een eerdere PO staan (dubbel-beveiliging)
-            const { data: existingPOWeeks } = await sb.from('inkooporder_weeks').select('week_number, io_number')
+            const { data: existingPOWeeks } = await sb.from('inkooporder_weeks').select('week_number, year, io_number')
                 .eq('user_id', userId)
                 .eq('project_id', projectId)
-                .eq('year', yr);
+                .in('year', isoYears);
             const alOpIO = new Map();
-            (existingPOWeeks || []).forEach(pw => alOpIO.set(pw.week_number, pw.io_number));
+            (existingPOWeeks || []).forEach(pw => alOpIO.set(isoKey(pw.year, pw.week_number), pw.io_number));
             if (alOpIO.size > 0) console.log('PO: weken al op eerdere PO:', Object.fromEntries(alOpIO));
 
             // Filter op verstuurd + specifiek weeknummer + NIET al op PO
@@ -2576,13 +2584,15 @@
             const skippedWeeks = [];
             const filtered = (entries || []).filter(e => {
                 if (!e.entry_date) return false;
-                const isoWeek = getISOWeek(new Date(e.entry_date + 'T12:00:00'));
+                const entryDay = new Date(e.entry_date + 'T12:00:00');
+                const isoWeek = getISOWeek(entryDay);
+                const key = isoKey(getISOYear(entryDay), isoWeek);
                 // Week moet bij de geselecteerde maand horen
-                if (!monthWeeks.has(isoWeek)) return false;
+                if (!monthWeeks.has(key)) return false;
                 // Alleen goedgekeurde weken meenemen (klant moet eerst goedkeuren)
-                if (!goedgekeurdeWeken.has(isoWeek)) return false;
+                if (!goedgekeurdeWeken.has(key)) return false;
                 // Week al op eerdere PO? Overslaan
-                if (alOpIO.has(isoWeek)) {
+                if (alOpIO.has(key)) {
                     if (!skippedWeeks.includes(isoWeek)) skippedWeeks.push(isoWeek);
                     return false;
                 }
@@ -2649,15 +2659,17 @@
             }
             const hotelRate = (user && parseFloat(user.hotel_rate)) || 110;
 
-            // Groepeer per ISO week
+            // Groepeer per ISO week · year is het ISO-jaar van de week zelf
+            // (kan rond de jaarwisseling afwijken van het geselecteerde jaar)
             const weekData = {};
             filtered.forEach(entry => {
                 const entryDate = new Date(entry.entry_date + 'T12:00:00');
                 const isoWeek = getISOWeek(entryDate);
-                const weekKey = `week_${isoWeek}`;
+                const isoYr = getISOYear(entryDate);
+                const weekKey = `week_${isoYr}_${String(isoWeek).padStart(2, '0')}`;
 
                 if (!weekData[weekKey]) {
-                    weekData[weekKey] = { regHours: 0, satHours: 0, sunHours: 0, totalKm: 0, hotelNights: 0, weekNum: isoWeek, year: yr };
+                    weekData[weekKey] = { regHours: 0, satHours: 0, sunHours: 0, totalKm: 0, hotelNights: 0, weekNum: isoWeek, year: isoYr };
                 }
 
                 const hours = parseFloat(entry.total_hours) || 0;
@@ -2677,14 +2689,21 @@
             // Project info
             const { data: project } = await sb.from('projects').select('*').eq('id', projectId).single();
 
-            // Verzamel welke weeknummers daadwerkelijk op deze PO komen
-            const includedWeeks = [...new Set(filtered.map(e => getISOWeek(new Date(e.entry_date + 'T12:00:00'))))].sort((a,b) => a-b);
+            // Verzamel welke weken daadwerkelijk op deze PO komen.
+            // includedWeeks: alleen weeknummers (voor weergave-teksten).
+            // includedWeekPairs: {week, year} met het ISO-jaar per week · gebruikt
+            // voor de inkooporder_weeks registratie zodat week 1 van het nieuwe
+            // ISO-jaar op een december-IO onder het juiste jaar geboekt wordt.
+            const includedWeekPairs = Object.values(weekData)
+                .map(w => ({ week: w.weekNum, year: w.year }))
+                .sort((a, b) => (a.year - b.year) || (a.week - b.week));
+            const includedWeeks = includedWeekPairs.map(p => p.week);
 
             return {
                 userId, projectId, year: yr, month: mo,
                 weekNumber: weekNumber ? parseInt(weekNumber) : null,
                 user, company, ioCompany, zzpCompany, project, rate, hotelRate, weekData, entries: filtered,
-                includedWeeks, skippedWeeks, wachtOpGoedkeuring
+                includedWeeks, includedWeekPairs, skippedWeeks, wachtOpGoedkeuring
             };
         }
 
@@ -3299,13 +3318,18 @@
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
 
             try {
-                // 1. Sla op welke weken op deze inkooporder staan (dubbel-beveiliging)
-                if (ioData.includedWeeks && ioData.includedWeeks.length > 0) {
-                    const weekRecords = ioData.includedWeeks.map(wn => ({
+                // 1. Sla op welke weken op deze inkooporder staan (dubbel-beveiliging).
+                // Gebruik de {week, year}-paren zodat het ISO-jaar per week klopt
+                // rond de jaarwisseling (fallback naar het IO-jaar voor oude data).
+                const weekPairs = (ioData.includedWeekPairs && ioData.includedWeekPairs.length > 0)
+                    ? ioData.includedWeekPairs
+                    : (ioData.includedWeeks || []).map(wn => ({ week: wn, year: ioData.year }));
+                if (weekPairs.length > 0) {
+                    const weekRecords = weekPairs.map(p => ({
                         user_id: ioData.userId,
                         project_id: ioData.projectId,
-                        year: ioData.year,
-                        week_number: wn,
+                        year: p.year,
+                        week_number: p.week,
                         month: ioData.month,
                         io_number: ioNumber,
                         storage_path: filePath,

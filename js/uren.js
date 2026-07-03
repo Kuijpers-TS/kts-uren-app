@@ -1415,6 +1415,11 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
         // ===== HANDTEKENING CANVAS =====
         let signatureData = { zzp: null, client: null, clientName: '', clientEmail: '' };
         let _adminSignOverride = null; // als admin tekent namens een gebruiker
+        // Staat aan zolang confirmSignatures() bezig is (PDF genereren, uploaden,
+        // status schrijven). Onderscheidt "modal sluit omdat de flow loopt" van
+        // "admin annuleert" · bij annuleren draait closeModal de identiteits-
+        // wissel direct terug (zie closeModal in app-ui.js).
+        let _signFlowBusy = false;
         const sigCanvases = {};
         const sigContexts = {};
         let sigDrawing = false;
@@ -1652,6 +1657,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             if (opmEl) weekOpmerkingen = opmEl.value.trim();
             const btn = document.getElementById('sig-confirm-btn');
             if (btn) { btn.innerHTML = '⏳ Ondertekenen...'; btn.disabled = true; }
+            // Flag AAN vóór het sluiten: de closeModal-hook mag de identiteits-
+            // wissel (ondertekenen namens) nu niet terugdraaien · dat doet de
+            // finally van deze flow zelf zodra alles is afgerond
+            _signFlowBusy = true;
             closeModal('signature-modal');
 
             // Check of opdrachtgever ook getekend heeft
@@ -1907,6 +1916,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 showToast('⚠️ Ondertekenen & versturen mislukt · probeer opnieuw');
                 console.error('Sign+submit error:', err);
             } finally {
+                _signFlowBusy = false;
                 if (btn) { btn.innerHTML = 'Ondertekenen & versturen'; btn.disabled = false; }
                 // Herstel globals als admin namens gebruiker tekende
                 if (_adminSignOverride) {
