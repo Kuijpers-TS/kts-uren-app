@@ -342,16 +342,6 @@
             </div>
 
 
-            <!-- Maandfactuur (admin only · tijdelijk verborgen, later uitbreiden) -->
-            <!--
-            <div id="admin-invoice-section" style="display:none;margin-top:20px;padding:16px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:2px solid var(--kts-blue);border-radius:14px">
-                <div style="font-weight:700;font-size:0.95rem;color:var(--kts-blue);margin-bottom:8px">📨 Maandfactuur naar eindklant</div>
-                <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Genereer een verkoopfactuur van KTS naar de eindklant op basis van alle goedgekeurde weken van deze maand.</div>
-                <button class="btn btn-primary btn-block" onclick="generateMonthlyInvoice()" style="padding:12px;font-size:0.9rem">
-                    📄 Maandfactuur genereren
-                </button>
-            </div>
-            -->
         </div>
 
         <!-- ===== INSPECTIES SCREEN (voor alle gebruikers) ===== -->
@@ -577,15 +567,8 @@
                         Beheer
                     </h2>
                 </div>
-                <!-- Test-modus uitgefaseerd 2026-07-03: toggle verwijderd, app draait
-                     permanent in productie. De is_test code-paden blijven bestaan
-                     (onschadelijk zonder testdata) · volledige strip in een latere
-                     opruimronde. Testdata opruimen: opruim-testdata.sql -->
-                <div style="display:none">
-                    <span id="env-label"></span>
-                    <input type="checkbox" id="admin-test-toggle" style="display:none">
-                    <span id="env-slider" style="display:none"></span>
-                </div>
+                <!-- Test-modus volledig verwijderd 2026-07-03 · app draait permanent
+                     in productie (testdata opgeruimd via opruim-testdata.sql) -->
             </div>
 
             <!-- Tegels grid (Fase 2 styling) -->

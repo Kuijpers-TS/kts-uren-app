@@ -1,39 +1,9 @@
         // ===== ADMIN FUNCTIES =====
-        let _adminTestMode = false; // false = productie, true = test
+        // Test-modus volledig uitgefaseerd 2026-07-03: de app draait permanent
+        // in productie. De is_test-kolommen bestaan nog in de database; de
+        // filters op is_test !== true blijven als vangnet tegen zwerfdata.
 
-        async function toggleTestMode() {
-            _adminTestMode = document.getElementById('admin-test-toggle').checked;
-            const label = document.getElementById('env-label');
-            const slider = document.getElementById('env-slider');
-            if (_adminTestMode) {
-                label.textContent = 'TEST';
-                label.style.background = 'var(--app-warn-soft)';
-                label.style.color = 'var(--app-warn)';
-                label.style.borderColor = 'var(--app-warn-line)';
-                slider.style.background = 'var(--app-warn)';
-            } else {
-                label.textContent = 'PRODUCTIE';
-                label.style.background = 'var(--app-ok-soft)';
-                label.style.color = 'var(--app-ok)';
-                label.style.borderColor = 'var(--app-ok-line)';
-                slider.style.background = '#ccc';
-            }
-            // Slider bullet positie
-            slider.innerHTML = `<span style="position:absolute;height:16px;width:16px;left:${_adminTestMode ? '20px' : '3px'};bottom:3px;background:var(--app-surface);border-radius:50%;transition:.3s"></span>`;
-            // Herlaad admin data met nieuwe filter (wacht tot klaar)
-            await loadAdminData();
-            // Herlaad ook actieve sub-tabs die eigen data hebben
-            const wsTab = document.getElementById('admin-weekstaten');
-            if (wsTab && wsTab.style.display !== 'none') loadWeekstaten();
-            const ioTab = document.getElementById('admin-inkooporders');
-            if (ioTab && ioTab.style.display !== 'none') { loadInkooporderFilters(); loadInkooporders(); }
-            const invTab = document.getElementById('admin-facturen');
-            if (invTab && invTab.style.display !== 'none') { loadInvoiceFilters(); loadInvoices(); }
-            const dashTab = document.getElementById('admin-dashboard');
-            if (dashTab && dashTab.style.display !== 'none') loadDashboard();
-        }
-
-        // Helper: filter users op test/productie modus
+        // Helper: actieve gebruikers voor lijsten/dropdowns.
         // Default: gearchiveerde EN gepauzeerde gebruikers worden verborgen.
         // Met opts.includeArchived=true worden gearchiveerden meegenomen · gebruikt
         // voor de beheer-lijst met "Toon ook gearchiveerd" toggle, en history-views.
@@ -43,7 +13,7 @@
             const includeArchived = !!(opts && opts.includeArchived);
             const includePaused = !!(opts && opts.includePaused);
             return (window._adminUsers || []).filter(u => {
-                if (_adminTestMode ? u.is_test !== true : u.is_test === true) return false;
+                if (u.is_test === true) return false;
                 if (!includeArchived && u.archived_at) return false;
                 if (!includePaused && u.paused_at) return false;
                 return true;
@@ -180,7 +150,7 @@
             // niet verdwijnt zodra ze worden geheractiveerd of permanent zijn.
             const users = getFilteredUsers({ includeArchived: true, includePaused: true });
             const filteredUserIds = new Set(users.map(u => u.id));
-            const filteredProjects = (window._adminProjects || []).filter(p => _adminTestMode ? p.is_test === true : p.is_test !== true);
+            const filteredProjects = (window._adminProjects || []).filter(p => p.is_test !== true);
             const filteredProjIds = new Set(filteredProjects.map(p => p.id));
 
             // Filter alle data op test/productie gebruikers EN projecten
@@ -631,7 +601,7 @@
             // Projecten laden
             const { data: projects } = await sb.from('projects').select('*, client_company_id(id, name, email, contact_name), io_company_id').order('created_at', { ascending: false });
             window._adminProjects = projects || [];
-            const filteredProjects = (projects || []).filter(p => _adminTestMode ? p.is_test === true : p.is_test !== true);
+            const filteredProjects = (projects || []).filter(p => p.is_test !== true);
             const projList = document.getElementById('admin-project-list');
             if (filteredProjects && filteredProjects.length > 0) {
                 projList.innerHTML = filteredProjects.map((p) => {
@@ -664,7 +634,7 @@
             // Tel afgesloten users in dezelfde test/productie-modus zodat de toggle
             // toont "🔒 Toon afgesloten (3)" · admin ziet hoeveel er te heractiveren zijn.
             const archivedCount = (window._adminUsers || []).filter(u => {
-                if (_adminTestMode ? u.is_test !== true : u.is_test === true) return false;
+                if (u.is_test === true) return false;
                 return !!u.archived_at;
             }).length;
             const countEl = document.getElementById('admin-archived-count');
@@ -718,15 +688,12 @@
                     const pausedBadge = isPaused ? ' <span style="background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="Gepauzeerd op ' + new Date(u.paused_at).toLocaleDateString('nl-NL') + (u.pause_reason ? ' ·' + escapeHtml(u.pause_reason) : '') + '">⏸️ GEPAUZEERD</span>' : '';
                     const anonBadge = isAnonymized ? ' <span style="background:var(--app-alert-soft);color:var(--app-alert);padding:1px 6px;border-radius:4px;font-size:0.6rem;font-weight:700;vertical-align:middle" title="PII verwijderd op ' + new Date(u.anonymized_at).toLocaleDateString('nl-NL') + '">🕶️ ANONIEM</span>' : '';
 
-                    // Test-modus → harde DELETE-knop.
-                    // Productie:
+                    // Actie-knoppen per status:
                     //   - Afgesloten (archived) → unarchive-knop (+ anonymize na 7 jaar)
                     //   - Gepauzeerd → unpause-knop
                     //   - Actief → pauze + afsluit-knoppen naast elkaar
                     let actionBtn = '';
-                    if (_adminTestMode) {
-                        actionBtn = `<button onclick="event.stopPropagation();adminDeleteUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Permanent verwijderen (testdata)">🗑️</button>`;
-                    } else if (isArchived) {
+                    if (isArchived) {
                         actionBtn = `<button onclick="event.stopPropagation();adminUnarchiveUser('${u.id}', '${safeName}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-ok-soft);color:var(--app-ok);border:1px solid var(--app-ok-line)" title="Heractiveren · gebruiker weer actief">↩️</button>`;
                         const archivedAge = (Date.now() - new Date(u.archived_at).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
                         if (archivedAge >= 7 && !isAnonymized) {
@@ -766,7 +733,7 @@
             window._adminCompanies = companies || [];
             const showArchived = document.getElementById('admin-show-archived')?.checked || false;
             const filteredCompanies = (companies || []).filter(c => {
-                if (_adminTestMode ? c.is_test !== true : c.is_test === true) return false;
+                if (c.is_test === true) return false;
                 if (!showArchived && c.archived) return false;
                 return true;
             });
@@ -817,7 +784,7 @@
             const filteredRates = (rates || []).filter(r => {
                 const proj = typeof r.project_id === 'object' ? r.project_id : null;
                 if (!proj) return true; // geen project gekoppeld → altijd tonen
-                return _adminTestMode ? proj.is_test === true : proj.is_test !== true;
+                return proj.is_test !== true;
             });
             if (filteredRates && filteredRates.length > 0) {
                 tariefList.innerHTML = filteredRates.map((r) => {
@@ -3678,7 +3645,7 @@
                 const compSel = document.getElementById('adm-user-company');
                 if (compSel && window._adminCompanies) {
                     const filteredComps = window._adminCompanies.filter(c => {
-                        if (_adminTestMode ? c.is_test !== true : c.is_test === true) return false;
+                        if (c.is_test === true) return false;
                         if (c.archived) return false;
                         return true;
                     });
@@ -3706,7 +3673,7 @@
                 const ivSel = document.getElementById('adm-user-invoice-via');
                 if (ivSel && window._adminCompanies) {
                     const filteredCompsIV = window._adminCompanies.filter(c => {
-                        if (_adminTestMode ? c.is_test !== true : c.is_test === true) return false;
+                        if (c.is_test === true) return false;
                         if (c.archived) return false;
                         return true;
                     });
@@ -4154,7 +4121,6 @@
                 html += '</tbody></table></div>';
 
                 // Test mode checkbox
-                html += '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:0.8rem"><input type="checkbox" id="imp-test-mode"' + (_adminTestMode ? ' checked' : '') + '> Markeer als test-data</label>';
 
                 html += '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">';
                 html += '<button class="btn btn-sm" onclick="document.getElementById(\'admin-modal\').classList.remove(\'active\')" style="background:var(--app-bg-deep);color:var(--app-ink-700);border:1px solid var(--app-line-strong)">Annuleren</button>';
@@ -4176,7 +4142,7 @@
                         if (sel && sel.value) finalMapping[field] = sel.value;
                     });
 
-                    const isTest = document.getElementById('imp-test-mode').checked;
+                    const isTest = false; // test-modus uitgefaseerd 2026-07-03
                     const table = type === 'persoon' ? 'companies' : 'projects';
                     const insertRows = [];
                     let skipped = 0;
@@ -4501,7 +4467,7 @@
         // uit de pas lopen.
         function adminMoveWeekstaat(userId, projectId, weekNumber, year, userName, projCode) {
             const projects = (window._adminProjects || [])
-                .filter(p => (_adminTestMode ? p.is_test === true : p.is_test !== true))
+                .filter(p => (p.is_test !== true))
                 .filter(p => p.status === 'active' && p.id !== projectId)
                 .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             if (projects.length === 0) { showToast('⚠️ Geen andere actieve projecten om naartoe te verplaatsen'); return; }
@@ -4643,57 +4609,12 @@
             }
         }
 
-        // ===== USER ARCHIVE / DELETE / ANONYMIZE =====
-        // 3 verschillende paden, elk AVG-conform:
-        //   1. adminDeleteUser   · alleen test-modus, hard delete met cascade
-        //   2. adminArchiveUser  · productie, soft archive (data blijft 7j voor Belastingdienst)
-        //   3. adminAnonymizeUser · productie, na 7j archief: PII verwijderen, IDs blijven
-
-        async function adminDeleteUser(userId, userName) {
-            // Alleen toegestaan in test-modus · beschermt productie data tegen ongeluk
-            if (!_adminTestMode) {
-                showToast('🔒 Hard verwijderen kan alleen in test-modus. Gebruik archiveren in productie.');
-                return;
-            }
-            const ok = await confirmAsync(
-                `Test-gebruiker "${userName}" PERMANENT verwijderen?\n\n` +
-                `Dit verwijdert de gebruiker EN alle gekoppelde data:\n` +
-                `· time_entries (uren-invoer)\n` +
-                `· week_status (weekstaten)\n` +
-                `· inkooporder_weeks (IO-koppelingen)\n` +
-                `· invoices (facturen waarop deze user staat)\n\n` +
-                `Deze actie is niet ongedaan te maken.`,
-                true
-            );
-            if (!ok) return;
-
-            const sb = getSupabase();
-            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
-            try {
-                // Cascade-delete handmatig (in geval FK-cascades niet aanwezig zijn)
-                // Volgorde: kinderen eerst, dan ouder
-                await sb.from('time_entries').delete().eq('user_id', userId);
-                await sb.from('week_status').delete().eq('user_id', userId);
-                await sb.from('inkooporder_weeks').delete().eq('user_id', userId);
-                // Invoices: alleen single-user (user_id=). Combi-facturen (user_ids array)
-                // verwijderen we niet automatisch · die kunnen meerdere users bevatten
-                // en horen bij een ander leven na verwijdering van één van hen.
-                await sb.from('invoices').delete().eq('user_id', userId);
-                // Rates per user-override
-                try { await sb.from('rates').delete().eq('user_id', userId); } catch (e) {}
-                // Project-assignments
-                try { await sb.from('project_users').delete().eq('user_id', userId); } catch (e) {}
-                // De user zelf
-                const { error: delErr } = await sb.from('users').delete().eq('id', userId);
-                if (delErr) throw delErr;
-
-                showToast('✓ Gebruiker en alle gekoppelde data verwijderd');
-                loadAdminData('gebruikers');
-            } catch (err) {
-                console.error('Delete user error:', err);
-                showToast('❌ Verwijderen mislukt: ' + err.message);
-            }
-        }
+        // ===== USER ARCHIVE / ANONYMIZE =====
+        // 2 paden, elk AVG-conform:
+        //   1. adminArchiveUser   · soft archive (data blijft 7j voor Belastingdienst)
+        //   2. adminAnonymizeUser · na 7j archief: PII verwijderen, IDs blijven
+        // (adminDeleteUser, de test-only hard delete, is 2026-07-03 verwijderd
+        //  samen met de test-modus)
 
         async function adminArchiveUser(userId, userName) {
             // Vraag reden · optioneel
@@ -4878,7 +4799,7 @@
             const users = (typeof getFilteredUsers === 'function' ? getFilteredUsers() : (window._adminUsers || []))
                 .filter(u => u.role !== 'admin');
             const projects = (window._adminProjects || []).filter(p => {
-                const matchTest = _adminTestMode ? p.is_test === true : p.is_test !== true;
+                const matchTest = p.is_test !== true;
                 return matchTest && p.status === 'active';
             });
 

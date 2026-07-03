@@ -540,169 +540,11 @@
             }
         }
 
-        // ===== DOCUMENT NUMMERING =====
-        // DEPRECATED 2026-07-02 · getNextDocumentNumber en saveDocumentNumber worden
-        // alleen nog aangeroepen vanuit generateMonthlyInvoice(), waarvan de
-        // trigger-knop is uitgecommentarieerd (regel ~5255). De RPC
-        // next_document_number en het brede document_numbers-schema bestaan niet
-        // in de database; de live facturatie loopt via de invoices-tabel met
-        // handmatige/eigen nummering. Bewaard tot de maandfactuur-feature echt
-        // gebouwd wordt · dan eerst RPC + schema-migratie aanmaken.
-        async function getNextDocumentNumber(docType) {
-            const sb = getSupabase();
-            const year = new Date().getFullYear();
-            const fallback = docType === 'factuur' ? `${year}-??` : `INKOOPORDER-${year}-???`;
-            if (!sb) return fallback;
-            const { data } = await sb.rpc('next_document_number', { doc_type: docType, doc_year: year });
-            return data || fallback;
-        }
-
-        async function saveDocumentNumber(docType, number, details) {
-            const sb = getSupabase();
-            if (!sb) return null;
-            const year = parseInt(number.match(/\d{4}/)[0]);
-            const seqMatch = number.match(/(\d+)$/);
-            const sequence = seqMatch ? parseInt(seqMatch[1]) : 0;
-
-            const { data, error } = await sb.from('document_numbers').insert({
-                type: docType,
-                number: number,
-                year: year,
-                sequence: sequence,
-                project_id: details.project_id || null,
-                user_id: details.user_id || null,
-                description: details.description || '',
-                client_name: details.client_name || '',
-                weeks: details.weeks || '',
-                amount_excl_btw: details.amount_excl_btw || 0,
-                btw_percentage: 0.21,
-                btw_amount: (details.amount_excl_btw || 0) * 0.21,
-                amount_incl_btw: (details.amount_excl_btw || 0) * 1.21,
-                document_date: new Date().toISOString().slice(0, 10),
-                due_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0, 10),
-                status: details.status || 'verstuurd',
-            }).select().single();
-
-            if (error) console.error('Document nummer opslaan mislukt:', error);
-            return data;
-        }
-
-        // ===== DOCUMENTEN ADMIN TAB =====
-        // DEPRECATED 2026-05-14 · niet aangeroepen, leest naar onbestaande
-        // DOM-IDs ('admin-factuur-list', 'admin-io-list'). Functionaliteit
-        // is vervangen door loadInvoices() (regel ~13523) en
-        // loadInkooporders() (regel ~12114) die direct uit invoices en
-        // inkooporder_weeks tabellen lezen i.p.v. document_numbers.
-        // Bewaard voor referentie tot volgende cleanup-ronde.
-        async function loadDocumentNumbers() {
-            const sb = getSupabase();
-            if (!sb) return;
-
-            // Facturen laden
-            const { data: facturen } = await sb.from('document_numbers')
-                .select('*')
-                .eq('type', 'factuur')
-                .order('sequence', { ascending: false });
-
-            const fList = document.getElementById('admin-factuur-list');
-            if (facturen && facturen.length > 0) {
-                fList.innerHTML = facturen.map(f => {
-                    const statusClass = f.status === 'betaald' ? 'status-approved' : f.status === 'verstuurd' ? 'status-pending' : 'status-draft';
-                    const statusLabel = f.status === 'betaald' ? '✅ Betaald' : f.status === 'verstuurd' ? '📤 Verstuurd' : f.status === 'goedgekeurd' ? '👍 Goedgekeurd' : '📝 Concept';
-                    return `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <div style="font-weight:700;font-size:0.85rem;color:var(--kts-blue)">${f.number}</div>
-                            <span class="status-badge ${statusClass}" style="font-size:0.65rem">${statusLabel}</span>
-                        </div>
-                        <div style="font-size:0.78rem;color:var(--text)">${f.description || '—'}</div>
-                        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
-                            <span>${f.client_name || ''}</span>
-                            <span>€${(f.amount_excl_btw || 0).toLocaleString('nl-NL', {minimumFractionDigits:2})}</span>
-                        </div>
-                        <div style="font-size:0.68rem;color:var(--muted)">${f.document_date ? new Date(f.document_date).toLocaleDateString('nl-NL') : ''}</div>
-                    </div>`;
-                }).join('');
-            } else {
-                fList.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Geen facturen gevonden</div>';
-            }
-
-            // Inkooporders laden
-            const { data: pos } = await sb.from('document_numbers')
-                .select('*')
-                .eq('type', 'inkooporder')
-                .order('sequence', { ascending: false });
-
-            const pList = document.getElementById('admin-io-list');
-            if (pos && pos.length > 0) {
-                pList.innerHTML = pos.map(p => `
-                    <div class="entry-card" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <div style="font-weight:700;font-size:0.85rem;color:#e67e22">${p.number}</div>
-                            <span style="font-size:0.65rem;color:var(--muted)">${p.weeks || ''}</span>
-                        </div>
-                        <div style="font-size:0.78rem;color:var(--text)">${escapeHtml(p.description || '—')}</div>
-                        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
-                            <span>${escapeHtml(p.client_name || '')}</span>
-                            <span>€${(p.amount_excl_btw || 0).toLocaleString('nl-NL', {minimumFractionDigits:2})}</span>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                pList.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.8rem">Geen inkooporders gevonden</div>';
-            }
-        }
-
-        // DEPRECATED 2026-05-14 · niet aangeroepen. Was bedoeld voor CSV-export
-        // van document_numbers; admin-export draait nu via andere paden.
-        async function exportDocumentNumbers() {
-            const sb = getSupabase();
-            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
-
-            showToast('📊 Excel exporteren...');
-
-            // Alle document nummers ophalen
-            const { data: docs } = await sb.from('document_numbers')
-                .select('*')
-                .order('type').order('sequence', { ascending: true });
-
-            if (!docs || docs.length === 0) {
-                showToast('❌ Geen documenten gevonden');
-                return;
-            }
-
-            // CSV genereren (Excel-compatible met BOM + semicolons voor NL)
-            const facturen = docs.filter(d => d.type === 'factuur');
-            const pos = docs.filter(d => d.type === 'inkooporder');
-
-            let csv = '\uFEFF'; // BOM voor Excel UTF-8
-
-            // Sheet 1: Facturen
-            csv += 'VERSTUURDE FACTUREN (KTS → KLANT)\n';
-            csv += 'Factuurnummer;Omschrijving;Klant;Bedrag excl BTW;BTW;Bedrag incl BTW;Datum;Status\n';
-            facturen.forEach(f => {
-                csv += `${f.number};${f.description || ''};${f.client_name || ''};${(f.amount_excl_btw||0).toFixed(2).replace('.',',')};${(f.btw_amount||0).toFixed(2).replace('.',',')};${(f.amount_incl_btw||0).toFixed(2).replace('.',',')};${f.document_date || ''};${f.status || ''}\n`;
-            });
-
-            csv += '\n\nINKOOPORDERS (KTS → ZZP)\n';
-            csv += 'Inkoopordernummer;Omschrijving;Leverancier;Weken;Bedrag excl BTW;Datum;Status\n';
-            pos.forEach(p => {
-                csv += `${p.number};${p.description || ''};${escapeHtml(p.client_name || '')};${p.weeks || ''};${(p.amount_excl_btw||0).toFixed(2).replace('.',',')};${p.document_date || ''};${p.status || ''}\n`;
-            });
-
-            // Download
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Overzicht_facturen_${new Date().getFullYear()}_export.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            showToast('✅ Export gedownload');
-        }
+        // ===== DOCUMENT NUMMERING · VERWIJDERD 2026-07-03 =====
+        // getNextDocumentNumber / saveDocumentNumber / loadDocumentNumbers /
+        // exportDocumentNumbers zijn verwijderd: het document_numbers-schema en
+        // de RPC bestonden niet in de database en niets riep ze nog aan. De
+        // facturatie loopt via de invoices-tabel met eigen nummering.
 
         // ===== PDF GENERATIE =====
         const KTS_INFO = {
@@ -1317,14 +1159,15 @@
             const errors = [];
 
             // === DATABASE TABELLEN ===
-            // Lijst van bekende tabellen. Onbekende of niet-toegankelijke worden
-            // gelogd in manifest met error · backup faalt niet op een enkele tabel.
+            // Werkelijke tabellen · geverifieerd tegen pg_tables 2026-07-03.
+            // Onbekende of niet-toegankelijke worden gelogd in manifest met
+            // error · backup faalt niet op een enkele tabel.
             const TABLES = [
-                'users', 'companies', 'projects', 'user_projects',
+                'users', 'companies', 'projects', 'user_projects', 'fill_delegates',
                 'time_entries', 'week_status', 'week_summaries', 'expenses', 'rates',
-                'inkooporders', 'inkooporder_weeks', 'invoices', 'facturen',
-                'inspection_templates', 'inspections',
-                'document_numbers', 'error_log', 'audit_log'
+                'inkooporder_weeks', 'invoices', 'approvals',
+                'inspection_templates', 'inspections', 'inspection_photos',
+                'error_log', 'audit_log'
             ];
             const dbDump = { exportedAt: now.toISOString(), tables: {} };
             const tableCounts = {};
@@ -2199,187 +2042,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             }
         }
 
-        // ===== MAANDFACTUUR GENEREREN (KTS → eindklant) =====
-        async function generateMonthlyInvoice() {
-            if (!window.jspdf) { showToast('⚠️ PDF library nog niet geladen'); return; }
-            if (!currentProject) { showToast('⚠️ Kies eerst een project'); return; }
-
-            const sb = getSupabase();
-            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
-
-            // Welke maand? Gebruik de maand van de huidige weekmaandag
-            const month = currentWeekMonday.getMonth(); // 0-indexed
-            const year = currentWeekMonday.getFullYear();
-            const monthNames = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-            const monthName = monthNames[month];
-
-            // Haal alle inkooporders op voor dit project + maand
-            const monthStart = `${year}-${String(month+1).padStart(2,'0')}-01`;
-            const monthEnd = `${year}-${String(month+1).padStart(2,'0')}-${new Date(year, month+1, 0).getDate()}`;
-
-            const { data: ioRecords } = await sb
-                .from('document_numbers')
-                .select('*')
-                .eq('type', 'inkooporder')
-                .eq('project_id', currentProject.id)
-                .gte('document_date', monthStart)
-                .lte('document_date', monthEnd)
-                .order('document_date');
-
-            if (!ioRecords || ioRecords.length === 0) {
-                showToast('⚠️ Geen inkooporders gevonden voor deze maand');
-                return;
-            }
-
-            // Factuurnummer ophalen
-            const factuurNum = await getNextDocumentNumber('factuur');
-
-            // Totalen berekenen
-            let totalExcl = 0;
-            ioRecords.forEach(io => { totalExcl += parseFloat(io.amount_excl_btw) || 0; });
-            const btwAmount = totalExcl * 0.21;
-            const totalIncl = totalExcl + btwAmount;
-
-            // PDF genereren
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-            addPdfWatermark(doc, false);
-            const pw = 210, ml = 15, mr = 15, uw = pw - ml - mr;
-
-            // KTS gegevens rechtsboven
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            const rx = pw - mr - 70;
-            doc.text(KTS_INFO.naam, rx, 18);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.text(KTS_INFO.adres, rx, 23);
-            doc.text(KTS_INFO.postcode, rx, 27);
-            doc.text(`M: ${KTS_INFO.tel2}`, rx, 33);
-            doc.text(`E: ${KTS_INFO.email}`, rx, 37);
-            doc.text(`KVK: ${KTS_INFO.kvk}`, rx, 43);
-            doc.text(`BTW: ${KTS_INFO.btw}`, rx, 47);
-            doc.text(`IBAN: ${KTS_INFO.iban}`, rx, 53);
-            doc.text(`BIC: ${KTS_INFO.bic}`, rx, 57);
-
-            // Klantadres linksboven
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            const clientName = currentProject.client_name || '';
-            doc.text(clientName, ml, 55);
-            doc.text(currentProject.location || '', ml, 60);
-
-            // FACTUUR titel
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(7, 86, 127);
-            doc.text('Factuur', ml, 75);
-            doc.setTextColor(0, 0, 0);
-
-            // Factuurnummer + datum
-            let y = 83;
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            const todayStr = fmtDate(new Date());
-            const dueDate = new Date(Date.now() + getPaymentTermDays()*24*60*60*1000);
-
-            const infoLines = [
-                ['Factuurnummer:', factuurNum],
-                ['Factuurdatum:', todayStr],
-                ['Vervaldatum:', fmtDate(dueDate)],
-                ['Project:', currentProject.name],
-                ['Projectnummer:', currentProject.project_code],
-            ];
-            infoLines.forEach(([label, val]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, ml, y);
-                doc.setFont('helvetica', 'normal');
-                doc.text(val, ml + 35, y);
-                y += 5;
-            });
-
-            // Regeltabel
-            y += 8;
-            const tableBody = ioRecords.map(io => [
-                io.document_date,
-                io.description || '',
-                io.weeks || '',
-                fmtEuroPdf(parseFloat(io.amount_excl_btw) || 0),
-            ]);
-
-            doc.autoTable({
-                startY: y,
-                margin: { left: ml, right: mr },
-                head: [['Datum', 'Omschrijving', 'Periode', 'Bedrag']],
-                body: tableBody,
-                styles: { fontSize: 8, cellPadding: 2.5, lineColor: [176, 190, 197], lineWidth: 0.3 },
-                headStyles: { fillColor: [7, 86, 127], textColor: [255, 255, 255], fontStyle: 'bold' },
-                bodyStyles: { fillColor: false },
-                columnStyles: {
-                    0: { cellWidth: 25 },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 25 },
-                    3: { cellWidth: 30, halign: 'right' },
-                },
-                alternateRowStyles: { fillColor: false },
-            });
-
-            // Totalen
-            y = doc.lastAutoTable.finalY + 5;
-            const totX = pw - mr;
-            const lblX = pw - mr - 65;
-
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Subtotaal excl. BTW', lblX, y);
-            doc.text(fmtEuroPdf(totalExcl), totX, y, { align: 'right' });
-
-            y += 6;
-            doc.text('BTW 21%', lblX, y);
-            doc.text(fmtEuroPdf(btwAmount), totX, y, { align: 'right' });
-
-            y += 2;
-            doc.setLineWidth(0.5);
-            doc.line(lblX, y, totX, y);
-
-            y += 6;
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Totaal te betalen', lblX, y);
-            doc.text(fmtEuroPdf(totalIncl), totX, y, { align: 'right' });
-
-            // Betalingsinstructie gecentreerd boven voettekst
-            const footerTopCF = 297 - 12;
-            const payBlockYCF = footerTopCF - 22;
-            const cxCF = 210 / 2;
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`U wordt vriendelijk verzocht het bedrag van \u20AC ${fmtEuroPdf(totalIncl)} v\u00F3\u00F3r ${fmtDate(dueDate)} over te maken op:`, cxCF, payBlockYCF, { align: 'center' });
-            doc.setFont('helvetica', 'bold');
-            doc.text(`IBAN: ${KTS_INFO.iban}  t.n.v. ${KTS_INFO.naam}`, cxCF, payBlockYCF + 5, { align: 'center' });
-            doc.setFont('helvetica', 'normal');
-            doc.text(`onder vermelding van het factuurnummer: ${factuurNum}`, cxCF, payBlockYCF + 10, { align: 'center' });
-
-            // Voettekst toevoegen
-            addPdfFooter(doc, false);
-
-            // Opslaan
-            const fileName = ktsFactuurName(factuurNum, clientName);
-            const savedCF = await savePdfToFolder(doc, fileName, 'facturen');
-            if (!savedCF) doc.save(fileName);
-
-            // Factuurnummer opslaan in database
-            await saveDocumentNumber('factuur', factuurNum, {
-                project_id: currentProject.id,
-                description: `${currentProject.name} ·${monthName} ${year}`,
-                client_name: clientName,
-                weeks: `${monthName} ${year}`,
-                amount_excl_btw: totalExcl,
-                status: 'verstuurd',
-            });
-
-            showToast(`✓ Factuur ${factuurNum} gedownload`);
-        }
+        // ===== MAANDFACTUUR · VERWIJDERD 2026-07-03 =====
+        // generateMonthlyInvoice() is verwijderd: de trigger-knop was al
+        // uitgecommentarieerd en de functie leunde op het niet-bestaande
+        // document_numbers-schema. Maandfacturen lopen via Beheer > Facturen.
 
         async function changeWeek(dir) {
             // Blokkeer navigatie als volgende week te ver in de toekomst is (niet voor admins)

@@ -62,12 +62,13 @@ $manifest = [ordered]@{
 }
 
 # --- 1. Database-tabellen dumpen (met paginatie per 1000 rijen) ---
+# Werkelijke tabellen · geverifieerd tegen pg_tables 2026-07-03
 $tables = @(
-    'users', 'companies', 'projects', 'user_projects',
+    'users', 'companies', 'projects', 'user_projects', 'fill_delegates',
     'time_entries', 'week_status', 'week_summaries', 'expenses', 'rates',
-    'inkooporders', 'inkooporder_weeks', 'invoices', 'facturen',
-    'inspection_templates', 'inspections',
-    'document_numbers', 'error_log', 'audit_log'
+    'inkooporder_weeks', 'invoices', 'approvals',
+    'inspection_templates', 'inspections', 'inspection_photos',
+    'error_log', 'audit_log'
 )
 $dbDir = Join-Path $workDir 'database'
 New-Item -ItemType Directory -Force -Path $dbDir | Out-Null

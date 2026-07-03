@@ -14,11 +14,8 @@
 
             try {
                 let query = sb.from('inspection_templates').select('*').order('created_at', { ascending: false });
-                if (_adminTestMode) {
-                    query = query.eq('is_test', true);
-                } else {
-                    query = query.or('is_test.eq.false,is_test.is.null');
-                }
+                // Vangnet tegen zwerf-testdata · test-modus zelf is uitgefaseerd
+                query = query.or('is_test.eq.false,is_test.is.null');
                 const { data, error } = await query;
                 if (error) throw error;
                 _inspTemplates = data || [];
@@ -296,7 +293,7 @@
                         // re-import in test-modus een productie-template naar test
                         result = await sb.from('inspection_templates').update(payload).eq('id', existingByName[t.name]);
                     } else {
-                        const insertPayload = { ...payload, is_test: _adminTestMode };
+                        const insertPayload = { ...payload };
                         if (importAuthUid) insertPayload.created_by = importAuthUid;
                         result = await sb.from('inspection_templates').insert(insertPayload);
                     }
@@ -625,7 +622,6 @@
                 installation: document.getElementById('insp-tpl-install')?.value?.trim() || null,
                 asset: document.getElementById('insp-tpl-asset')?.value?.trim() || null,
                 sections: window._inspTplSections || [],
-                is_test: _adminTestMode,
                 updated_at: new Date().toISOString()
             };
 
@@ -746,11 +742,8 @@
                 let q = sb.from('inspection_templates')
                     .select('id, name, category, asset, location, installation')
                     .eq('is_active', true);
-                if (_adminTestMode) {
-                    q = q.eq('is_test', true);
-                } else {
-                    q = q.or('is_test.eq.false,is_test.is.null');
-                }
+                // Vangnet tegen zwerf-testdata · test-modus zelf is uitgefaseerd
+                q = q.or('is_test.eq.false,is_test.is.null');
                 const { data, error } = await q.order('name');
                 if (error) throw error;
                 templates = data || [];
@@ -778,10 +771,10 @@
             const users = (typeof getFilteredUsers === 'function'
                 ? getFilteredUsers()
                 : (window._adminUsers || []).filter(u =>
-                    (_adminTestMode ? u.is_test === true : u.is_test !== true) && !u.archived_at && !u.paused_at)
+                    u.is_test !== true && !u.archived_at && !u.paused_at)
             ).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             const projects = (window._adminProjects || [])
-                .filter(p => (_adminTestMode ? p.is_test === true : p.is_test !== true))
+                .filter(p => (p.is_test !== true))
                 .filter(p => p.status === 'active')
                 .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             if (users.length === 0) { showToast('⚠️ Geen actieve medewerkers'); return; }
@@ -1639,180 +1632,6 @@
                         ${questionsHtml}
                         ${navHtml}
                     </div>
-                </div>`;
-            modal.classList.add('active');
-        }
-
-        // Stub: oude functie blijft bestaan voor backwards compat (niet meer gebruikt)
-        function _inspOldRender_unused() {
-            // Sectie-tabs bovenaan · horizontaal scrollbaar
-            const sections = []; const sectionStats = []; const totalDone = 0; const totalQ = 0; const totalGood = 0; const totalBad = 0; const pct = 0;
-            let tabsHtml = `<div id="insp-section-tabs" style="display:flex;gap:4px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch">`;
-            sections.forEach((sec, si) => {
-                const st = sectionStats[si];
-                const isDone = st.done === st.total;
-                const hasFail = st.bad > 0;
-                const bg = isDone ? (hasFail ? '#fee2e2' : '#dcfce7') : (st.done > 0 ? '#fef3c7' : '#f1f5f9');
-                const color = isDone ? (hasFail ? '#dc2626' : '#16a34a') : (st.done > 0 ? '#92400e' : 'var(--muted)');
-                const shortTitle = (sec.title || 'Sectie ' + (si + 1)).replace('PG1 ·', '1·').replace('PG2 ·', '2·').replace('Verdelerskid ', 'V').replace('Hoofdpomp skid', 'Hoofd').replace('Algemeen ·', '');
-                tabsHtml += `<button onclick="inspScrollToSection(${si})" style="padding:4px 8px;border-radius:6px;border:1px solid ${color};background:${bg};color:${color};font-size:0.65rem;font-weight:600;cursor:pointer;white-space:nowrap">${shortTitle} ${st.done}/${st.total}</button>`;
-            });
-            tabsHtml += `</div>`;
-
-            // Voortgangsbalk
-            let progressHtml = `
-                <div style="margin-bottom:12px">
-                    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:4px">
-                        <span>${totalDone}/${totalQ} vragen</span>
-                        <span style="display:flex;gap:8px">
-                            <span style="color:#16a34a">✓ ${totalGood}</span>
-                            <span style="color:#dc2626">✗ ${totalBad}</span>
-                            <span>${pct}%</span>
-                        </span>
-                    </div>
-                    <div style="background:var(--app-bg-deep);border-radius:4px;height:8px;overflow:hidden">
-                        <div style="height:100%;border-radius:4px;display:flex">
-                            <div style="background:#16a34a;width:${totalQ > 0 ? (totalGood / totalQ * 100) : 0}%;transition:width 0.3s"></div>
-                            <div style="background:#dc2626;width:${totalQ > 0 ? (totalBad / totalQ * 100) : 0}%;transition:width 0.3s"></div>
-                            <div style="background:#f59e0b;width:${totalQ > 0 ? ((totalDone - totalGood - totalBad) / totalQ * 100) : 0}%;transition:width 0.3s"></div>
-                        </div>
-                    </div>
-                </div>`;
-
-            // Secties met vragen
-            let sectionsHtml = '';
-            sections.forEach((sec, si) => {
-                const st = sectionStats[si];
-                const isDone = st.done === st.total;
-                const hasFail = st.bad > 0;
-                const headerBg = isDone ? (hasFail ? '#fef2f2' : '#f0fdf4') : 'white';
-
-                sectionsHtml += `<div id="insp-sec-${si}" style="margin-bottom:10px">
-                    <div onclick="inspToggleSection(${si})" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${headerBg};border-radius:8px;cursor:pointer;border:1px solid ${isDone ? (hasFail ? '#fecaca' : '#bbf7d0') : 'var(--border)'};margin-bottom:6px">
-                        <div style="font-weight:600;font-size:0.82rem">${sec.title || 'Sectie ' + (si + 1)}</div>
-                        <div style="display:flex;align-items:center;gap:6px">
-                            <span style="font-size:0.7rem;color:var(--muted)">${st.done}/${st.total}</span>
-                            ${isDone ? (hasFail ? '<span style="font-size:0.85rem">⚠️</span>' : '<span style="font-size:0.85rem">✅</span>') : ''}
-                            <span id="insp-sec-arrow-${si}" style="font-size:0.7rem;color:var(--muted);transition:transform 0.2s;transform:rotate(-90deg)">▼</span>
-                        </div>
-                    </div>
-                    <div id="insp-sec-body-${si}" style="display:none">`;
-
-                (sec.questions || []).forEach((q, qi) => {
-                    const key = `s${si}_q${qi}`;
-                    const val = answers[key] || {};
-                    const answered = val.value !== undefined && val.value !== '';
-                    const isFout = val.value === 'fout';
-
-                    let inputHtml = '';
-                    if (q.type === 'goed_fout') {
-                        inputHtml = `
-                            <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">
-                                <button onclick="inspAnswer('${key}','goed')" id="insp-btn-${key}-goed" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'goed' ? 'var(--app-ok)' : 'var(--border)'};border-radius:6px;background:${val.value === 'goed' ? 'var(--app-ok-soft)' : 'var(--app-surface)'};color:${val.value === 'goed' ? 'var(--app-ok)' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✓ Goed</button>
-                                <button onclick="inspAnswer('${key}','fout')" id="insp-btn-${key}-fout" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'fout' ? 'var(--app-alert)' : 'var(--border)'};border-radius:6px;background:${val.value === 'fout' ? 'var(--app-alert-soft)' : 'var(--app-surface)'};color:${val.value === 'fout' ? 'var(--app-alert)' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">✗ Fout</button>
-                                <button onclick="inspAnswer('${key}','nvt')" id="insp-btn-${key}-nvt" style="flex:1;padding:7px 6px;border:1.5px solid ${val.value === 'nvt' ? 'var(--app-idle)' : 'var(--border)'};border-radius:6px;background:${val.value === 'nvt' ? 'var(--app-idle-soft)' : 'var(--app-surface)'};color:${val.value === 'nvt' ? 'var(--muted)' : 'var(--text)'};font-weight:600;font-size:0.8rem;cursor:pointer">N.v.t.</button>
-                            </div>`;
-                    } else if (q.type === 'conditiescore') {
-                        // NEN 2767 conditiescores 1 t/m 6
-                        const scoreLabels = ['Uitstekend', 'Goed', 'Redelijk', 'Matig', 'Slecht', 'Zeer slecht'];
-                        const scoreColors = [
-                            ['#16a34a', '#dcfce7'], // 1 groen
-                            ['#65a30d', '#ecfccb'], // 2 lichtgroen
-                            ['#ca8a04', '#fef9c3'], // 3 geel
-                            ['#ea580c', '#ffedd5'], // 4 oranje
-                            ['#dc2626', '#fee2e2'], // 5 rood
-                            ['#7f1d1d', '#fecaca']  // 6 donkerrood
-                        ];
-                        let btnsHtml = '';
-                        for (let s = 1; s <= 6; s++) {
-                            const [c, bg] = scoreColors[s - 1];
-                            const active = val.value === String(s);
-                            btnsHtml += `<button onclick="inspAnswer('${key}','${s}')" id="insp-btn-${key}-${s}" title="${s} ·${scoreLabels[s-1]}" style="flex:1;padding:8px 4px;border:1.5px solid ${active ? c : 'var(--border)'};border-radius:6px;background:${active ? bg : 'var(--app-surface)'};color:${active ? c : 'var(--text)'};font-weight:700;font-size:0.85rem;cursor:pointer">${s}</button>`;
-                        }
-                        const currentLabel = val.value && Number(val.value) >= 1 && Number(val.value) <= 6 ? scoreLabels[Number(val.value) - 1] : '';
-                        inputHtml = `
-                            <div style="display:flex;gap:4px;margin-top:6px" id="insp-btns-${key}">${btnsHtml}</div>
-                            <div style="font-size:0.65rem;color:var(--muted);margin-top:3px;text-align:center">1=Uitstekend · 6=Zeer slecht (NEN 2767)${currentLabel ? ' ·<strong>'+currentLabel+'</strong>' : ''}</div>`;
-                    } else if (q.type === 'meting' || q.type === 'numeriek') {
-                        inputHtml = `
-                            <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-                                <input type="number" step="any" id="insp-input-${key}" value="${val.value || ''}" onchange="inspAnswer('${key}',this.value)" style="flex:1;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem" placeholder="Meetwaarde">
-                                ${q.unit ? `<span style="font-size:0.85rem;color:var(--muted)">${q.unit}</span>` : ''}
-                            </div>`;
-                    } else {
-                        inputHtml = `
-                            <textarea id="insp-input-${key}" onchange="inspAnswer('${key}',this.value)" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem;margin-top:6px;min-height:44px;resize:vertical" placeholder="Opmerking">${val.value || ''}</textarea>`;
-                    }
-
-                    sectionsHtml += `
-                        <div id="insp-q-${key}" style="background:${isFout ? 'var(--app-alert-soft)' : (answered ? 'var(--app-ok-soft)' : 'var(--app-surface)')};border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid ${isFout ? 'var(--app-alert-line)' : (answered ? 'var(--app-ok-line)' : 'var(--border)')};transition:all 0.2s">
-                            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
-                                <div style="flex:1;min-width:0">
-                                    <div style="font-size:0.85rem;font-weight:600;line-height:1.3">${q.text || 'Vraag ' + (qi + 1)}</div>
-                                    ${q.component ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">${q.component}${q.discipline ? ' · ' + q.discipline : ''}</div>` : ''}
-                                </div>
-                                <div style="display:flex;gap:4px;flex-shrink:0">
-                                    <label for="insp-camera-${key}" title="Foto maken met camera" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? 'var(--app-info-soft)' : 'var(--app-surface)'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">📷</label>
-                                    <input type="file" id="insp-camera-${key}" accept="image/*" capture="environment" onchange="inspAddPhoto('${key}', this)" style="display:none">
-                                    <label for="insp-photo-${key}" title="Uit galerij/bestanden" style="width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:${(val.photos && val.photos.length) ? 'var(--app-info-soft)' : 'var(--app-surface)'};cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center">🖼️</label>
-                                    <input type="file" id="insp-photo-${key}" accept="image/*" onchange="inspAddPhoto('${key}', this)" style="display:none">
-                                </div>
-                            </div>
-                            ${inputHtml}
-                            <div style="margin-top:6px">
-                                <textarea id="insp-remark-${key}" placeholder="Opmerkingen..." onchange="inspAnswerRemark('${key}',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;margin-top:4px;min-height:36px;resize:vertical">${val.remark || ''}</textarea>
-                                <div id="insp-photos-${key}" style="display:${(val.photos && val.photos.length) ? 'flex' : 'none'};gap:6px;flex-wrap:wrap;margin-top:6px">
-                                    ${(val.photos || []).map((ph, pi) => `<div style="position:relative"><img src="${ph}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button onclick="inspRemovePhoto('${key}',${pi})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:0.7rem;cursor:pointer;line-height:1">×</button></div>`).join('')}
-                                </div>
-                            </div>
-                        </div>`;
-                });
-
-                sectionsHtml += `</div></div>`;
-            });
-
-            // Afrond-knoppen
-            let footerHtml = '';
-            if (insp.status === 'concept') {
-                footerHtml = `
-                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        <div id="insp-warn-incomplete" style="font-size:0.8rem;color:var(--app-warn);background:var(--app-warn-soft);border:1px solid var(--app-warn-line);padding:8px 12px;border-radius:8px;margin-bottom:8px;text-align:center;font-weight:600;display:${totalDone < totalQ ? 'block' : 'none'}">⚠️ <span id="insp-warn-count">${totalQ - totalDone}</span> vragen nog niet beantwoord</div>
-                        <button id="insp-finish-btn" onclick="inspFinish()" class="btn btn-primary btn-block" style="padding:14px;font-size:0.95rem;${totalDone < totalQ ? 'opacity:0.5;cursor:not-allowed' : ''}" ${totalDone < totalQ ? 'disabled' : ''}>✓ Inspectie afronden</button>
-                    </div>`;
-            } else {
-                footerHtml = `
-                    <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border)">
-                        <div style="text-align:center;color:#16a34a;font-weight:600;font-size:0.9rem;margin-bottom:8px">✅ Deze inspectie is afgerond</div>
-                        <div style="text-align:center;color:var(--muted);font-size:0.7rem;margin-bottom:12px">Wijzigingen worden automatisch opgeslagen</div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
-                            <button onclick="inspGeneratePDF('${inspectionId}')" class="btn btn-secondary" style="padding:10px 20px;font-size:0.85rem">📄 PDF Rapport</button>
-                            <button onclick="inspCloseForm()" class="btn btn-primary" style="padding:10px 20px;font-size:0.85rem">💾 Opslaan & sluiten</button>
-                        </div>
-                    </div>`;
-            }
-
-            const modal = document.getElementById('admin-modal');
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:16px;border-radius:16px">
-                    <div style="position:sticky;top:-16px;background:var(--app-surface);padding:14px 16px 12px 16px;margin:-16px -16px 12px -16px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:16px">
-                        <div style="display:flex;align-items:start;gap:12px;margin-bottom:10px">
-                            <div style="width:40px;height:40px;border-radius:10px;background:var(--app-info-soft);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📋</div>
-                            <div style="flex:1;min-width:0">
-                                <div style="font-weight:700;font-size:0.95rem;line-height:1.2">${escapeHtml(tpl.name || 'Inspectie')}</div>
-                                <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${insp.inspection_number || ''}${insp.inspection_date ? ' · ' + new Date(insp.inspection_date).toLocaleDateString('nl-NL') : ''}</div>
-                                <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-                                    ${tpl.category ? `<span style="font-size:0.65rem;background:var(--app-info-soft);color:var(--app-info);padding:2px 6px;border-radius:4px">${escapeHtml(tpl.category)}</span>` : ''}
-                                    ${tpl.frequency ? `<span style="font-size:0.65rem;background:var(--app-warn-soft);color:var(--app-warn);padding:2px 6px;border-radius:4px">${escapeHtml(tpl.frequency)}</span>` : ''}
-                                    ${insp.location ? `<span style="font-size:0.65rem;background:var(--app-ok-soft);color:var(--app-ok);padding:2px 6px;border-radius:4px">${escapeHtml(insp.location)}</span>` : (tpl.location ? `<span style="font-size:0.65rem;background:var(--app-ok-soft);color:var(--app-ok);padding:2px 6px;border-radius:4px">${escapeHtml(tpl.location)}</span>` : '')}
-                                </div>
-                            </div>
-                            <button onclick="inspCloseForm()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;line-height:1;flex-shrink:0">×</button>
-                        </div>
-                        ${progressHtml}
-                        ${tabsHtml}
-                    </div>
-                    ${sectionsHtml}
-                    ${footerHtml}
                 </div>`;
             modal.classList.add('active');
         }

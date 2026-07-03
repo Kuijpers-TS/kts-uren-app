@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 11200 11200">
-  <!-- Maskable PWA-icon: K binnen veilige 80% zone, blauwe achtergrond vult de
-       volledige icon (zo blijft blauw zichtbaar als Android een circle/squircle mask
-       toepast). Bron voor pwa-icon-512-maskable.png. -->
-  <rect width="11200" height="11200" fill="#07567F"/>
-  <g transform="translate(1980, 8020) scale(0.1, -0.1)" fill="#FFFFFF" stroke="none" fill-rule="evenodd">
-    <path d="M24197 24193 c-13199 -13198 -23997 -23998 -23997 -24000 0 -1 5399 -3 11998 -3 l11998 0 5995 5995 c3297 3297 5999 5995 6004 5995 6 0 2708 -2698 6005 -5995 l5995 -5995 12003 0 12004 0 -5979 5979 c-3288 3288 -5987 5988 -5997 6000 l-20 22 5999 5999 6000 6000 -12004 0 -12005 0 11995 11995 c6597 6597 11996 11997 11998 12000 2 3 -5396 5 -11996 5 l-12000 0 -23996 -23997z"/>
-  </g>
-</svg>
