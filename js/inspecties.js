@@ -820,7 +820,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Asset / locatie code</label>
-                        <input type="text" id="inew-asset" placeholder="Bijv. NSM-PG1" value="${escapeHtml(firstAsset)}">
+                        <input type="text" id="inew-asset" placeholder="Bijv. NSM-PG1 of NSM-SG1.6" value="${escapeHtml(firstAsset)}">
                     </div>
                     <div class="form-group">
                         <label>Inspectiedatum</label>
@@ -1161,8 +1161,9 @@
             const defaultAsset = tpl.asset && tpl.asset.trim() ? tpl.asset.trim() : 'NSM-PG1';
             const assetCode = prompt(
                 'Asset / locatie code voor deze inspectie\n\n' +
-                'Bijv. NSM-PG1, NSM-PG2 · komt in PDF-titel en bestandsnaam zodat\n' +
-                'klant het kan koppelen aan Maximo werkorders.\n\n' +
+                'Bijv. NSM-PG1, NSM-PG2, NSM-SG1.6 of NSM-SG1.7 · komt in de\n' +
+                'PDF-titel en bestandsnaam zodat de klant het kan koppelen aan\n' +
+                'Maximo werkorders.\n\n' +
                 'Asset code:',
                 defaultAsset
             );
