@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "KTS Uren",
+  "name": "KTS Uren & Inspecties App",
   "short_name": "KTS Uren",
-  "description": "Urenregistratie voor KTS medewerkers",
+  "description": "Uren- en inspectieregistratie voor KTS medewerkers",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
