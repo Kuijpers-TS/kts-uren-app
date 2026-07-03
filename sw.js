@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v231';
+const CACHE_NAME = 'kts-uren-v232';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -12,14 +12,16 @@ const ASSETS_TO_CACHE = [
   './js/administratie.js',
   './kts-pdf-images.js',
   './tandwiel-wit-v2.png',
-  './icon-192-v2.png',
-  './icon-512-v2.png',
-  './favicon-v2.ico',
-  './favicon-32-v2.png',
-  './favicon-48-v2.png',
-  './favicon-64-v2.png',
-  './favicon-128-v2.png',
-  './apple-touch-icon-v2.png',
+  './icon-192-v3.png',
+  './icon-512-v3.png',
+  './icon-192-v3-maskable.png',
+  './icon-512-v3-maskable.png',
+  './favicon-k.ico',
+  './favicon.svg',
+  './favicon-32-v3.png',
+  './favicon-48-v3.png',
+  './favicon-128-v3.png',
+  './apple-touch-icon-v3.png',
   './approve-weekstaat.html'
 ];
 
