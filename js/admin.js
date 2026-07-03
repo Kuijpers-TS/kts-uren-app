@@ -3471,12 +3471,6 @@
                         <label>Notities</label>
                         <textarea id="adm-proj-notes" rows="3" placeholder="Afspraken, contactmomenten, bijzonderheden..." style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;resize:vertical">${existing ? (existing.notes || '').replace(/</g,'&lt;') : ''}</textarea>
                     </div>
-                    <div style="margin-bottom:12px">
-                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
-                            <input type="checkbox" id="adm-proj-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testproject
-                        </label>
-                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testprojecten worden verborgen in productie-modus</div>
-                    </div>
                     ${existing ? '<div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border)"><label style="font-weight:700;font-size:0.85rem;margin-bottom:8px;display:block">Toegewezen gebruikers</label><div id="adm-proj-users" style="margin-bottom:8px"><span style="color:var(--muted);font-size:0.8rem">Laden...</span></div><div style="display:flex;gap:8px"><select id="adm-proj-user-select" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem"><option value="">Kies gebruiker...</option></select><button type="button" class="btn btn-sm btn-primary" onclick="assignUserToProject()" style="white-space:nowrap">+ Toewijzen</button></div></div>' : ''}
                 `;
             } else if (type === 'persoon') {
@@ -3536,10 +3530,6 @@
                             <input type="checkbox" id="adm-pers-archived" ${existing && existing.archived ? 'checked' : ''} style="width:16px;height:16px;accent-color:#6b7280"> Gearchiveerd
                         </label>
                         <div style="font-size:0.7rem;color:var(--muted);margin-left:24px;margin-top:-4px">Gearchiveerde bedrijven worden niet getoond in lijsten en dropdowns</div>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
-                            <input type="checkbox" id="adm-pers-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testbedrijf
-                        </label>
-                        <div style="font-size:0.7rem;color:var(--muted);margin-left:24px;margin-top:-4px">Testbedrijven worden verborgen in productie-modus</div>
                     </div>
                 `;
             } else if (type === 'tarief') {
@@ -3610,13 +3600,6 @@
                         <div class="form-group"><label>Jaar</label><input type="number" min="2024" max="2030" id="adm-user-start-year" placeholder="Bijv. 2026" value="${existing && existing.start_year ? existing.start_year : ''}"></div>
                     </div>
                     <div style="font-size:0.7rem;color:var(--muted);margin-top:-12px;margin-bottom:16px">Gebruiker kan niet verder terug navigeren dan deze week</div>
-                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Omgeving</div>
-                    <div style="margin-bottom:16px">
-                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
-                            <input type="checkbox" id="adm-user-test" ${existing && existing.is_test ? 'checked' : ''} style="width:16px;height:16px;accent-color:#f59e0b"> Testgebruiker
-                        </label>
-                        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;margin-left:24px">Testgebruikers worden verborgen in productie-modus</div>
-                    </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Bedrijf (opdrachtnemer)</div>
                     <div class="form-group" style="margin-bottom:12px">
                         <label style="font-size:0.75rem;color:var(--muted)">Eigen BV · verschijnt op weekstaat als "BV-naam | medewerker"</label>
@@ -6727,8 +6710,9 @@
                     start_date: document.getElementById('adm-proj-start').value || null,
                     status: document.getElementById('adm-proj-status').value || 'active',
                     notes: document.getElementById('adm-proj-notes').value.trim() || null,
-                    cc_emails_weekstaat: document.getElementById('adm-proj-cc-weekstaat').value.trim() || null,
-                    is_test: document.getElementById('adm-proj-test').checked
+                    cc_emails_weekstaat: document.getElementById('adm-proj-cc-weekstaat').value.trim() || null
+                    // is_test uitgefaseerd 2026-07-03: veld weggelaten · UPDATE behoudt
+                    // de bestaande waarde, INSERT valt terug op de DB-default (false)
                 };
                 // Probeer met cc_emails_weekstaat. Als de kolom nog niet bestaat (migratie
                 // niet uitgevoerd), val terug op insert/update zonder dat veld.
@@ -6767,7 +6751,7 @@
                     phone: document.getElementById('adm-pers-phone').value.trim() || null,
                     email: primary.email || null,
                     email_po: ioEmails || null,
-                    is_test: document.getElementById('adm-pers-test').checked,
+                    // is_test uitgefaseerd 2026-07-03 · veld weggelaten
                     archived: document.getElementById('adm-pers-archived').checked,
                     notes: document.getElementById('adm-pers-notes').value.trim() || null,
                     contacts: allContacts,
@@ -6818,8 +6802,8 @@
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
                     hotel_rate: parseFloat(document.getElementById('adm-user-hotel-rate').value) || null,
                     company_id: document.getElementById('adm-user-company').value || null,
-                    invoice_via_company_id: document.getElementById('adm-user-invoice-via').value || null,
-                    is_test: document.getElementById('adm-user-test').checked,
+                    invoice_via_company_id: document.getElementById('adm-user-invoice-via').value || null
+                    // is_test uitgefaseerd 2026-07-03 · veld weggelaten
                 };
                 let updErr;
                 ({ error: updErr } = await sb.from('users').update(data).eq('id', _editingId));
