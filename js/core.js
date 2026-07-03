@@ -256,6 +256,31 @@
             document.documentElement.classList.add('zoom-' + saved);
         })();
 
+        // Versienummer in de profiel-footer · afgeleid van de actieve service
+        // worker cache (kts-uren-vNNN) zodat het nooit meer achterloopt op de
+        // echte versie. Fallback: sw.js zelf uitlezen (bv. eerste bezoek,
+        // voordat de cache bestaat).
+        (async function initVersionTag() {
+            const el = document.getElementById('app-version-tag');
+            if (!el) return;
+            try {
+                let versie = null;
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    const nums = keys.map(k => k.match(/^kts-uren-v(\d+)$/))
+                        .filter(Boolean).map(m => parseInt(m[1]))
+                        .sort((a, b) => b - a);
+                    if (nums.length > 0) versie = nums[0];
+                }
+                if (!versie) {
+                    const txt = await (await fetch('sw.js', { cache: 'no-store' })).text();
+                    const m = txt.match(/kts-uren-v(\d+)/);
+                    if (m) versie = parseInt(m[1]);
+                }
+                if (versie) el.textContent = versie;
+            } catch (e) { /* fallback-tekst in de HTML blijft staan */ }
+        })();
+
         // Auto-grow fallback voor tekstvakken in browsers zonder CSS
         // field-sizing (o.a. Safari). Chrome/Edge regelen dit via de
         // CSS-regel `textarea { field-sizing: content }` in base.css.
