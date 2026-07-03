@@ -364,6 +364,17 @@
                     <input type="text" id="insp-tpl-asset" value="${existing ? escapeHtml(existing.asset || '') : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
 
+                <div class="form-group" style="margin-bottom:14px">
+                    <label>🗺️ Plattegrond / tekening <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(optioneel · te openen tijdens het invullen)</span></label>
+                    <div id="insp-tpl-plattegrond-status" style="font-size:0.8rem;color:var(--muted);margin:4px 0 8px">Geen plattegrond gekoppeld</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <label for="insp-tpl-plattegrond-file" class="btn btn-sm" style="cursor:pointer;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)">📁 Kiezen &amp; uploaden</label>
+                        <input type="file" id="insp-tpl-plattegrond-file" accept="image/*,application/pdf" onchange="inspUploadPlattegrond(this)" style="display:none">
+                        <button type="button" class="btn btn-sm btn-secondary app-btn app-btn-secondary" id="insp-tpl-plattegrond-view" onclick="inspShowPlattegrond(window._inspTplPlattegrond)" style="display:none">👁️ Bekijken</button>
+                        <button type="button" class="btn btn-sm" id="insp-tpl-plattegrond-remove" onclick="inspRemovePlattegrond()" style="display:none;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)">Loskoppelen</button>
+                    </div>
+                </div>
+
                 <div style="border-top:2px solid var(--border);padding-top:12px;margin-top:4px">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                         <div style="font-weight:700;font-size:0.85rem">Secties & Vragen</div>
@@ -402,7 +413,108 @@
                 } else {
                     window._inspTplSections = [];
                 }
+
+                // Plattegrond-state initialiseren
+                window._inspTplPlattegrond = existing ? (existing.plattegrond_path || null) : null;
+                inspUpdatePlattegrondUI();
             }
+        }
+
+        // ===== PLATTEGROND / TEKENING BIJ FORMULIER =====
+        // Upload gaat direct naar de inspections-bucket (map plattegronden/) ·
+        // het pad komt pas op het template te staan bij Opslaan. Vereist
+        // migratie-plattegrond.sql (kolom + storage-policies).
+        function inspUpdatePlattegrondUI() {
+            const status = document.getElementById('insp-tpl-plattegrond-status');
+            const viewBtn = document.getElementById('insp-tpl-plattegrond-view');
+            const removeBtn = document.getElementById('insp-tpl-plattegrond-remove');
+            if (!status) return;
+            const path = window._inspTplPlattegrond;
+            if (path) {
+                const isPdf = /\.pdf$/i.test(path);
+                status.innerHTML = '✅ Gekoppeld: <span style="font-family:var(--app-font-mono);font-size:0.72rem">' + escapeHtml(path.split('/').pop()) + '</span>' + (isPdf ? ' (PDF)' : '');
+                if (viewBtn) viewBtn.style.display = 'inline-flex';
+                if (removeBtn) removeBtn.style.display = 'inline-flex';
+            } else {
+                status.textContent = 'Geen plattegrond gekoppeld';
+                if (viewBtn) viewBtn.style.display = 'none';
+                if (removeBtn) removeBtn.style.display = 'none';
+            }
+        }
+
+        async function inspUploadPlattegrond(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            if (file.size > 15 * 1024 * 1024) { showToast('⚠️ Bestand te groot (max 15 MB)'); input.value = ''; return; }
+
+            const ext = ((file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '')) || 'png';
+            const path = `plattegronden/${crypto.randomUUID()}.${ext}`;
+            showToast('⏳ Plattegrond uploaden...');
+            const { error } = await sb.storage.from('inspections')
+                .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+            input.value = '';
+            if (error) {
+                if (/row-level security|policy|bucket/i.test(error.message || '')) {
+                    showToast('⚠️ Upload geblokkeerd · draai eerst migratie-plattegrond.sql');
+                } else {
+                    showToast('⚠️ Upload mislukt: ' + error.message);
+                }
+                return;
+            }
+            window._inspTplPlattegrond = path;
+            inspUpdatePlattegrondUI();
+            showToast('✓ Plattegrond geüpload · klik op Opslaan om te bevestigen');
+        }
+
+        function inspRemovePlattegrond() {
+            window._inspTplPlattegrond = null;
+            inspUpdatePlattegrondUI();
+            showToast('Plattegrond losgekoppeld · klik op Opslaan om te bevestigen');
+        }
+
+        // Viewer: afbeeldingen fullscreen met zoom-knoppen (pagina-zoom staat
+        // uit via de viewport-meta, dus +/− knoppen en scrollen om te pannen).
+        // PDF's openen in een nieuw tabblad via een blob-URL.
+        async function inspShowPlattegrond(path) {
+            if (!path) { showToast('⚠️ Geen plattegrond gekoppeld'); return; }
+            const sb = getSupabase();
+            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            showToast('⏳ Plattegrond laden...', 1500);
+            const { data: blob, error } = await sb.storage.from('inspections').download(path);
+            if (error || !blob) { showToast('⚠️ Laden mislukt: ' + (error && error.message || 'onbekend')); return; }
+            const url = URL.createObjectURL(blob);
+
+            if (/\.pdf$/i.test(path)) {
+                window.open(url, '_blank');
+                return;
+            }
+
+            document.getElementById('plattegrond-overlay')?.remove();
+            let zoom = 1;
+            const overlay = document.createElement('div');
+            overlay.id = 'plattegrond-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:10005;background:rgba(10,22,40,0.97);display:flex;flex-direction:column';
+            const knop = 'width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,0.35);background:rgba(255,255,255,0.12);color:white;font-size:1.2rem;font-weight:700;cursor:pointer;display:grid;place-items:center';
+            overlay.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;flex-shrink:0">
+                    <div style="color:white;font-weight:700;font-size:0.9rem">🗺️ Plattegrond</div>
+                    <div style="display:flex;gap:8px">
+                        <button type="button" id="pg-zoom-out" style="${knop}" aria-label="Uitzoomen">−</button>
+                        <button type="button" id="pg-zoom-in" style="${knop}" aria-label="Inzoomen">+</button>
+                        <button type="button" id="pg-close" style="${knop}" aria-label="Sluiten">✕</button>
+                    </div>
+                </div>
+                <div id="pg-scroll" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch">
+                    <img id="pg-img" src="${url}" alt="Plattegrond" style="width:100%;max-width:none;display:block">
+                </div>`;
+            document.body.appendChild(overlay);
+            const img = overlay.querySelector('#pg-img');
+            const applyZoom = () => { img.style.width = (zoom * 100) + '%'; };
+            overlay.querySelector('#pg-zoom-in').onclick = () => { zoom = Math.min(zoom * 1.4, 8); applyZoom(); };
+            overlay.querySelector('#pg-zoom-out').onclick = () => { zoom = Math.max(zoom / 1.4, 1); applyZoom(); };
+            overlay.querySelector('#pg-close').onclick = () => { overlay.remove(); URL.revokeObjectURL(url); };
         }
 
         // Secties renderen in de editor
@@ -622,20 +734,31 @@
                 installation: document.getElementById('insp-tpl-install')?.value?.trim() || null,
                 asset: document.getElementById('insp-tpl-asset')?.value?.trim() || null,
                 sections: window._inspTplSections || [],
+                plattegrond_path: window._inspTplPlattegrond || null,
                 updated_at: new Date().toISOString()
             };
 
             try {
-                if (templateId) {
-                    const { error } = await sb.from('inspection_templates').update(payload).eq('id', templateId);
-                    if (error) throw error;
-                    showToast('✓ Formulier bijgewerkt');
-                } else {
+                // Helper met fallback: DB zonder plattegrond_path kolom
+                // (migratie-plattegrond.sql nog niet gedraaid) mag het opslaan
+                // van de rest niet blokkeren.
+                const opslaan = async (data) => templateId
+                    ? await sb.from('inspection_templates').update(data).eq('id', templateId)
+                    : await sb.from('inspection_templates').insert(data);
+
+                if (!templateId) {
                     payload.created_by = (await sb.auth.getUser()).data.user?.id;
-                    const { error } = await sb.from('inspection_templates').insert(payload);
-                    if (error) throw error;
-                    showToast('✓ Formulier aangemaakt');
                 }
+                let { error } = await opslaan(payload);
+                if (error && /plattegrond_path/.test(error.message || '')) {
+                    console.warn('plattegrond_path kolom niet aanwezig · voer migratie-plattegrond.sql uit');
+                    if (window._inspTplPlattegrond) showToast('⚠️ Plattegrond niet opgeslagen · draai migratie-plattegrond.sql');
+                    const zonder = { ...payload };
+                    delete zonder.plattegrond_path;
+                    ({ error } = await opslaan(zonder));
+                }
+                if (error) throw error;
+                showToast(templateId ? '✓ Formulier bijgewerkt' : '✓ Formulier aangemaakt');
                 document.getElementById('admin-modal').classList.remove('active');
                 inspLoadTemplates();
             } catch (err) {
@@ -1242,10 +1365,19 @@
         // Open een inspectie (start in overzicht-modus)
         async function inspOpenInspection(inspectionId, sectionIdx) {
             const sb = getSupabase();
-            const { data: insp, error } = await sb.from('inspections')
-                .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category)')
+            let { data: insp, error } = await sb.from('inspections')
+                .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category, plattegrond_path)')
                 .eq('id', inspectionId)
                 .single();
+
+            // Fallback: DB zonder plattegrond_path kolom (migratie-plattegrond.sql
+            // nog niet gedraaid) mag het openen van inspecties niet blokkeren
+            if (error && /plattegrond_path/.test(error.message || '')) {
+                ({ data: insp, error } = await sb.from('inspections')
+                    .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category)')
+                    .eq('id', inspectionId)
+                    .single());
+            }
 
             if (error || !insp) {
                 showToast('⚠️ Inspectie niet gevonden');
@@ -1350,6 +1482,7 @@
                         <div class="insp-stat is-warn"><span class="insp-stat-dot"></span><strong>${sectionsWarn}</strong> bezig</div>
                         <div class="insp-stat is-idle"><span class="insp-stat-dot"></span><strong>${sectionsIdle}</strong> open</div>
                     </div>
+                    ${tpl.plattegrond_path ? `<button type="button" class="insp-btn-ghost" style="width:100%;margin-top:12px" onclick="inspShowPlattegrond('${tpl.plattegrond_path}')">🗺️ Plattegrond bekijken</button>` : ''}
                 </div>`;
 
             // Sectie-cards
@@ -1494,7 +1627,10 @@
                     </div>
                     <div class="insp-sectie-header-row">
                         <h2 class="insp-sectie-header-title">${escapeHtml(secName)}</h2>
-                        <div class="insp-pos"><strong>${done}</strong> / ${qs.length}</div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                            ${tpl.plattegrond_path ? `<button type="button" onclick="inspShowPlattegrond('${tpl.plattegrond_path}')" title="Plattegrond bekijken" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--insp-line);background:var(--insp-surface);cursor:pointer;font-size:0.95rem;display:grid;place-items:center">🗺️</button>` : ''}
+                            <div class="insp-pos"><strong>${done}</strong> / ${qs.length}</div>
+                        </div>
                     </div>
                     <div class="insp-micro-progress">
                         <div class="insp-micro-progress-fill" style="width:${sectPct}%"></div>
