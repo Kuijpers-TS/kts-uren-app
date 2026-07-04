@@ -828,7 +828,7 @@
                     const pct = insp.total_questions > 0 ? Math.round(insp.answered_questions / insp.total_questions * 100) : 0;
 
                     return `
-                        <div class="entry-card" style="cursor:pointer">
+                        <div class="entry-card" style="cursor:pointer" onclick="inspOpenInspection('${insp.id}')" title="Openen om na te lopen of aan te passen">
                             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
                                 <div style="flex:1;min-width:0">
                                     <div style="font-weight:700;font-size:0.85rem">${tplName}</div>
@@ -1796,7 +1796,16 @@
         // Sluiten + opslaan
         function inspCloseForm() {
             closeModal('insp-fill-modal');
-            inspLoadUserInspections();
+            // Ververs de lijst waar de gebruiker vandaan kwam. De monteur-lijst
+            // guardt zelf op #insp-user-list + currentUser, dus veilig aan te
+            // roepen. De admin-overzichtslijst (Beheer > Inspecties) verversen we
+            // alleen als die tab zichtbaar is, zodat een door de admin nagelopen
+            // of aangepaste inspectie meteen de nieuwe voortgang/status toont.
+            if (typeof inspLoadUserInspections === 'function') inspLoadUserInspections();
+            const adminOverview = document.getElementById('admin-insp-overzicht');
+            if (adminOverview && adminOverview.style.display !== 'none' && typeof inspLoadInspections === 'function') {
+                inspLoadInspections();
+            }
             window._inspActive = null;
         }
 
