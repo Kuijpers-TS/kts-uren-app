@@ -30,11 +30,13 @@
                     resolved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
                 }
                 document.documentElement.setAttribute('data-theme', resolved);
-                // Inline initial background zodat eerste paint NIET wit is.
-                document.documentElement.style.backgroundColor = resolved === 'dark' ? '#0F1419' : '#FAFAF7';
+                // Inline initial background = KTS-navy (#0A1628). Het inlogscherm
+                // (kts-hero-bg, altijd navy) is het eerste dat verschijnt, dus de
+                // eerste paint sluit daar naadloos op aan · nooit wit, geen flikker.
+                document.documentElement.style.backgroundColor = '#0A1628';
             } catch (e) { /* localStorage geblokkeerd → default dark */
                 document.documentElement.setAttribute('data-theme', 'dark');
-                document.documentElement.style.backgroundColor = '#0F1419';
+                document.documentElement.style.backgroundColor = '#0A1628';
             }
         })();
     </script>
@@ -150,7 +152,7 @@
 
             <!-- Footer -->
             <div style="text-align:center;margin-top:24px;color:rgba(255,255,255,0.6);font-size:0.7rem">
-                © 2026 Kuijpers Technical Services BV · Waarland
+                © 2026 Kuijpers Technical Services BV | Waarland
             </div>
         </div>
 
