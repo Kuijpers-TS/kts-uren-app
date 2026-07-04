@@ -909,14 +909,17 @@
             const defaultProjectId = (currentProject && projects.find(p => p.id === currentProject.id))
                 ? currentProject.id : projects[0].id;
 
+            // Formulier-optie toont alleen de naam · het categorie-achtervoegsel
+            // (" · Piket") maakte lange namen te breed voor het keuzevak en is
+            // niet nodig om een formulier te herkennen.
             const tplOptions = templates.map(t =>
-                `<option value="${t.id}" data-asset="${escapeHtml(t.asset || '')}">${escapeHtml(t.name)}${t.category ? ' · ' + escapeHtml(t.category) : ''}</option>`
+                `<option value="${t.id}" data-asset="${escapeHtml(t.asset || '')}">${escapeHtml(t.name)}</option>`
             ).join('');
             const userOptions = users.map(u =>
                 `<option value="${u.id}">${escapeHtml(u.name || u.email || 'Onbekend')}</option>`
             ).join('');
             const projOptions = projects.map(p =>
-                `<option value="${p.id}" ${p.id === defaultProjectId ? 'selected' : ''}>${escapeHtml(p.project_code || '')} · ${escapeHtml(p.name || '')}</option>`
+                `<option value="${p.id}" ${p.id === defaultProjectId ? 'selected' : ''}>${escapeHtml(p.project_code || '')} | ${escapeHtml(p.name || '')}</option>`
             ).join('');
 
             const firstAsset = (templates[0].asset && templates[0].asset.trim()) || 'NSM-PG1';

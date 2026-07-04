@@ -3807,6 +3807,43 @@
             kmWrap.style.display = (user && user.allow_km !== false) ? 'block' : 'none';
         }
 
+        // ===== NIEUWE-WEEKSTATEN TELLER (admin) =====
+        // Toont een badge op de Beheer-tegel + Weekstaten-tegel met het aantal
+        // verstuurde weekstaten dat binnenkwam sinds de admin de weekstaten-lijst
+        // voor het laatst opende (tijdstip in localStorage). Vervangt de oude
+        // notificatie-mail. Alleen voor admins.
+        function _setWeekstatenBadge(n) {
+            ['beheer-badge', 'weekstaten-tile-badge'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (n > 0) { el.textContent = n > 99 ? '99+' : String(n); el.style.display = 'inline-flex'; }
+                else el.style.display = 'none';
+            });
+        }
+
+        async function updateWeekstatenBadge() {
+            if (!currentUser || currentUser.role !== 'admin') { _setWeekstatenBadge(0); return; }
+            const sb = getSupabase();
+            if (!sb) return;
+            let seen = localStorage.getItem('kts-weekstaten-seen');
+            if (!seen) { // eerste keer · vanaf nu tellen (geen historische inhaalslag)
+                seen = new Date().toISOString();
+                localStorage.setItem('kts-weekstaten-seen', seen);
+            }
+            try {
+                const { count } = await sb.from('week_status')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'verstuurd')
+                    .gt('submitted_at', seen);
+                _setWeekstatenBadge(count || 0);
+            } catch (e) { /* stil · badge blijft zoals hij is */ }
+        }
+
+        function markWeekstatenSeen() {
+            localStorage.setItem('kts-weekstaten-seen', new Date().toISOString());
+            _setWeekstatenBadge(0);
+        }
+
         // ===== WEEKSTATEN ADMIN =====
         // Archief-filter state: alleen jaar (geen open/betaald · weekstaten hebben
         // hun eigen status-flow en worden niet 'betaald').
@@ -3817,6 +3854,8 @@
         }
 
         async function loadWeekstaten() {
+            // Weekstaten-tab geopend · markeer als gezien, badge naar 0
+            markWeekstatenSeen();
             const sb = getSupabase();
             if (!sb) return;
             const listEl = document.getElementById('admin-weekstaten-list');

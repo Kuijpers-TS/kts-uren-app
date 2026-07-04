@@ -1872,44 +1872,10 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                     logAudit('week_ondertekend_verstuurd', { week: currentWeekNumber });
                     notifyOtherTabs();
 
-                    // 8. Open vooringevulde notificatie-mail naar KTS administratie.
-                    // Skip in admin-namens-flow · daar is geen extra notificatie nodig
-                    // (admin verwerkt het zelf in de Concept-lijst).
-                    let mailOpened = false;
-                    if (!_adminSignOverride) {
-                        try {
-                            const userNameMail = currentUser ? currentUser.name : 'Onbekend';
-                            const projectNameMail = currentProject ? currentProject.name : '';
-                            const mailSubject = encodeURIComponent('Weekstaat week ' + currentWeekNumber + '/' + currentYear + ' - ' + userNameMail + ' - ' + projectNameMail);
-                            const mailBody = encodeURIComponent(
-                                'Beste KTS,\n\n' +
-                                'Mijn weekstaat voor week ' + currentWeekNumber + ' is zojuist ondertekend en verstuurd.\n\n' +
-                                'Medewerker: ' + userNameMail + '\n' +
-                                'Project: ' + projectNameMail + '\n' +
-                                'Week: ' + currentWeekNumber + ' / ' + currentYear + '\n' +
-                                'Bestand: ' + fileName + '\n\n' +
-                                'Met vriendelijke groet,\n' + userNameMail
-                            );
-                            const mailUrl = 'mailto:uren@kuijpers-ts.nl?subject=' + mailSubject + '&body=' + mailBody;
-                            // Gebruik een <a>-element met click() i.p.v. window.location.href —
-                            // betrouwbaarder bij mailto: vanuit async flow (de href-redirect
-                            // werd door subsequent renderOverview() soms gecanceld).
-                            const a = document.createElement('a');
-                            a.href = mailUrl;
-                            a.target = '_self';
-                            a.rel = 'noopener';
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            mailOpened = true;
-                        } catch (mailErr) {
-                            console.warn('Notificatie-mail openen mislukt:', mailErr);
-                        }
-                    }
-
-                    showToast(mailOpened
-                        ? '✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd · PDF gedownload + mail geopend'
-                        : '✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd · PDF gedownload');
+                    // 8. Geen notificatie-mail meer · de weekstaat staat vanaf nu
+                    // (status 'verstuurd') direct in de app. De admin ziet 'm in
+                    // Beheer > Weekstaten met een teller-badge op nieuwe binnenkomsten.
+                    showToast('✅ Week ' + currentWeekNumber + ' ondertekend & verstuurd · PDF gedownload');
                 }
                 if (!_adminSignOverride) await renderOverview();
             } catch (err) {

@@ -54,7 +54,7 @@
             if (name === 'overzicht') renderOverview();
             if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
             if (name === 'administratie') { adminLoadScreen(); }
-            if (name === 'profiel') renderProfile();
+            if (name === 'profiel') { renderProfile(); if (typeof updateWeekstatenBadge === 'function') updateWeekstatenBadge(); }
             // Kosten-tab: laad de DB-expenses voor huidige week zodat de lijst klopt
             if (name === 'kosten') {
                 const sbK = getSupabase();
@@ -1310,6 +1310,7 @@
             await loadDataFromSupabase();
             startSessionMonitor();
             initDelegateBar();
+            if (typeof updateWeekstatenBadge === 'function') updateWeekstatenBadge();
             logAudit('ingelogd', { device: /Mobi/i.test(navigator.userAgent) ? 'mobiel' : 'desktop' });
             updateClockUI();
             checkWeekReminder();
@@ -1517,6 +1518,8 @@
                     await loadDataFromSupabase();
                     startSessionMonitor();
                     initDelegateBar();
+                    if (typeof updateWeekstatenBadge === 'function') updateWeekstatenBadge();
+            if (typeof updateWeekstatenBadge === 'function') updateWeekstatenBadge();
                     autoApproveExpiredWeekstaten();
                 }
             } catch (err) {
