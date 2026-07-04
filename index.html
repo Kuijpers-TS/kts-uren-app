@@ -455,7 +455,7 @@
                 <!-- Zoekbalk transacties -->
                 <div style="position:relative;margin-bottom:12px">
                     <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem">🔍</span>
-                    <input type="text" class="admin-search-input" id="admin-list-search" placeholder="Zoek transactie..." oninput="adminRenderListViewDebounced()">
+                    <input type="text" class="admin-search-input" id="admin-list-search" placeholder="Zoek transactie..." aria-label="Zoek transactie" oninput="adminRenderListViewDebounced()">
                 </div>
 
                 <!-- Filter chips -->
@@ -504,7 +504,7 @@
                 <!-- Zoeken -->
                 <div style="position:relative;margin-bottom:12px">
                     <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem">🔍</span>
-                    <input type="text" class="admin-search-input" id="admin-invoice-search" placeholder="Zoek op bestandsnaam of bedrag..." oninput="adminSearchInvoicesDebounced(this.value)">
+                    <input type="text" class="admin-search-input" id="admin-invoice-search" placeholder="Zoek op bestandsnaam of bedrag..." aria-label="Zoek op bestandsnaam of bedrag" oninput="adminSearchInvoicesDebounced(this.value)">
                 </div>
 
                 <!-- Suggesties -->
@@ -515,7 +515,7 @@
                     <button class="btn btn-secondary" onclick="adminShowCategoryPicker()">📁 Categorie</button>
                     <button class="btn btn-secondary" onclick="adminTxAction('skipped')">Overslaan</button>
                     <button class="btn btn-primary" id="admin-btn-link" onclick="adminTxAction('matched')" disabled>✅ Koppelen</button>
-                    <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:var(--app-alert-soft);color:#dc2626;border-color:#fecaca">🔓 Ontkoppelen</button>
+                    <button class="btn btn-secondary" id="admin-btn-unlink" onclick="adminUnlinkTx()" style="display:none;background:var(--app-alert-soft);color:var(--app-alert);border-color:var(--app-alert-line)">🔓 Ontkoppelen</button>
                 </div>
                 <!-- Categorie picker -->
                 <div id="admin-category-picker" style="display:none;margin-top:8px;background:var(--app-surface);border-radius:12px;padding:12px;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
@@ -526,7 +526,7 @@
                 <!-- Navigatie + verwijderen -->
                 <div style="display:flex;gap:8px;margin-top:10px">
                     <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(-1)">← Vorige</button>
-                    <button class="btn btn-sm" style="padding:6px 10px;background:var(--app-alert-soft);color:var(--app-alert);font-weight:600;border:none;border-radius:8px;cursor:pointer;font-size:0.78rem" onclick="adminDeleteTx()">🗑️</button>
+                    <button class="btn btn-sm" style="padding:6px 10px;background:var(--app-alert-soft);color:var(--app-alert);font-weight:600;border:none;border-radius:8px;cursor:pointer;font-size:0.78rem" onclick="adminDeleteTx()" aria-label="Transactie verwijderen" title="Transactie verwijderen">🗑️</button>
                     <button class="btn btn-sm btn-secondary" style="flex:1" onclick="adminWizardNav(1)">Volgende →</button>
                 </div>
             </div>
@@ -542,7 +542,7 @@
                 <div class="modal-handle"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                     <h3 style="font-size:0.95rem;font-weight:700;margin:0" id="admin-preview-title">Factuur preview</h3>
-                    <button onclick="closeModal('admin-preview-modal')" style="background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
+                    <button type="button" onclick="closeModal('admin-preview-modal')" aria-label="Sluiten" title="Sluiten" style="background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
                 </div>
                 <iframe id="admin-preview-iframe" style="flex:1;border:none;border-radius:8px;background:var(--app-bg-deep)" title="Factuur preview"></iframe>
             </div>
@@ -724,7 +724,7 @@
                     </div>
                     <input type="file" id="import-file-project" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('project', this)">
                 </div>
-                <input type="text" id="admin-search-project" placeholder="Zoek project..." oninput="filterAdminListDebounced('project')" style="width:100%;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
+                <input type="text" id="admin-search-project" placeholder="Zoek project..." aria-label="Zoek project" oninput="filterAdminListDebounced('project')" style="width:100%;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-project-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -742,7 +742,7 @@
                     <input type="file" id="import-file-persoon" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel('persoon', this)">
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." oninput="filterAdminListDebounced('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="admin-search-persoon" placeholder="Zoek bedrijf of persoon..." aria-label="Zoek bedrijf of persoon" oninput="filterAdminListDebounced('persoon')" style="flex:1;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);white-space:nowrap;cursor:pointer"><input type="checkbox" id="admin-show-archived" onchange="loadAdminData('personen')" style="width:14px;height:14px"> Archief</label>
                 </div>
                 <div id="admin-persoon-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
@@ -766,7 +766,7 @@
                     <div style="font-weight:600;font-size:0.85rem;color:var(--muted)">Tarieven per project / medewerker</div>
                     <button class="btn btn-primary btn-sm" onclick="openAdminModal('tarief')">+ Nieuw tarief</button>
                 </div>
-                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." oninput="filterAdminListDebounced('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
+                <input type="text" id="admin-search-tarief" placeholder="Zoek tarief..." aria-label="Zoek tarief" oninput="filterAdminListDebounced('tarief')" style="width:100%;padding:8px 12px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;margin-bottom:8px">
                 <div id="admin-tarief-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div></div>
             </div>
 
@@ -814,7 +814,7 @@
                             </select>
                         </div>
                     </div>
-                    <button class="btn btn-primary" onclick="previewPO()" style="width:100%;margin-top:8px">👁 Preview</button>
+                    <button class="app-btn app-btn-ghost app-btn-block app-btn-lg" onclick="previewPO()" style="margin-top:8px">👁 Preview</button>
                 </div>
                 <div id="io-preview" style="margin-top:20px;padding:16px;background:var(--app-surface);border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
@@ -885,7 +885,7 @@
                             </div>
                         </div>
                     </label>
-                    <button class="btn btn-primary" onclick="previewInvoice()" style="width:100%;margin-top:8px">👁 Preview Factuur</button>
+                    <button class="app-btn app-btn-ghost app-btn-block app-btn-lg" onclick="previewInvoice()" style="margin-top:8px">👁 Preview Factuur</button>
                 </div>
                 <div id="inv-preview" style="margin-top:20px;padding:16px;background:var(--app-surface);border-radius:8px;border:1px solid var(--border);display:none">
                     <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px">Preview</div>
@@ -1091,9 +1091,9 @@
                         <div class="app-action-row-desc">Pas aan voor betere leesbaarheid</div>
                     </div>
                     <div class="app-zoom-control">
-                        <button class="app-zoom-btn app-zoom-btn-sm" type="button" data-zoom="klein" onclick="setZoom('klein')">A</button>
-                        <button class="app-zoom-btn app-zoom-btn-md" type="button" data-zoom="normaal" onclick="setZoom('normaal')">A</button>
-                        <button class="app-zoom-btn app-zoom-btn-lg" type="button" data-zoom="groot" onclick="setZoom('groot')">A</button>
+                        <button class="app-zoom-btn app-zoom-btn-sm" type="button" data-zoom="klein" onclick="setZoom('klein')" aria-label="Kleine tekst" title="Kleine tekst">A</button>
+                        <button class="app-zoom-btn app-zoom-btn-md" type="button" data-zoom="normaal" onclick="setZoom('normaal')" aria-label="Normale tekst" title="Normale tekst">A</button>
+                        <button class="app-zoom-btn app-zoom-btn-lg" type="button" data-zoom="groot" onclick="setZoom('groot')" aria-label="Grote tekst" title="Grote tekst">A</button>
                     </div>
                 </div>
 
@@ -1106,13 +1106,13 @@
                         <div class="app-action-row-desc">Licht, donker of volg systeem</div>
                     </div>
                     <div class="app-theme-control">
-                        <button class="app-theme-btn" type="button" data-theme-pref="light" onclick="setTheme('light')" title="Licht">
+                        <button class="app-theme-btn" type="button" data-theme-pref="light" onclick="setTheme('light')" title="Licht" aria-label="Licht thema">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
                         </button>
-                        <button class="app-theme-btn" type="button" data-theme-pref="auto" onclick="setTheme('auto')" title="Volg systeem">
+                        <button class="app-theme-btn" type="button" data-theme-pref="auto" onclick="setTheme('auto')" title="Volg systeem" aria-label="Volg systeem">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>
                         </button>
-                        <button class="app-theme-btn" type="button" data-theme-pref="dark" onclick="setTheme('dark')" title="Donker">
+                        <button class="app-theme-btn" type="button" data-theme-pref="dark" onclick="setTheme('dark')" title="Donker" aria-label="Donker thema">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                         </button>
                     </div>
@@ -1229,12 +1229,12 @@
                 Declaratie toevoegen
             </div>
             <div class="form-group" style="margin-bottom:12px">
-                <label>Datum</label>
+                <label for="exp-date">Datum</label>
                 <input type="date" id="exp-date">
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Categorie</label>
+                    <label for="exp-cat">Categorie</label>
                     <select id="exp-cat">
                         <option value="transport">Transport</option>
                         <option value="parkeren">Parkeren</option>
@@ -1248,13 +1248,13 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Bedrag (€)</label>
-                    <input type="number" step="0.01" id="exp-amount" placeholder="">
+                    <label for="exp-amount">Bedrag (€)</label>
+                    <input type="number" step="0.01" id="exp-amount" placeholder="0,00">
                 </div>
             </div>
             <div class="form-group" style="margin-top:12px">
-                <label>Omschrijving</label>
-                <input type="text" id="exp-desc" placeholder="">
+                <label for="exp-desc">Omschrijving</label>
+                <input type="text" id="exp-desc" placeholder="Bijv. parkeergeld, materiaal, tolheffing">
             </div>
             <div class="form-group" style="margin-top:12px">
                 <label>Bon uploaden</label>

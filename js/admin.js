@@ -823,7 +823,7 @@
             const projSel = document.getElementById('io-filter-project');
             if (projSel && window._adminProjects) {
                 projSel.innerHTML = '<option value="">-- Selecteer project --</option>' +
-                    window._adminProjects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('');
+                    window._adminProjects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('');
             }
 
             // Vul medewerker dropdown
@@ -903,7 +903,7 @@
                         const friOfWeek = new Date(monOfWeek);
                         friOfWeek.setDate(monOfWeek.getDate() + 4);
                         const fmtD = d => `${d.getDate()} ${['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][d.getMonth()]}`;
-                        return `<option value="${w}">Week ${w} (${fmtD(monOfWeek)} – ${fmtD(friOfWeek)})</option>`;
+                        return `<option value="${w}">Week ${w} (${fmtD(monOfWeek)} t/m ${fmtD(friOfWeek)})</option>`;
                     }).join('');
             }
         }
@@ -1032,7 +1032,7 @@
                 const userMap = {};
                 (window._adminUsers || []).forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
                 const projMap = {};
-                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code + ' ·' + p.name); });
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code + ' · ' + p.name); });
                 const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
                 listEl.innerHTML = ioList.map(io => {
@@ -1073,7 +1073,7 @@
 
             } catch (err) {
                 console.error('Inkooporders laden mislukt:', err);
-                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--app-alert);font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
             }
         }
 
@@ -1135,7 +1135,7 @@
 
                 // Open mailto
                 const aanhef = recipientName ? recipientName.split(' ')[0] : '';
-                const subject = encodeURIComponent(`Inkooporder ${ioNumber} ·${projCode}`);
+                const subject = encodeURIComponent(`Inkooporder ${ioNumber} · ${projCode}`);
                 const body = encodeURIComponent(
                     `Hoi ${aanhef},\n\n` +
                     `Hierbij de inkooporder ${ioNumber} voor project ${projCode}${projName ? ' (' + projName + ')' : ''}.\n\n` +
@@ -1211,7 +1211,7 @@
             if (projSel.options.length <= 1 && window._adminProjects) {
                 const projOpts = (window._adminProjects || [])
                     .filter(p => p.status === 'active')
-                    .map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`)
+                    .map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`)
                     .join('');
                 projSel.insertAdjacentHTML('beforeend', projOpts);
             }
@@ -1402,7 +1402,7 @@
             if (userIdsList.length === 0) {
                 const preview = document.getElementById('inv-preview');
                 const content = document.getElementById('inv-preview-content');
-                content.innerHTML = `<div style="background:var(--app-alert-soft);border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
+                content.innerHTML = `<div style="background:var(--app-alert-soft);border:1px solid var(--app-alert-line);border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:var(--app-alert)">
                     Alle weken zijn al gefactureerd. Er zijn geen nieuwe (medewerker, week) combinaties om te factureren.
                 </div>`;
                 preview.style.display = 'block';
@@ -1573,7 +1573,7 @@
 
             // Als geen perUser meer over (alles al gefactureerd of geen uren)
             if (Object.keys(perUser).length === 0) {
-                html += `<div style="background:var(--app-alert-soft);border:1px solid #ef4444;border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:#dc2626">
+                html += `<div style="background:var(--app-alert-soft);border:1px solid var(--app-alert-line);border-radius:8px;padding:16px;text-align:center;font-size:0.9rem;color:var(--app-alert)">
                     Geen factureerbare uren gevonden voor deze selectie.
                 </div>`;
                 content.innerHTML = html;
@@ -2421,7 +2421,7 @@
                 const userMap = {};
                 (window._adminUsers || []).forEach(u => { userMap[u.id] = escapeHtml(u.name || u.email); });
                 const projMap = {};
-                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code + ' ·' + p.name); });
+                (window._adminProjects || []).forEach(p => { projMap[p.id] = escapeHtml(p.project_code + ' · ' + p.name); });
                 const MONTHS_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
                 listEl.innerHTML = filteredInvoices.map(inv => {
@@ -2461,7 +2461,7 @@
 
             } catch (err) {
                 console.error('Facturen laden mislukt:', err);
-                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--app-alert);font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
             }
         }
 
@@ -2868,7 +2868,7 @@
                 const w = ioData.weekData[weekKey];
                 const weekLabel = `Week ${String(w.weekNum).padStart(2,'0')}/${w.year}`;
                 if (w.regHours > 0) {
-                    items.push({ nr: nr++, desc: `Reguliere uren ma–vr · ${weekLabel}`, sub: projectName, qty: w.regHours, unit: 'u', price: ioData.rate.hourly_rate });
+                    items.push({ nr: nr++, desc: `Reguliere uren ma-vr · ${weekLabel}`, sub: projectName, qty: w.regHours, unit: 'u', price: ioData.rate.hourly_rate });
                 }
                 if (w.satHours > 0) {
                     const r = ioData.rate.hourly_rate * ioData.rate.saturday_multiplier;
@@ -3781,7 +3781,7 @@
             window._tariffProjects = projects || [];
             const sel = document.getElementById('adm-tar-project');
             if (projects) {
-                sel.innerHTML = projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('');
+                sel.innerHTML = projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('');
             }
             updateTariffKmVisibility();
             // Gebruikers dropdown vullen
@@ -3869,7 +3869,7 @@
                 window._adminProjects.forEach(p => {
                     const opt = document.createElement('option');
                     opt.value = p.id;
-                    opt.textContent = p.project_code + ' ·' + p.name;
+                    opt.textContent = p.project_code + ' | ' + p.name;
                     projSel.appendChild(opt);
                 });
             }
@@ -4061,7 +4061,7 @@
                 }).join('');
             } catch (err) {
                 console.error('Weekstaten laden mislukt:', err);
-                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
+                listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--app-alert);font-size:0.85rem">Fout bij laden: ' + err.message + '</div>';
             }
         }
 
@@ -4136,7 +4136,7 @@
                 const modalTitle = document.getElementById('admin-modal-title');
                 const modalBody = document.getElementById('admin-modal-body');
 
-                modalTitle.textContent = '📥 Excel Import ·' + (type === 'persoon' ? 'Personen & Bedrijven' : 'Projecten');
+                modalTitle.textContent = '📥 Excel-import · ' + (type === 'persoon' ? 'Personen & Bedrijven' : 'Projecten');
 
                 // Mapping UI + preview tabel
                 const dbFields = type === 'persoon'
@@ -4146,14 +4146,14 @@
                     ? ['Naam*','Contactpersoon','Type','KvK','BTW','Adres','Postcode','Stad','Land','Telefoon','E-mail','E-mail Inkooporder']
                     : ['Code*','Naam*','Klant','Locatie','Omschrijving','Standaard locatie','Startdatum','Status'];
 
-                let html = '<div style="font-size:0.8rem;margin-bottom:10px;color:#666">Gevonden: <b>' + rows.length + '</b> rijen in "' + sheetName + '"</div>';
+                let html = '<div style="font-size:0.8rem;margin-bottom:10px;color:var(--app-ink-500)">Gevonden: <b>' + rows.length + '</b> rijen in "' + sheetName + '"</div>';
 
                 // Kolomkoppeling
                 html += '<div style="margin-bottom:12px"><div style="font-weight:600;font-size:0.85rem;margin-bottom:6px">Kolomkoppeling</div>';
                 html += '<div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:4px;align-items:center;font-size:0.8rem">';
                 dbFields.forEach((field, i) => {
                     html += '<div style="font-weight:500">' + dbLabels[i] + '</div>';
-                    html += '<div style="text-align:center;color:#999">←</div>';
+                    html += '<div style="text-align:center;color:var(--app-ink-400)">←</div>';
                     html += '<select id="imp-map-' + field + '" style="padding:4px 6px;border:1px solid var(--app-line-strong);border-radius:6px;font-size:0.8rem">';
                     html += '<option value="">Overslaan</option>';
                     excelCols.forEach(col => {
@@ -4281,13 +4281,13 @@
                 <input type="email" class="ec-email" placeholder="E-mail" value="${data ? escapeHtml(data.email||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
                 <input type="text" class="ec-role" placeholder="Functie" value="${data ? escapeHtml(data.role||'') : ''}" style="width:calc(100% - 24px);padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
                 <div style="display:flex;gap:12px;margin-top:2px;font-size:0.75rem">
-                    <label class="cb-weekstaat" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                    <label class="cb-weekstaat" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--app-ink-700)">
                         <input type="checkbox" class="ec-recv-weekstaat" ${data && data.receives_weekstaat ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Weekstaten
                     </label>
-                    <label class="cb-factuur" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                    <label class="cb-factuur" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--app-ink-700)">
                         <input type="checkbox" class="ec-recv-factuur" ${data && data.receives_factuur ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Facturen
                     </label>
-                    <label class="cb-io" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">
+                    <label class="cb-io" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--app-ink-700)">
                         <input type="checkbox" class="ec-recv-io" ${data && data.receives_io ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--kts-blue)"> Inkooporders
                     </label>
                 </div>
@@ -4536,7 +4536,7 @@
             if (projects.length === 0) { showToast('⚠️ Geen andere actieve projecten om naartoe te verplaatsen'); return; }
 
             const options = projects.map(p =>
-                `<option value="${p.id}">${escapeHtml(p.project_code || '')} · ${escapeHtml(p.name || '')}</option>`
+                `<option value="${p.id}">${escapeHtml(p.project_code || '')} | ${escapeHtml(p.name || '')}</option>`
             ).join('');
             const fields = `
                 <div style="margin-bottom:14px;padding:12px;background:var(--app-info-soft);border-radius:8px;font-size:0.85rem">
@@ -4892,7 +4892,7 @@
                     <div>
                         <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">PROJECT</label>
                         <select id="anw-project" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem">
-                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('')}
+                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('')}
                         </select>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -5937,7 +5937,7 @@
             const content = `
                 <div style="margin-bottom:16px;padding:12px;background:var(--app-info-soft);border-radius:8px;font-size:0.85rem">
                     <div><strong>Medewerker:</strong> ${escapeHtml(userName)}</div>
-                    <div><strong>Project:</strong> ${escapeHtml(projCode)} ·${escapeHtml(projName)}</div>
+                    <div><strong>Project:</strong> ${escapeHtml(projCode)} · ${escapeHtml(projName)}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
@@ -6087,11 +6087,11 @@
 
                 // Fallback: altijd mailto openen als Edge Function faalt
                 if (!edgeFunctionOk) {
-                    const subject = encodeURIComponent(`Weekstaat ter goedkeuring ·${userName} · Week ${weekNumber}/${year}`);
+                    const subject = encodeURIComponent(`Weekstaat ter goedkeuring · ${userName} · Week ${weekNumber}/${year}`);
                     const mailBody = encodeURIComponent(
                         `Beste ${name || 'opdrachtgever'},\n\n` +
                         `Graag ontvangen wij uw goedkeuring voor de weekstaat van ${userName}.\n\n` +
-                        `Project: ${projCode} ·${projName}\n` +
+                        `Project: ${projCode} · ${projName}\n` +
                         `Week: ${weekNumber} / ${year}\n\n` +
                         `U kunt de weekstaat bekijken en digitaal ondertekenen via onderstaande link:\n` +
                         `${approvalUrl}\n\n` +
@@ -6145,7 +6145,7 @@
                 <div style="margin-bottom:16px;padding:12px;background:var(--app-ok-soft);border-radius:8px;font-size:0.85rem">
                     <div style="font-weight:700;color:var(--app-ok);margin-bottom:4px">✅ Weekstaat goedgekeurd</div>
                     <div><strong>Medewerker:</strong> ${escapeHtml(userName)}</div>
-                    <div><strong>Project:</strong> ${escapeHtml(projCode)} ·${escapeHtml(projName)}</div>
+                    <div><strong>Project:</strong> ${escapeHtml(projCode)} · ${escapeHtml(projName)}</div>
                     <div><strong>Week:</strong> ${weekNumber} / ${year}</div>
                 </div>
                 <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever met de weekstaat PDF als bijlage.</div>
@@ -6293,7 +6293,7 @@
                         showStatus('Edge Function niet beschikbaar · mail openen zonder bijlage', true);
                     }
 
-                    const subject = encodeURIComponent(`Bevestiging weekstaat goedgekeurd ·${userName} · Week ${weekNumber}/${year}`);
+                    const subject = encodeURIComponent(`Bevestiging weekstaat goedgekeurd · ${userName} · Week ${weekNumber}/${year}`);
                     const attachLine = pdfBase64 && pdfFileName
                         ? `Zie bijlage: ${pdfFileName} (zojuist gedownload · sleep aub als bijlage in deze mail).\n\n`
                         : '';

@@ -370,6 +370,9 @@
             transition: background 250ms ease, border-color 250ms ease, transform 250ms ease, box-shadow 250ms ease;
             letter-spacing: 0.3px;
         }
+        /* Uitgeschakelde knoppen krijgen overal dezelfde visuele feedback.
+           Vangt o.a. de admin-koppelknop op die eerder geen disabled-stijl had. */
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         /* Primary CTA · bg primary → accent-light on hover + lift (website-stijl) */
         .btn-primary {
             background: var(--kts-blue);
@@ -386,7 +389,7 @@
         .btn-secondary { background: var(--app-bg-deep); color: var(--text); }
         .btn-success { background: var(--green); color: white; }
         .btn-block { width: 100%; }
-        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+        .btn-sm { padding: 6px 14px; font-size: 0.8rem; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
         /* Action-knoppen in beheer-lijsten (icoon-knoppen 📄 📧 ✓ ↩️ 🗑️):
            subtiele lift + accent-tinted shadow op hover, scale op active.
            Werkt voor alle .btn-sm met inline background-tokens. */
@@ -565,6 +568,10 @@
         .stat-card.highlight .stat-value { color: white; }
         .stat-card.highlight .stat-label { color: rgba(255,255,255,0.8); }
         .stat-card.highlight::before { background: var(--kts-accent-light); }
+        /* In dark mode inverteert --kts-blue naar lichtblauw; witte tekst zou
+           dan wegvallen. Zet een vaste, niet-inverterende KTS-blauw zodat de
+           witte cijfers leesbaar blijven (~7.9:1 contrast). */
+        [data-theme="dark"] .stat-card.highlight { background: #07567F; border-color: #07567F; }
 
         /* ===== STATUS BADGES ===== */
         .status-badge {
@@ -1740,7 +1747,7 @@
         .insp-photo-remove {
           position: absolute;
           top: 4px; right: 4px;
-          width: 22px; height: 22px;
+          width: 32px; height: 32px;
           border-radius: 50%;
           background: rgba(15, 27, 45, 0.8);
           color: white;
@@ -1751,7 +1758,7 @@
           z-index: 2;
           padding: 0;
         }
-        .insp-photo-remove svg { width: 10px; height: 10px; }
+        .insp-photo-remove svg { width: 12px; height: 12px; }
 
         /* Bottom-nav */
         .insp-vraag-nav {
@@ -2075,6 +2082,7 @@
           font-size: 12px;
           font-weight: 500;
           padding: 7px 12px;
+          min-height: 40px;
           border: 1px solid var(--insp-line-strong);
           background: var(--insp-surface);
           color: var(--insp-ink-700);
@@ -2082,6 +2090,7 @@
           cursor: pointer;
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 5px;
           transition: all 150ms ease;
         }

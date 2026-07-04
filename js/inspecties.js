@@ -545,7 +545,7 @@
                                 </div>
                             </div>
                             <button onclick="inspEditQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Bewerken">✏️</button>
-                            <button onclick="inspRemoveQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Verwijderen">🗑</button>
+                            <button onclick="inspRemoveQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Verwijderen">🗑️</button>
                         </div>`;
                 }).join('');
 
@@ -553,7 +553,7 @@
                     <div style="border:2px solid var(--app-line);border-radius:10px;padding:12px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                             <input type="text" value="${sec.title || ''}" onchange="window._inspTplSections[${si}].title=this.value" placeholder="Sectienaam (bijv. Bekabeling)" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-weight:600">
-                            <button onclick="inspRemoveSection(${si})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:4px;margin-left:8px" title="Sectie verwijderen">🗑</button>
+                            <button onclick="inspRemoveSection(${si})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:4px;margin-left:8px" title="Sectie verwijderen">🗑️</button>
                         </div>
                         <div>${questions}</div>
                         <button onclick="inspAddQuestion(${si})" class="btn btn-sm" style="width:100%;margin-top:6px;font-size:0.75rem;background:var(--app-info-soft);color:var(--kts-blue);border:1px dashed var(--kts-blue)">+ Vraag toevoegen</button>
@@ -1340,7 +1340,7 @@
                 location: tpl.location || '',
                 installation: tpl.installation || '',
                 asset: cleanAsset,
-                description: tpl.name + ' ·' + cleanAsset,
+                description: tpl.name + ' · ' + cleanAsset,
                 answers: copiedAnswers,
                 status: 'concept',
                 total_questions: totalQ,
@@ -2453,7 +2453,7 @@
                         const endNum = photoBijlage.length;
                         const refText = startNum === endNum
                             ? `Foto ${startNum} · zie bijlage`
-                            : `Foto ${startNum}–${endNum} · zie bijlage`;
+                            : `Foto ${startNum}-${endNum} · zie bijlage`;
                         doc.setFontSize(7);
                         doc.setFont('helvetica', 'italic');
                         doc.setTextColor(7, 86, 127);

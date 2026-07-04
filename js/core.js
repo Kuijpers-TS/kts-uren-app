@@ -199,7 +199,7 @@
             endDate.setDate(endDate.getDate() + 6);
             const startStr = `${currentWeekMonday.getDate()} ${MONTHS_SHORT[currentWeekMonday.getMonth()]}`;
             const endStr = `${endDate.getDate()} ${MONTHS_SHORT[endDate.getMonth()]}`;
-            return `Week ${currentWeekNumber} · ${startStr} – ${endStr}`;
+            return `Week ${currentWeekNumber} · ${startStr} t/m ${endStr}`;
         }
 
         // ===== WERKWEEK INSTELLINGEN =====

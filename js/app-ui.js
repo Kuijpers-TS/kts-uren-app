@@ -759,7 +759,7 @@
                     weekStart.setDate(weekStart.getDate() + 7);
                     continue;
                 }
-                const label = `Week ${wn} (${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
+                const label = `Week ${wn} (${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} t/m ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]})`;
 
                 // Check of dit de week is waar de gebruiker nu op staat (uren tab)
                 const isCurrent = weekStart.getTime() === currentWeekMonday.getTime();
@@ -806,7 +806,7 @@
                     ? `<button class="app-week-row-pdf" onclick="event.stopPropagation();goToWeekAndDownload(${weekOffset})" type="button" aria-label="Download weekstaat PDF" title="Download PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg></button>`
                     : `<span class="app-week-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>`;
 
-                const rangeText = `${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} – ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]}`;
+                const rangeText = `${weekStart.getDate()} ${MONTHS_SHORT[weekStart.getMonth()]} t/m ${endD.getDate()} ${MONTHS_SHORT[endD.getMonth()]}`;
 
                 weekRows += `
                     <button class="app-week-row ${rowState}" type="button" onclick="goToWeek(${weekOffset})">
@@ -851,10 +851,10 @@
 
                 prevBtn.disabled = !canGoPrev;
                 prevBtn.style.opacity = canGoPrev ? '1' : '0.3';
-                prevBtn.style.background = canGoPrev ? 'var(--kts-blue)' : '#b0bec5';
+                prevBtn.style.background = canGoPrev ? 'var(--kts-blue)' : 'var(--app-ink-300)';
                 nextBtn.disabled = !canGoNext;
                 nextBtn.style.opacity = canGoNext ? '1' : '0.3';
-                nextBtn.style.background = canGoNext ? 'var(--kts-blue)' : '#b0bec5';
+                nextBtn.style.background = canGoNext ? 'var(--kts-blue)' : 'var(--app-ink-300)';
             }
           } catch (err) {
             console.error('renderOverview fout:', err);

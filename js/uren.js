@@ -515,7 +515,7 @@
             if (filled > 0) {
                 markDirty();
                 renderDays();
-                showToast('✓ ' + filled + ' werkdag' + (filled > 1 ? 'en' : '') + ' gevuld (07:00–16:00, 1u pauze)');
+                showToast('✓ ' + filled + ' werkdag' + (filled > 1 ? 'en' : '') + ' gevuld (07:00-16:00, 1u pauze)');
             } else {
                 showToast('Alle werkdagen zijn al gevuld');
             }
@@ -925,7 +925,7 @@
             // Summary KPI strip + opmerkingen
             y += 4;
             const kpis = [
-                { label: 'REGULIER MA–VR', value: fmtNum(weekdayHours), unit: 'u',  accent: false },
+                { label: 'REGULIER MA-VR', value: fmtNum(weekdayHours), unit: 'u',  accent: false },
                 { label: 'ZATERDAG',       value: fmtNum(satHours),     unit: 'u',  accent: false },
                 { label: 'ZONDAG/FEEST',   value: fmtNum(sunHours),     unit: 'u',  accent: false },
                 { label: 'REIS KM',        value: (totalKm || 0).toLocaleString('nl-NL'), unit: 'km', accent: false },
@@ -2120,7 +2120,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 if (btn) {
                     btn.disabled = !canGoNext;
                     btn.style.opacity = canGoNext ? '1' : '0.3';
-                    btn.style.background = canGoNext ? 'var(--kts-blue)' : '#b0bec5';
+                    btn.style.background = canGoNext ? 'var(--kts-blue)' : 'var(--app-ink-300)';
                 }
             });
             ['week-prev-btn', 'kosten-prev-btn'].forEach(id => {
@@ -2128,7 +2128,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
                 if (btn) {
                     btn.disabled = !canGoPrev;
                     btn.style.opacity = canGoPrev ? '1' : '0.3';
-                    btn.style.background = canGoPrev ? 'var(--kts-blue)' : '#b0bec5';
+                    btn.style.background = canGoPrev ? 'var(--kts-blue)' : 'var(--app-ink-300)';
                 }
             });
         }
