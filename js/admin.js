@@ -4538,6 +4538,12 @@
             const newProjectId = targetSel ? targetSel.value : '';
             if (!newProjectId) { showToast('⚠️ Kies een doelproject'); return; }
 
+            // Weekstaten zonder project hebben project_id = NULL. Via de onclick
+            // wordt dat de string 'null' · Postgres wil dan IS NULL i.p.v. = 'null'.
+            // Deze helper zet op elke query het juiste project-filter.
+            const oudIsNull = (oldProjectId == null || oldProjectId === 'null' || oldProjectId === '' || oldProjectId === 'undefined');
+            const filterOudProject = (q) => oudIsNull ? q.is('project_id', null) : q.eq('project_id', oldProjectId);
+
             const saveBtn = document.getElementById('admin-modal-save');
             if (saveBtn) { if (saveBtn.disabled) return; saveBtn.disabled = true; saveBtn.textContent = 'Bezig...'; }
             try {
@@ -4558,24 +4564,24 @@
                 const sundayStr = toLocalDateStr(sunday);
 
                 // 1. Uren
-                const { error: teErr } = await sb.from('time_entries')
+                const { error: teErr } = await filterOudProject(sb.from('time_entries')
                     .update({ project_id: newProjectId })
-                    .eq('user_id', userId).eq('project_id', oldProjectId)
+                    .eq('user_id', userId))
                     .gte('entry_date', mondayStr).lte('entry_date', sundayStr);
                 if (teErr) throw new Error('uren: ' + teErr.message);
 
                 // 2. Weekstatus
-                const { error: wsErr } = await sb.from('week_status')
+                const { error: wsErr } = await filterOudProject(sb.from('week_status')
                     .update({ project_id: newProjectId })
-                    .eq('user_id', userId).eq('project_id', oldProjectId)
+                    .eq('user_id', userId))
                     .eq('week_number', weekNumber).eq('year', year);
                 if (wsErr) throw new Error('weekstatus: ' + wsErr.message);
 
                 // 3. Declaraties (niet fataal als de tabel ontbreekt)
                 try {
-                    await sb.from('expenses')
+                    await filterOudProject(sb.from('expenses')
                         .update({ project_id: newProjectId })
-                        .eq('user_id', userId).eq('project_id', oldProjectId)
+                        .eq('user_id', userId))
                         .eq('week_number', weekNumber).eq('year', year);
                 } catch (expErr) { console.warn('Declaraties verplaatsen overgeslagen:', expErr); }
 
