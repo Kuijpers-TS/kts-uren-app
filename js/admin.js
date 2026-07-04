@@ -823,7 +823,7 @@
             const projSel = document.getElementById('io-filter-project');
             if (projSel && window._adminProjects) {
                 projSel.innerHTML = '<option value="">-- Selecteer project --</option>' +
-                    window._adminProjects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('');
+                    window._adminProjects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('');
             }
 
             // Vul medewerker dropdown
@@ -1211,7 +1211,7 @@
             if (projSel.options.length <= 1 && window._adminProjects) {
                 const projOpts = (window._adminProjects || [])
                     .filter(p => p.status === 'active')
-                    .map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`)
+                    .map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`)
                     .join('');
                 projSel.insertAdjacentHTML('beforeend', projOpts);
             }
@@ -3781,7 +3781,7 @@
             window._tariffProjects = projects || [];
             const sel = document.getElementById('adm-tar-project');
             if (projects) {
-                sel.innerHTML = projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('');
+                sel.innerHTML = projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('');
             }
             updateTariffKmVisibility();
             // Gebruikers dropdown vullen
@@ -4536,7 +4536,7 @@
             if (projects.length === 0) { showToast('⚠️ Geen andere actieve projecten om naartoe te verplaatsen'); return; }
 
             const options = projects.map(p =>
-                `<option value="${p.id}">${escapeHtml(p.project_code || '')} · ${escapeHtml(p.name || '')}</option>`
+                `<option value="${p.id}">${escapeHtml(p.project_code || '')} | ${escapeHtml(p.name || '')}</option>`
             ).join('');
             const fields = `
                 <div style="margin-bottom:14px;padding:12px;background:var(--app-info-soft);border-radius:8px;font-size:0.85rem">
@@ -4892,7 +4892,7 @@
                     <div>
                         <label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:600">PROJECT</label>
                         <select id="anw-project" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.9rem">
-                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} ·${escapeHtml(p.name)}</option>`).join('')}
+                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('')}
                         </select>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
