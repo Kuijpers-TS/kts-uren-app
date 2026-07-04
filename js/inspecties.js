@@ -1278,15 +1278,14 @@
             // Vraag om asset/locatie code (verplicht voor Maximo-koppeling)
             // Default: tpl.asset (uit template) of NSM-PG1 (handigste startpunt · wijzig 1 in 2 voor PG2)
             const defaultAsset = tpl.asset && tpl.asset.trim() ? tpl.asset.trim() : 'NSM-PG1';
-            const assetCode = prompt(
-                'Asset / locatie code voor deze inspectie\n\n' +
-                'Bijv. NSM-PG1, NSM-PG2, NSM-SG1.6 of NSM-SG1.7 · komt in de\n' +
-                'PDF-titel en bestandsnaam zodat de klant het kan koppelen aan\n' +
-                'Maximo werkorders.\n\n' +
-                'Asset code:',
-                defaultAsset
+            const assetCode = await promptAsync(
+                'Asset / locatie code',
+                'Bijv. NSM-PG1',
+                defaultAsset,
+                'Komt in de PDF-titel en bestandsnaam zodat de klant de inspectie kan koppelen aan Maximo-werkorders. Bijvoorbeeld NSM-PG1, NSM-PG2, NSM-SG1.6 of NSM-SG1.7.'
             );
-            if (!assetCode || !assetCode.trim()) {
+            if (assetCode === null) return; // geannuleerd, geen melding
+            if (!assetCode.trim()) {
                 showToast('⚠️ Asset code is verplicht');
                 return;
             }

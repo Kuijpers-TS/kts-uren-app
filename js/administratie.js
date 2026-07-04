@@ -949,7 +949,7 @@
         }
 
         async function adminDeleteUpload(uploadId) {
-            if (!confirm('Weet je zeker dat je dit transactieoverzicht wilt verwijderen? Alle koppelingen gaan verloren.')) return;
+            if (!await confirmAsync('Weet je zeker dat je dit transactieoverzicht wilt verwijderen?\n\nAlle koppelingen gaan verloren.', true)) return;
             // Delete all transactions for this upload
             const txs = await adminDB.getAllByIndex('adminTransactions', 'uploadId', uploadId);
             for (const tx of txs) {

@@ -2384,15 +2384,19 @@
         // Modal-prompt voor vrije-tekst input. Resolved met de string (kan leeg zijn)
         // bij OK, of null bij Annuleren · zodat caller "lege string" kan onderscheiden
         // van "geannuleerd".
-        function promptAsync(title, placeholder, defaultValue) {
+        function promptAsync(title, placeholder, defaultValue, description) {
             return new Promise(resolve => {
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
                 const box = document.createElement('div');
                 box.style.cssText = 'background:var(--app-surface);border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+                const descHtml = description
+                    ? `<div style="font-size:0.82rem;line-height:1.5;color:var(--app-ink-500);margin-bottom:14px">${description}</div>`
+                    : '';
                 box.innerHTML = `
-                    <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:var(--app-ink-900);margin-bottom:8px">${title}</div>
-                    <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" style="width:100%;padding:10px 12px;border:2px solid var(--app-line);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:18px">
+                    <div style="font-size:0.95rem;font-weight:600;line-height:1.4;color:var(--app-ink-900);margin-bottom:${description ? '6px' : '8px'}">${title}</div>
+                    ${descHtml}
+                    <input type="text" id="pa-input" placeholder="${placeholder || ''}" value="${defaultValue || ''}" autocomplete="off" style="width:100%;padding:10px 12px;border:2px solid var(--app-line);border-radius:10px;font-size:0.9rem;font-family:inherit;color:var(--app-ink-900);background:var(--app-surface-2);outline:none;box-sizing:border-box;margin-bottom:18px">
                     <div style="display:flex;gap:10px;justify-content:flex-end">
                         <button id="pa-cancel" style="padding:10px 20px;border-radius:10px;border:1px solid var(--app-line-strong);background:var(--app-surface);color:var(--app-ink-700);font-size:0.85rem;cursor:pointer;font-weight:500">Annuleren</button>
                         <button id="pa-ok" style="padding:10px 20px;border-radius:10px;border:none;background:var(--kts-blue);color:white;font-size:0.85rem;cursor:pointer;font-weight:600">OK</button>
@@ -2401,7 +2405,8 @@
                 overlay.appendChild(box);
                 document.body.appendChild(overlay);
                 const input = box.querySelector('#pa-input');
-                setTimeout(() => input.focus(), 50);
+                // Selecteer de default zodat de gebruiker 'm meteen kan overtypen
+                setTimeout(() => { input.focus(); input.select(); }, 50);
                 function close(result) { overlay.remove(); resolve(result); }
                 box.querySelector('#pa-cancel').onclick = function() { close(null); };
                 box.querySelector('#pa-ok').onclick = function() { close(input.value); };

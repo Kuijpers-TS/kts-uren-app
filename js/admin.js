@@ -6395,8 +6395,8 @@
 
         // toggleAssignmentSetting verwijderd · feature flags staan nu op users tabel
 
-        function inviteUser(email, name) {
-            const pw = prompt('Wachtwoord voor de nieuwe gebruiker:', '');
+        async function inviteUser(email, name) {
+            const pw = await promptAsync('Wachtwoord voor de nieuwe gebruiker', 'Minimaal 6 tekens', '');
             if (!pw) return;
             const appUrl = window.location.origin;
             const aanhef = name ? name.split(' ')[0] : '';
