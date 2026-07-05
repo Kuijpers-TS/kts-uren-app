@@ -923,6 +923,12 @@
             width: 100%;
             margin-bottom: 8px;
             transition: all 0.15s;
+            /* Native <button>-reset zodat de knop er identiek uitziet als de
+               vorige <div> (linker-uitlijning, eigen font, tekstkleur). */
+            appearance: none;
+            font-family: inherit;
+            color: var(--text);
+            text-align: left;
         }
         .admin-folder-btn:active { border-color: var(--kts-blue); }
         .admin-folder-btn.linked { border-style: solid; border-color: var(--green); background: var(--app-ok-soft); }

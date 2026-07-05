@@ -389,18 +389,18 @@
 
             <!-- Mappen kiezen -->
             <div style="margin-bottom:16px">
-                <div class="admin-folder-btn" id="admin-invoices-folder-btn" onclick="adminPickFolder('invoices')" style="display:flex;align-items:center;gap:8px">
+                <button type="button" class="admin-folder-btn" id="admin-invoices-folder-btn" onclick="adminPickFolder('invoices')" style="display:flex;align-items:center;gap:8px">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                     <span id="admin-invoices-folder-label">Facturen-map kiezen...</span>
-                </div>
-                <div class="admin-folder-btn" id="admin-transactions-folder-btn" onclick="adminPickFolder('transactions')" style="display:flex;align-items:center;gap:8px">
+                </button>
+                <button type="button" class="admin-folder-btn" id="admin-transactions-folder-btn" onclick="adminPickFolder('transactions')" style="display:flex;align-items:center;gap:8px">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                     <span id="admin-transactions-folder-label">Transacties-map kiezen...</span>
-                </div>
-                <div class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')" style="display:flex;align-items:center;gap:8px">
+                </button>
+                <button type="button" class="admin-folder-btn" id="admin-export-folder-btn" onclick="adminPickFolder('export')" style="display:flex;align-items:center;gap:8px">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                     <span id="admin-export-folder-label">Export-map kiezen...</span>
-                </div>
+                </button>
                 <div style="margin-top:8px">
                     <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:4px">Volledig pad facturen-map (voor export links):</label>
                     <input type="text" id="admin-invoice-base-path" placeholder="Bijv. C:\Users\mkuij\OneDrive\Administratie KTS BV\KTDS Holding B.V\2026" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;box-sizing:border-box" onchange="adminSaveInvoiceBasePath(this.value)">

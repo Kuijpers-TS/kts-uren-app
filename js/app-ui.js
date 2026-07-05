@@ -256,19 +256,20 @@
                 const isActive = currentProject && currentProject.id === p.id;
                 const bgNow = isActive ? activeBg : inactiveBg;
                 return `
-                <div onclick="selectProject('${p.id}')" style="
+                <button type="button" onclick="selectProject('${p.id}')" style="
+                    width:100%;box-sizing:border-box;text-align:left;font:inherit;color:inherit;appearance:none;
                     display:flex;align-items:center;gap:12px;padding:14px 16px;
                     background:${bgNow};
                     border:2px solid ${isActive ? 'var(--kts-accent-light)' : 'var(--border)'};
                     border-radius:12px;cursor:pointer;transition:all 0.15s
-                " onmouseover="this.style.background='${activeBg}'" onmouseout="this.style.background='${bgNow}'">
+                " onmouseover="this.style.background='${activeBg}'" onmouseout="this.style.background='${bgNow}'" onfocus="this.style.background='${activeBg}'" onblur="this.style.background='${bgNow}'">
                     <div style="width:40px;height:40px;border-radius:10px;background:${isActive ? 'var(--kts-accent-light)' : 'var(--app-bg-deep)'};display:flex;align-items:center;justify-content:center;flex-shrink:0"><img src="tandwiel-wit-v2.png" alt="" style="width:22px;height:22px;opacity:${isActive ? '1' : '0.55'}"></div>
                     <div style="flex:1;min-width:0">
                         <div style="font-weight:700;font-size:0.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</div>
                         <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(p.client_name || '')} · ${escapeHtml(p.location || '')}</div>
                     </div>
                     ${isActive ? '<div style="color:var(--kts-accent-light);font-weight:700;font-size:1.1rem">✓</div>' : ''}
-                </div>`;
+                </button>`;
             }).join('');
         }
 

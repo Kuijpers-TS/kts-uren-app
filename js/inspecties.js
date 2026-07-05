@@ -333,7 +333,7 @@
             const content = `
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Naam formulier *</label>
-                    <input type="text" id="insp-tpl-name" value="${existing ? escapeHtml(existing.name || '') : ''}" placeholder="bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="insp-tpl-name" value="${existing ? escapeHtml(existing.name || '') : ''}" placeholder="Bijv. Specialistisch onderhoud motor L1" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Beschrijving</label>
@@ -352,16 +352,16 @@
                 <div style="display:flex;gap:8px;margin-bottom:10px">
                     <div class="form-group" style="flex:1">
                         <label>Locatie</label>
-                        <input type="text" id="insp-tpl-location" value="${existing ? escapeHtml(existing.location || '') : ''}" placeholder="bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                        <input type="text" id="insp-tpl-location" value="${existing ? escapeHtml(existing.location || '') : ''}" placeholder="Bijv. Pompgroepen Den Oever" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     </div>
                     <div class="form-group" style="flex:1">
                         <label>Installatie</label>
-                        <input type="text" id="insp-tpl-install" value="${existing ? escapeHtml(existing.installation || '') : ''}" placeholder="bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                        <input type="text" id="insp-tpl-install" value="${existing ? escapeHtml(existing.installation || '') : ''}" placeholder="Bijv. Pompinstallatie (gemaalpomp)" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px">
                     <label>Asset</label>
-                    <input type="text" id="insp-tpl-asset" value="${existing ? escapeHtml(existing.asset || '') : ''}" placeholder="bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="insp-tpl-asset" value="${existing ? escapeHtml(existing.asset || '') : ''}" placeholder="Bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px">
@@ -552,7 +552,7 @@
                 return `
                     <div style="border:2px solid var(--app-line);border-radius:10px;padding:12px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                            <input type="text" value="${sec.title || ''}" onchange="window._inspTplSections[${si}].title=this.value" placeholder="Sectienaam (bijv. Bekabeling)" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-weight:600">
+                            <input type="text" value="${sec.title || ''}" onchange="window._inspTplSections[${si}].title=this.value" placeholder="Sectienaam (bijv. Bekabeling)" style="flex:1;padding:6px 8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;font-weight:600">
                             <button onclick="inspRemoveSection(${si})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:4px;margin-left:8px" title="Sectie verwijderen">🗑️</button>
                         </div>
                         <div>${questions}</div>
@@ -618,36 +618,36 @@
                     <div style="font-weight:600;font-size:0.8rem;color:var(--kts-blue);margin-bottom:8px">Vraag bewerken</div>
                     <div class="form-group" style="margin-bottom:8px">
                         <label style="font-size:0.75rem">Vraagtekst *</label>
-                        <textarea id="insp-q-text" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;min-height:50px">${q.text || ''}</textarea>
+                        <textarea id="insp-q-text" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem;min-height:50px">${q.text || ''}</textarea>
                     </div>
                     <div style="display:flex;gap:6px;margin-bottom:8px">
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Type</label>
-                            <select id="insp-q-type" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">${typeOptions}</select>
+                            <select id="insp-q-type" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">${typeOptions}</select>
                         </div>
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Eenheid (numeriek)</label>
-                            <input type="text" id="insp-q-unit" value="${q.unit || ''}" placeholder="°C, bar, mm/s, MΩ" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-unit" value="${q.unit || ''}" placeholder="°C, bar, mm/s, MΩ" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;margin-bottom:8px">
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Component</label>
-                            <input type="text" id="insp-q-component" value="${q.component || ''}" placeholder="bijv. Aandrijving: Bekabeling" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-component" value="${q.component || ''}" placeholder="Bijv. Aandrijving: Bekabeling" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Asset tag / FMECA</label>
-                            <input type="text" id="insp-q-asset-tag" value="${q.asset_tag || ''}" placeholder="1.05.1.1.AR-01.186-.1062-" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-asset-tag" value="${q.asset_tag || ''}" placeholder="1.05.1.1.AR-01.186-.1062-" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;margin-bottom:8px">
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Fabrikant</label>
-                            <input type="text" id="insp-q-manufacturer" value="${q.manufacturer || ''}" placeholder="bijv. ABB, Flowserve" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-manufacturer" value="${q.manufacturer || ''}" placeholder="Bijv. ABB, Flowserve" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Discipline</label>
-                            <select id="insp-q-discipline" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <select id="insp-q-discipline" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                                 <option value="" ${!q.discipline ? 'selected' : ''}>--</option>
                                 <option value="WTB" ${q.discipline === 'WTB' ? 'selected' : ''}>WTB</option>
                                 <option value="IA&E" ${q.discipline === 'IA&E' ? 'selected' : ''}>IA&E</option>
@@ -657,17 +657,17 @@
                     <div style="display:flex;gap:6px;margin-bottom:8px">
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Norm / referentie</label>
-                            <input type="text" id="insp-q-norm" value="${q.norm_reference || ''}" placeholder="ISO 2954, MTR-4227" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-norm" value="${q.norm_reference || ''}" placeholder="ISO 2954, MTR-4227" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Gereedschap</label>
-                            <input type="text" id="insp-q-tools" value="${q.tools || ''}" placeholder="Momentsleutel, Multimeter" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-tools" value="${q.tools || ''}" placeholder="Momentsleutel, Multimeter" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;margin-bottom:8px">
                         <div class="form-group" style="flex:1">
                             <label style="font-size:0.75rem">Materialen</label>
-                            <input type="text" id="insp-q-materials" value="${q.materials || ''}" placeholder="Vet, Filter, Olie" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+                            <input type="text" id="insp-q-materials" value="${q.materials || ''}" placeholder="Vet, Filter, Olie" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem">
                         </div>
                         <label style="display:flex;align-items:center;gap:6px;padding-top:18px;font-size:0.8rem;cursor:pointer">
                             <input type="checkbox" id="insp-q-required" ${q.required ? 'checked' : ''} style="width:16px;height:16px">
@@ -680,7 +680,7 @@
                     </div>
                     <div class="form-group" style="margin-bottom:10px">
                         <label style="font-size:0.75rem">Standaard opmerking / instructie</label>
-                        <textarea id="insp-q-remarks" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;min-height:40px">${q.remarks_template || ''}</textarea>
+                        <textarea id="insp-q-remarks" style="width:100%;padding:6px;border:2px solid var(--app-line);border-radius:8px;font-size:0.8rem;min-height:40px">${q.remarks_template || ''}</textarea>
                     </div>
                     <div style="display:flex;gap:8px;justify-content:flex-end">
                         <button class="btn btn-sm" onclick="inspRenderSections()" style="font-size:0.75rem">Annuleren</button>

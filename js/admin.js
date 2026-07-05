@@ -3450,7 +3450,7 @@
                     <div class="form-group" style="margin-bottom:12px">
                         <label>📧 CC-ontvanger(s) bij weekstaat-bevestiging <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(optioneel)</span></label>
                         <input type="text" id="adm-proj-cc-weekstaat"
-                            placeholder="bv. info@levvel-epc.nl, ander@klant.nl"
+                            placeholder="Bijv. info@levvel-epc.nl, ander@klant.nl"
                             value="${existing ? (existing.cc_emails_weekstaat || '').replace(/"/g,'&quot;') : ''}"
                             style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem;box-sizing:border-box">
                         <div style="font-size:0.7rem;color:var(--muted);margin-top:3px;line-height:1.4">
@@ -5942,11 +5942,11 @@
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
-                    <input type="email" id="approval-email" placeholder="bijv. info@kenphelan.nl" value="${escapeHtml(clientEmail)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="email" id="approval-email" placeholder="Bijv. info@kenphelan.nl" value="${escapeHtml(clientEmail)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>Naam opdrachtgever</label>
-                    <input type="text" id="approval-name" placeholder="bijv. Marcel Virtmann" value="${escapeHtml(clientName)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="approval-name" placeholder="Bijv. Marcel Virtmann" value="${escapeHtml(clientName)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:0.8rem;color:var(--muted);cursor:pointer">
                     <input type="checkbox" id="approval-save-default" checked style="width:16px;height:16px;accent-color:var(--kts-blue)">
@@ -6151,11 +6151,11 @@
                 <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Verstuur een bevestiging naar de opdrachtgever met de weekstaat PDF als bijlage.</div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>E-mail opdrachtgever</label>
-                    <input type="email" id="confirm-email" placeholder="bijv. info@kenphelan.nl" value="${escapeHtml(clientEmail)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="email" id="confirm-email" placeholder="Bijv. info@kenphelan.nl" value="${escapeHtml(clientEmail)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 <div class="form-group" style="margin-bottom:12px">
                     <label>Naam opdrachtgever</label>
-                    <input type="text" id="confirm-name" placeholder="bijv. Marcel Virtmann" value="${escapeHtml(clientName)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                    <input type="text" id="confirm-name" placeholder="Bijv. Marcel Virtmann" value="${escapeHtml(clientName)}" style="width:100%;padding:10px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
                 </div>
                 ${ccBanner}
                 <div id="confirm-status" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:0.8rem"></div>

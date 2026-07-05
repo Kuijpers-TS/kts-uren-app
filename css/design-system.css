@@ -997,6 +997,16 @@ a:focus-visible,
   cursor: pointer;
   display: grid; place-items: center;
   flex-shrink: 0;
+  position: relative;
+}
+/* Onzichtbaar 44px-tikvlak zodat de knop op de telefoon goed te raken is
+   zonder dat het zichtbare vierkant (32px) groter wordt. */
+.app-modal-close::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px; height: 44px;
 }
 .app-modal-close:hover {
   background: var(--app-bg-tint);
@@ -2092,6 +2102,15 @@ a:focus-visible,
   place-items: center;
   cursor: pointer;
   transition: background 120ms, border-color 120ms, color 120ms;
+  position: relative;
+}
+/* 40px-tikvlak (zichtbare knop blijft 32px). */
+.app-iconbtn::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px; height: 40px;
 }
 .app-iconbtn:hover {
   background: var(--app-bg-tint);
@@ -2579,6 +2598,15 @@ a:focus-visible,
   transition: all 120ms;
   display: grid;
   place-items: center;
+  position: relative;
+}
+/* 40px-tikvlak (drie knoppen naast elkaar, dus niet groter dan de gap toelaat). */
+.app-theme-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px; height: 40px;
 }
 .app-theme-btn:hover { background: var(--app-bg-tint); color: var(--app-ink-700); }
 .app-theme-btn.is-active {
@@ -2675,6 +2703,15 @@ a:focus-visible,
   border: 0;
   cursor: pointer;
   transition: background 120ms;
+  position: relative;
+}
+/* 40px-tikvlak (zichtbare knop blijft 28px). */
+.app-week-row-pdf::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px; height: 40px;
 }
 .app-week-row-pdf:hover { background: #043B56; }
 .app-week-row-pdf svg { width: 14px; height: 14px; }
