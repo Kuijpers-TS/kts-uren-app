@@ -529,14 +529,24 @@
         // PDF's openen in een nieuw tabblad via een blob-URL.
         async function inspShowDocument(path, type) {
             if (!path) { showToast('⚠️ Geen document gekoppeld'); return; }
-            const sb = getSupabase();
-            if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             const woord = _inspDocWoord(type);
             const icoon = _inspDocIcon(type);
-            showToast('⏳ ' + woord + ' laden...', 1500);
-            const { data: blob, error } = await sb.storage.from('inspections').download(path);
-            if (error || !blob) { showToast('⚠️ Laden mislukt: ' + (error && error.message || 'onbekend')); return; }
-            const url = URL.createObjectURL(blob);
+
+            // 1. Eerst het lokaal opgeslagen bestand proberen (werkt offline).
+            let url = null;
+            if (typeof inspGetLocalDocUrl === 'function') {
+                url = await inspGetLocalDocUrl(path);
+            }
+            // 2. Niet lokaal? Downloaden uit storage (vereist internet).
+            if (!url) {
+                const sb = getSupabase();
+                if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+                if (!navigator.onLine) { showToast('⚠️ Document niet offline beschikbaar · bereid de inspectie voor met internet'); return; }
+                showToast('⏳ ' + woord + ' laden...', 1500);
+                const { data: blob, error } = await sb.storage.from('inspections').download(path);
+                if (error || !blob) { showToast('⚠️ Laden mislukt: ' + (error && error.message || 'onbekend')); return; }
+                url = URL.createObjectURL(blob);
+            }
 
             if (/\.pdf$/i.test(path)) {
                 window.open(url, '_blank');
@@ -1171,22 +1181,40 @@
 
             const statusFilter = document.getElementById('insp-user-filter-status')?.value;
 
-            let query = sb.from('inspections')
-                .select('*, inspection_templates(name)')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
+            // Offline-status inladen (voor badge en offline-fallback van de lijst).
+            if (typeof inspLoadPreparedIds === 'function') { try { await inspLoadPreparedIds(); } catch (e) {} }
+            let offlineBundles = [];
+            if (typeof inspIdbGetAll === 'function') { try { offlineBundles = await inspIdbGetAll('inspecties') || []; } catch (e) { offlineBundles = []; } }
+            const dirtyIds = new Set(offlineBundles.filter(b => b.dirty).map(b => b.id));
 
-            if (statusFilter) {
-                query = query.eq('status', statusFilter);
-            } else {
-                // Standaard: alleen actieve inspecties (geen archief)
-                query = query.neq('status', 'archief');
+            let inspections = null, error = null;
+            if (navigator.onLine && sb) {
+                let query = sb.from('inspections')
+                    .select('*, inspection_templates(name)')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                if (statusFilter) query = query.eq('status', statusFilter);
+                else query = query.neq('status', 'archief');
+                ({ data: inspections, error } = await query);
             }
 
-            const { data: inspections, error } = await query;
+            // Offline (of ophalen mislukt): toon de lokaal beschikbare inspecties.
+            if (!inspections) {
+                inspections = offlineBundles.filter(b => b.insp).map(b => ({
+                    ...b.insp,
+                    answers: b.answers,
+                    answered_questions: (b.counts && b.counts.answered_questions) ?? b.insp.answered_questions,
+                    failed_questions: (b.counts && b.counts.failed_questions) ?? b.insp.failed_questions,
+                }));
+                if (statusFilter) inspections = inspections.filter(i => i.status === statusFilter);
+                else inspections = inspections.filter(i => i.status !== 'archief');
+                inspections.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            }
 
-            if (error || !inspections || inspections.length === 0) {
-                list.innerHTML = '<div class="insp-empty-state"><div class="icon">○</div>Geen inspecties gevonden</div>';
+            if (!inspections || inspections.length === 0) {
+                list.innerHTML = navigator.onLine
+                    ? '<div class="insp-empty-state"><div class="icon">○</div>Geen inspecties gevonden</div>'
+                    : '<div class="insp-empty-state"><div class="icon">📴</div>Geen offline inspecties · bereid ze voor met internet</div>';
                 return;
             }
 
@@ -1232,7 +1260,18 @@
                 const showArchive = ins.status === 'afgerond';
                 const showUnarchive = ins.status === 'archief';
 
+                // Offline-status van deze inspectie
+                const prepared = (typeof inspIsPrepared === 'function') && inspIsPrepared(ins.id);
+                const dirty = dirtyIds.has(ins.id);
+                const offlineBadge = dirty
+                    ? '<span class="insp-status-pill" style="background:var(--app-warn-soft);color:var(--app-warn)">📴 niet gesynct</span>'
+                    : (prepared ? '<span class="insp-status-pill" style="background:var(--app-info-soft);color:var(--app-info)">📴 offline klaar</span>' : '');
+
                 const actions = [];
+                // Offline-voorbereiden alleen voor concepten (die worden op locatie ingevuld)
+                if (ins.status === 'concept' && typeof inspPrepareOffline === 'function') {
+                    actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspPrepareOffline('${ins.id}')" title="${prepared ? 'Opnieuw voorbereiden (ververst documenten en data)' : 'Download alles lokaal zodat je offline kunt werken'}">📴 ${prepared ? 'Offline ✓' : 'Offline maken'}</button>`);
+                }
                 if (showPdf) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspGeneratePDF('${ins.id}')">${pdfIcon} PDF</button>`);
                 actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspCopyForObject('${ins.id}','${ins.template_id}')" title="Kopieer voor ander object">${copyIcon} Kopieer</button>`);
                 if (showArchive) actions.push(`<button class="insp-action-btn" onclick="event.stopPropagation();inspArchive('${ins.id}', true)">${archiveIcon} Archiveer</button>`);
@@ -1246,7 +1285,10 @@
                                 ${metaLine ? `<div class="insp-entry-meta">${metaLine}</div>` : ''}
                                 <div class="insp-entry-title">${escapeHtml(templateName)}</div>
                             </div>
-                            <span class="insp-status-pill ${pillClass}">${pillLabel}</span>
+                            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+                                <span class="insp-status-pill ${pillClass}">${pillLabel}</span>
+                                ${offlineBadge}
+                            </div>
                         </div>
                         ${ins.total_questions > 0 ? `
                         <div class="insp-entry-progress">
@@ -1434,22 +1476,42 @@
         // Open een inspectie (start in overzicht-modus)
         async function inspOpenInspection(inspectionId, sectionIdx) {
             const sb = getSupabase();
-            let { data: insp, error } = await sb.from('inspections')
-                .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category, plattegrond_path, documents)')
-                .eq('id', inspectionId)
-                .single();
+            let insp = null, error = null;
 
-            // Fallback: DB zonder documents/plattegrond_path kolom (migraties nog
-            // niet gedraaid) mag het openen van inspecties niet blokkeren
-            if (error && /plattegrond_path|documents|column/.test(error.message || '')) {
+            // Online: verse data uit Supabase. Offline: sla dit over.
+            if (navigator.onLine && sb) {
                 ({ data: insp, error } = await sb.from('inspections')
-                    .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category)')
+                    .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category, plattegrond_path, documents)')
                     .eq('id', inspectionId)
                     .single());
+                // Fallback: DB zonder documents/plattegrond_path kolom (migraties
+                // nog niet gedraaid) mag het openen van inspecties niet blokkeren
+                if (error && /plattegrond_path|documents|column/.test(error.message || '')) {
+                    ({ data: insp, error } = await sb.from('inspections')
+                        .select('*, inspection_templates(name, sections, location, installation, asset, frequency, category)')
+                        .eq('id', inspectionId)
+                        .single());
+                }
             }
 
-            if (error || !insp) {
-                showToast('⚠️ Inspectie niet gevonden');
+            // Lokale offline-kopie ophalen (indien voorbereid of offline ingevuld).
+            let bundle = null;
+            if (typeof inspGetOfflineBundle === 'function') {
+                try { bundle = await inspGetOfflineBundle(inspectionId); } catch (e) { bundle = null; }
+            }
+
+            if (insp) {
+                // Er zijn nog niet-gesynchroniseerde lokale antwoorden? Die hebben
+                // voorrang op de serverdata, anders zou je offline werk verliezen.
+                if (bundle && bundle.dirty && bundle.answers) insp.answers = bundle.answers;
+            } else if (bundle && bundle.insp) {
+                // Offline (of ophalen mislukt): open de lokale kopie.
+                insp = bundle.insp;
+                insp.answers = bundle.answers || insp.answers || {};
+            }
+
+            if (!insp) {
+                showToast(navigator.onLine ? '⚠️ Inspectie niet gevonden' : '⚠️ Niet offline beschikbaar · bereid \'m voor met internet');
                 return;
             }
 
@@ -1952,19 +2014,44 @@
                 }
             }
 
-            // Achtergrond save naar Supabase
+            // Save: online direct naar Supabase, offline lokaal (geen dataverlies).
             const answers = state.answers;
             const answeredCount = Object.values(answers).filter(a => a.value !== undefined && a.value !== '').length;
             const passedCount = Object.values(answers).filter(a => a.value === 'goed').length;
             const failedCount = Object.values(answers).filter(a => a.value === 'fout').length;
 
             const sb = getSupabase();
-            await sb.from('inspections').update({
-                answers,
-                answered_questions: answeredCount,
-                passed_questions: passedCount,
-                failed_questions: failedCount
-            }).eq('id', state.id);
+            const heeftOffline = typeof inspPersistAnswersLocal === 'function';
+            if (navigator.onLine && sb) {
+                try {
+                    const { error } = await sb.from('inspections').update({
+                        answers,
+                        answered_questions: answeredCount,
+                        passed_questions: passedCount,
+                        failed_questions: failedCount
+                    }).eq('id', state.id);
+                    if (error) throw error;
+                    // Gelukt: houd een eventuele offline-kopie vers (dirty=false).
+                    if (heeftOffline) inspPersistAnswersLocal(false);
+                } catch (e) {
+                    // Verbinding viel weg tijdens opslaan: bewaar lokaal, sync later.
+                    if (heeftOffline) { await inspPersistAnswersLocal(true); inspToonOfflineOpgeslagen(); }
+                }
+            } else if (heeftOffline) {
+                // Offline: direct lokaal opslaan, wordt later automatisch gesynct.
+                await inspPersistAnswersLocal(true);
+                inspToonOfflineOpgeslagen();
+            }
+        }
+
+        // Kleine, kortstondige hint dat er lokaal (offline) is opgeslagen · niet
+        // bij elke tik een luide toast, alleen een subtiele bevestiging.
+        let _inspOfflineHintTs = 0;
+        function inspToonOfflineOpgeslagen() {
+            const nu = Date.now();
+            if (nu - _inspOfflineHintTs < 8000) return; // hoogstens 1x per 8s
+            _inspOfflineHintTs = nu;
+            showToast('📴 Offline opgeslagen · synct zodra er verbinding is');
         }
 
         // Update knoppen-UI voor een vraag (zonder page reload)

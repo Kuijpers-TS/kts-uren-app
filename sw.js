@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v250';
+const CACHE_NAME = 'kts-uren-v251';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   './js/app-ui.js',
   './js/admin.js',
   './js/inspecties.js',
+  './js/inspecties-offline.js',
   './js/administratie.js',
   './kts-pdf-images.js',
   './tandwiel-wit-v2.png',
