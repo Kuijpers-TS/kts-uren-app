@@ -1244,7 +1244,7 @@
                     errorEl.style.fontSize = '0.85rem';
                     errorEl.textContent = '❌ Kon geen herstel-mail versturen: ' + (e.message || 'Onbekende fout');
                 }
-                showToast('❌ ' + (e.message || 'Fout bij versturen'));
+                showToast('❌ ' + (friendlyError(e) || 'Fout bij versturen'));
             }
         }
 
@@ -1404,7 +1404,7 @@
                     return;
                 }
                 const { error } = await sb.auth.updateUser({ password: pw });
-                if (error) { showToast('❌ ' + error.message); return; }
+                if (error) { showToast('❌ ' + friendlyError(error)); return; }
                 // Markeer dat wachtwoord is gewijzigd
                 if (currentUser) {
                     await sb.from('users').update({ password_changed: true }).eq('id', currentUser.id);
@@ -2380,6 +2380,53 @@
                 box.querySelector('#cd-ok').onclick = function() { close(true); };
                 overlay.onclick = function(e) { if (e.target === overlay) close(false); };
             });
+        }
+
+        // Info-/foutmelding met één OK-knop, in de app-huisstijl. Voor duidelijke
+        // meldingen die de gebruiker moet lezen (i.p.v. een vluchtige toast of een
+        // rauwe technische fout). Optioneel type 'warn' | 'error' voor de kleur van
+        // de titel/knop. Resolvet zodra de gebruiker OK klikt.
+        function alertAsync(message, title, type) {
+            return new Promise(resolve => {
+                const kleur = type === 'error' ? 'var(--app-alert)' : (type === 'warn' ? 'var(--app-warn)' : 'var(--kts-blue)');
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:var(--app-surface);border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+                box.innerHTML = `
+                    ${title ? `<div style="font-size:0.95rem;font-weight:600;line-height:1.35;color:${kleur};margin-bottom:8px">${title}</div>` : ''}
+                    <div style="font-size:0.9rem;line-height:1.55;color:var(--app-ink-800);white-space:pre-line;margin-bottom:20px">${message}</div>
+                    <div style="display:flex;justify-content:flex-end">
+                        <button id="al-ok" style="padding:10px 22px;border-radius:10px;border:none;background:${kleur};color:white;font-size:0.85rem;cursor:pointer;font-weight:600">OK</button>
+                    </div>`;
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                function close() { overlay.remove(); resolve(); }
+                box.querySelector('#al-ok').onclick = close;
+                overlay.onclick = function(e) { if (e.target === overlay) close(); };
+            });
+        }
+
+        // Vertaalt een technische fout (Supabase/Postgres/netwerk) naar een
+        // begrijpelijke Nederlandse zin die de gebruiker vertelt wat er mis is en
+        // wat te doen. De rauwe fout gaat naar de console voor debugging. Onbekende
+        // fouten vallen terug op de (ingekorte) originele tekst, beter dan niets.
+        function friendlyError(err) {
+            try { console.warn('[fout]', err); } catch (e) {}
+            const raw = (err && (err.message || err.error_description || err.msg || err.details)) || (typeof err === 'string' ? err : '') || '';
+            const m = String(raw).toLowerCase();
+            if (!m) return 'er ging iets mis. Probeer het opnieuw.';
+            if (/invalid input syntax for type uuid|invalid input syntax.*uuid/.test(m)) return 'er ontbreekt een koppeling (bijvoorbeeld een project). Controleer of alles is ingevuld en gekoppeld.';
+            if (/row-level security|permission denied|not authorized|rls|violates row-level/.test(m)) return 'je hebt hier geen rechten voor, of je sessie is verlopen. Log opnieuw in en probeer het nog eens.';
+            if (/duplicate key|already exists|unique constraint/.test(m)) return 'dit bestaat al (dubbele invoer).';
+            if (/violates foreign key|foreign key constraint|still referenced/.test(m)) return 'er is nog een koppeling die dit blokkeert. Ontkoppel of verwijder die eerst.';
+            if (/not[- ]null|null value in column/.test(m)) return 'er ontbreekt een verplicht veld.';
+            if (/failed to fetch|networkerror|network request failed|load failed|err_internet|err_network|net::/.test(m)) return 'geen verbinding met de server. Controleer je internet en probeer het opnieuw.';
+            if (/jwt|token is expired|token expired|session.*expired|invalid.*token/.test(m)) return 'je sessie is verlopen. Log opnieuw in en probeer het nog eens.';
+            if (/timeout|timed out|deadline exceeded/.test(m)) return 'de server reageerde niet op tijd. Probeer het zo nog eens.';
+            if (/too large|payload too large|exceeded.*size|body size/.test(m)) return 'het bestand of de invoer is te groot.';
+            // Onbekende fout: toon de originele reden, opgeschoond en ingekort.
+            return String(raw).replace(/\s+/g, ' ').trim().slice(0, 140);
         }
 
         // Modal-prompt voor vrije-tekst input. Resolved met de string (kan leeg zijn)

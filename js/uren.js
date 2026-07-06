@@ -1133,7 +1133,7 @@
             try {
                 folderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             } catch (e) {
-                if (e.name !== 'AbortError') showToast('⚠️ Map kiezen mislukt: ' + e.message);
+                if (e.name !== 'AbortError') showToast('⚠️ Map kiezen mislukt: ' + friendlyError(e));
                 return;
             }
 
@@ -1151,7 +1151,7 @@
             try {
                 backupDir = await folderHandle.getDirectoryHandle(backupName, { create: true });
             } catch (e) {
-                showToast('⚠️ Submap aanmaken mislukt: ' + e.message);
+                showToast('⚠️ Submap aanmaken mislukt: ' + friendlyError(e));
                 return;
             }
 
@@ -1196,7 +1196,7 @@
                 await backupWriteJson(backupDir, 'database.json', dbDump);
             } catch (e) {
                 progress.close();
-                showToast('⚠️ Database dump schrijven mislukt: ' + e.message);
+                showToast('⚠️ Database dump schrijven mislukt: ' + friendlyError(e));
                 return;
             }
 
@@ -1234,7 +1234,7 @@
                 await backupWriteText(backupDir, 'README.md', backupBuildReadme(manifest));
             } catch (e) {
                 progress.close();
-                showToast('⚠️ Manifest schrijven mislukt: ' + e.message);
+                showToast('⚠️ Manifest schrijven mislukt: ' + friendlyError(e));
                 return;
             }
 
@@ -2014,7 +2014,7 @@ Tip: bewaar dit hele mapje veilig en let op dat OneDrive zelf ook versie-histori
             } catch (err) {
                 console.error('Versturen mislukt:', err);
                 if (btn) { btn.innerHTML = '✓ Week versturen'; btn.disabled = false; }
-                showToast('⚠️ Versturen mislukt: ' + err.message);
+                showToast('⚠️ Versturen mislukt: ' + friendlyError(err));
             }
         }
 

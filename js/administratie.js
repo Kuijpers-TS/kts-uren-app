@@ -337,7 +337,7 @@
                 if (perm !== 'granted') { showToast('⚠️ Geen toegang tot map'); return; }
                 await adminScanInvoicesFolder(_adminFolderHandles.invoices);
             } catch (e) {
-                showToast('⚠️ Scannen mislukt: ' + e.message);
+                showToast('⚠️ Scannen mislukt: ' + friendlyError(e));
             }
         }
 
@@ -462,7 +462,7 @@
                 showToast('✓ Transacties ingeladen');
             } catch (e) {
                 console.error('Bank import fout:', e);
-                showToast('⚠️ Import mislukt: ' + e.message);
+                showToast('⚠️ Import mislukt: ' + friendlyError(e));
             }
         }
 
@@ -1782,7 +1782,7 @@
                 document.getElementById('admin-preview-iframe').src = url;
                 document.getElementById('admin-preview-modal').classList.add('active');
             } catch (e) {
-                showToast('⚠️ Kan factuur niet openen: ' + e.message);
+                showToast('⚠️ Kan factuur niet openen: ' + friendlyError(e));
             }
         }
 
@@ -1853,7 +1853,7 @@
 
                     showToast('✓ Export opgeslagen in map (CSV + HTML + JSON)');
                 } catch (e) {
-                    showToast('⚠️ Export mislukt: ' + e.message);
+                    showToast('⚠️ Export mislukt: ' + friendlyError(e));
                 }
             } else {
                 // Fallback: download
@@ -1995,7 +1995,7 @@
                 showToast('✓ ' + data.transactions.length + ' transacties geïmporteerd');
                 adminRenderUploads();
             } catch (e) {
-                showToast('⚠️ Import mislukt: ' + e.message);
+                showToast('⚠️ Import mislukt: ' + friendlyError(e));
             }
         }
 

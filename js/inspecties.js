@@ -315,7 +315,7 @@
                 if (typeof inspLoadTemplates === 'function') inspLoadTemplates();
             } catch (err) {
                 console.error('Import fout:', err);
-                showToast('❌ Import mislukt: ' + err.message);
+                showToast('❌ Import mislukt: ' + friendlyError(err));
                 input.value = '';
             }
         }
@@ -476,7 +476,7 @@
                 if (/row-level security|policy|bucket/i.test(error.message || '')) {
                     showToast('⚠️ Upload geblokkeerd · draai eerst migratie-plattegrond.sql');
                 } else {
-                    showToast('⚠️ Upload mislukt: ' + error.message);
+                    showToast('⚠️ Upload mislukt: ' + friendlyError(error));
                 }
                 return;
             }
@@ -544,7 +544,7 @@
                 if (!navigator.onLine) { showToast('⚠️ Document niet offline beschikbaar · bereid de inspectie voor met internet'); return; }
                 showToast('⏳ ' + woord + ' laden...', 1500);
                 const { data: blob, error } = await sb.storage.from('inspections').download(path);
-                if (error || !blob) { showToast('⚠️ Laden mislukt: ' + (error && error.message || 'onbekend')); return; }
+                if (error || !blob) { showToast('⚠️ Laden mislukt: ' + (error && friendlyError(error) || 'onbekend')); return; }
                 url = URL.createObjectURL(blob);
             }
 
@@ -839,7 +839,7 @@
                 document.getElementById('admin-modal').classList.remove('active');
                 inspLoadTemplates();
             } catch (err) {
-                showToast('❌ Fout: ' + err.message);
+                showToast('❌ Fout: ' + friendlyError(err));
             }
         }
 
@@ -858,7 +858,7 @@
                 document.getElementById('admin-modal').classList.remove('active');
                 inspLoadTemplates();
             } catch (err) {
-                showToast('❌ Fout: ' + err.message);
+                showToast('❌ Fout: ' + friendlyError(err));
             }
         }
 
@@ -948,7 +948,7 @@
                 if (error) throw error;
                 templates = data || [];
             } catch (e) {
-                showToast('⚠️ Templates laden mislukt: ' + e.message);
+                showToast('⚠️ Templates laden mislukt: ' + friendlyError(e));
                 return;
             }
             if (templates.length === 0) {
@@ -1124,7 +1124,7 @@
                 failed_questions: 0
             }).select().single();
 
-            if (insErr) { showToast('⚠️ Aanmaken mislukt: ' + insErr.message); return; }
+            if (insErr) { showToast('⚠️ Aanmaken mislukt: ' + friendlyError(insErr)); return; }
 
             const userName = (window._adminUsers || []).find(u => u.id === userId)?.name || 'medewerker';
             showToast(`✓ Inspectie ${inspNumber} klaargezet voor ${userName}`);
@@ -1322,7 +1322,7 @@
                 if (typeof inspLoadUserInspections === 'function') inspLoadUserInspections();
                 if (typeof loadInspectiesAdmin === 'function') loadInspectiesAdmin();
             } catch (err) {
-                showToast('❌ Fout: ' + err.message);
+                showToast('❌ Fout: ' + friendlyError(err));
             }
         }
 
@@ -1339,7 +1339,7 @@
                 if (typeof inspLoadUserInspections === 'function') inspLoadUserInspections();
                 if (typeof loadInspectiesAdmin === 'function') loadInspectiesAdmin();
             } catch (err) {
-                showToast('❌ Verwijderen mislukt: ' + err.message);
+                showToast('❌ Verwijderen mislukt: ' + friendlyError(err));
             }
         }
 
@@ -1458,7 +1458,7 @@
             }).select().single();
 
             if (insErr) {
-                showToast('⚠️ Fout: ' + insErr.message);
+                showToast('⚠️ Fout: ' + friendlyError(insErr));
                 return;
             }
 

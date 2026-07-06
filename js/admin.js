@@ -930,7 +930,7 @@
                 : { paid_at: null, paid_by: null };
             // Markeer ALLE weken van deze IO (combi-IO heeft meerdere rijen met zelfde io_number)
             const { error } = await sb.from('inkooporder_weeks').update(updates).eq('io_number', ioNumber);
-            if (error) { showToast('❌ ' + error.message); return; }
+            if (error) { showToast('❌ ' + friendlyError(error)); return; }
             showToast(paid ? `✓ Inkooporder ${ioNumber} → betaald` : `↩ Inkooporder ${ioNumber} → open`);
             loadInkooporders();
         }
@@ -1091,7 +1091,7 @@
                 URL.revokeObjectURL(url);
                 showToast('✓ PDF gedownload');
             } catch (err) {
-                showToast('❌ Download mislukt: ' + err.message);
+                showToast('❌ Download mislukt: ' + friendlyError(err));
             }
         }
 
@@ -1146,7 +1146,7 @@
                 window.location.href = 'mailto:' + recipientEmail + '?subject=' + subject + '&body=' + body;
                 showToast('✓ PDF gedownload · voeg deze als bijlage toe aan de e-mail');
             } catch (err) {
-                showToast('❌ Fout: ' + err.message);
+                showToast('❌ Fout: ' + friendlyError(err));
             }
         }
 
@@ -1195,7 +1195,7 @@
                 loadInkooporders();
             } catch (err) {
                 console.error('IO verwijderen mislukt:', err);
-                showToast('❌ Verwijderen mislukt: ' + err.message);
+                showToast('❌ Verwijderen mislukt: ' + friendlyError(err));
             }
         }
 
@@ -2356,7 +2356,7 @@
                 ? { paid_at: new Date().toISOString(), paid_by: currentUser?.id || null }
                 : { paid_at: null, paid_by: null };
             const { error } = await sb.from('invoices').update(updates).eq('id', id);
-            if (error) { showToast('❌ ' + error.message); return; }
+            if (error) { showToast('❌ ' + friendlyError(error)); return; }
             showToast(paid ? `✓ Factuur ${number} → betaald` : `↩ Factuur ${number} → open`);
             loadInvoices();
         }
@@ -2479,7 +2479,7 @@
                 URL.revokeObjectURL(url);
                 showToast('✓ Factuur gedownload');
             } catch (err) {
-                showToast('❌ Download mislukt: ' + err.message);
+                showToast('❌ Download mislukt: ' + friendlyError(err));
             }
         }
 
@@ -2504,7 +2504,7 @@
                 loadInvoices();
             } catch (err) {
                 console.error('Factuur verwijderen mislukt:', err);
-                showToast('❌ Verwijderen mislukt: ' + err.message);
+                showToast('❌ Verwijderen mislukt: ' + friendlyError(err));
             }
         }
 
@@ -3396,7 +3396,7 @@
                     showToast('⚠️ Edge Function niet bereikbaar · PDF is wel lokaal opgeslagen');
                 }
             } catch (e) {
-                showToast('⚠️ Fout bij opslaan: ' + e.message);
+                showToast('⚠️ Fout bij opslaan: ' + friendlyError(e));
             }
         }
 
@@ -4257,14 +4257,14 @@
                         else if (type === 'project') loadAdminData('projecten');
                     } catch(err) {
                         console.error('Import error:', err);
-                        showToast('❌ Import fout: ' + (err.message || err));
+                        showToast('❌ Import fout: ' + (friendlyError(err) || err));
                         document.getElementById('imp-confirm-btn').disabled = false;
                         document.getElementById('imp-confirm-btn').textContent = '✓ Importeer ' + rows.length + ' rijen';
                     }
                 };
             } catch(err) {
                 console.error('Excel parse error:', err);
-                showToast('❌ Kan bestand niet lezen: ' + (err.message || err));
+                showToast('❌ Kan bestand niet lezen: ' + (friendlyError(err) || err));
             }
         }
 
@@ -4347,7 +4347,23 @@
             return contacts;
         }
 
+        // Een weekstaat zonder gekoppeld project kan niet goedgekeurd of naar de
+        // opdrachtgever verstuurd worden: de projectcode, de klant en het e-mail-
+        // adres komen allemaal uit het project. project_id wordt via de onclick als
+        // string doorgegeven, dus een lege waarde kan ook letterlijk 'null'/'undefined' zijn.
+        function _wsGeenProject(projectId) {
+            return projectId == null || projectId === '' || projectId === 'null' || projectId === 'undefined';
+        }
+        async function _wsMeldGeenProject() {
+            await alertAsync(
+                'Koppel de weekstaat eerst aan een project met de knop "Verplaats naar project" (het 🔀-icoon in de lijst). Daarna kun je \'m goedkeuren en naar de opdrachtgever versturen.',
+                'Deze weekstaat heeft nog geen project',
+                'warn'
+            );
+        }
+
         async function adminApproveWeekstaat(userId, projectId, weekNumber, year) {
+            if (_wsGeenProject(projectId)) { await _wsMeldGeenProject(); return; }
             if (!await confirmAsync(`Week ${weekNumber} (${year}) goedkeuren als admin?\n\nDe PDF wordt vernieuwd met de actuele uren + extra kosten. Handtekening-velden blijven leeg (admin-goedkeuring zonder formele ondertekening).`)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
@@ -4434,7 +4450,7 @@
                     }, 300);
                 }
             } catch (e) {
-                showToast('❌ Fout: ' + e.message);
+                showToast('❌ Fout: ' + friendlyError(e));
             }
         }
 
@@ -4628,7 +4644,7 @@
                 closeModal('admin-modal');
                 loadWeekstaten();
             } catch (err) {
-                showToast('❌ Verplaatsen mislukt: ' + err.message);
+                showToast('❌ Verplaatsen mislukt: ' + friendlyError(err));
             } finally {
                 if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Opslaan'; }
             }
@@ -4674,7 +4690,7 @@
                 showToast('✅ Weekstaat teruggezet naar concept · klaar om opnieuw te ondertekenen');
                 loadWeekstaten();
             } catch (e) {
-                showToast('❌ Fout: ' + e.message);
+                showToast('❌ Fout: ' + friendlyError(e));
             }
         }
 
@@ -4709,7 +4725,7 @@
                 loadAdminData('gebruikers');
             } catch (err) {
                 console.error('Archive user error:', err);
-                showToast('❌ Archiveren mislukt: ' + err.message);
+                showToast('❌ Archiveren mislukt: ' + friendlyError(err));
             }
         }
 
@@ -4727,7 +4743,7 @@
                 loadAdminData('gebruikers');
             } catch (err) {
                 console.error('Unarchive user error:', err);
-                showToast('❌ Activeren mislukt: ' + err.message);
+                showToast('❌ Activeren mislukt: ' + friendlyError(err));
             }
         }
 
@@ -4755,7 +4771,7 @@
                 loadAdminData('gebruikers');
             } catch (err) {
                 console.error('Pause user error:', err);
-                showToast('❌ Pauzeren mislukt: ' + err.message);
+                showToast('❌ Pauzeren mislukt: ' + friendlyError(err));
             }
         }
 
@@ -4773,7 +4789,7 @@
                 loadAdminData('gebruikers');
             } catch (err) {
                 console.error('Unpause user error:', err);
-                showToast('❌ Activeren mislukt: ' + err.message);
+                showToast('❌ Activeren mislukt: ' + friendlyError(err));
             }
         }
 
@@ -4811,7 +4827,7 @@
                 loadAdminData('gebruikers');
             } catch (err) {
                 console.error('Anonymize user error:', err);
-                showToast('❌ Anonymiseren mislukt: ' + err.message);
+                showToast('❌ Anonymiseren mislukt: ' + friendlyError(err));
             }
         }
 
@@ -4819,40 +4835,57 @@
             if (!await confirmAsync(`Weekstaat verwijderen?\n\n${userName} · Week ${weekNumber} · ${year} · ${projCode}\n\nDit verwijdert de weekstatus, time entries en eventuele inkooporder-koppelingen voor deze week.`, true)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
+            // Een weekstaat zonder project heeft project_id NULL. project_id komt
+            // als string binnen, dus filteren met .eq('project_id','null') breekt
+            // Postgres. Gebruik .is(null) voor die (legacy) gevallen.
+            const geenProj = _wsGeenProject(projectId);
+            const projFilter = (q) => geenProj ? q.is('project_id', null) : q.eq('project_id', projectId);
             try {
-                // 1. Verwijder week_status
-                await sb.from('week_status')
+                // 1. Verwijder de weekstaat zelf (week_status). .select() zodat we
+                //    weten of er ECHT iets verwijderd is · een delete gooit geen fout
+                //    als er 0 rijen matchen (bv. door rechten of een verkeerde filter),
+                //    dus zonder deze check zou "verwijderd" onterecht getoond worden.
+                const { data: verwijderd, error: wsErr } = await projFilter(sb.from('week_status')
                     .delete()
-                    .eq('user_id', userId)
-                    .eq('project_id', projectId)
+                    .eq('user_id', userId))
                     .eq('week_number', weekNumber)
-                    .eq('year', year);
+                    .eq('year', year)
+                    .select('user_id');
+                if (wsErr) throw wsErr;
 
-                // 2. Verwijder time_entries voor deze week
+                if (!verwijderd || verwijderd.length === 0) {
+                    // Niets verwijderd zonder foutmelding: de weekstaat is al weg, of
+                    // je hebt er geen rechten voor. Geen valse succesmelding tonen.
+                    showToast('⚠️ Er is niets verwijderd. Mogelijk is de weekstaat al weg, of je hebt er geen rechten voor. Ververs de lijst; blijft het hangen, meld het dan.');
+                    loadWeekstaten();
+                    return;
+                }
+
+                // 2. Verwijder time_entries voor deze week (fouten loggen, niet fataal)
                 const monday = getWeekMondayFromWeekNumber(year, weekNumber);
                 const sunday = new Date(monday);
                 sunday.setDate(sunday.getDate() + 6);
                 const weekStart = toLocalDateStr(monday);
                 const weekEnd = toLocalDateStr(sunday);
-                await sb.from('time_entries')
+                const { error: teErr } = await projFilter(sb.from('time_entries')
                     .delete()
-                    .eq('user_id', userId)
-                    .eq('project_id', projectId)
+                    .eq('user_id', userId))
                     .gte('entry_date', weekStart)
                     .lte('entry_date', weekEnd);
+                if (teErr) console.warn('time_entries verwijderen mislukt:', teErr);
 
-                // 3. Verwijder inkooporder_weeks voor deze week
-                await sb.from('inkooporder_weeks')
+                // 3. Verwijder inkooporder_weeks voor deze week (idem)
+                const { error: ioErr } = await projFilter(sb.from('inkooporder_weeks')
                     .delete()
-                    .eq('user_id', userId)
-                    .eq('project_id', projectId)
+                    .eq('user_id', userId))
                     .eq('week_number', weekNumber)
                     .eq('year', year);
+                if (ioErr) console.warn('inkooporder_weeks verwijderen mislukt:', ioErr);
 
                 showToast('🗑️ Weekstaat verwijderd');
                 loadWeekstaten();
             } catch (e) {
-                showToast('❌ Fout: ' + e.message);
+                showToast('❌ ' + friendlyError(e));
             }
         }
 
@@ -5585,6 +5618,7 @@
 
         // ===== ADMIN: ONDERTEKENEN NAMENS GEBRUIKER =====
         async function adminSignForUser(userId, projectId, weekNumber, year) {
+            if (_wsGeenProject(projectId)) { await _wsMeldGeenProject(); return; }
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
 
@@ -5740,7 +5774,7 @@
                 }, 100);
 
             } catch (err) {
-                showToast('❌ Fout: ' + err.message);
+                showToast('❌ Fout: ' + friendlyError(err));
                 console.error('adminSignForUser error:', err);
                 restoreAdminSignOverride();
             }
@@ -5787,7 +5821,7 @@
                     showToast('⚠️ PDF niet gevonden in storage');
                 }
             } catch (err) {
-                showToast('❌ Download mislukt: ' + err.message);
+                showToast('❌ Download mislukt: ' + friendlyError(err));
             }
         }
 
@@ -5908,12 +5942,13 @@
                     }
                 }
             } catch (err) {
-                showToast('❌ Regeneratie mislukt: ' + err.message);
+                showToast('❌ Regeneratie mislukt: ' + friendlyError(err));
                 console.error('regenerateWeekstaatPdf error:', err);
             }
         }
 
         function openApprovalModal(userId, projectId, weekNumber, year) {
+            if (_wsGeenProject(projectId)) { _wsMeldGeenProject(); return; }
             // Zoek project + klant info
             const project = (window._adminProjects || []).find(p => p.id === projectId);
             const user = (window._adminUsers || []).find(u => u.id === userId);
@@ -6106,7 +6141,7 @@
                 showToast('✓ Goedkeuringsverzoek verstuurd naar ' + email);
                 loadWeekstaten(); // Lijst verversen
             } catch (err) {
-                showToast('❌ Fout: ' + err.message);
+                showToast('❌ Fout: ' + friendlyError(err));
                 // Bij een fout blijft de modal open · knop weer bruikbaar maken
                 if (_apprBtn) {
                     _apprBtn.disabled = false;
@@ -6116,6 +6151,7 @@
         }
 
         function openConfirmationModal(userId, projectId, weekNumber, year) {
+            if (_wsGeenProject(projectId)) { _wsMeldGeenProject(); return; }
             const project = (window._adminProjects || []).find(p => p.id === projectId);
             const user = (window._adminUsers || []).find(u => u.id === userId);
             const userName = user ? (user.name || user.email) : 'Onbekend';
@@ -6340,7 +6376,7 @@
                 URL.revokeObjectURL(url);
                 showToast('✓ PDF gedownload');
             } catch (err) {
-                showToast('❌ Download mislukt: ' + err.message);
+                showToast('❌ Download mislukt: ' + friendlyError(err));
             }
         }
 
@@ -6419,7 +6455,7 @@
             if (!await confirmAsync('Welkomstgids opnieuw tonen voor ' + userName + ' bij volgende login?')) return;
             const { error } = await getSupabase().from('users').update({ reset_welcome: true }).eq('id', userId);
             if (error) {
-                showToast('❌ Fout: ' + error.message);
+                showToast('❌ Fout: ' + friendlyError(error));
             } else {
                 showToast('✓ Welkomstgids wordt opnieuw getoond bij volgende login van ' + userName);
             }
@@ -6434,7 +6470,7 @@
             const { error } = await sb.from('user_projects').insert({ user_id: userId, project_id: _editingId });
             if (error) {
                 console.error('Toewijzing mislukt:', error.message);
-                showToast('⚠️ Toewijzing mislukt: ' + error.message);
+                showToast('⚠️ Toewijzing mislukt: ' + friendlyError(error));
                 return;
             }
             showToast('✓ Gebruiker toegewezen');
@@ -6508,7 +6544,7 @@
                 } else if (/relation.*fill_delegates/i.test(error.message || '')) {
                     showToast('⚠️ Draai eerst migratie-gemachtigden.sql');
                 } else {
-                    showToast('⚠️ Toevoegen mislukt: ' + error.message);
+                    showToast('⚠️ Toevoegen mislukt: ' + friendlyError(error));
                 }
                 return;
             }
@@ -6522,7 +6558,7 @@
             const { error } = await sb.from('fill_delegates').delete()
                 .eq('delegator_id', delegatorId)
                 .eq('delegate_id', _editingId);
-            if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+            if (error) { showToast('⚠️ Verwijderen mislukt: ' + friendlyError(error)); return; }
             showToast('✓ Machtiging verwijderd');
             await loadFillDelegations(_editingId);
         }
@@ -6538,7 +6574,7 @@
             if (type === 'tarief') {
                 if (!await confirmAsync('Weet je zeker dat je dit tarief wilt verwijderen?', true)) return;
                 const { error } = await sb.from('rates').delete().eq('id', _editingId);
-                if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                if (error) { showToast('⚠️ Verwijderen mislukt: ' + friendlyError(error)); return; }
                 showToast('✓ Tarief verwijderd');
                 closeModal('admin-modal');
                 await loadAdminData();
@@ -6588,7 +6624,7 @@
                     );
                     if (!archive) return;
                     const { error } = await sb.from('projects').update({ status: 'closed' }).eq('id', _editingId);
-                    if (error) { showToast('⚠️ Archiveren mislukt: ' + error.message); return; }
+                    if (error) { showToast('⚠️ Archiveren mislukt: ' + friendlyError(error)); return; }
                     showToast('✓ Project gearchiveerd (afgesloten)');
                     closeModal('admin-modal');
                     await loadAdminData();
@@ -6609,14 +6645,14 @@
                     // Eerst de FK-referenties opruimen, daarna het project zelf
                     if (toewijzingen > 0) {
                         const { error: e1 } = await sb.from('user_projects').delete().eq('project_id', _editingId);
-                        if (e1) { showToast('⚠️ Toewijzingen wissen mislukt: ' + e1.message); return; }
+                        if (e1) { showToast('⚠️ Toewijzingen wissen mislukt: ' + friendlyError(e1)); return; }
                     }
                     if (tarieven > 0) {
                         const { error: e2 } = await sb.from('rates').delete().eq('project_id', _editingId);
-                        if (e2) { showToast('⚠️ Tarieven wissen mislukt: ' + e2.message); return; }
+                        if (e2) { showToast('⚠️ Tarieven wissen mislukt: ' + friendlyError(e2)); return; }
                     }
                     const { error } = await sb.from('projects').delete().eq('id', _editingId);
-                    if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                    if (error) { showToast('⚠️ Verwijderen mislukt: ' + friendlyError(error)); return; }
                     showToast('✓ Project + setup verwijderd');
                     closeModal('admin-modal');
                     await loadAdminData();
@@ -6625,7 +6661,7 @@
 
                 // Scenario 1: niets gekoppeld · directe hard delete
                 const { error } = await sb.from('projects').delete().eq('id', _editingId);
-                if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                if (error) { showToast('⚠️ Verwijderen mislukt: ' + friendlyError(error)); return; }
                 showToast('✓ Project verwijderd');
                 closeModal('admin-modal');
                 await loadAdminData();
@@ -6652,7 +6688,7 @@
 
                 if (total === 0) {
                     const { error } = await sb.from('companies').delete().eq('id', _editingId);
-                    if (error) { showToast('⚠️ Verwijderen mislukt: ' + error.message); return; }
+                    if (error) { showToast('⚠️ Verwijderen mislukt: ' + friendlyError(error)); return; }
                     showToast('✓ Bedrijf verwijderd');
                     closeModal('admin-modal');
                     await loadAdminData();
@@ -6670,7 +6706,7 @@
                 );
                 if (!archive) return;
                 const { error } = await sb.from('companies').update({ archived: true }).eq('id', _editingId);
-                if (error) { showToast('⚠️ Archiveren mislukt: ' + error.message); return; }
+                if (error) { showToast('⚠️ Archiveren mislukt: ' + friendlyError(error)); return; }
                 showToast('✓ Bedrijf gearchiveerd');
                 closeModal('admin-modal');
                 await loadAdminData();
@@ -6807,7 +6843,7 @@
             }
 
             if (result && result.error) {
-                showToast('⚠️ Fout: ' + result.error.message);
+                showToast('⚠️ Fout: ' + result.friendlyError(error));
             } else {
                 closeModal('admin-modal');
                 showToast('✓ Opgeslagen');
