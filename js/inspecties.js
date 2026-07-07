@@ -373,7 +373,7 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px">
-                    <label>👤 Zichtbaar voor <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(niemand aangevinkt = iedereen ziet het)</span></label>
+                    <label>👤 Zichtbaar voor <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(alleen aangevinkte engineers zien dit formulier; niemand = niemand. Admins zien altijd alles)</span></label>
                     <div id="insp-tpl-assigned" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${assignHtml}</div>
                 </div>
 
@@ -1196,12 +1196,15 @@
                     .order('name'));
             }
 
-            // Toewijzing: een engineer (niet-admin) ziet alleen formulieren die aan
-            // niemand zijn toegewezen (= iedereen) of waar hij zelf bij staat.
+            // Toewijzing (strikt): een engineer (niet-admin) ziet alleen formulieren
+            // waar hij expliciet aan is toegewezen. Niemand toegewezen = niemand ziet
+            // het. Admins zien altijd alles. Ontbreekt de kolom (migratie niet
+            // gedraaid), dan tonen we alles als veilige fallback.
             if (templates && currentUser && currentUser.role !== 'admin') {
                 templates = templates.filter(t => {
                     const a = t.assigned_user_ids;
-                    return !Array.isArray(a) || a.length === 0 || a.includes(currentUser.id);
+                    if (!Array.isArray(a)) return true; // kolom ontbreekt: fallback
+                    return a.includes(currentUser.id);
                 });
             }
 
