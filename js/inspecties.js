@@ -675,6 +675,10 @@
                 remarks_template: ''
             };
             window._inspTplSections[si].questions.push(q);
+            // Eerst opnieuw renderen zodat het nieuwe vraag-element in de DOM staat;
+            // inspEditQuestion vervangt dat element daarna door het bewerkformulier.
+            // Zonder deze render bestaat het element nog niet en deed de knop niets.
+            inspRenderSections();
             inspEditQuestion(si, window._inspTplSections[si].questions.length - 1);
         }
 
