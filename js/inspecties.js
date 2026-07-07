@@ -1287,7 +1287,10 @@
             list.innerHTML = '<div class="insp-entry-list">' + inspections.map(ins => {
                 const templateName = ins.inspection_templates?.name || 'Onbekend';
                 const date = ins.inspection_date ? new Date(ins.inspection_date).toLocaleDateString('nl-NL') : '';
-                const progress = ins.total_questions > 0 ? Math.round((ins.answered_questions / ins.total_questions) * 100) : 0;
+                // Afgerond/goedgekeurd = voltooid; toon dan geen (mogelijk stale)
+                // deelfractie maar 'Voltooid'. Alleen concepten tonen de voortgang.
+                const isVoltooid = ins.status === 'afgerond' || ins.status === 'goedgekeurd';
+                const progress = isVoltooid ? 100 : (ins.total_questions > 0 ? Math.round((ins.answered_questions / ins.total_questions) * 100) : 0);
                 const failedCount = ins.failed_questions || 0;
                 const hasDeviation = failedCount > 0;
 
@@ -1352,7 +1355,7 @@
                         ${ins.total_questions > 0 ? `
                         <div class="insp-entry-progress">
                             <div class="bar"><div class="bar-fill" style="width:${progress}%"></div></div>
-                            <div class="pct">${ins.answered_questions}/${ins.total_questions} · ${progress}%</div>
+                            <div class="pct">${isVoltooid ? 'Voltooid' : ins.answered_questions + '/' + ins.total_questions + ' · ' + progress + '%'}</div>
                         </div>` : ''}
                         <div class="insp-entry-actions">
                             ${actions.join('')}
@@ -1588,6 +1591,15 @@
                     iconSvg: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'
                 });
                 if (!lmraOk) { showToast('⚠️ Voer eerst de LMRA uit voordat je de inspectie start'); return; }
+                // Bevestiging vastleggen op de inspectie zodat 'ie op het rapport komt.
+                if (!insp.answers) insp.answers = {};
+                if (!insp.answers._lmra || !insp.answers._lmra.confirmed) {
+                    insp.answers._lmra = { confirmed: true, at: new Date().toISOString(), by: (currentUser && (currentUser.name || currentUser.email)) || '' };
+                    const sbL = getSupabase();
+                    if (navigator.onLine && sbL) {
+                        try { await sbL.from('inspections').update({ answers: insp.answers }).eq('id', inspectionId); } catch (e) { /* offline: gaat mee bij volgende save */ }
+                    }
+                }
             }
 
             const tpl = insp.inspection_templates || {};
@@ -2397,10 +2409,26 @@
             const ok = await confirmAsync('Weet je zeker dat je deze inspectie wilt afronden?');
             if (!ok) return;
 
+            // Tellingen herberekenen op basis van het HUIDIGE formulier + antwoorden,
+            // zodat total/answered kloppen (voorkomt een stale 'X van Y' als het
+            // formulier na aanmaken is aangepast).
+            let fTotal = 0, fDone = 0, fPass = 0, fFail = 0;
+            (state.sections || []).forEach((sec, si) => {
+                (sec.questions || []).forEach((q, qi) => {
+                    fTotal++;
+                    const a = state.answers[`s${si}_q${qi}`];
+                    if (a && a.value !== undefined && a.value !== '') { fDone++; if (a.value === 'goed') fPass++; if (a.value === 'fout') fFail++; }
+                });
+            });
+
             const sb = getSupabase();
             await sb.from('inspections').update({
                 status: 'afgerond',
-                completed_at: new Date().toISOString()
+                completed_at: new Date().toISOString(),
+                total_questions: fTotal,
+                answered_questions: fDone,
+                passed_questions: fPass,
+                failed_questions: fFail
             }).eq('id', window._inspActive.id);
 
             closeModal('insp-fill-modal');
@@ -2491,6 +2519,27 @@
             doc.setTextColor(0, 0, 0);
             y = startY + Math.ceil(meta.length / 2) * 4.5 + 5;
 
+            // === LMRA-bevestiging (indien vastgelegd bij de start) ===
+            const lmra = answers._lmra;
+            if (lmra && lmra.confirmed) {
+                let lmraWhen = '';
+                if (lmra.at) { const d = new Date(lmra.at); if (!isNaN(d.getTime())) lmraWhen = d.toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+                doc.setFillColor(233, 245, 238);
+                doc.setDrawColor(47, 125, 79);
+                doc.setLineWidth(0.3);
+                doc.roundedRect(ml, y - 3, uw, 8, 1.5, 1.5, 'FD');
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(47, 125, 79);
+                doc.text('LMRA VOOR START WERK', ml + 3, y + 2);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(40, 70, 50);
+                const lmraTxt = 'Uitgevoerd' + (lmraWhen ? ' (bevestigd ' + lmraWhen + ')' : '') + (lmra.by ? ' - ' + lmra.by : '');
+                doc.text(lmraTxt, ml + 44, y + 2);
+                doc.setTextColor(0, 0, 0);
+                y += 10;
+            }
+
             // Hairline scheidingslijn
             doc.setDrawColor(231, 228, 221);
             doc.setLineWidth(0.3);
@@ -2499,6 +2548,10 @@
 
             // === SAMENVATTING ===
             let totalQ = 0, totalDone = 0, totalGood = 0, totalBad = 0, totalNvt = 0;
+            let totalPhotos = 0, heeftScoreVraag = false;
+            // Alleen deze types voeden de GOED/AFW/SCORE-telling. Bij een formulier
+            // zonder deze (pure foto/tekst) is die score nietszeggend.
+            const _scoreTypes = ['goed_fout', 'goed_matig_slecht'];
             // Conditiescore-tracking (1 t/m 6)
             // Foto-bijlage verzamelen tijdens vraag-rendering
             const photoBijlage = [];
@@ -2507,6 +2560,9 @@
             let condSum = 0, condCount = 0;
             sections.forEach((sec, si) => {
                 (sec.questions || []).forEach((q, qi) => {
+                    if (_scoreTypes.includes(q.type)) heeftScoreVraag = true;
+                    const _pa = answers[`s${si}_q${qi}`];
+                    if (_pa && Array.isArray(_pa.photos)) totalPhotos += _pa.photos.length;
                     totalQ++;
                     const a = answers[`s${si}_q${qi}`];
                     if (a && a.value !== undefined && a.value !== '') {
@@ -2542,18 +2598,31 @@
             doc.setTextColor(7, 86, 127);
             doc.text('SAMENVATTING', ml + 4, y + 3);
 
-            // Statistieken op 1 rij · design-kleuren (gedempt, NEN-stijl)
+            // Statistieken op 1 rij · design-kleuren (gedempt, NEN-stijl).
+            // Adaptief: bij een formulier zonder goed/fout-vragen (bv. een pure
+            // fotorapportage) zijn GOED/AFW./SCORE nietszeggend, dus tonen we dan
+            // BEANTWOORD en FOTO'S i.p.v. die kolommen.
             doc.setFontSize(8);
             doc.setTextColor(0, 0, 0);
             const statY = y + 11;
-            const colW = uw / 5;
-            const stats = [
-                { label: 'TOTAAL', value: String(totalQ), color: [15, 27, 45] },
-                { label: 'GOED', value: String(totalGood), color: [47, 125, 79] },
-                { label: 'AFW.', value: String(totalBad), color: [160, 40, 52] },
-                { label: 'N.V.T.', value: String(totalNvt), color: [92, 102, 117] },
-                { label: 'SCORE', value: pct + '%', color: pct === 100 ? [47, 125, 79] : (totalBad > 0 ? [160, 40, 52] : [7, 86, 127]) },
-            ];
+            let stats;
+            if (heeftScoreVraag) {
+                stats = [
+                    { label: 'TOTAAL', value: String(totalQ), color: [15, 27, 45] },
+                    { label: 'GOED', value: String(totalGood), color: [47, 125, 79] },
+                    { label: 'AFW.', value: String(totalBad), color: [160, 40, 52] },
+                    { label: 'N.V.T.', value: String(totalNvt), color: [92, 102, 117] },
+                    { label: 'SCORE', value: pct + '%', color: pct === 100 ? [47, 125, 79] : (totalBad > 0 ? [160, 40, 52] : [7, 86, 127]) },
+                ];
+            } else {
+                stats = [
+                    { label: 'VRAGEN', value: String(totalQ), color: [15, 27, 45] },
+                    { label: 'BEANTWOORD', value: String(totalDone), color: [47, 125, 79] },
+                    { label: 'N.V.T.', value: String(totalNvt), color: [92, 102, 117] },
+                    { label: "FOTO'S", value: String(totalPhotos), color: [7, 86, 127] },
+                ];
+            }
+            const colW = uw / stats.length;
             stats.forEach((s, i) => {
                 const cx = ml + colW * i + colW / 2;
                 doc.setFont('helvetica', 'normal');
