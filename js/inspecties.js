@@ -629,6 +629,10 @@
                                     ${q.tools ? `<span style="font-size:0.6rem;background:var(--app-ok-soft);padding:1px 6px;border-radius:3px">🔧 ${q.tools}</span>` : ''}
                                 </div>
                             </div>
+                            <div style="display:flex;flex-direction:column;gap:1px">
+                                <button onclick="inspMoveQuestion(${si},${qi},-1)" ${qi === 0 ? 'disabled' : ''} style="background:none;border:none;cursor:${qi === 0 ? 'default' : 'pointer'};font-size:0.7rem;line-height:1;padding:2px 4px;color:${qi === 0 ? 'var(--app-line-strong)' : 'var(--kts-blue)'}" title="Omhoog" aria-label="Vraag omhoog">▲</button>
+                                <button onclick="inspMoveQuestion(${si},${qi},1)" ${qi === (sec.questions.length - 1) ? 'disabled' : ''} style="background:none;border:none;cursor:${qi === (sec.questions.length - 1) ? 'default' : 'pointer'};font-size:0.7rem;line-height:1;padding:2px 4px;color:${qi === (sec.questions.length - 1) ? 'var(--app-line-strong)' : 'var(--kts-blue)'}" title="Omlaag" aria-label="Vraag omlaag">▼</button>
+                            </div>
                             <button onclick="inspEditQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Bewerken">✏️</button>
                             <button onclick="inspRemoveQuestion(${si},${qi})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;padding:4px" title="Verwijderen">🗑️</button>
                         </div>`;
@@ -684,6 +688,18 @@
 
         function inspRemoveQuestion(si, qi) {
             window._inspTplSections[si].questions.splice(qi, 1);
+            inspRenderSections();
+        }
+
+        // Verplaats een vraag omhoog (dir=-1) of omlaag (dir=1) binnen de sectie.
+        function inspMoveQuestion(si, qi, dir) {
+            const qs = window._inspTplSections[si] && window._inspTplSections[si].questions;
+            if (!qs) return;
+            const nj = qi + dir;
+            if (nj < 0 || nj >= qs.length) return;
+            const tmp = qs[qi];
+            qs[qi] = qs[nj];
+            qs[nj] = tmp;
             inspRenderSections();
         }
 
