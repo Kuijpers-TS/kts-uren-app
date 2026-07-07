@@ -802,6 +802,10 @@
                             </select>
                         </div>
                     </div>
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--muted);cursor:pointer">
+                        <input type="checkbox" id="io-show-afgesloten" onchange="toggleIoAfgesloten(this.checked)">
+                        Toon ook afgesloten/gepauzeerde medewerkers
+                    </label>
                     <div style="display:flex;align-items:center;gap:8px">
                         <input type="checkbox" id="io-use-week" style="width:16px;height:16px;accent-color:var(--kts-blue);cursor:pointer">
                         <label for="io-use-week" style="font-size:0.85rem;cursor:pointer">Per week selecteren</label>
@@ -980,6 +984,10 @@
                         <option value="">Alle medewerkers</option>
                     </select>
                 </div>
+                <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--muted);margin-bottom:12px;cursor:pointer">
+                    <input type="checkbox" id="ws-show-afgesloten" onchange="toggleWsAfgesloten(this.checked)">
+                    Toon ook afgesloten/gepauzeerde medewerkers
+                </label>
                 <!-- Nieuwe weekstaat invullen namens medewerker (admin override) -->
                 <button type="button" onclick="adminNewWeekstaat()" class="btn btn-primary btn-sm" style="width:100%;padding:10px;font-size:0.9rem;margin-bottom:14px">
                     ✍️ Nieuwe weekstaat invullen voor medewerker

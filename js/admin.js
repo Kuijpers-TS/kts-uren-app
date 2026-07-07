@@ -814,6 +814,23 @@
         }
 
         // ===== INKOOPORDER FUNCTIONS =====
+        // Toggle: afgesloten/gepauzeerde medewerkers meenemen bij inkooporders.
+        // Ververst de medewerker-dropdown (selectie behouden) en de lijst met
+        // gegenereerde inkooporders, zonder jaar/maand te resetten.
+        function toggleIoAfgesloten(checked) {
+            window._ioShowAfgesloten = !!checked;
+            const opts = checked ? { includeArchived: true, includePaused: true } : undefined;
+            const userSel = document.getElementById('io-filter-user');
+            if (userSel && window._adminUsers) {
+                const cur = userSel.value;
+                const lijst = getFilteredUsers(opts);
+                userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
+                    lijst.map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}${u.archived_at ? ' 🔒' : (u.paused_at ? ' ⏸' : '')}</option>`).join('');
+                if (cur && lijst.some(u => u.id === cur)) userSel.value = cur;
+            }
+            if (typeof loadInkooporders === 'function') loadInkooporders();
+        }
+
         function loadInkooporderFilters() {
             const now = new Date();
             const curYear = now.getFullYear();
@@ -826,11 +843,14 @@
                     window._adminProjects.map(p => `<option value="${p.id}">${escapeHtml(p.project_code)} | ${escapeHtml(p.name)}</option>`).join('');
             }
 
-            // Vul medewerker dropdown
+            // Vul medewerker dropdown · desgewenst met afgesloten/gepauzeerde erbij
+            const ioUserOpts = window._ioShowAfgesloten ? { includeArchived: true, includePaused: true } : undefined;
+            const ioAfgCb = document.getElementById('io-show-afgesloten');
+            if (ioAfgCb) ioAfgCb.checked = !!window._ioShowAfgesloten;
             const userSel = document.getElementById('io-filter-user');
             if (userSel && window._adminUsers) {
                 userSel.innerHTML = '<option value="">-- Selecteer medewerker --</option>' +
-                    getFilteredUsers().map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
+                    getFilteredUsers(ioUserOpts).map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}${u.archived_at ? ' 🔒' : (u.paused_at ? ' ⏸' : '')}</option>`).join('');
                 userSel.onchange = () => autoFillCompanyForUser();
             }
 
@@ -965,8 +985,11 @@
 
                 if (ioErr) throw ioErr;
 
-                // Filter op test/productie modus
-                const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
+                // Filter op test/productie modus · afgesloten/gepauzeerde meenemen
+                // als de toggle aanstaat (zodat inkooporders van een afgesloten
+                // project/medewerker weer zichtbaar zijn).
+                const ioListOpts = window._ioShowAfgesloten ? { includeArchived: true, includePaused: true } : undefined;
+                const filteredUserIds = new Set(getFilteredUsers(ioListOpts).map(u => u.id));
                 const filteredPOWeeks = (ioWeeks || []).filter(pw => filteredUserIds.has(pw.user_id));
 
                 // Groepeer per io_number · pak één storage_path/paid_at per groep
@@ -3853,11 +3876,20 @@
             loadWeekstaten();
         }
 
+        // Toggle: afgesloten/gepauzeerde medewerkers meenemen in de weekstatenlijst.
+        function toggleWsAfgesloten(checked) {
+            window._wsShowAfgesloten = !!checked;
+            loadWeekstaten();
+        }
+
         async function loadWeekstaten() {
             // Weekstaten-tab geopend · markeer als gezien, badge naar 0
             markWeekstatenSeen();
             const sb = getSupabase();
             if (!sb) return;
+            // Checkbox-stand met de bewaarde toestand synchroniseren
+            const wsAfgCb = document.getElementById('ws-show-afgesloten');
+            if (wsAfgCb) wsAfgCb.checked = !!window._wsShowAfgesloten;
             const listEl = document.getElementById('admin-weekstaten-list');
             const conceptEl = document.getElementById('admin-weekstaten-concept');
             listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
@@ -3873,14 +3905,19 @@
                     projSel.appendChild(opt);
                 });
             }
+            // Toon afgesloten/gepauzeerde medewerkers? Dan hun weekstaten (van bv.
+            // een inmiddels afgesloten project) weer meenemen.
+            const wsUserOpts = window._wsShowAfgesloten ? { includeArchived: true, includePaused: true } : undefined;
+
             const userSel = document.getElementById('ws-filter-user');
             if (window._adminUsers) {
                 const curVal = userSel.value;
                 userSel.innerHTML = '<option value="">Alle medewerkers</option>';
-                getFilteredUsers().forEach(u => {
+                getFilteredUsers(wsUserOpts).forEach(u => {
                     const opt = document.createElement('option');
                     opt.value = u.id;
-                    opt.textContent = u.name || u.email;
+                    const afg = u.archived_at ? ' 🔒' : (u.paused_at ? ' ⏸' : '');
+                    opt.textContent = (u.name || u.email) + afg;
                     userSel.appendChild(opt);
                 });
                 if (curVal) userSel.value = curVal;
@@ -3889,7 +3926,7 @@
             try {
                 const filterProj = projSel.value;
                 const filterUser = userSel.value;
-                const filteredUserIds = new Set(getFilteredUsers().map(u => u.id));
+                const filteredUserIds = new Set(getFilteredUsers(wsUserOpts).map(u => u.id));
 
                 // === CONCEPT WEEKSTATEN (opgeslagen/ondertekend, niet verstuurd) ===
                 let conceptQuery = sb.from('week_status').select('*')

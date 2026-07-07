@@ -926,7 +926,7 @@
                     const pct = insp.total_questions > 0 ? Math.round(insp.answered_questions / insp.total_questions * 100) : 0;
 
                     return `
-                        <div class="entry-card" style="cursor:pointer" onclick="inspOpenInspection('${insp.id}')" title="Openen om na te lopen of aan te passen">
+                        <div class="entry-card" style="cursor:pointer" onclick="inspOpenInspection('${insp.id}', undefined, true)" title="Openen om na te lopen of aan te passen">
                             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
                                 <div style="flex:1;min-width:0">
                                     <div style="font-weight:700;font-size:0.85rem">${tplName}</div>
@@ -1512,8 +1512,9 @@
         // In-memory state voor het actieve formulier
         window._inspActive = null; // { id, answers, sections, status, totalQ }
 
-        // Open een inspectie (start in overzicht-modus)
-        async function inspOpenInspection(inspectionId, sectionIdx) {
+        // Open een inspectie (start in overzicht-modus). skipLmra=true slaat de
+        // LMRA-gate over (voor de admin die vanuit Beheer een inspectie naloopt).
+        async function inspOpenInspection(inspectionId, sectionIdx, skipLmra) {
             const sb = getSupabase();
             let insp = null, error = null;
 
@@ -1552,6 +1553,21 @@
             if (!insp) {
                 showToast(navigator.onLine ? '⚠️ Inspectie niet gevonden' : '⚠️ Niet offline beschikbaar · bereid \'m voor met internet');
                 return;
+            }
+
+            // LMRA-gate: voordat je een concept-inspectie invult, moet de Laatste
+            // Minuut Risico Analyse zijn uitgevoerd. Alleen 'Ja' opent de inspectie.
+            // Afgeronde inspecties (alleen bekijken) en admin-review (skipLmra)
+            // slaan dit over.
+            if (insp.status === 'concept' && !skipLmra && typeof askContinueAsync === 'function') {
+                const lmraOk = await askContinueAsync({
+                    title: 'LMRA voor start werk',
+                    message: 'Is de LMRA (Laatste Minuut Risico Analyse) uitgevoerd voordat je met het werk begint?<br><br>De inspectie kan pas starten als dit is bevestigd.',
+                    confirmLabel: 'Ja, LMRA uitgevoerd',
+                    cancelLabel: 'Nee, nog niet',
+                    iconSvg: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#07567F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'
+                });
+                if (!lmraOk) { showToast('⚠️ Voer eerst de LMRA uit voordat je de inspectie start'); return; }
             }
 
             const tpl = insp.inspection_templates || {};
