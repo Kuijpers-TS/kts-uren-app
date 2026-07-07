@@ -58,6 +58,26 @@
 </head>
 <body>
 
+    <!-- PAGE LOADER · twee draaiende KTS-tandwielen tijdens het opstarten -->
+    <div class="page-loader" id="pageLoader" role="status" aria-label="App wordt geladen">
+        <div class="gears">
+            <img class="gear-big" src="loader-gear-big.png" alt="" aria-hidden="true">
+            <img class="gear-small" src="loader-gear-small.png" alt="" aria-hidden="true">
+        </div>
+        <div class="loader-text">Laden...</div>
+    </div>
+    <script>
+        window.hideAppLoader = function() {
+            var l = document.getElementById('pageLoader');
+            if (l && !l.classList.contains('hidden')) {
+                l.classList.add('hidden');
+                setTimeout(function(){ if (l) l.style.display = 'none'; }, 600);
+            }
+        };
+        // Vangnet: nooit langer dan 6s blijven hangen (bv. als de sessie-check hapert)
+        setTimeout(function(){ if (window.hideAppLoader) window.hideAppLoader(); }, 6000);
+    </script>
+
     <!-- PDF afbeeldingen als base64 (apart bestand, ~99KB) · defer zodat het
          parsen van de body niet blokkeert; de consumer hieronder wacht op
          DOMContentLoaded en deferred scripts draaien daar gegarandeerd voor -->

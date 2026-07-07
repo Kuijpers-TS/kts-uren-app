@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v258';
+const CACHE_NAME = 'kts-uren-v259';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -13,6 +13,8 @@ const ASSETS_TO_CACHE = [
   './js/administratie.js',
   './kts-pdf-images.js',
   './tandwiel-wit-v2.png',
+  './loader-gear-big.png',
+  './loader-gear-small.png',
   './icon-192-v4.png',
   './icon-512-v4.png',
   './icon-192-v4-maskable.png',

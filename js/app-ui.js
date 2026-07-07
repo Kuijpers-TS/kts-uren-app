@@ -1499,8 +1499,8 @@
 
         // Check bestaande sessie
         async function checkSession() {
-            if (!getSupabase()) return;
             try {
+                if (!getSupabase()) return;
                 const { data: { session } } = await getSupabase().auth.getSession();
                 if (session) {
                     // Auto-provisioning als profiel nog niet bestaat
@@ -1525,6 +1525,10 @@
                 }
             } catch (err) {
                 console.error('checkSession fout:', err);
+            } finally {
+                // Opstart-loader (draaiende tandwielen) weghalen zodra de sessie-
+                // check klaar is · dan staat het login- of hoofdscherm klaar.
+                if (window.hideAppLoader) window.hideAppLoader();
             }
         }
 
@@ -2747,6 +2751,7 @@
                     const err = document.getElementById('login-error');
                     err.innerHTML = 'CDN niet bereikbaar. <a href="#" onclick="skipLogin();return false" style="color:white;text-decoration:underline">Ga verder in demo modus</a>';
                     err.style.display = 'block';
+                    if (window.hideAppLoader) window.hideAppLoader();
                     return;
                 }
                 const s = document.createElement('script');
