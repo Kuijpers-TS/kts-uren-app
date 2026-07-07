@@ -1875,6 +1875,15 @@
                             <input type="text" inputmode="decimal" id="insp-input-${key}" value="${val.value ? escapeHtml(String(val.value)) : ''}" placeholder="…" onchange="inspAnswer('${key}',this.value)">
                             ${unit ? `<div class="insp-meting-unit">${unit}</div>` : ''}
                         </div>`;
+                } else if (q.type === 'foto') {
+                    // Foto-vraag: voeg foto's toe via de strip hieronder, of markeer
+                    // 'n.v.t.' als deze stap deze keer niet is uitgevoerd.
+                    const isNvt = val.value === 'nvt';
+                    answerHtml = `
+                        <div style="display:flex;flex-direction:column;gap:8px">
+                            <div style="font-size:0.8rem;color:var(--insp-ink-400)">Voeg hieronder een of meer foto's toe, of markeer als niet uitgevoerd.</div>
+                            <button type="button" aria-pressed="${isNvt}" onclick="inspToggleFotoNvt('${key}')" style="align-self:flex-start;padding:9px 16px;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid ${isNvt ? 'var(--insp-ink-700)' : 'var(--insp-line)'};background:${isNvt ? 'var(--insp-ink-700)' : 'var(--insp-surface)'};color:${isNvt ? '#fff' : 'var(--insp-ink-700)'}">${isNvt ? '✓ N.v.t. · niet uitgevoerd' : 'N.v.t. · niet uitgevoerd'}</button>
+                        </div>`;
                 } else {
                     answerHtml = `<textarea class="insp-notes-input" id="insp-input-${key}" style="min-height:80px" placeholder="…" onchange="inspAnswer('${key}',this.value)">${val.value ? escapeHtml(String(val.value)) : ''}</textarea>`;
                 }
@@ -2206,6 +2215,55 @@
 
         // Opmerking opslaan (debounced)
         let _inspRemarkTimer = null;
+        // Zoek de vraag-definitie bij een antwoord-key (s{si}_q{qi}).
+        function _inspQuestionForKey(key) {
+            const state = window._inspActive;
+            if (!state) return null;
+            const m = /^s(\d+)_q(\d+)$/.exec(key || '');
+            if (!m) return null;
+            const sec = state.sections && state.sections[+m[1]];
+            return (sec && sec.questions) ? sec.questions[+m[2]] : null;
+        }
+
+        // Antwoorden opslaan: online naar Supabase, offline lokaal (geen dataverlies).
+        // Gedeeld door inspAddPhoto/inspRemovePhoto zodat ook foto's offline bewaard
+        // blijven en later automatisch syncen.
+        async function inspSaveAnswersState() {
+            const state = window._inspActive;
+            if (!state) return;
+            const answers = state.answers;
+            const counts = {
+                answered_questions: Object.values(answers).filter(a => a.value !== undefined && a.value !== '').length,
+                passed_questions: Object.values(answers).filter(a => a.value === 'goed').length,
+                failed_questions: Object.values(answers).filter(a => a.value === 'fout').length,
+            };
+            const sb = getSupabase();
+            const heeftOffline = typeof inspPersistAnswersLocal === 'function';
+            if (navigator.onLine && sb) {
+                try {
+                    const { error } = await sb.from('inspections').update({ answers, ...counts }).eq('id', state.id);
+                    if (error) throw error;
+                    if (heeftOffline) inspPersistAnswersLocal(false);
+                } catch (e) {
+                    if (heeftOffline) { await inspPersistAnswersLocal(true); if (typeof inspToonOfflineOpgeslagen === 'function') inspToonOfflineOpgeslagen(); }
+                }
+            } else if (heeftOffline) {
+                await inspPersistAnswersLocal(true);
+                if (typeof inspToonOfflineOpgeslagen === 'function') inspToonOfflineOpgeslagen();
+            }
+        }
+
+        // Foto-vraag als 'n.v.t.' markeren (of terugzetten). Loopt via inspAnswer
+        // zodat opslaan (online/offline) en re-render meelopen.
+        function inspToggleFotoNvt(key) {
+            const state = window._inspActive;
+            if (!state) return;
+            const a = state.answers[key] || {};
+            const heeftFoto = Array.isArray(a.photos) && a.photos.length > 0;
+            const nieuw = (a.value === 'nvt') ? (heeftFoto ? 'foto' : '') : 'nvt';
+            inspAnswer(key, nieuw);
+        }
+
         async function inspAddPhoto(key, input) {
             if (!window._inspActive) return;
             const file = input.files && input.files[0];
@@ -2228,10 +2286,12 @@
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
                     state.answers[key].photos.push(dataUrl);
-                    // Direct opslaan
-                    const sb = getSupabase();
-                    await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
-                    // Update alleen de foto-container (geen full re-render)
+                    // Foto-type vraag: markeer als beantwoord zodra er een foto is
+                    // (sentinel 'foto'), zodat de vraag als compleet telt. Een
+                    // eventuele 'n.v.t.'-markering vervalt zodra er een foto komt.
+                    const q = _inspQuestionForKey(key);
+                    if (q && q.type === 'foto') state.answers[key].value = 'foto';
+                    await inspSaveAnswersState();
                     inspUpdatePhotoUI(key);
                     showToast('✓ Foto toegevoegd');
                 };
@@ -2247,8 +2307,12 @@
             const state = window._inspActive;
             if (!state.answers[key] || !state.answers[key].photos) return;
             state.answers[key].photos.splice(photoIdx, 1);
-            const sb = getSupabase();
-            await sb.from('inspections').update({ answers: state.answers }).eq('id', state.id);
+            // Foto-type vraag zonder foto's meer: sentinel weghalen (weer 'open').
+            const q = _inspQuestionForKey(key);
+            if (q && q.type === 'foto' && state.answers[key].value === 'foto' && state.answers[key].photos.length === 0) {
+                state.answers[key].value = '';
+            }
+            await inspSaveAnswersState();
             inspUpdatePhotoUI(key);
         }
 
@@ -2614,6 +2678,12 @@
                     } else if (val === 'goed') { resultText = '✓ GOED'; resultColor = [47, 125, 79]; }
                     else if (val === 'fout') { resultText = '✗ FOUT'; resultColor = [160, 40, 52]; }
                     else if (val === 'nvt') { resultText = 'N.v.t.'; resultColor = [92, 102, 117]; }
+                    // Foto-vraag: de foto's staan in de bijlage, dus toon rechts geen
+                    // 'foto'-sentinel maar een nette verwijzing (of streepje).
+                    if (q.type === 'foto' && val !== 'nvt') {
+                        resultText = (a.photos && a.photos.length > 0) ? 'Zie foto' : '-';
+                        resultColor = [92, 102, 117];
+                    }
 
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(...resultColor);
