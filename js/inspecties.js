@@ -330,6 +330,14 @@
             const frequencyOptions = ['','6 maandelijks','1 jaarlijks','2 jaarlijks','4 jaarlijks','5 jaarlijks','10 jaarlijks','25 jaarlijks']
                 .map(f => `<option value="${f}" ${existing && existing.frequency === f ? 'selected' : ''}>${f || '-- Geen --'}</option>`).join('');
 
+            // Toewijzing: welke engineers zien dit formulier. Leeg = iedereen.
+            const _assignUsers = (typeof getFilteredUsers === 'function' ? getFilteredUsers() : (window._adminUsers || []))
+                .slice().sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+            const _assigned = (existing && Array.isArray(existing.assigned_user_ids)) ? existing.assigned_user_ids : [];
+            const assignHtml = _assignUsers.length === 0
+                ? '<div style="font-size:0.78rem;color:var(--muted)">Geen medewerkers gevonden</div>'
+                : _assignUsers.map(u => `<label style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--app-line);border-radius:20px;font-size:0.8rem;cursor:pointer;background:var(--app-surface)"><input type="checkbox" value="${u.id}" ${_assigned.includes(u.id) ? 'checked' : ''} onchange="inspToggleAssigned('${u.id}', this.checked)">${escapeHtml(u.name || u.email || 'Onbekend')}</label>`).join('');
+
             const content = `
                 <div class="form-group" style="margin-bottom:10px">
                     <label>Naam formulier *</label>
@@ -362,6 +370,11 @@
                 <div class="form-group" style="margin-bottom:14px">
                     <label>Asset</label>
                     <input type="text" id="insp-tpl-asset" value="${existing ? escapeHtml(existing.asset || '') : ''}" placeholder="Bijv. Gemaalpomp" style="width:100%;padding:8px;border:2px solid var(--app-line);border-radius:8px;font-size:0.85rem">
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px">
+                    <label>👤 Zichtbaar voor <span style="font-weight:400;color:var(--muted);font-size:0.75rem">(niemand aangevinkt = iedereen ziet het)</span></label>
+                    <div id="insp-tpl-assigned" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${assignHtml}</div>
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px">
@@ -419,7 +432,17 @@
                 }
                 window._inspTplDocuments = _docs;
                 inspRenderDocsList();
+
+                // Toewijzing-state (welke engineers zien dit formulier)
+                window._inspTplAssigned = _assigned.slice();
             }
+        }
+
+        // Vink een engineer aan/uit bij de zichtbaarheid van het formulier.
+        function inspToggleAssigned(userId, checked) {
+            const set = new Set(window._inspTplAssigned || []);
+            if (checked) set.add(userId); else set.delete(userId);
+            window._inspTplAssigned = [...set];
         }
 
         // ===== DOCUMENTEN (plattegronden & tekeningen) BIJ FORMULIER =====
@@ -797,6 +820,7 @@
                 asset: document.getElementById('insp-tpl-asset')?.value?.trim() || null,
                 sections: window._inspTplSections || [],
                 documents: window._inspTplDocuments || [],
+                assigned_user_ids: window._inspTplAssigned || [],
                 // plattegrond_path blijft gevuld voor achterwaartse compatibiliteit
                 // (readers die de oude kolom gebruiken): het eerste plattegrond-
                 // document, anders het eerste document, anders null.
@@ -814,25 +838,22 @@
                     payload.created_by = (await sb.auth.getUser()).data.user?.id;
                 }
                 let { error } = await opslaan(payload);
-                // Fallback 1: documents-kolom ontbreekt (nieuwe migratie nog niet
-                // gedraaid). Sla dan op zonder documents; de plattegrond blijft via
-                // de oude plattegrond_path-kolom bewaard.
-                if (error && /documents/.test(error.message || '')) {
-                    console.warn('documents-kolom niet aanwezig · voer migratie-inspectie-documenten.sql uit');
-                    if ((window._inspTplDocuments || []).length > 1) showToast('⚠️ Extra documenten niet opgeslagen · draai migratie-inspectie-documenten.sql');
-                    const zonder = { ...payload };
-                    delete zonder.documents;
-                    ({ error } = await opslaan(zonder));
-                }
-                // Fallback 2: ook plattegrond_path-kolom ontbreekt (eerste migratie
-                // evenmin gedraaid). Sla dan zonder beide op.
-                if (error && /plattegrond_path/.test(error.message || '')) {
-                    console.warn('plattegrond_path kolom niet aanwezig · voer migratie-plattegrond.sql uit');
-                    if ((window._inspTplDocuments || []).length) showToast('⚠️ Documenten niet opgeslagen · draai migratie-plattegrond.sql');
-                    const zonder = { ...payload };
-                    delete zonder.documents;
-                    delete zonder.plattegrond_path;
-                    ({ error } = await opslaan(zonder));
+                // Nieuwe optionele kolommen komen per migratie beschikbaar. Ontbreekt
+                // er een (migratie nog niet gedraaid), strip die kolom en probeer
+                // opnieuw. Meerdere kunnen ontbreken, vandaar de lus.
+                const optioneleKolommen = [
+                    { kol: 'assigned_user_ids', sql: 'migratie-formulier-toewijzing.sql', waarschuw: (window._inspTplAssigned || []).length > 0 },
+                    { kol: 'documents', sql: 'migratie-inspectie-documenten.sql', waarschuw: (window._inspTplDocuments || []).length > 1 },
+                    { kol: 'plattegrond_path', sql: 'migratie-plattegrond.sql', waarschuw: (window._inspTplDocuments || []).length > 0 },
+                ];
+                const poging = { ...payload };
+                for (let r = 0; r < optioneleKolommen.length && error; r++) {
+                    const mis = optioneleKolommen.find(o => (o.kol in poging) && new RegExp(o.kol).test(error.message || ''));
+                    if (!mis) break;
+                    console.warn(mis.kol + '-kolom ontbreekt · draai ' + mis.sql);
+                    if (mis.waarschuw) showToast('⚠️ Niet alles opgeslagen · draai ' + mis.sql);
+                    delete poging[mis.kol];
+                    ({ error } = await opslaan(poging));
                 }
                 if (error) throw error;
                 showToast(templateId ? '✓ Formulier bijgewerkt' : '✓ Formulier aangemaakt');
@@ -1141,10 +1162,28 @@
             if (!list) return;
             list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden...</div>';
 
-            const { data: templates, error } = await sb.from('inspection_templates')
-                .select('id, name, description, category, frequency, location, installation, asset')
+            // Probeer met de toewijzing-kolom; valt terug op zonder als de
+            // migratie (migratie-formulier-toewijzing.sql) nog niet gedraaid is.
+            let templates = null, error = null;
+            ({ data: templates, error } = await sb.from('inspection_templates')
+                .select('id, name, description, category, frequency, location, installation, asset, assigned_user_ids')
                 .eq('is_active', true)
-                .order('name');
+                .order('name'));
+            if (error && /assigned_user_ids|column/.test(error.message || '')) {
+                ({ data: templates, error } = await sb.from('inspection_templates')
+                    .select('id, name, description, category, frequency, location, installation, asset')
+                    .eq('is_active', true)
+                    .order('name'));
+            }
+
+            // Toewijzing: een engineer (niet-admin) ziet alleen formulieren die aan
+            // niemand zijn toegewezen (= iedereen) of waar hij zelf bij staat.
+            if (templates && currentUser && currentUser.role !== 'admin') {
+                templates = templates.filter(t => {
+                    const a = t.assigned_user_ids;
+                    return !Array.isArray(a) || a.length === 0 || a.includes(currentUser.id);
+                });
+            }
 
             if (error || !templates || templates.length === 0) {
                 list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Geen formulieren beschikbaar</div>';
