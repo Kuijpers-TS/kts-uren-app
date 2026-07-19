@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kts-uren-v261';
+const CACHE_NAME = 'kts-uren-v262';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS_TO_CACHE = [
   './js/inspecties.js',
   './js/inspecties-offline.js',
   './js/administratie.js',
+  './js/push.js',
   './kts-pdf-images.js',
   './tandwiel-wit-v2.png',
   './loader-gear-big.png',
@@ -67,5 +68,32 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+// Push: melding tonen, ook als de app dicht is. De Edge Function (send-push)
+// stuurt JSON: { title, body, tag }.
+self.addEventListener('push', event => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { /* leeg bericht */ }
+  event.waitUntil(self.registration.showNotification(d.title || 'KTS Uren & Inspecties App', {
+    body: d.body || '',
+    icon: './icon-192-v4.png',
+    badge: './icon-192-v4.png',
+    tag: d.tag || undefined,
+    data: { url: './' }
+  }));
+});
+
+// Klik op de melding: bestaand app-venster naar voren halen, anders openen.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(lijst => {
+      for (const c of lijst) {
+        if ('focus' in c) return c.focus();
+      }
+      return self.clients.openWindow('./');
+    })
   );
 });

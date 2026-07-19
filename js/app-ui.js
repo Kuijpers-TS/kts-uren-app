@@ -54,7 +54,7 @@
             if (name === 'overzicht') renderOverview();
             if (name === 'inspecties') { inspLoadUserTemplates(); inspLoadUserInspections(); }
             if (name === 'administratie') { adminLoadScreen(); }
-            if (name === 'profiel') { renderProfile(); if (typeof updateWeekstatenBadge === 'function') updateWeekstatenBadge(); }
+            if (name === 'profiel') { renderProfile(); if (typeof updateWeekstatenBadge === 'function') updateWeekstatenBadge(); if (typeof initPushRow === 'function') initPushRow(); }
             // Kosten-tab: laad de DB-expenses voor huidige week zodat de lijst klopt
             if (name === 'kosten') {
                 const sbK = getSupabase();
