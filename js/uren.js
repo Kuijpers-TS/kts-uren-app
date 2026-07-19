@@ -898,8 +898,32 @@
                     doc.setFont(pdfFont, 'normal');
                     doc.setTextColor(...ink900);
                     let txt = String(v);
-                    if (c.key === 'desc' && txt.length > 78) txt = txt.substring(0, 75) + '...';
-                    if (c.key === 'location' && txt.length > 32) txt = txt.substring(0, 29) + '...';
+                    // Inkorten op WERKELIJKE tekstbreedte i.p.v. tekens tellen:
+                    // 78 tekens met brede letters is breder dan de kolom, waardoor
+                    // werkzaamheden het LOCATIE-vak inliepen (en locatie het KM-vak).
+                    const maxTxtW = c.w - 4;
+                    if (c.key === 'desc') {
+                        const lines = doc.splitTextToSize(txt, maxTxtW);
+                        if (lines.length > 1) {
+                            // Twee regels passen in de rij van 10mm; was er nog meer
+                            // tekst, dan krijgt regel 2 een beletselteken.
+                            let l2 = lines[1];
+                            if (lines.length > 2) {
+                                while (l2.length > 1 && doc.getTextWidth(l2 + '...') > maxTxtW) l2 = l2.slice(0, -1);
+                                l2 += '...';
+                            }
+                            doc.text(lines[0], tx, y + rowH / 2 - 0.6, { align });
+                            doc.text(l2, tx, y + rowH / 2 + 3.1, { align });
+                        } else {
+                            doc.text(txt, tx, ty, { align });
+                        }
+                        cx += c.w;
+                        return;
+                    }
+                    if (c.key === 'location' && doc.getTextWidth(txt) > maxTxtW) {
+                        while (txt.length > 1 && doc.getTextWidth(txt + '...') > maxTxtW) txt = txt.slice(0, -1);
+                        txt += '...';
+                    }
                     doc.text(txt, tx, ty, { align });
                     cx += c.w;
                 });
