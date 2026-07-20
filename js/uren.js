@@ -341,13 +341,35 @@
                 return;
             }
             // Ga door naar volgende dag, of sluit bij zondag
-            if (i < 6) {
-                toggleDay(i + 1);
-                showToast('✓ ' + dagNamen[i] + ' opgeslagen');
-            } else {
-                toggleDay(-1);
-                showToast('✓ Opgeslagen');
+            if (i < 6) toggleDay(i + 1); else toggleDay(-1);
+            // En sla ECHT op. Voorheen toonde deze knop '✓ opgeslagen' terwijl er
+            // alleen gevalideerd werd · wie daarna het tabblad sloot (de beforeunload-
+            // waarschuwing vuurt op mobiel vaak niet) was de dag kwijt.
+            _persistDayEntry(dagNamen[i]);
+        }
+
+        // Schrijft de week naar de database via hetzelfde pad als 'Week opslaan'
+        // (incrementeel: alleen gewijzigde dagen), maar zonder scherm-wissel en
+        // onderteken-vraag. Toast toont pas 'opgeslagen' als het echt gelukt is.
+        async function _persistDayEntry(dagNaam) {
+            if (weekSummary) { showToast('📋 Deze week is alleen-lezen (historische data)'); return; }
+            if (currentWeekDbStatus === 'verstuurd') { showToast('🔒 Verstuurde week kan niet meer worden aangepast'); return; }
+            if (!getSupabase() || !currentUser || !currentUser.id) {
+                // Demo-modus: alleen lokaal bewaren
+                if (typeof saveWeekLocal === 'function') saveWeekLocal();
+                showToast('✓ ' + dagNaam + ' lokaal bewaard');
+                return;
             }
+            const ok = await saveWeekToSupabase();
+            if (ok) {
+                await updateWeekStatus('opgeslagen');
+                signatureData = { zzp: null, client: null };
+                if (typeof saveWeekLocal === 'function') saveWeekLocal();
+                markClean();
+                if (typeof notifyOtherTabs === 'function') notifyOtherTabs();
+                showToast('✓ ' + dagNaam + ' opgeslagen');
+            }
+            // Bij mislukken heeft saveWeekToSupabase zelf al een duidelijke melding getoond
         }
 
         function toggleThuiswerk(i) {
