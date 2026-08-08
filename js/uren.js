@@ -892,19 +892,41 @@
             };
 
             let totalHours = 0, totalKm = 0, weekdayHours = 0, satHours = 0, sunHours = 0;
+
+            // Dynamische rijhoogtes: de werkzaamheden-tekst wordt VOLLEDIG getoond,
+            // gewikkeld binnen de kolom. Rijen groeien mee. Zou de tabel daardoor
+            // niet meer boven de KPI-strook + handtekeningen passen, dan gaat het
+            // maximum aantal regels per dag stapsgewijs omlaag (laatste regel
+            // krijgt een beletselteken). Zo blijft de weekstaat altijd 1 pagina.
+            doc.setFontSize(9);
+            doc.setFont(pdfFont, 'normal');
+            const descColW = cols.find(c => c.key === 'desc').w - 4;
+            const DESC_LINE_H = 3.8;
+            const MAX_TABLE_BOTTOM = 223; // daaronder moet nog: KPI (26) + handtekeningen (32) + marges
+            const tableTop = y - headerH;
+            const allDescLines = data.days.map(d => d.desc ? doc.splitTextToSize(String(d.desc), descColW) : ['']);
+            let maxDescLines = 6;
+            const rowHeightFor = (n) => n <= 1 ? rowH : Math.min(n, maxDescLines) * DESC_LINE_H + 4.4;
+            let rowHeights = allDescLines.map(l => rowHeightFor(l.length));
+            while (maxDescLines > 2 && y + rowHeights.reduce((s, h) => s + h, 0) > MAX_TABLE_BOTTOM) {
+                maxDescLines--;
+                rowHeights = allDescLines.map(l => rowHeightFor(l.length));
+            }
+
             data.days.forEach((d, idx) => {
+                const rH = rowHeights[idx];
                 const isWeekend = idx >= 5;
                 if (idx % 2 === 1 && !isWeekend) {
                     doc.setFillColor(248, 248, 244);
-                    doc.rect(tableX, y, totalW, rowH, 'F');
+                    doc.rect(tableX, y, totalW, rH, 'F');
                 }
                 if (isWeekend) {
                     doc.setFillColor(245, 240, 230);
-                    doc.rect(tableX, y, totalW, rowH, 'F');
+                    doc.rect(tableX, y, totalW, rH, 'F');
                 }
                 doc.setDrawColor(...lineColLight);
                 doc.setLineWidth(0.15);
-                doc.line(tableX, y + rowH, tableX + totalW, y + rowH);
+                doc.line(tableX, y + rH, tableX + totalW, y + rH);
 
                 cx = tableX;
                 cols.forEach(c => {
@@ -915,30 +937,26 @@
                     if (!v && v !== 0) v = '';
                     const align = LEFT_ALIGN_KEYS.includes(c.key) ? 'left' : 'center';
                     const tx = align === 'left' ? cx + 2 : cx + c.w / 2;
-                    const ty = y + rowH / 2 + 1.5;
+                    const ty = y + rH / 2 + 1.5;
                     doc.setFontSize(9);
                     doc.setFont(pdfFont, 'normal');
                     doc.setTextColor(...ink900);
                     let txt = String(v);
-                    // Inkorten op WERKELIJKE tekstbreedte i.p.v. tekens tellen:
-                    // 78 tekens met brede letters is breder dan de kolom, waardoor
-                    // werkzaamheden het LOCATIE-vak inliepen (en locatie het KM-vak).
+                    // Passen op WERKELIJKE tekstbreedte (tekens tellen liep bij
+                    // brede letters de LOCATIE-kolom in).
                     const maxTxtW = c.w - 4;
                     if (c.key === 'desc') {
-                        const lines = doc.splitTextToSize(txt, maxTxtW);
-                        if (lines.length > 1) {
-                            // Twee regels passen in de rij van 10mm; was er nog meer
-                            // tekst, dan krijgt regel 2 een beletselteken.
-                            let l2 = lines[1];
-                            if (lines.length > 2) {
-                                while (l2.length > 1 && doc.getTextWidth(l2 + '...') > maxTxtW) l2 = l2.slice(0, -1);
-                                l2 += '...';
-                            }
-                            doc.text(lines[0], tx, y + rowH / 2 - 0.6, { align });
-                            doc.text(l2, tx, y + rowH / 2 + 3.1, { align });
-                        } else {
-                            doc.text(txt, tx, ty, { align });
+                        const lines = allDescLines[idx];
+                        const shown = lines.slice(0, maxDescLines);
+                        if (lines.length > shown.length) {
+                            let last = shown[shown.length - 1];
+                            while (last.length > 1 && doc.getTextWidth(last + '...') > maxTxtW) last = last.slice(0, -1);
+                            shown[shown.length - 1] = last + '...';
                         }
+                        // Blok verticaal gecentreerd rond dezelfde middellijn als
+                        // de andere cellen in de rij
+                        const startTy = ty - ((shown.length - 1) * DESC_LINE_H) / 2;
+                        shown.forEach((l, k) => doc.text(l, tx, startTy + k * DESC_LINE_H, { align }));
                         cx += c.w;
                         return;
                     }
@@ -955,18 +973,18 @@
                 if (idx === 5) satHours += d.hours || 0;
                 else if (idx === 6) sunHours += d.hours || 0;
                 else weekdayHours += d.hours || 0;
-                y += rowH;
+                y += rH;
             });
 
             doc.setDrawColor(...lineColLight);
             cx = tableX;
             for (let i = 0; i <= cols.length; i++) {
-                doc.line(cx, y - rowH * data.days.length - headerH, cx, y);
+                doc.line(cx, tableTop, cx, y);
                 if (i < cols.length) cx += cols[i].w;
             }
             doc.setDrawColor(...lineCol);
             doc.setLineWidth(0.3);
-            doc.rect(tableX, y - rowH * data.days.length - headerH, totalW, headerH + rowH * data.days.length);
+            doc.rect(tableX, tableTop, totalW, y - tableTop);
 
             // Summary KPI strip + opmerkingen
             y += 4;
