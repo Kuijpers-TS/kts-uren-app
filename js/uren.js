@@ -901,16 +901,26 @@
             doc.setFontSize(9);
             doc.setFont(pdfFont, 'normal');
             const descColW = cols.find(c => c.key === 'desc').w - 4;
-            const DESC_LINE_H = 3.8;
-            const MAX_TABLE_BOTTOM = 223; // daaronder moet nog: KPI (26) + handtekeningen (32) + marges
+            const DESC_LINE_H = 3.6;
+            // Liggend A4: ph = 210. Onder de tabel moet nog: ruimte (4) + KPI-strook
+            // (22) + ruimte (4) + handtekeningen (26) + marge (2) + voettekst (5).
+            const MAX_TABLE_BOTTOM = ph - 63;
             const tableTop = y - headerH;
             const allDescLines = data.days.map(d => d.desc ? doc.splitTextToSize(String(d.desc), descColW) : ['']);
+            // Dagen zonder uren/tekst worden compact (7mm) · dat geeft ruimte aan
+            // dagen met lange omschrijvingen.
+            const LEGE_RIJ_H = 7;
+            const isLegeDag = data.days.map(d => !(d.hours > 0) && !(d.desc && String(d.desc).trim()) && !d.start);
             let maxDescLines = 6;
-            const rowHeightFor = (n) => n <= 1 ? rowH : Math.min(n, maxDescLines) * DESC_LINE_H + 4.4;
-            let rowHeights = allDescLines.map(l => rowHeightFor(l.length));
+            const rowHeightFor = (idx) => {
+                if (isLegeDag[idx]) return LEGE_RIJ_H;
+                const n = allDescLines[idx].length;
+                return n <= 1 ? rowH : Math.min(n, maxDescLines) * DESC_LINE_H + 4.0;
+            };
+            let rowHeights = data.days.map((d, idx) => rowHeightFor(idx));
             while (maxDescLines > 2 && y + rowHeights.reduce((s, h) => s + h, 0) > MAX_TABLE_BOTTOM) {
                 maxDescLines--;
-                rowHeights = allDescLines.map(l => rowHeightFor(l.length));
+                rowHeights = data.days.map((d, idx) => rowHeightFor(idx));
             }
 
             data.days.forEach((d, idx) => {
@@ -996,7 +1006,7 @@
                 { label: 'TOTAAL TE FACTUREREN', value: fmtNum(totalHours), unit: 'uur', accent: true }
             ];
             const kpiW = 24;
-            const kpiH = 26;
+            const kpiH = 22;
             const kpiTotalW = kpiW * kpis.length;
             let kx = ml;
             kpis.forEach((k) => {
@@ -1014,14 +1024,14 @@
                 doc.setFont(pdfFont, 'normal');
                 doc.setTextColor(...(k.accent ? [255,255,255] : ink400));
                 doc.text(k.label, kx + kpiW/2, y + 5, { align: 'center', maxWidth: kpiW - 2 });
-                doc.setFontSize(20);
+                doc.setFontSize(17);
                 doc.setFont(pdfFont, 'bold');
                 doc.setTextColor(...(k.accent ? [255,255,255] : ink900));
-                doc.text(k.value, kx + kpiW/2, y + 18, { align: 'center' });
+                doc.text(k.value, kx + kpiW/2, y + 14.5, { align: 'center' });
                 doc.setFontSize(8);
                 doc.setFont(pdfFont, 'normal');
                 doc.setTextColor(...(k.accent ? [255,255,255] : ink500));
-                doc.text(k.unit, kx + kpiW/2, y + 23, { align: 'center' });
+                doc.text(k.unit, kx + kpiW/2, y + 19, { align: 'center' });
                 kx += kpiW;
             });
 
@@ -1078,7 +1088,7 @@
 
             // Handtekening-boxen (met IMAGE-support)
             const sigBoxW = (uw - 6) / 2;
-            const sigBoxH = 32;
+            const sigBoxH = 26;
             doc.setDrawColor(...lineCol);
             doc.setLineWidth(0.2);
 
