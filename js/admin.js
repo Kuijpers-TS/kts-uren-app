@@ -5729,6 +5729,7 @@
                     originalWeekData: weekData,
                     originalWeekNumber: currentWeekNumber,
                     originalYear: currentYear,
+                    originalWeekMonday: currentWeekMonday,
                     originalWeekDbStatus: currentWeekDbStatus,
                     originalWeekSummary: weekSummary,
                     originalExpEntries: typeof expEntries !== 'undefined' ? expEntries : []
@@ -5795,6 +5796,11 @@
                 weekData = targetWeekData;
                 currentWeekNumber = weekNumber;
                 currentYear = year;
+                // KRITISCH: ook de maandag mee-swappen. getDateForDayIndex (gebruikt
+                // door saveWeekToSupabase EN de PDF-datums) leest currentWeekMonday;
+                // zonder deze regel werden de uren van de doelweek onder de datums
+                // van de week van de ADMIN weggeschreven (bv. week 31-uren op 3-9 aug).
+                currentWeekMonday = monday;
                 currentWeekDbStatus = 'opgeslagen';
                 weekSummary = null;
 
@@ -5824,6 +5830,7 @@
             weekData = _adminSignOverride.originalWeekData;
             currentWeekNumber = _adminSignOverride.originalWeekNumber;
             currentYear = _adminSignOverride.originalYear;
+            if (_adminSignOverride.originalWeekMonday) currentWeekMonday = _adminSignOverride.originalWeekMonday;
             currentWeekDbStatus = _adminSignOverride.originalWeekDbStatus;
             weekSummary = _adminSignOverride.originalWeekSummary;
             // Reset expEntries naar admin's eigen lijstje (was tijdelijk vervangen
@@ -5915,6 +5922,7 @@
                 const backup = {
                     user: currentUser, project: currentProject, weekData: weekData,
                     weekNumber: currentWeekNumber, year: currentYear,
+                    weekMonday: currentWeekMonday,
                     weekDbStatus: currentWeekDbStatus, weekSummary: weekSummary,
                     sigZzp: signatureData ? signatureData.zzp : null,
                     sigClient: signatureData ? signatureData.client : null
@@ -5925,6 +5933,10 @@
                 weekData = targetWeekData;
                 currentWeekNumber = weekNumber;
                 currentYear = year;
+                // Ook de maandag mee-swappen: de PDF-datums komen uit
+                // getDateForDayIndex en die leest currentWeekMonday. Zonder deze
+                // regel toonde een geregenereerde PDF de datums van de admin-week.
+                currentWeekMonday = monday;
                 currentWeekDbStatus = 'verstuurd';
                 weekSummary = null;
                 // Bij clearSignatures: handtekening-velden leeg maken zodat de PDF
@@ -5971,6 +5983,7 @@
                     weekData = backup.weekData;
                     currentWeekNumber = backup.weekNumber;
                     currentYear = backup.year;
+                    currentWeekMonday = backup.weekMonday;
                     currentWeekDbStatus = backup.weekDbStatus;
                     weekSummary = backup.weekSummary;
                     if (signatureData) {
