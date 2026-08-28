@@ -1291,10 +1291,13 @@
                 // Maand-grenzen voor entry_date matching → ISO-week binnen die maand
                 const firstDayDate = new Date(yrInt, moInt - 1, 1);
                 const lastDayDate = new Date(yrInt, moInt, 0);
-                let wsQuery = sb.from('week_status').select('user_id, week_number, status')
+                // Ook door de admin goedgekeurde weekstaten meenemen: die golden
+                // eerder als concept (status niet aangepast bij ✅-goedkeuren)
+                // en vielen dan buiten de factuur.
+                let wsQuery = sb.from('week_status').select('user_id, week_number, status, approval_status')
                     .eq('project_id', projectId)
                     .eq('year', yrInt)
-                    .in('status', ['verstuurd', 'ondertekend']);
+                    .or('status.in.(verstuurd,ondertekend),approval_status.eq.goedgekeurd');
                 if (!isCombi) wsQuery = wsQuery.eq('user_id', userId);
                 const { data: wsRows } = await wsQuery;
                 // Filter: alleen weken die binnen de gekozen maand vallen
@@ -4401,15 +4404,29 @@
 
         async function adminApproveWeekstaat(userId, projectId, weekNumber, year) {
             if (_wsGeenProject(projectId)) { await _wsMeldGeenProject(); return; }
-            if (!await confirmAsync(`Week ${weekNumber} (${year}) goedkeuren als admin?\n\nDe PDF wordt vernieuwd met de actuele uren + extra kosten. Handtekening-velden blijven leeg (admin-goedkeuring zonder formele ondertekening).`)) return;
+            if (!await confirmAsync(`Week ${weekNumber} (${year}) goedkeuren als admin?\n\nDe weekstaat telt daarmee als verstuurd (dus bruikbaar voor inkooporder en factuur). De PDF wordt vernieuwd met de actuele uren + extra kosten. Handtekening-velden blijven leeg (admin-goedkeuring zonder formele ondertekening).`)) return;
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             try {
+                // Huidige rij ophalen: staat de weekstaat nog in concept, dan zet
+                // admin-goedkeuring 'm ook op 'verstuurd'. Anders bleef een
+                // goedgekeurde concept-weekstaat onzichtbaar voor factuur/inkooporder
+                // (die filteren op verstuurd/ondertekend).
+                const { data: huidig } = await sb.from('week_status')
+                    .select('status, submitted_at')
+                    .eq('user_id', userId).eq('project_id', projectId)
+                    .eq('week_number', weekNumber).eq('year', year)
+                    .maybeSingle();
+                const updatePayload = {
+                    approval_status: 'goedgekeurd',
+                    approval_completed_at: new Date().toISOString()
+                };
+                if (!huidig || huidig.status !== 'verstuurd') {
+                    updatePayload.status = 'verstuurd';
+                    if (!huidig || !huidig.submitted_at) updatePayload.submitted_at = new Date().toISOString();
+                }
                 const { error } = await sb.from('week_status')
-                    .update({
-                        approval_status: 'goedgekeurd',
-                        approval_completed_at: new Date().toISOString()
-                    })
+                    .update(updatePayload)
                     .eq('user_id', userId)
                     .eq('project_id', projectId)
                     .eq('week_number', weekNumber)
