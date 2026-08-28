@@ -1279,6 +1279,9 @@
             const sb = getSupabase();
             if (!sb) return;
 
+            const yrInt = parseInt(year);
+            const moInt = parseInt(month);
+
             // Bron-weken bepalen:
             //  - Default: IO-weken uit inkooporder_weeks (admin moet eerst IO maken)
             //  - skipIO=true: verstuurde/goedgekeurde weekstaten uit week_status
@@ -1286,8 +1289,6 @@
             let ioWeeks;
             if (skipIO) {
                 // Haal verstuurde/goedgekeurde weekstaten op voor dit project+maand
-                const yrInt = parseInt(year);
-                const moInt = parseInt(month);
                 // Maand-grenzen voor entry_date matching → ISO-week binnen die maand
                 const firstDayDate = new Date(yrInt, moInt - 1, 1);
                 const lastDayDate = new Date(yrInt, moInt, 0);
@@ -1334,7 +1335,37 @@
                        <span style="font-size:0.8rem;color:var(--muted)">De medewerker moet eerst zijn weekstaten ondertekenen & versturen.</span>`
                     : `⚠️ Er ${isCombi ? 'zijn' : 'is'} nog geen inkooporder${isCombi ? 's' : ''} verstuurd voor deze ${subj} combinatie.<br>
                        <span style="font-size:0.8rem;color:var(--muted)">Genereer eerst de inkooporder(s), of vink "Factuur zonder inkooporder" aan als de onderaannemer zelf factureert.</span>`;
-                content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">${msg}</div>`;
+
+                // Diagnose: toon wat er WEL voor dit project/jaar in week_status staat,
+                // met per week de reden waarom hij niet meetelt. Scheelt gokken naar
+                // verkeerde maand, verkeerd project of een status die niet meedoet.
+                let diagHtml = '';
+                try {
+                    let dq = sb.from('week_status').select('week_number, status, approval_status')
+                        .eq('project_id', projectId).eq('year', yrInt);
+                    if (!isCombi) dq = dq.eq('user_id', userId);
+                    const { data: alles } = await dq;
+                    const MAANDEN = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+                    if (alles && alles.length > 0) {
+                        const regels = alles.sort((a, b) => a.week_number - b.week_number).map(ws => {
+                            const monday = getWeekMondayFromWeekNumber(yrInt, ws.week_number);
+                            const mnd = MAANDEN[monday.getMonth()];
+                            const inMaand = (monday.getMonth() + 1) === moInt;
+                            const bruikbaar = ['verstuurd', 'ondertekend'].includes(ws.status) || ws.approval_status === 'goedgekeurd';
+                            let hint;
+                            if (!bruikbaar) hint = 'telt niet mee · nog niet verstuurd of goedgekeurd';
+                            else if (!inMaand) hint = `valt onder ${mnd} · kies die maand`;
+                            else if (!skipIO) hint = 'bruikbaar · vink "Factuur zonder inkooporder" aan of maak eerst de inkooporder';
+                            else hint = 'bruikbaar';
+                            return `• Week ${ws.week_number} (${mnd}) · status: ${ws.status || '?'}${ws.approval_status ? ' · goedkeuring: ' + ws.approval_status : ''} → ${hint}`;
+                        }).join('<br>');
+                        diagHtml = `<div style="margin-top:12px;font-size:0.78rem;color:var(--muted);text-align:left;display:inline-block;background:var(--app-bg-deep);border-radius:8px;padding:10px 14px">Wel gevonden voor dit project in ${yrInt}:<br>${regels}</div>`;
+                    } else {
+                        diagHtml = `<div style="margin-top:12px;font-size:0.78rem;color:var(--muted)">Er staan helemaal geen weekstaten voor ${isCombi ? 'dit project' : 'deze medewerker op dit project'} in ${yrInt} · controleer of het juiste project${isCombi ? '' : ' en de juiste medewerker'} is gekozen.</div>`;
+                    }
+                } catch (e) { /* diagnose is best effort */ }
+
+                content.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.9rem">${msg}${diagHtml}</div>`;
                 preview.style.display = 'block';
                 return;
             }
