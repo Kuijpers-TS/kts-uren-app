@@ -4124,6 +4124,7 @@
                             ${adminApproveBtn}
                             ${approvalAction}
                             <button onclick="event.stopPropagation();adminEditWeekEntries('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-info-soft);color:var(--app-info);border:1px solid var(--app-info-line)" title="Uren bewerken">✏️</button>
+                            <button onclick="event.stopPropagation();adminMoveWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-idle-soft);color:var(--muted);border:1px solid var(--border)" title="Verplaats naar ander project">🔀</button>
                             <button onclick="event.stopPropagation();downloadWeekstaatBySearch('${ws.year}','${ws.week_number}','${projCode}','${userSlug}','${ws.user_id}','${ws.project_id}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:0.7rem" title="PDF downloaden">📄</button>
                             <button onclick="event.stopPropagation();adminResetWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-warn-soft);color:var(--app-warn);border:1px solid var(--app-warn-line)" title="Terugzetten naar concept">↩️</button>
                             <button onclick="event.stopPropagation();adminDeleteWeekstaat('${ws.user_id}','${ws.project_id}',${ws.week_number},${ws.year},'${jsStr(userName)}','${jsStr(projCode)}')" class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;background:var(--app-alert-soft);color:var(--app-alert);border:1px solid var(--app-alert-line)" title="Weekstaat verwijderen">🗑️</button>
@@ -4666,12 +4667,12 @@
             if (saveBtn) {
                 saveBtn.style.display = 'inline-flex';
                 saveBtn.textContent = 'Verplaatsen';
-                saveBtn.onclick = () => _adminMoveWeekstaatExec(userId, projectId, weekNumber, year);
+                saveBtn.onclick = () => _adminMoveWeekstaatExec(userId, projectId, weekNumber, year, userName, projCode);
             }
             modal.classList.add('active');
         }
 
-        async function _adminMoveWeekstaatExec(userId, oldProjectId, weekNumber, year) {
+        async function _adminMoveWeekstaatExec(userId, oldProjectId, weekNumber, year, userName, oldProjCode) {
             const sb = getSupabase();
             if (!sb) { showToast('⚠️ Niet verbonden'); return; }
             const targetSel = document.getElementById('move-ws-target');
@@ -4695,6 +4696,15 @@
                     showToast('⚠️ Er bestaat al een weekstaat voor deze week op het doelproject (' + conflict.status + ')');
                     return;
                 }
+
+                // Status van de te verplaatsen weekstaat (voor de PDF-opruiming hieronder)
+                let oudeStatus = null;
+                try {
+                    const { data: oudeWs } = await filterOudProject(sb.from('week_status')
+                        .select('status').eq('user_id', userId))
+                        .eq('week_number', weekNumber).eq('year', year).maybeSingle();
+                    oudeStatus = oudeWs ? oudeWs.status : null;
+                } catch (e) { /* alleen voor de hint · niet kritisch */ }
 
                 // Weekbereik bepalen voor de time_entries (die zijn per datum, niet per week)
                 const monday = getWeekMondayFromWeekNumber(year, weekNumber);
@@ -4725,7 +4735,24 @@
                         .eq('week_number', weekNumber).eq('year', year);
                 } catch (expErr) { console.warn('Declaraties verplaatsen overgeslagen:', expErr); }
 
-                showToast('✓ Weekstaat verplaatst naar het gekozen project');
+                // 4. Was de weekstaat al verstuurd? Dan staat er een PDF in storage
+                //    met het OUDE project/opdrachtgever erop · die opruimen, en de
+                //    admin wijzen op het opnieuw genereren.
+                let pdfHint = '';
+                if (oudeStatus === 'verstuurd') {
+                    try {
+                        const folderPath = `${year}/week-${weekNumber}`;
+                        const { data: files } = await sb.storage.from('weekstaten').list(folderPath, { limit: 50 });
+                        const userSlug = String(userName || '').replace(/\s+/g, '_');
+                        const match = (files || []).find(f =>
+                            (oldProjCode && f.name.includes(oldProjCode) && f.name.includes(userSlug))
+                            || (userSlug && f.name.includes(userSlug)));
+                        if (match) await sb.storage.from('weekstaten').remove([`${folderPath}/${match.name}`]);
+                    } catch (e) { console.warn('Oude PDF opruimen overgeslagen:', e); }
+                    pdfHint = ' · genereer de PDF opnieuw via ✍️ of ✅ (de oude toonde het verkeerde project)';
+                }
+
+                showToast('✓ Weekstaat verplaatst naar het gekozen project' + pdfHint, pdfHint ? 6000 : undefined);
                 closeModal('admin-modal');
                 loadWeekstaten();
             } catch (err) {
