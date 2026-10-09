@@ -1181,10 +1181,24 @@
                     </div>
                     <div class="app-action-row-text">
                         <div class="app-action-row-title">Pushmeldingen</div>
-                        <div class="app-action-row-desc">Melding bij ingediende weekstaat, goedkeuring klant en afgeronde inspectie</div>
+                        <div class="app-action-row-desc">Meldingen op dit toestel: herinneringen en geplande inspecties. Admins ook bij ingediende weekstaat, goedkeuring klant en afgeronde inspectie</div>
                     </div>
                     <label style="display:inline-flex;align-items:center;cursor:pointer;padding:8px">
                         <input type="checkbox" id="push-toggle" onchange="pushToggle(this.checked)" style="width:20px;height:20px;accent-color:var(--kts-blue);cursor:pointer" aria-label="Pushmeldingen aan of uit">
+                    </label>
+                </div>
+
+                <!-- Herinnering weekstaat (iedereen · vereist pushmeldingen aan) -->
+                <div class="app-action-row" id="pf-reminder-row" style="display:none;cursor:default">
+                    <div class="app-action-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </div>
+                    <div class="app-action-row-text">
+                        <div class="app-action-row-title">Herinnering weekstaat</div>
+                        <div class="app-action-row-desc">Vrijdag 16:00 en maandag 09:00 een melding als je weekstaat nog niet is ingediend</div>
+                    </div>
+                    <label style="display:inline-flex;align-items:center;cursor:pointer;padding:8px">
+                        <input type="checkbox" id="reminder-toggle" onchange="reminderToggle(this.checked)" style="width:20px;height:20px;accent-color:var(--kts-blue);cursor:pointer" aria-label="Herinnering weekstaat aan of uit">
                     </label>
                 </div>
 

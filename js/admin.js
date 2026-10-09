@@ -3642,6 +3642,9 @@
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
                             <input type="checkbox" id="adm-user-administratie" ${chk('allow_administratie')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Administratie
                         </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer" title="Pushmelding op vrijdag 16:00 en maandag 09:00 als de weekstaat nog niet is ingediend (werkt alleen als de medewerker op zijn toestel pushmeldingen heeft aangezet)">
+                            <input type="checkbox" id="adm-user-reminder" ${chk('reminder_weekstaat')} style="width:16px;height:16px;accent-color:var(--kts-blue)"> Herinnering weekstaat (push)
+                        </label>
                     </div>
                     <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px">Startweek</div>
                     <div class="form-row" style="margin-bottom:16px">
@@ -6949,6 +6952,7 @@
                     can_declare_expenses: document.getElementById('adm-user-expenses').checked,
                     allow_inspecties: document.getElementById('adm-user-inspecties').checked,
                     allow_administratie: document.getElementById('adm-user-administratie').checked,
+                    reminder_weekstaat: !!document.getElementById('adm-user-reminder')?.checked,
                     start_week: parseInt(document.getElementById('adm-user-start-week').value) || null,
                     start_year: parseInt(document.getElementById('adm-user-start-year').value) || null,
                     km_single_trip: parseFloat(document.getElementById('adm-user-kmsingle').value) || null,
@@ -6965,11 +6969,18 @@
                     delete data.invoice_via_company_id;
                     ({ error: updErr } = await sb.from('users').update(data).eq('id', _editingId));
                 }
+                // Fallback voor DB zonder reminder_weekstaat (migratie-herinneringen.sql)
+                if (updErr && /reminder_weekstaat/.test(updErr.message || '')) {
+                    console.warn('reminder_weekstaat kolom niet aanwezig · fallback. Voer migratie-herinneringen.sql uit.');
+                    delete data.reminder_weekstaat;
+                    ({ error: updErr } = await sb.from('users').update(data).eq('id', _editingId));
+                    if (!updErr) showToast('⚠️ Herinnering niet opgeslagen · draai eerst migratie-herinneringen.sql');
+                }
                 result = { error: updErr };
             }
 
             if (result && result.error) {
-                showToast('⚠️ Fout: ' + result.friendlyError(error));
+                showToast('⚠️ Fout: ' + friendlyError(result.error));
             } else {
                 closeModal('admin-modal');
                 showToast('✓ Opgeslagen');

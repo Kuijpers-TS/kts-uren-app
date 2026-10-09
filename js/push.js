@@ -23,13 +23,14 @@
             return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
         }
 
-        // Toon de meldingen-rij op het Profiel-scherm (alleen admins, alleen als
+        // Toon de meldingen-rij op het Profiel-scherm (voor iedereen, alleen als
         // de browser het ondersteunt) en zet de toggle op de huidige stand.
+        // Admin-gebeurtenissen gaan server-side alleen naar admins; herinneringen
+        // en geplande inspecties naar de betreffende medewerker.
         async function initPushRow() {
             const row = document.getElementById('pf-push-row');
             if (!row) return;
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            if (!isAdmin || !pushSupported()) { row.style.display = 'none'; return; }
+            if (!currentUser || !pushSupported()) { row.style.display = 'none'; return; }
             row.style.display = '';
             const toggle = document.getElementById('push-toggle');
             if (!toggle) return;
@@ -84,6 +85,52 @@
                     showToast('⚠️ Tabel ontbreekt · draai eerst migratie-push-subscriptions.sql');
                 } else {
                     showToast('⚠️ Meldingen instellen mislukt: ' + (typeof friendlyError === 'function' ? friendlyError(e) : (e && e.message) || e));
+                }
+            }
+        }
+
+        // =====================================================================
+        // HERINNERING WEEKSTAAT · per persoon aan/uit (users.reminder_weekstaat)
+        // =====================================================================
+        // Server-side (pg_cron -> send-push) stuurt vrijdag 16:00 en maandag
+        // 09:00 een pushmelding als de weekstaat nog niet is ingediend. Werkt
+        // alleen met een push-abonnement op het toestel, dus bij aanzetten wordt
+        // zo nodig eerst de pushmeldingen-toggle meegenomen.
+
+        async function initReminderRow() {
+            const row = document.getElementById('pf-reminder-row');
+            if (!row) return;
+            if (!currentUser || !pushSupported()) { row.style.display = 'none'; return; }
+            row.style.display = '';
+            const t = document.getElementById('reminder-toggle');
+            if (t) t.checked = !!currentUser.reminder_weekstaat;
+        }
+
+        async function reminderToggle(aan) {
+            const t = document.getElementById('reminder-toggle');
+            try {
+                if (aan) {
+                    const reg = await navigator.serviceWorker.ready;
+                    const sub = await reg.pushManager.getSubscription();
+                    if (!sub || Notification.permission !== 'granted') {
+                        await pushToggle(true);
+                        const sub2 = await reg.pushManager.getSubscription();
+                        if (!sub2 || Notification.permission !== 'granted') { if (t) t.checked = false; return; }
+                        const pt = document.getElementById('push-toggle');
+                        if (pt) pt.checked = true;
+                    }
+                }
+                const sb = getSupabase();
+                const { error } = await sb.from('users').update({ reminder_weekstaat: aan }).eq('id', currentUser.id);
+                if (error) throw error;
+                currentUser.reminder_weekstaat = aan;
+                showToast(aan ? '⏰ Herinnering weekstaat aan · vrijdag 16:00 en maandag 09:00' : '🔕 Herinnering weekstaat uit');
+            } catch (e) {
+                if (t) t.checked = !aan;
+                if (/reminder_weekstaat/.test((e && e.message) || '')) {
+                    showToast('⚠️ Kolom ontbreekt · draai eerst migratie-herinneringen.sql');
+                } else {
+                    showToast('⚠️ Herinnering instellen mislukt: ' + (typeof friendlyError === 'function' ? friendlyError(e) : (e && e.message) || e));
                 }
             }
         }

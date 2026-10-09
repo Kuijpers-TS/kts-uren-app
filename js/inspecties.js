@@ -903,6 +903,22 @@
             }
         }
 
+        // Badge 'Gepland' voor concept-inspecties met een geplande uitvoering
+        // (planned_at). Op dat tijdstip stuurt de server een pushmelding naar de
+        // medewerker. pill=true geeft de stijl van de Mijn-inspecties-kaart.
+        function inspPlannedBadge(insp, pill) {
+            if (!insp || !insp.planned_at || insp.status !== 'concept') return '';
+            const d = new Date(insp.planned_at);
+            if (isNaN(d.getTime())) return '';
+            const when = d.toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const verleden = d.getTime() < Date.now();
+            const bg = verleden ? 'var(--app-warn-soft)' : 'var(--app-info-soft)';
+            const fg = verleden ? 'var(--app-warn)' : 'var(--app-info)';
+            const titel = verleden ? 'Geplande uitvoering is verstreken' : 'Geplande uitvoering · pushmelding op dit tijdstip';
+            if (pill) return `<span class="insp-status-pill" style="background:${bg};color:${fg}" title="${titel}">📅 ${when}</span>`;
+            return `<span style="font-size:0.65rem;background:${bg};color:${fg};padding:2px 8px;border-radius:4px;font-weight:600" title="${titel}">📅 ${when}</span>`;
+        }
+
         // ----- Inspecties laden -----
         async function inspLoadInspections() {
             const sb = getSupabase();
@@ -957,6 +973,7 @@
                                     <div style="display:flex;gap:6px;margin-top:6px">
                                         <span style="font-size:0.65rem;background:${statusColors[insp.status] || '#f3f4f6'};padding:2px 8px;border-radius:4px;font-weight:600">${statusLabels[insp.status] || insp.status}</span>
                                         ${insp.total_questions > 0 ? `<span style="font-size:0.65rem;background:var(--app-bg-deep);padding:2px 8px;border-radius:4px">${pct}% ingevuld</span>` : ''}
+                                        ${inspPlannedBadge(insp, false)}
                                     </div>
                                 </div>
                                 ${insp.inspection_number ? `<div style="font-size:0.7rem;color:var(--kts-blue);font-weight:600;white-space:nowrap">${insp.inspection_number}</div>` : ''}
@@ -1063,9 +1080,13 @@
                         <label>Inspectiedatum</label>
                         <input type="date" id="inew-date" value="${today}">
                     </div>
+                    <div class="form-group">
+                        <label>Geplande tijd (optioneel)</label>
+                        <input type="time" id="inew-time" step="900" placeholder="--:--">
+                    </div>
                 </div>
                 <div style="font-size:0.72rem;color:var(--muted);line-height:1.4;margin-top:4px">
-                    De inspectie komt klaar als <b>Concept</b> in de lijst van de gekozen medewerker. De asset-code komt in het inspectienummer (INS-${new Date().getFullYear()}-XXXX-asset) en in de PDF-titel.
+                    De inspectie komt klaar als <b>Concept</b> in de lijst van de gekozen medewerker. Vul je een tijd in, dan krijgt de medewerker op die datum en tijd een <b>pushmelding</b> om de inspectie te lopen (mits pushmeldingen op zijn toestel aanstaan). De asset-code komt in het inspectienummer (INS-${new Date().getFullYear()}-XXXX-asset) en in de PDF-titel.
                 </div>
             `;
 
@@ -1114,6 +1135,10 @@
             const projectId = document.getElementById('inew-project')?.value;
             const assetRaw = document.getElementById('inew-asset')?.value || '';
             const inspDate = document.getElementById('inew-date')?.value || toLocalDateStr(new Date());
+            const inspTime = document.getElementById('inew-time')?.value || '';
+            // Geplande uitvoering (lokale datum + tijd) · de server stuurt op dat
+            // moment een pushmelding naar de medewerker (cron -> send-push)
+            const plannedAt = inspTime ? new Date(inspDate + 'T' + inspTime + ':00').toISOString() : null;
 
             if (!templateId) { showToast('⚠️ Kies een formulier'); return; }
             if (!userId) { showToast('⚠️ Kies een medewerker'); return; }
@@ -1147,7 +1172,7 @@
             sections.forEach(s => { totalQ += (s.questions || []).length; });
 
             // Aanmaken
-            const { data: newInsp, error: insErr } = await sb.from('inspections').insert({
+            const payload = {
                 template_id: templateId,
                 project_id: projectId,
                 user_id: userId,
@@ -1162,13 +1187,24 @@
                 total_questions: totalQ,
                 answered_questions: 0,
                 passed_questions: 0,
-                failed_questions: 0
-            }).select().single();
+                failed_questions: 0,
+                planned_at: plannedAt
+            };
+            let { data: newInsp, error: insErr } = await sb.from('inspections').insert(payload).select().single();
+            // Fallback voor DB zonder planned_at (migratie-herinneringen.sql nog niet gedraaid)
+            if (insErr && /planned_at/.test(insErr.message || '')) {
+                delete payload.planned_at;
+                ({ data: newInsp, error: insErr } = await sb.from('inspections').insert(payload).select().single());
+                if (!insErr && plannedAt) showToast('⚠️ Geplande tijd niet opgeslagen · draai eerst migratie-herinneringen.sql');
+            }
 
             if (insErr) { showToast('⚠️ Aanmaken mislukt: ' + friendlyError(insErr)); return; }
 
             const userName = (window._adminUsers || []).find(u => u.id === userId)?.name || 'medewerker';
-            showToast(`✓ Inspectie ${inspNumber} klaargezet voor ${userName}`);
+            const planTxt = (plannedAt && newInsp && newInsp.planned_at)
+                ? ' · melding op ' + new Date(plannedAt).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                : '';
+            showToast(`✓ Inspectie ${inspNumber} klaargezet voor ${userName}${planTxt}`);
             closeModal('admin-modal');
             inspLoadInspections();
         }
@@ -1353,6 +1389,7 @@
                             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
                                 <span class="insp-status-pill ${pillClass}">${pillLabel}</span>
                                 ${offlineBadge}
+                                ${inspPlannedBadge(ins, true)}
                             </div>
                         </div>
                         ${ins.total_questions > 0 ? `
