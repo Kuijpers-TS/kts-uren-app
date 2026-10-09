@@ -89,6 +89,30 @@
             }
         }
 
+        // Lokale testmelding (zonder server): bewijst of DIT toestel meldingen
+        // toont, en meldt of er een live push-abonnement op het toestel staat.
+        // Handig als server-meldingen 'verzonden' zijn maar niet verschijnen
+        // (verouderde registratie na herinstallatie, of Android blokkeert ze).
+        async function pushTestLocal() {
+            try {
+                if (!pushSupported()) { showToast('⚠️ Meldingen worden op dit toestel/browser niet ondersteund'); return; }
+                if (Notification.permission !== 'granted') { showToast('⚠️ Geen toestemming · zet eerst Pushmeldingen aan'); return; }
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification('🔔 Testmelding KTS app', {
+                    body: 'Als je dit ziet, toont dit toestel meldingen. Server-meldingen komen op dezelfde manier binnen.',
+                    icon: './icon-192-v4.png', badge: './icon-192-v4.png', tag: 'kts-test'
+                });
+                const sub = await reg.pushManager.getSubscription();
+                if (sub) {
+                    showToast('✓ Testmelding getoond · push-abonnement aanwezig (sinds ' + (sub.expirationTime ? 'tijdelijk' : 'onbepaald') + ')');
+                } else {
+                    showToast('⚠️ Testmelding getoond, maar GEEN push-abonnement op dit toestel · zet Pushmeldingen uit en weer aan');
+                }
+            } catch (e) {
+                showToast('⚠️ Testmelding mislukt: ' + ((e && e.message) || e));
+            }
+        }
+
         // =====================================================================
         // HERINNERING WEEKSTAAT · per persoon aan/uit (users.reminder_weekstaat)
         // =====================================================================

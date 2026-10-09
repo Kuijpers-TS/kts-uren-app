@@ -1182,6 +1182,7 @@
                     <div class="app-action-row-text">
                         <div class="app-action-row-title">Pushmeldingen</div>
                         <div class="app-action-row-desc">Meldingen op dit toestel: herinneringen en geplande inspecties. Admins ook bij ingediende weekstaat, goedkeuring klant en afgeronde inspectie</div>
+                        <button type="button" onclick="event.stopPropagation();pushTestLocal()" style="margin-top:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--app-line);background:var(--app-surface-2);color:var(--kts-blue);font-size:0.78rem;font-weight:600;cursor:pointer">🔔 Testmelding op dit toestel</button>
                     </div>
                     <label style="display:inline-flex;align-items:center;cursor:pointer;padding:8px">
                         <input type="checkbox" id="push-toggle" onchange="pushToggle(this.checked)" style="width:20px;height:20px;accent-color:var(--kts-blue);cursor:pointer" aria-label="Pushmeldingen aan of uit">
