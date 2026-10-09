@@ -177,9 +177,10 @@
             // Rate lookup helper: user+project → rate, project → rate, default
             function getRate(userId, projectId) {
                 const userRate = allRates.find(r => r.user_id === userId && r.project_id === projectId);
-                if (userRate) return { hourly: parseFloat(userRate.hourly_rate) || 85, km: parseFloat(userRate.km_rate) || 0.50, sat: parseFloat(userRate.saturday_multiplier) || 1.5, sun: parseFloat(userRate.sunday_holiday_multiplier) || 2.0 };
+                // km: 0 is een geldige waarde (project zonder reiskosten) · geen || fallback
+                if (userRate) return { hourly: parseFloat(userRate.hourly_rate) || 85, km: isNaN(parseFloat(userRate.km_rate)) ? 0.50 : parseFloat(userRate.km_rate), sat: parseFloat(userRate.saturday_multiplier) || 1.5, sun: parseFloat(userRate.sunday_holiday_multiplier) || 2.0 };
                 const projRate = allRates.find(r => !r.user_id && r.project_id === projectId);
-                if (projRate) return { hourly: parseFloat(projRate.hourly_rate) || 85, km: parseFloat(projRate.km_rate) || 0.50, sat: parseFloat(projRate.saturday_multiplier) || 1.5, sun: parseFloat(projRate.sunday_holiday_multiplier) || 2.0 };
+                if (projRate) return { hourly: parseFloat(projRate.hourly_rate) || 85, km: isNaN(parseFloat(projRate.km_rate)) ? 0.50 : parseFloat(projRate.km_rate), sat: parseFloat(projRate.saturday_multiplier) || 1.5, sun: parseFloat(projRate.sunday_holiday_multiplier) || 2.0 };
                 return { hourly: 85, km: 0.50, sat: 1.5, sun: 2.0 };
             }
 
@@ -1484,7 +1485,7 @@
                         r.hourly_rate = (!isNaN(saleRate) && saleRate > 0)
                             ? saleRate
                             : (parseFloat(found.hourly_rate) || 85);
-                        r.km_rate = parseFloat(found.km_rate) || 0.50;
+                        r.km_rate = isNaN(parseFloat(found.km_rate)) ? 0.50 : parseFloat(found.km_rate); // 0 = geen reiskosten
                         r.saturday_multiplier = parseFloat(found.saturday_multiplier) || 1.50;
                         r.sunday_holiday_multiplier = parseFloat(found.sunday_holiday_multiplier) || 2.00;
                     }
@@ -1683,7 +1684,7 @@
 
                 let userKm = 0, userHotel = 0;
                 Object.values(bucket.weekData).forEach(w => { userKm += w.totalKm; userHotel += w.hotelNights; });
-                if (userKm > 0) {
+                if (userKm > 0 && userRate.km_rate > 0) {
                     const kmAmount = userKm * userRate.km_rate;
                     html += `<tr><td style="padding:4px 6px">Kilometers${isCombi ? ' ·' + userName : ''}</td><td style="text-align:right;padding:4px 6px">${userKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:4px 6px">${fmtEuro(userRate.km_rate)}</td><td style="text-align:right;padding:4px 6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
                     subtotal += kmAmount;
@@ -1798,7 +1799,7 @@
                 });
                 let userKm = 0, userHotel = 0;
                 Object.values(bucket.weekData || {}).forEach(w => { userKm += (w.totalKm || 0); userHotel += (w.hotelNights || 0); });
-                if (userKm > 0) {
+                if (userKm > 0 && rate.km_rate > 0) {
                     regels.push({ datum: monthLabel, desc: 'Reis kilometers', qty: userKm, unit: 'km', tarief: rate.km_rate, btw: 21 });
                 }
                 if (userHotel > 0) {
@@ -2675,7 +2676,7 @@
                 const found = userRate || projRate;
                 if (found) {
                     rate.hourly_rate = parseFloat(found.hourly_rate) || 85;
-                    rate.km_rate = parseFloat(found.km_rate) || 0.50;
+                    rate.km_rate = isNaN(parseFloat(found.km_rate)) ? 0.50 : parseFloat(found.km_rate); // 0 = geen reiskosten
                     rate.saturday_multiplier = parseFloat(found.saturday_multiplier) || 1.50;
                     rate.sunday_holiday_multiplier = parseFloat(found.sunday_holiday_multiplier) || 2.00;
                 }
@@ -2850,7 +2851,7 @@
             // Total km
             let totalKm = 0;
             Object.values(ioData.weekData).forEach(w => totalKm += w.totalKm);
-            if (totalKm > 0) {
+            if (totalKm > 0 && ioData.rate.km_rate > 0) {
                 const kmAmount = totalKm * ioData.rate.km_rate;
                 html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Kilometrages</td><td style="text-align:right;padding:6px">${totalKm.toLocaleString('nl-NL')}</td><td style="text-align:right;padding:6px">${fmtEuro(ioData.rate.km_rate)}</td><td style="text-align:right;padding:6px;font-weight:600">${fmtEuro(kmAmount)}</td></tr>`;
                 subtotal += kmAmount;
@@ -2940,7 +2941,7 @@
             // zodat bij 1 specifieke week ook "Reis kilometers · Week 19 · mei 2026" staat
             let totalKm = 0, totalHotel = 0;
             Object.values(ioData.weekData || {}).forEach(w => { totalKm += (w.totalKm || 0); totalHotel += (w.hotelNights || 0); });
-            if (totalKm > 0) {
+            if (totalKm > 0 && ioData.rate.km_rate > 0) {
                 items.push({ nr: nr++, desc: `Reis kilometers · ${periodLabel}`, sub: projectName, qty: totalKm, unit: 'km', price: ioData.rate.km_rate });
             }
             if (totalHotel > 0) {

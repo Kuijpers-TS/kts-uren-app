@@ -1871,7 +1871,7 @@
                 if (foundRate) {
                     currentRates = foundRate;
                     RATE = parseFloat(currentRates.hourly_rate) || 85;
-                    KM_RATE = parseFloat(currentRates.km_rate) || 0.50;
+                    KM_RATE = isNaN(parseFloat(currentRates.km_rate)) ? 0.50 : parseFloat(currentRates.km_rate); // 0 = geen reiskosten
                     SAT_MULTIPLIER = parseFloat(currentRates.saturday_multiplier) || 1.50;
                     SUN_MULTIPLIER = parseFloat(currentRates.sunday_holiday_multiplier) || 2.00;
                     const who = currentRates.user_id ? 'user-specifiek' : 'project-breed';
